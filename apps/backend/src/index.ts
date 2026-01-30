@@ -91,10 +91,11 @@ const recordExternalOrder = (payload: Record<string, unknown>): void => {
     logger.warn('User order payload missing fields', { payload });
     return;
   }
-  const validStatuses = ['open', 'filled', 'cancelled', 'rejected'];
+  // Validate status against OrderStatus type ('open' | 'filled' | 'cancelled' | 'rejected')
+  const validStatuses: OrderStatus[] = ['open', 'filled', 'cancelled', 'rejected'];
   const rawStatus = typeof payload.status === 'string' ? payload.status : 'open';
-  const status = validStatuses.includes(rawStatus) ? rawStatus : 'open';
-  if (!validStatuses.includes(rawStatus)) {
+  const status: OrderStatus = validStatuses.includes(rawStatus as OrderStatus) ? (rawStatus as OrderStatus) : 'open';
+  if (!validStatuses.includes(rawStatus as OrderStatus)) {
     logger.warn('User order payload has invalid status, defaulting to "open"', { payload, rawStatus });
   }
   const now = new Date().toISOString();
@@ -105,7 +106,7 @@ const recordExternalOrder = (payload: Record<string, unknown>): void => {
     side,
     price,
     size,
-    status: status as OrderStatus,
+    status: status,
     createdAt: typeof payload.createdAt === 'string' ? payload.createdAt : now,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
     live: true,
