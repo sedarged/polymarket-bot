@@ -62,10 +62,14 @@ export class PaperTradingEngine {
     }
     const level = order.side === 'buy' ? book.asks[0] : book.bids[0];
     if (!level) return undefined;
-    const fillPrice = order.side === 'buy' ? Math.min(order.price, level.price) : Math.max(order.price, level.price);
-    if ((order.side === 'buy' && fillPrice > order.price) || (order.side === 'sell' && fillPrice < order.price)) {
+    const isMarketable =
+      order.side === 'buy'
+        ? order.price >= level.price
+        : order.price <= level.price;
+    if (!isMarketable) {
       return undefined;
     }
+    const fillPrice = level.price;
     return {
       id: randomUUID(),
       orderId: order.id,

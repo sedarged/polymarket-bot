@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { config } from './config';
 import { SqliteStore } from './storage/sqlite';
 import { LogService } from './services/logService';
@@ -11,7 +12,7 @@ import { PnlTracker } from './services/pnlTracker';
 import { RiskManager } from './services/riskManager';
 import { KillSwitch } from './services/killSwitch';
 import { TradingGate } from './services/tradingGate';
-import { OrderSide, OrderbookLevel } from './types';
+import { OrderSide, OrderStatus } from './types';
 
 const app = express();
 app.use(express.json());
@@ -32,6 +33,28 @@ const paperEngine = new PaperTradingEngine(orderbook, store, logger, (fill) => {
 
 const wsClient = new WsClient(logger);
 
+// Hydrate PnL tracker from stored fills on startup
+(async () => {
+  try {
+    const fills = store.listFills();
+    if (Array.isArray(fills)) {
+      fills.sort((a, b) => {
+        const ta = new Date(a.timestamp).getTime();
+        const tb = new Date(b.timestamp).getTime();
+        return ta - tb;
+      });
+      for (const fill of fills) {
+        pnlTracker.onFill(fill);
+      }
+      logger.info('Hydrated PnL tracker from stored fills', { fillCount: fills.length });
+    } else {
+      logger.warn('store.listFills() did not return an array; skipping PnL hydration');
+    }
+  } catch (error) {
+    logger.error('Failed to hydrate PnL tracker from stored fills', { error });
+  }
+})();
+
 const recordExternalFill = (payload: Record<string, unknown>): void => {
   const marketId = typeof payload.marketId === 'string' ? payload.marketId : undefined;
   const orderId = typeof payload.orderId === 'string' ? payload.orderId : undefined;
@@ -44,7 +67,7 @@ const recordExternalFill = (payload: Record<string, unknown>): void => {
     return;
   }
   const fill = {
-    id: typeof payload.id === 'string' ? payload.id : `${orderId}-${Date.now()}`,
+    id: typeof payload.id === 'string' ? payload.id : randomUUID(),
     orderId,
     marketId,
     side,
@@ -68,7 +91,13 @@ const recordExternalOrder = (payload: Record<string, unknown>): void => {
     logger.warn('User order payload missing fields', { payload });
     return;
   }
-  const status = typeof payload.status === 'string' ? payload.status : 'open';
+  // Validate status against OrderStatus type ('open' | 'filled' | 'cancelled' | 'rejected')
+  const validStatuses: OrderStatus[] = ['open', 'filled', 'cancelled', 'rejected'];
+  const rawStatus = typeof payload.status === 'string' ? payload.status : 'open';
+  const status: OrderStatus = validStatuses.includes(rawStatus as OrderStatus) ? (rawStatus as OrderStatus) : 'open';
+  if (!validStatuses.includes(rawStatus as OrderStatus)) {
+    logger.warn('User order payload has invalid status, defaulting to "open"', { payload, rawStatus });
+  }
   const now = new Date().toISOString();
   store.upsertOrder({
     id: orderId,
@@ -77,7 +106,7 @@ const recordExternalOrder = (payload: Record<string, unknown>): void => {
     side,
     price,
     size,
-    status: status as 'open' | 'filled' | 'cancelled' | 'rejected',
+    status: status,
     createdAt: typeof payload.createdAt === 'string' ? payload.createdAt : now,
     updatedAt: typeof payload.updatedAt === 'string' ? payload.updatedAt : now,
     live: true,
@@ -86,13 +115,24 @@ const recordExternalOrder = (payload: Record<string, unknown>): void => {
 
 wsClient.on('message', (message) => {
   if (message.channel === 'market' && message.type === 'orderbook') {
-    const payload = message.payload as { marketId: string; bids: OrderbookLevel[]; asks: OrderbookLevel[] };
-    orderbook.applyDelta(payload.marketId, payload.bids ?? [], payload.asks ?? []);
-    const bestBid = payload.bids?.[0]?.price;
-    const bestAsk = payload.asks?.[0]?.price;
+    if (typeof message.payload !== 'object' || message.payload === null) {
+      logger.warn('Orderbook payload is not an object', { payload: message.payload });
+      return;
+    }
+    const payload = message.payload as Record<string, unknown>;
+    const marketId = typeof payload.marketId === 'string' ? payload.marketId : undefined;
+    const bids = Array.isArray(payload.bids) ? payload.bids : [];
+    const asks = Array.isArray(payload.asks) ? payload.asks : [];
+    if (!marketId) {
+      logger.warn('Orderbook payload missing marketId', { payload });
+      return;
+    }
+    orderbook.applyDelta(marketId, bids, asks);
+    const bestBid = bids[0]?.price;
+    const bestAsk = asks[0]?.price;
     if (bestBid !== undefined && bestAsk !== undefined) {
       const mid = (bestBid + bestAsk) / 2;
-      pnlTracker.updateUnrealized(payload.marketId, mid);
+      pnlTracker.updateUnrealized(marketId, mid);
     }
     return;
   }

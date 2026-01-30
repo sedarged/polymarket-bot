@@ -77,8 +77,41 @@ export class PnlTracker {
 
   private calculateAvgPrice(position: Position, fill: Fill, newSize: number): number {
     if (newSize === 0) return 0;
-    const existingNotional = position.avgPrice * position.size;
-    const fillNotional = fill.price * (fill.side === 'buy' ? fill.size : -fill.size);
-    return (existingNotional + fillNotional) / newSize;
+
+    const prevSize = position.size;
+    const prevAbs = Math.abs(prevSize);
+    const newAbs = Math.abs(newSize);
+
+    // If we were flat before, the fill opens a new position at the fill price.
+    if (prevAbs === 0) {
+      return fill.price;
+    }
+
+    const positionDir = Math.sign(prevSize); // +1 for long, -1 for short
+    const fillDir = fill.side === 'buy' ? 1 : -1;
+    const newDir = Math.sign(newSize);
+
+    // Opposite direction trade: either a partial close or a flip.
+    if (positionDir !== 0 && positionDir !== fillDir) {
+      // If the new position has the opposite sign from the old position, we've flipped.
+      if (newDir !== 0 && newDir !== positionDir) {
+        // Flip: position direction changed; the remaining open size comes from this fill.
+        return fill.price;
+      }
+      // Partial close: remaining position is smaller in absolute terms; keep avg price unchanged.
+      if (newAbs < prevAbs) {
+        return position.avgPrice;
+      }
+      // newAbs === prevAbs would imply newSize === 0, which is handled at the top.
+    }
+
+    // Same direction (increasing position): recompute weighted average using absolute quantities.
+    const totalQty = prevAbs + fill.size;
+    if (totalQty === 0) {
+      return 0;
+    }
+    const existingNotional = position.avgPrice * prevAbs;
+    const fillNotional = fill.price * fill.size;
+    return (existingNotional + fillNotional) / totalQty;
   }
 }
