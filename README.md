@@ -1,6 +1,14 @@
-# Polymarket Read-Only Starter
+# Polymarket Trading Bot
 
-A read-only TypeScript client for fetching Polymarket markets and orderbook data. This is a starter project focused on data retrieval only - **no trading or authentication required**.
+An autonomous trading bot for Polymarket prediction markets. Currently features read-only data retrieval with a roadmap for full trading capabilities including market making, arbitrage, and advanced risk management.
+
+## 📚 Documentation
+
+- **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
+- **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
+- **[Runbook](./docs/RUNBOOK.md)** - Operational procedures for running the bot
+- **[Implementation Checklist](./docs/IMPLEMENTATION_CHECKLIST.md)** - Detailed development checklist
+- **[Architecture Decisions](./docs/ADR-0001.md)** - Key architectural decisions and rationale
 
 ## Features
 
@@ -182,22 +190,54 @@ The project uses TypeScript's strict mode with the following compiler options:
 - Comprehensive error logging
 - Graceful handling of network failures
 
+## Current Status
+
+**Phase:** MVP - Read-Only Data Retrieval ✅
+
+**Completed:**
+- ✅ Market data fetching
+- ✅ Orderbook retrieval
+- ✅ Retry logic and error handling
+- ✅ Comprehensive documentation
+
+**In Progress:**
+- 🔄 WebSocket connectivity
+- 🔄 Risk management framework
+- 🔄 Paper trading engine
+
+**Planned:**
+- ⏳ Authentication (L1/L2)
+- ⏳ Live trading engine
+- ⏳ Market making strategy
+- ⏳ Arbitrage detection
+- ⏳ Multi-market orchestration
+
+See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap.
+
 ## Limitations
 
-This is a **read-only** client:
-- ❌ No trading functionality
+Current version is **read-only**:
+- ❌ No trading functionality yet
 - ❌ No authentication required
 - ❌ No order placement
 - ✅ Only data retrieval
 
-## License
-
-ISC
+Full trading capabilities are planned in upcoming phases.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please:
+1. Read the [System Overview](./SYSTEM_OVERVIEW.md) to understand the system
+2. Check the [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for open tasks
+3. Follow existing code style and patterns
+4. Submit a Pull Request with clear description
 
 ## Support
 
-For issues or questions, please open an issue on the GitHub repository.
+- **Issues**: Open a GitHub issue for bugs or feature requests
+- **Questions**: Use GitHub Discussions
+- **Documentation**: See [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) for detailed explanations
+
+## License
+
+ISC
