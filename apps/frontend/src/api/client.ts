@@ -111,15 +111,15 @@ export class ApiClient {
             processChunk(value);
           }
         }
-        if (dataLines.length > 0) {
-          emitData(dataLines.join("\n"));
-          dataLines = [];
-        }
       } catch (error) {
         if (!controller.signal.aborted) {
           onError(new Event("error"));
         }
       } finally {
+        if (dataLines.length > 0) {
+          emitData(dataLines.join("\n"));
+          dataLines = [];
+        }
         if (reader) {
           try {
             reader.releaseLock();
@@ -157,7 +157,7 @@ export class ApiClient {
     };
 
     return () => {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CLOSING) {
+      if (socket.readyState === WebSocket.OPEN) {
         socket.close();
       } else if (socket.readyState === WebSocket.CONNECTING) {
         const handleOpen = () => {
@@ -211,7 +211,7 @@ export class ApiClient {
       url.searchParams.set("adminToken", this.adminContext.token);
       return url.toString();
     } catch (error) {
-      console.error("Failed to construct URL with baseUrl and path, falling back to string concatenation", error);
+      console.error(`Failed to construct URL with baseUrl="${this.baseUrl}" and path="${path}", falling back to string concatenation`, error);
       const separator = path.includes("?") ? "&" : "?";
       const tokenParam = `adminToken=${encodeURIComponent(this.adminContext.token)}`;
       return `${this.baseUrl}${path}${separator}${tokenParam}`;
