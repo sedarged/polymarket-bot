@@ -7,7 +7,7 @@ Each PR should be small, reviewable, and independently deployable. Acceptance cr
 - Add planning docs and baseline configuration scaffolding.
 
 **Acceptance Criteria**
-- Docs in `/docs` created and linked from README (if required).
+- Docs in `/docs` created and linked from a README "Docs" section (including PLAN, RUNBOOK, and ADR docs).
 - Configuration schema draft exists with example config.
 - No runtime behavior changes.
 
