@@ -1,11 +1,83 @@
 import dotenv from 'dotenv';
+import { z } from 'zod';
 
 dotenv.config();
 
-export const config = {
-  gammaApiUrl: process.env.GAMMA_API_URL || 'https://gamma-api.polymarket.com',
-  clobApiUrl: process.env.CLOB_API_URL || 'https://clob.polymarket.com',
-  logLevel: process.env.LOG_LEVEL || 'info',
-  retryAttempts: parseInt(process.env.RETRY_ATTEMPTS || '3', 10),
-  retryDelay: parseInt(process.env.RETRY_DELAY || '1000', 10),
+const booleanFromEnv = z.preprocess((value) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+  return value;
+}, z.boolean());
+
+const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) => {
+  const numberSchema = schema.refine((value) => Number.isFinite(value), {
+    message: 'Expected a finite number',
+  });
+  return z.preprocess((value) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+    return value;
+  }, numberSchema).default(defaultValue);
 };
+
+const envSchema = z.object({
+  GAMMA_API_URL: z.string().url().default('https://gamma-api.polymarket.com'),
+  CLOB_API_URL: z.string().url().default('https://clob.polymarket.com'),
+  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  RETRY_ATTEMPTS: numberFromEnv(3, z.number().int().positive()),
+  RETRY_DELAY: numberFromEnv(1000, z.number().int().nonnegative()),
+  LIVE_TRADING: booleanFromEnv.default(false),
+  COMPLIANCE_ACCEPTED: booleanFromEnv.default(false),
+  PORT: numberFromEnv(3000, z.number().int().positive()),
+});
+
+const configSchema = envSchema.transform((env) => ({
+  gammaApiUrl: env.GAMMA_API_URL,
+  clobApiUrl: env.CLOB_API_URL,
+  logLevel: env.LOG_LEVEL,
+  retryAttempts: env.RETRY_ATTEMPTS,
+  retryDelay: env.RETRY_DELAY,
+  liveTrading: env.LIVE_TRADING,
+  complianceAccepted: env.COMPLIANCE_ACCEPTED,
+  port: env.PORT,
+}));
+
+export type Config = z.infer<typeof configSchema>;
+
+const formatConfigError = (error: z.ZodError): string => {
+  const details = error.issues
+    .map((issue) => `${issue.path.join('.') || 'config'}: ${issue.message}`)
+    .join('; ');
+  return `Invalid configuration: ${details}`;
+};
+
+export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
+  const parsed = configSchema.safeParse(env);
+  if (!parsed.success) {
+    throw new Error(formatConfigError(parsed.error));
+  }
+  return parsed.data;
+};
+
+export const config = parseConfig();

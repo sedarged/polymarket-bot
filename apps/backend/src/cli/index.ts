@@ -27,7 +27,7 @@ export async function marketsCommand(limit?: number): Promise<void> {
       console.log('');
     });
   } catch (error) {
-    logger.error('Failed to fetch markets:', error);
+    logger.error('Failed to fetch markets', { error: (error as Error).message });
     throw error;
   }
 }
@@ -41,7 +41,7 @@ export async function bookCommand(tokenId: string): Promise<void> {
     
     console.log('\n' + formatOrderbookSummary(summary) + '\n');
   } catch (error) {
-    logger.error('Failed to fetch orderbook:', error);
+    logger.error('Failed to fetch orderbook', { error: (error as Error).message });
     throw error;
   }
 }

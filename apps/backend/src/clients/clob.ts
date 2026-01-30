@@ -16,7 +16,7 @@ export class ClobClient {
 
   async getOrderbook(tokenId: string): Promise<Orderbook> {
     return retry(async () => {
-      logger.debug(`Fetching orderbook for token ${tokenId}`);
+      logger.debug('Fetching orderbook', { tokenId });
       
       const response = await this.client.get<Orderbook>(`/book`, {
         params: {
@@ -24,7 +24,7 @@ export class ClobClient {
         },
       });
 
-      logger.info(`Retrieved orderbook for token ${tokenId}`);
+      logger.info('Retrieved orderbook', { tokenId });
       return response.data;
     }, {
       attempts: config.retryAttempts,
