@@ -134,6 +134,8 @@ export class ApiClient {
 
     return () => {
       controller.abort();
+      buffer = "";
+      dataLines = [];
     };
   }
 
@@ -160,7 +162,11 @@ export class ApiClient {
       if (socket.readyState === WebSocket.OPEN) {
         socket.close();
       } else if (socket.readyState === WebSocket.CONNECTING) {
+        const timeoutId = setTimeout(() => {
+          socket.removeEventListener("open", handleOpen);
+        }, 30000); // 30 second timeout
         const handleOpen = () => {
+          clearTimeout(timeoutId);
           socket.removeEventListener("open", handleOpen);
           socket.close();
         };
