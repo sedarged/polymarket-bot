@@ -166,6 +166,41 @@ npm run build
 
 This compiles TypeScript to JavaScript in the `dist/` directory.
 
+## Dashboard (Frontend)
+
+The dashboard lives in `apps/frontend` and connects to a running backend that exposes status + control endpoints and a live stream (SSE or WebSocket).
+
+### How to run dashboard safely
+
+1. **Run the backend bound to localhost only** (recommended). This allows admin controls without sending a token:
+   ```bash
+   # Example: ensure backend listens only on 127.0.0.1
+   HOST=127.0.0.1 PORT=3000 npm run start
+   ```
+2. **Start the dashboard** in a separate terminal:
+   ```bash
+   cd apps/frontend
+   npm install
+   npm run dev
+   ```
+3. **Confirm controls are protected**:
+   - If the backend URL is `http://127.0.0.1:3000` or `http://localhost:3000`, controls are enabled without a token.
+   - If you point the dashboard at a non-local backend, enter an `ADMIN_TOKEN` in the dashboard to enable controls.
+4. **Never embed secrets in the frontend build**. The dashboard only accepts tokens at runtime via the UI and does not ship any secrets in source control.
+
+### Expected backend endpoints
+
+The frontend expects the following backend endpoints (adjust the frontend client if your paths differ):
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/status` | GET | Return bot status (LIVE_TRADING, paused, uptime, etc.). |
+| `/api/control/pause` | POST | Pause **paper** trading only. |
+| `/api/control/resume` | POST | Resume **paper** trading only. |
+| `/api/control/kill` | POST | Trigger kill switch (requires confirmation). |
+| `/api/stream` | GET (SSE) | Stream live updates. |
+| `/ws` | GET (WS) | Optional WebSocket stream fallback. |
+
 ### Code Style
 
 The project uses TypeScript's strict mode with the following compiler options:
