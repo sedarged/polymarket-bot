@@ -22,8 +22,11 @@ const booleanFromEnv = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
-const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) =>
-  z.preprocess((value) => {
+const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) => {
+  const numberSchema = schema.refine((value) => Number.isFinite(value), {
+    message: 'Expected a finite number',
+  });
+  return z.preprocess((value) => {
     if (value === undefined || value === null || value === '') {
       return undefined;
     }
@@ -31,10 +34,12 @@ const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) =>
       return value;
     }
     if (typeof value === 'string') {
-      return Number(value);
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
     }
     return value;
-  }, schema).default(defaultValue);
+  }, numberSchema).default(defaultValue);
+};
 
 const envSchema = z.object({
   GAMMA_API_URL: z.string().url().default('https://gamma-api.polymarket.com'),
