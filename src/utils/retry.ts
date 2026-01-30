@@ -35,7 +35,7 @@ export async function retry<T>(
     }
   }
 
-  throw lastError || new Error('Retry failed');
+  throw lastError || new Error(`Retry failed: Unknown error after ${attempts} attempts`);
 }
 
 export function sleep(ms: number): Promise<void> {

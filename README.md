@@ -21,7 +21,7 @@ A read-only TypeScript client for fetching Polymarket markets and orderbook data
 
 ```bash
 # Clone the repository
-git clone https://github.com/sedarged/polymarket-bot.git
+git clone https://github.com/YOUR_USERNAME/polymarket-bot.git
 cd polymarket-bot
 
 # Install dependencies
