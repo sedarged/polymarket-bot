@@ -22,7 +22,7 @@
     "book": "tsx src/index.ts book",
     "start": "node scripts/run-stack.mjs start",
     "start:backend": "node dist/server.js",
-    "start:frontend": "npm --prefix frontend run preview -- --host 0.0.0.0 --port 5173",
+    "start:frontend": "npm --prefix frontend run preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

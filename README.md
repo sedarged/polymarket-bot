@@ -123,7 +123,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The backend API is only reachable from the internal Docker network. The admin health endpoint is bound to `127.0.0.1:${ADMIN_PORT}` for local-only access.
+The backend API is only reachable from the internal Docker network. The frontend is accessible on port `${FRONTEND_PORT:-5173}` for external access via a separate bridge network. The admin health endpoint is bound to `127.0.0.1:${ADMIN_PORT}` for local-only access.
 
 ## Project Structure
 

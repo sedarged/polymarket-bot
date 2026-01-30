@@ -26,19 +26,44 @@ const children = tasks.map((args) =>
   }),
 );
 
+let shuttingDown = false;
+let pendingChildren = children.length;
+let exitCode = 0;
+const SHUTDOWN_TIMEOUT_MS = 10000;
+
 function shutdown(code = 0): void {
+  if (shuttingDown) {
+    return;
+  }
+
+  shuttingDown = true;
+  exitCode = code;
+
   children.forEach((child) => {
     if (!child.killed) {
       child.kill('SIGTERM');
     }
   });
-  process.exit(code);
+
+  // Fallback: if children do not exit in time, forcefully exit.
+  setTimeout(() => {
+    process.exit(exitCode);
+  }, SHUTDOWN_TIMEOUT_MS);
 }
 
 children.forEach((child) => {
   child.on('exit', (code) => {
-    if (code && code !== 0) {
+    pendingChildren -= 1;
+
+    if (!shuttingDown && code && code !== 0) {
+      // Start coordinated shutdown on first non-zero exit code.
       shutdown(code);
+      return;
+    }
+
+    if (shuttingDown && pendingChildren <= 0) {
+      // All children have exited; now exit the parent.
+      process.exit(exitCode);
     }
   });
 });

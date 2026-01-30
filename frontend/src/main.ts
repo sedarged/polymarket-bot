@@ -64,7 +64,15 @@ function renderMarkets(markets: Market[]): void {
 async function fetchMarkets(): Promise<void> {
   try {
     setStatus('Loading markets...');
-    const limitValue = limitInput?.value ? Number.parseInt(limitInput.value, 10) : undefined;
+    let limitValue: number | undefined;
+    if (limitInput?.value) {
+      const parsedLimit = Number.parseInt(limitInput.value, 10);
+      if (Number.isNaN(parsedLimit) || parsedLimit <= 0) {
+        setStatus('Please enter a positive integer for the limit.', true);
+        return;
+      }
+      limitValue = parsedLimit;
+    }
     const query = limitValue ? `?limit=${limitValue}` : '';
     const response = await fetch(`${apiBaseUrl}/api/markets${query}`);
 

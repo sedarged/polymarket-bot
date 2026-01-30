@@ -28,7 +28,10 @@ services:
       - backend
     networks:
       - internal
+      - frontend
 
 networks:
   internal:
     internal: true
+  frontend:
+    driver: bridge

@@ -6,6 +6,10 @@ import { GammaClient } from './clients/gamma';
 import { config } from './config';
 import { logger } from './utils/logger';
 
+// Create singleton client instances to avoid overhead of per-request instantiation
+const gammaClient = new GammaClient();
+const clobClient = new ClobClient();
+
 type JsonPayload = Record<string, unknown> | unknown[];
 
 function sendJson(res: ServerResponse, statusCode: number, payload: JsonPayload): void {
@@ -54,13 +58,12 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse): Prom
   if (path === '/api/markets') {
     const limitParam = requestUrl.searchParams.get('limit');
     const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
-    if (limitParam && Number.isNaN(limit)) {
+    if (limitParam && (Number.isNaN(limit) || limit <= 0)) {
       sendJson(res, 400, { error: 'Invalid limit value' });
       return;
     }
 
-    const client = new GammaClient();
-    const markets = await client.getActiveMarkets(limit);
+    const markets = await gammaClient.getActiveMarkets(limit);
     sendJson(res, 200, markets);
     return;
   }
@@ -72,8 +75,7 @@ async function handleApiRequest(req: IncomingMessage, res: ServerResponse): Prom
       return;
     }
 
-    const client = new ClobClient();
-    const orderbook = await client.getOrderbook(tokenId);
+    const orderbook = await clobClient.getOrderbook(tokenId);
     sendJson(res, 200, orderbook);
     return;
   }
@@ -111,7 +113,9 @@ const apiServer = http.createServer(async (req, res) => {
     await handleApiRequest(req, res);
   } catch (error) {
     logger.error('API server error:', error);
-    sendJson(res, 500, { error: 'Internal server error' });
+    if (!res.headersSent) {
+      sendJson(res, 500, { error: 'Internal server error' });
+    }
   }
 });
 
@@ -120,7 +124,9 @@ const adminServer = http.createServer((req, res) => {
     handleAdminRequest(req, res);
   } catch (error) {
     logger.error('Admin server error:', error);
-    sendJson(res, 500, { error: 'Internal server error' });
+    if (!res.headersSent) {
+      sendJson(res, 500, { error: 'Internal server error' });
+    }
   }
 });
 
@@ -132,10 +138,35 @@ adminServer.listen(config.adminPort, () => {
   logger.info(`Admin server running on port ${config.adminPort}`);
 });
 
+function closeServer(server: http.Server, name: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.close((err?: Error) => {
+      if (err) {
+        logger.error(`${name} server failed to close`, err);
+        reject(err);
+      } else {
+        logger.info(`${name} server closed`);
+        resolve();
+      }
+    });
+  });
+}
+
 function shutdown(): void {
   logger.info('Shutting down servers...');
-  apiServer.close();
-  adminServer.close();
+
+  Promise.all([
+    closeServer(apiServer, 'API'),
+    closeServer(adminServer, 'Admin'),
+  ])
+    .then(() => {
+      logger.info('All servers shut down gracefully. Exiting process.');
+      process.exit(0);
+    })
+    .catch((error) => {
+      logger.error('Error during server shutdown. Exiting process with error.', error);
+      process.exit(1);
+    });
 }
 
 process.on('SIGINT', shutdown);
