@@ -168,14 +168,14 @@ This compiles TypeScript to JavaScript in the `dist/` directory.
 
 ## Dashboard (Frontend)
 
-The dashboard lives in `apps/frontend` and connects to a running backend that exposes status + control endpoints and a live stream (SSE or WebSocket).
+The dashboard lives in `apps/frontend` and connects to a running backend that exposes status + control endpoints and a live stream (SSE or WebSocket). The backend implementation is **not** included in this repository; you must run your own backend service separately.
 
 ### How to run dashboard safely
 
-1. **Run the backend bound to localhost only** (recommended). This allows admin controls without sending a token:
+1. **Run your backend bound to localhost only** (recommended). This allows admin controls without sending a token:
    ```bash
-   # Example: ensure backend listens only on 127.0.0.1
-   HOST=127.0.0.1 PORT=3000 npm run start
+   # Example: ensure your backend listens only on 127.0.0.1
+   HOST=127.0.0.1 PORT=3000 <your-backend-start-command>
    ```
 2. **Start the dashboard** in a separate terminal:
    ```bash

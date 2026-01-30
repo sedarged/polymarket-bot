@@ -48,6 +48,7 @@ export default function App() {
   useEffect(() => {
     let cleanup: (() => void) | undefined;
     let timeoutId: number | undefined;
+    let isActive = true;
     setConnection("connecting");
     setError(null);
 
@@ -60,11 +61,15 @@ export default function App() {
 
     const handleError = () => {
       setConnection("disconnected");
-      if (!cleanup) {
+      if (!cleanup || !isActive) {
         return;
       }
       cleanup();
+      cleanup = undefined;
       timeoutId = window.setTimeout(() => {
+        if (!isActive) {
+          return;
+        }
         cleanup = client.subscribeWebSocket(handleEvent, () => {
           setConnection("disconnected");
         });
@@ -76,6 +81,7 @@ export default function App() {
     setConnection("sse");
 
     return () => {
+      isActive = false;
       cleanup?.();
       if (timeoutId) {
         window.clearTimeout(timeoutId);

@@ -58,10 +58,10 @@ export class ApiClient {
 
   subscribe(onEvent: (payload: StreamPayload) => void, onError: (error: Event) => void) {
     const controller = new AbortController();
-    const url = this.withAuth(`/api/stream`);
+    const url = this.withAuth(`/api/stream`, { queryToken: false });
     const decoder = new TextDecoder();
     let buffer = "";
-    let dataBuffer = "";
+    let dataLines: string[] = [];
 
     const emitData = (data: string) => {
       try {
@@ -69,6 +69,7 @@ export class ApiClient {
         onEvent(payload);
       } catch (error) {
         console.error("Failed to parse stream payload", error);
+        onError(new Event("error"));
       }
     };
 
@@ -78,17 +79,18 @@ export class ApiClient {
       buffer = lines.pop() ?? "";
       for (const line of lines) {
         if (line.startsWith("data:")) {
-          dataBuffer += line.slice(5).trim();
+          dataLines.push(line.slice(5).trim());
         } else if (line === "") {
-          if (dataBuffer) {
-            emitData(dataBuffer);
-            dataBuffer = "";
+          if (dataLines.length > 0) {
+            emitData(dataLines.join("\n"));
+            dataLines = [];
           }
         }
       }
     };
 
     const start = async () => {
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
       try {
         const response = await fetch(url, {
           headers: this.authHeader(),
@@ -99,7 +101,7 @@ export class ApiClient {
           throw new Error(`Stream failed (${response.status})`);
         }
 
-        const reader = response.body.getReader();
+        reader = response.body.getReader();
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
@@ -109,13 +111,21 @@ export class ApiClient {
             processChunk(value);
           }
         }
-        if (dataBuffer) {
-          emitData(dataBuffer);
-          dataBuffer = "";
-        }
       } catch (error) {
         if (!controller.signal.aborted) {
           onError(new Event("error"));
+        }
+      } finally {
+        if (dataLines.length > 0) {
+          emitData(dataLines.join("\n"));
+          dataLines = [];
+        }
+        if (reader) {
+          try {
+            reader.releaseLock();
+          } catch {
+            // Reader may already be released
+          }
         }
       }
     };
@@ -124,6 +134,8 @@ export class ApiClient {
 
     return () => {
       controller.abort();
+      buffer = "";
+      dataLines = [];
     };
   }
 
@@ -137,6 +149,8 @@ export class ApiClient {
         onEvent(payload);
       } catch (error) {
         console.error("Failed to parse websocket payload", error);
+        const parseErrorEvent = new ErrorEvent("error", { error });
+        onError(parseErrorEvent);
       }
     };
 
@@ -145,7 +159,19 @@ export class ApiClient {
     };
 
     return () => {
-      socket.close();
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      } else if (socket.readyState === WebSocket.CONNECTING) {
+        const timeoutId = setTimeout(() => {
+          socket.removeEventListener("open", handleOpen);
+        }, 30000); // 30 second timeout
+        const handleOpen = () => {
+          clearTimeout(timeoutId);
+          socket.removeEventListener("open", handleOpen);
+          socket.close();
+        };
+        socket.addEventListener("open", handleOpen);
+      }
     };
   }
 
@@ -186,8 +212,15 @@ export class ApiClient {
       return `${this.baseUrl}${path}`;
     }
 
-    const url = new URL(`${this.baseUrl}${path}`);
-    url.searchParams.set("adminToken", this.adminContext.token);
-    return url.toString();
+    try {
+      const url = new URL(`${this.baseUrl}${path}`);
+      url.searchParams.set("adminToken", this.adminContext.token);
+      return url.toString();
+    } catch (error) {
+      console.error(`Failed to construct URL with baseUrl="${this.baseUrl}" and path="${path}", falling back to string concatenation`, error);
+      const separator = path.includes("?") ? "&" : "?";
+      const tokenParam = `adminToken=${encodeURIComponent(this.adminContext.token)}`;
+      return `${this.baseUrl}${path}${separator}${tokenParam}`;
+    }
   }
 }
