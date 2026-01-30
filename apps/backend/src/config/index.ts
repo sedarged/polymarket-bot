@@ -44,6 +44,8 @@ const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) => {
 const envSchema = z.object({
   GAMMA_API_URL: z.string().url().default('https://gamma-api.polymarket.com'),
   CLOB_API_URL: z.string().url().default('https://clob.polymarket.com'),
+  WS_MARKET_URL: z.string().url().default('wss://ws-subscriptions-clob.polymarket.com/ws/market'),
+  TOKEN_IDS: z.string().default(''),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   RETRY_ATTEMPTS: numberFromEnv(3, z.number().int().positive()),
   RETRY_DELAY: numberFromEnv(1000, z.number().int().nonnegative()),
@@ -55,6 +57,8 @@ const envSchema = z.object({
 const configSchema = envSchema.transform((env) => ({
   gammaApiUrl: env.GAMMA_API_URL,
   clobApiUrl: env.CLOB_API_URL,
+  wsMarketUrl: env.WS_MARKET_URL,
+  tokenIds: env.TOKEN_IDS.split(',').map(s => s.trim()).filter(s => s.length > 0),
   logLevel: env.LOG_LEVEL,
   retryAttempts: env.RETRY_ATTEMPTS,
   retryDelay: env.RETRY_DELAY,

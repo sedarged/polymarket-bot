@@ -43,3 +43,37 @@ export interface OrderbookSummary {
   mid: string | null;
   spread: string | null;
 }
+
+// WebSocket message types
+export interface WSMarketSubscription {
+  type: 'market';
+  assets_ids: string[];
+}
+
+export interface WSOrderbookSnapshot {
+  event_type: 'book';
+  asset_id: string;
+  market: string;
+  bids: OrderbookLevel[];
+  asks: OrderbookLevel[];
+  timestamp: number;
+}
+
+export interface WSPriceChange {
+  event_type: 'price_change';
+  asset_id: string;
+  market: string;
+  side: 'buy' | 'sell';
+  price: string;
+  size: string;
+  timestamp: number;
+}
+
+export interface WSLastTradePrice {
+  event_type: 'last_trade_price';
+  asset_id: string;
+  price: string;
+  timestamp: number;
+}
+
+export type WSMarketMessage = WSOrderbookSnapshot | WSPriceChange | WSLastTradePrice;
