@@ -54,6 +54,13 @@ CLOB_API_URL=https://clob.polymarket.com
 # Logging
 LOG_LEVEL=info
 
+# Trading gates (default to paper mode)
+LIVE_TRADING=false
+COMPLIANCE_ACCEPTED=false
+
+# Server
+PORT=3000
+
 # Retry Configuration (optional)
 RETRY_ATTEMPTS=3
 RETRY_DELAY=1000

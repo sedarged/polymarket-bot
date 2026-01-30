@@ -26,7 +26,7 @@ export class GammaClient {
         },
       });
 
-      logger.info(`Retrieved ${response.data.length} active markets`);
+      logger.info('Retrieved active markets', { count: response.data.length });
       return response.data;
     }, {
       attempts: config.retryAttempts,
@@ -46,7 +46,7 @@ export class GammaClient {
         },
       });
 
-      logger.info(`Retrieved ${response.data.length} events`);
+      logger.info('Retrieved events', { count: response.data.length });
       return response.data;
     }, {
       attempts: config.retryAttempts,

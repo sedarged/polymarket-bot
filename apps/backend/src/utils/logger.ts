@@ -5,6 +5,8 @@ export enum LogLevel {
   DEBUG = 3,
 }
 
+export type LogMetadata = Record<string, unknown>;
+
 class Logger {
   private level: LogLevel;
 
@@ -27,28 +29,32 @@ class Logger {
     }
   }
 
-  private log(level: LogLevel, message: string, ...args: unknown[]): void {
+  private log(level: LogLevel, message: string, metadata?: LogMetadata): void {
     if (level <= this.level) {
-      const timestamp = new Date().toISOString();
-      const levelName = LogLevel[level];
-      console.log(`[${timestamp}] ${levelName}:`, message, ...args);
+      const payload = {
+        timestamp: new Date().toISOString(),
+        level: LogLevel[level],
+        message,
+        ...metadata,
+      };
+      console.log(JSON.stringify(payload));
     }
   }
 
-  error(message: string, ...args: unknown[]): void {
-    this.log(LogLevel.ERROR, message, ...args);
+  error(message: string, metadata?: LogMetadata): void {
+    this.log(LogLevel.ERROR, message, metadata);
   }
 
-  warn(message: string, ...args: unknown[]): void {
-    this.log(LogLevel.WARN, message, ...args);
+  warn(message: string, metadata?: LogMetadata): void {
+    this.log(LogLevel.WARN, message, metadata);
   }
 
-  info(message: string, ...args: unknown[]): void {
-    this.log(LogLevel.INFO, message, ...args);
+  info(message: string, metadata?: LogMetadata): void {
+    this.log(LogLevel.INFO, message, metadata);
   }
 
-  debug(message: string, ...args: unknown[]): void {
-    this.log(LogLevel.DEBUG, message, ...args);
+  debug(message: string, metadata?: LogMetadata): void {
+    this.log(LogLevel.DEBUG, message, metadata);
   }
 }
 

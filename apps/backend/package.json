@@ -22,7 +22,8 @@
   "dependencies": {
     "@polymarket/shared": "file:../../packages/shared",
     "axios": "^1.13.4",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

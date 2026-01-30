@@ -23,13 +23,15 @@ export async function retry<T>(
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      logger.warn(
-        `Attempt ${attempt}/${attempts} failed: ${lastError.message}`
-      );
+      logger.warn('Retry attempt failed', {
+        attempt,
+        attempts,
+        error: lastError.message,
+      });
 
       if (attempt < attempts) {
         const waitTime = delay * Math.pow(backoffMultiplier, attempt - 1);
-        logger.debug(`Waiting ${waitTime}ms before retry...`);
+        logger.debug('Waiting before retry', { waitTime });
         await sleep(waitTime);
       }
     }
