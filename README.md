@@ -19,6 +19,9 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - 🧪 Unit tests for core functionality
 - ⚡ TypeScript strict mode
 - 🛠️ Easy-to-use CLI commands
+- 🌐 Real-time WebSocket market feed
+- 💾 In-memory orderbook cache with automatic resync
+- 🔌 Auto-reconnect with backoff + jitter strategy
 
 ## Requirements
 
@@ -50,6 +53,12 @@ The project uses environment variables for configuration. You can customize thes
 # Polymarket API Configuration
 GAMMA_API_URL=https://gamma-api.polymarket.com
 CLOB_API_URL=https://clob.polymarket.com
+WS_MARKET_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
+
+# Market Feed Configuration
+# Comma-separated list of token IDs to monitor via WebSocket
+# Example: TOKEN_IDS=0x123abc,0x456def
+TOKEN_IDS=
 
 # Logging
 LOG_LEVEL=info
@@ -108,7 +117,27 @@ Run commands directly without building:
 # Using tsx for development
 npm run dev markets -- --limit 5
 npm run dev book -- --tokenId <TOKEN_ID>
+
+# Start server with WebSocket market feed
+npm run dev
 ```
+
+### Real-Time Market Feed Server
+
+Start the HTTP server with WebSocket market feed integration:
+
+```bash
+npm run dev
+```
+
+The server provides the following endpoints:
+
+- `GET /health` - Server health status
+- `GET /feed/status` - WebSocket feed connection status
+- `GET /orderbooks` - List all cached orderbooks with summaries
+- `GET /orderbook/:tokenId` - Get full orderbook for a specific token
+
+Configure which tokens to monitor via the `TOKEN_IDS` environment variable.
 
 ## Project Structure
 
@@ -199,16 +228,19 @@ The project uses TypeScript's strict mode with the following compiler options:
 
 ## Current Status
 
-**Phase:** MVP - Read-Only Data Retrieval ✅
+**Phase:** MVP - Real-Time Data Streaming ✅
 
 **Completed:**
 - ✅ Market data fetching
 - ✅ Orderbook retrieval
 - ✅ Retry logic and error handling
 - ✅ Comprehensive documentation
+- ✅ WebSocket market feed client
+- ✅ In-memory orderbook cache
+- ✅ Auto-reconnect with backoff strategy
+- ✅ HTTP server with orderbook API endpoints
 
 **In Progress:**
-- 🔄 WebSocket connectivity
 - 🔄 Risk management framework
 - 🔄 Paper trading engine
 
