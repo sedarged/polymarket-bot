@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Polymarket read-only starter - fetch markets and orderbooks",
   "main": "dist/index.js",
+  "private": true,
   "bin": {
     "polymarket": "./dist/index.js"
   },
@@ -10,10 +11,18 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx src/index.ts",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "tsc",
+    "build:frontend": "npm --prefix frontend run build",
+    "dev": "node scripts/run-stack.mjs dev",
+    "dev:backend": "tsx src/server.ts",
+    "dev:cli": "tsx src/index.ts",
+    "dev:frontend": "npm --prefix frontend run dev",
     "markets": "tsx src/index.ts markets",
     "book": "tsx src/index.ts book",
+    "start": "node scripts/run-stack.mjs start",
+    "start:backend": "node dist/server.js",
+    "start:frontend": "npm --prefix frontend run preview -- --host 0.0.0.0 --port 5173",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

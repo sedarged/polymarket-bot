@@ -26,6 +26,7 @@ cd polymarket-bot
 
 # Install dependencies
 npm install
+npm --prefix frontend install
 
 # Copy environment file (optional - uses defaults)
 cp .env.example .env
@@ -49,9 +50,28 @@ LOG_LEVEL=info
 # Retry Configuration (optional)
 RETRY_ATTEMPTS=3
 RETRY_DELAY=1000
+
+# Server Ports
+BACKEND_PORT=3000
+ADMIN_PORT=3001
+FRONTEND_PORT=5173
+
+# Frontend Configuration
+VITE_API_BASE_URL=http://localhost:3000
 ```
 
+For the frontend, copy `frontend/.env.example` to `frontend/.env` if you want to override the default API base URL.
+
 ## Usage
+
+### Run the Full Stack (Backend + Frontend)
+
+```bash
+# Start both services (backend API + frontend dashboard)
+npm run dev
+```
+
+The frontend runs on `http://localhost:5173` by default and calls the backend API on `http://localhost:3000`.
 
 ### List Active Markets
 
@@ -91,13 +111,30 @@ Run commands directly without building:
 
 ```bash
 # Using tsx for development
-npm run dev markets -- --limit 5
-npm run dev book -- --tokenId <TOKEN_ID>
+npm run dev:cli markets -- --limit 5
+npm run dev:cli book -- --tokenId <TOKEN_ID>
 ```
+
+### Docker Compose
+
+```bash
+# Build and run backend + frontend with internal networking
+cp .env.example .env
+docker compose up --build
+```
+
+The backend API is only reachable from the internal Docker network. The admin health endpoint is bound to `127.0.0.1:${ADMIN_PORT}` for local-only access.
 
 ## Project Structure
 
 ```
+frontend/
+├── src/          # Frontend dashboard
+│   ├── main.ts
+│   └── style.css
+├── index.html
+└── vite.config.ts
+
 src/
 ├── cli/          # CLI command handlers
 │   └── index.ts
@@ -113,7 +150,8 @@ src/
 │   ├── logger.ts    # Logging utility
 │   ├── retry.ts     # Retry/backoff logic
 │   └── orderbook.ts # Orderbook calculations
-└── index.ts      # CLI entry point
+├── index.ts      # CLI entry point
+└── server.ts     # Backend API server
 
 tests/
 ├── orderbook.test.ts  # Orderbook math tests

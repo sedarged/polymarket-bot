@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Polymarket Bot Dashboard</title>
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Polymarket Bot Dashboard</h1>
+        <p>Read-only market data fetched from the backend service.</p>
+      </header>
+      <section class="controls">
+        <label>
+          Market limit
+          <input id="limit-input" type="number" min="1" value="5" />
+        </label>
+        <button id="refresh-button" type="button">Refresh markets</button>
+      </section>
+      <section>
+        <h2>Active markets</h2>
+        <div id="status" class="status"></div>
+        <ul id="markets-list" class="markets"></ul>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
