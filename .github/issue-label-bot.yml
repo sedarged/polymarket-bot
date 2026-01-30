@@ -1,0 +1,24 @@
+label-rules:
+  - label: 'bug'
+    keywords: ['bug', 'error', 'crash', 'fail', 'broken', 'issue', 'problem']
+  
+  - label: 'feature'
+    keywords: ['feature', 'enhancement', 'add', 'new', 'improve', 'request']
+  
+  - label: 'trading'
+    keywords: ['order', 'trade', 'bet', 'position', 'market', 'buying', 'selling']
+  
+  - label: 'compliance'
+    keywords: ['compliance', 'vpn', 'geo', 'legal', 'terms', 'blocked', 'region']
+  
+  - label: 'websocket'
+    keywords: ['websocket', 'connection', 'reconnect', 'stream', 'disconnect', 'ws']
+  
+  - label: 'critical'
+    keywords: ['critical', 'urgent', 'security', 'funds', 'money', 'loss', 'emergency']
+  
+  - label: 'performance'
+    keywords: ['slow', 'performance', 'latency', 'speed', 'optimize']
+  
+  - label: 'documentation'
+    keywords: ['docs', 'documentation', 'readme', 'guide', 'example']
