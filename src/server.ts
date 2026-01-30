@@ -140,6 +140,11 @@ adminServer.listen(config.adminPort, () => {
 
 function closeServer(server: http.Server, name: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Close all connections to ensure quick shutdown (Node.js 18.2.0+)
+    if (typeof server.closeAllConnections === 'function') {
+      server.closeAllConnections();
+    }
+    
     server.close((err?: Error) => {
       if (err) {
         logger.error(`${name} server failed to close`, err);

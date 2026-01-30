@@ -46,9 +46,10 @@ function shutdown(code = 0): void {
   });
 
   // Fallback: if children do not exit in time, forcefully exit.
-  setTimeout(() => {
+  const timeout = setTimeout(() => {
     process.exit(exitCode);
   }, SHUTDOWN_TIMEOUT_MS);
+  timeout.unref();
 }
 
 children.forEach((child) => {
@@ -61,9 +62,9 @@ children.forEach((child) => {
       return;
     }
 
-    if (shuttingDown && pendingChildren <= 0) {
+    if (pendingChildren <= 0) {
       // All children have exited; now exit the parent.
-      process.exit(exitCode);
+      process.exit(shuttingDown ? exitCode : 0);
     }
   });
 });

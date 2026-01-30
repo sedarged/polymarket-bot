@@ -7,7 +7,23 @@ describe('Server Integration Tests', () => {
   let serverProcess: ChildProcess;
   const apiPort = 3000;
   const adminPort = 3001;
-  const startupDelay = 2000; // Wait for server to start
+  const maxRetries = 10;
+  const retryDelay = 500;
+
+  async function waitForServer(port: number): Promise<void> {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const res = await makeRequest(port, '/health');
+        if (res.statusCode === 200) {
+          return;
+        }
+      } catch {
+        // Server not ready, retry
+      }
+      await sleep(retryDelay);
+    }
+    throw new Error(`Server on port ${port} did not start within ${maxRetries * retryDelay}ms`);
+  }
 
   beforeAll(async () => {
     // Start the server in dev mode
@@ -20,13 +36,19 @@ describe('Server Integration Tests', () => {
       stdio: 'ignore',
     });
 
-    // Wait for server to start
-    await sleep(startupDelay);
+    // Wait for server to be ready
+    await waitForServer(apiPort);
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     if (serverProcess) {
       serverProcess.kill('SIGTERM');
+      
+      // Wait for process to exit
+      await new Promise<void>((resolve) => {
+        serverProcess.on('exit', () => resolve());
+        setTimeout(() => resolve(), 5000); // Timeout after 5s
+      });
     }
   });
 
