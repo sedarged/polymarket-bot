@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { retry } from '../utils/retry';
 import { logger } from '../utils/logger';
-import { Orderbook } from '../domain/orderbook';
+import { Orderbook } from '@polymarket/shared';
 
 export class ClobClient {
   private client: AxiosInstance;

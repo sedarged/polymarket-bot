@@ -1,4 +1,4 @@
-import { Orderbook, OrderbookSummary } from '../domain/orderbook';
+import { Orderbook, OrderbookSummary } from '@polymarket/shared';
 
 export function calculateOrderbookSummary(orderbook: Orderbook): OrderbookSummary {
   const bestBid = orderbook.bids.length > 0 ? orderbook.bids[0].price : null;

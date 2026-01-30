@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../src/utils/orderbook';
-import { Orderbook, OrderbookSummary } from '../src/domain/orderbook';
+import { Orderbook, OrderbookSummary } from '@polymarket/shared';
 
 describe('Orderbook Utils', () => {
   describe('calculateOrderbookSummary', () => {
