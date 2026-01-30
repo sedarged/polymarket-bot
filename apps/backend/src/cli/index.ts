@@ -2,7 +2,7 @@ import { GammaClient } from '../clients/gamma';
 import { ClobClient } from '../clients/clob';
 import { logger } from '../utils/logger';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../utils/orderbook';
-import { Token } from '../domain/market';
+import { Token } from '@polymarket/shared';
 
 export async function marketsCommand(limit?: number): Promise<void> {
   try {

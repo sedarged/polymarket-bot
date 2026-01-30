@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true
+  },
+  "references": [{ "path": "../../packages/shared" }],
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

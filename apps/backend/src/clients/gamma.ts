@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { retry } from '../utils/retry';
 import { logger } from '../utils/logger';
-import { Market, Event } from '../domain/market';
+import { Event, Market } from '@polymarket/shared';
 
 export class GammaClient {
   private client: AxiosInstance;

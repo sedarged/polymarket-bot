@@ -2,34 +2,28 @@
   "name": "polymarket-bot",
   "version": "1.0.0",
   "description": "Polymarket read-only starter - fetch markets and orderbooks",
-  "main": "dist/index.js",
-  "bin": {
-    "polymarket": "./dist/index.js"
-  },
+  "private": true,
   "engines": {
     "node": ">=20.0.0"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx src/index.ts",
-    "markets": "tsx src/index.ts markets",
-    "book": "tsx src/index.ts book",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "build": "npm run --workspaces --if-present build",
+    "dev": "npm run --workspace @polymarket/backend dev",
+    "markets": "npm run --workspace @polymarket/backend markets",
+    "book": "npm run --workspace @polymarket/backend book",
+    "test": "npm run --workspace @polymarket/backend test",
+    "test:watch": "npm run --workspace @polymarket/backend test:watch",
+    "test:coverage": "npm run --workspace @polymarket/backend test:coverage"
   },
-  "keywords": ["polymarket", "orderbook", "markets", "typescript"],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/node": "^25.1.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
-  },
-  "dependencies": {
-    "axios": "^1.13.4",
-    "dotenv": "^17.2.3"
-  }
+  "keywords": [
+    "polymarket",
+    "orderbook",
+    "markets",
+    "typescript"
+  ],
+  "license": "ISC"
 }
