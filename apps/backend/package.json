@@ -21,8 +21,10 @@
   },
   "dependencies": {
     "@polymarket/shared": "file:../../packages/shared",
+    "@types/ws": "^8.18.1",
     "axios": "^1.13.4",
     "dotenv": "^17.2.3",
+    "ws": "^8.19.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
