@@ -1,0 +1,17 @@
+{
+  "name": "polymarket-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc --project tsconfig.json"
+  },
+  "dependencies": {
+    "@polymarket/clob-client": "^0.0.0",
+    "better-sqlite3": "^9.4.0",
+    "express": "^4.21.2",
+    "ws": "^8.17.1"
+  }
+}
