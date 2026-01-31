@@ -277,16 +277,27 @@ export class TradingClient {
    * Map CLOB order to our Order type
    */
   private mapOrder(clobOrder: ClobOrder): Order {
+    // Validate critical fields
+    const orderId = clobOrder.id || clobOrder.orderID;
+    if (!orderId) {
+      logger.warn('CLOB order missing ID', { order: clobOrder });
+    }
+
+    const tokenId = clobOrder.asset_id || clobOrder.tokenID;
+    if (!tokenId) {
+      logger.warn('CLOB order missing token ID', { order: clobOrder });
+    }
+
     return {
-      orderId: clobOrder.id || clobOrder.orderID || '',
+      orderId: orderId || '',
       clientOrderId: clobOrder.clientOrderId,
-      tokenId: clobOrder.asset_id || clobOrder.tokenID || '',
+      tokenId: tokenId || '',
       side: clobOrder.side === 'BUY' ? 'BUY' : 'SELL',
       price: String(clobOrder.price),
-      size: String(clobOrder.size || clobOrder.originalSize || '0'),
+      size: String(clobOrder.size || clobOrder.originalSize || 0),
       status: clobOrder.status === 'LIVE' ? 'OPEN' : clobOrder.status === 'MATCHED' ? 'MATCHED' : 'CANCELLED',
       createdAt: clobOrder.created_at || Date.now(),
-      filledSize: String(clobOrder.sizeMatched || '0'),
+      filledSize: String(clobOrder.sizeMatched || 0),
     };
   }
 
