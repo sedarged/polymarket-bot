@@ -5,6 +5,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 ## 📚 Documentation
 
 - **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
+- **[Environment Setup](./docs/ENVIRONMENT.md)** - Complete development environment and command reference
 - **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
 - **[Runbook](./docs/RUNBOOK.md)** - Operational procedures for running the bot
 - **[Implementation Checklist](./docs/IMPLEMENTATION_CHECKLIST.md)** - Detailed development checklist
@@ -26,7 +27,9 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 ## Requirements
 
 - Node.js >= 20.0.0
-- npm or yarn
+- npm (v10+ recommended)
+
+For complete environment details, see **[Environment Setup](./docs/ENVIRONMENT.md)**.
 
 ## Installation
 
