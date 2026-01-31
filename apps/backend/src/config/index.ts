@@ -54,7 +54,9 @@ const envSchema = z.object({
   PORT: numberFromEnv(3000, z.number().int().positive()),
   // Trading credentials (optional - only required for live trading)
   PRIVATE_KEY: z.string().optional(),
-  CHAIN_ID: numberFromEnv(137, z.number().int().positive()), // 137 = Polygon Mainnet
+  // Chain ID: 137 = Polygon Mainnet, 80002 = Polygon Amoy Testnet
+  // WARNING: Only Polygon Mainnet (137) is officially supported for live trading
+  CHAIN_ID: numberFromEnv(137, z.number().int().positive()),
 });
 
 const configSchema = envSchema.transform((env) => ({

@@ -12,6 +12,7 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
+    // WARNING: CORS set to '*' for development. In production, restrict to specific origins.
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -92,6 +93,13 @@ export function createServer(): http.Server {
       logger.info('Market feed status retrieved');
       return;
     }
+
+    // ============================================================================
+    // Trading Endpoints
+    // WARNING: These endpoints lack authentication and should be protected in
+    // production deployments. Consider adding API key validation, session tokens,
+    // or other authentication mechanisms before exposing to untrusted networks.
+    // ============================================================================
 
     // Trading status
     if (method === 'GET' && url === '/status') {

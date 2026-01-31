@@ -12,6 +12,22 @@ export interface TradingState {
   balances: Balance[];
 }
 
+// Interface for CLOB order responses to replace 'any'
+interface ClobOrder {
+  id?: string;
+  orderID?: string;
+  clientOrderId?: string;
+  asset_id?: string;
+  tokenID?: string;
+  side: string;
+  price: number | string;
+  size?: number | string;
+  originalSize?: number | string;
+  status?: string;
+  created_at?: number;
+  sizeMatched?: number | string;
+}
+
 export class TradingClient {
   private client: ClobClient | null = null;
   private wallet: ethers.Wallet | null = null;
@@ -92,7 +108,7 @@ export class TradingClient {
       }
 
       // Calculate positions from orders and fills
-      await this.recalculatePositions();
+      this.recalculatePositions();
 
       logger.info('Reconciliation complete', {
         orders: this.state.orders.length,
@@ -123,7 +139,8 @@ export class TradingClient {
     }
 
     // Generate unique clientOrderId for idempotency
-    const clientOrderId = `order-${Date.now()}-${this.orderIdCounter++}`;
+    // Include timestamp, counter, and process ID for better uniqueness
+    const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
 
     try {
       logger.info('Creating order', { tokenId, side, price, size, clientOrderId });
@@ -212,19 +229,21 @@ export class TradingClient {
 
     const openOrders = this.state.orders.filter(o => o.status === 'OPEN');
 
-    for (const order of openOrders) {
-      try {
-        await this.cancelOrder(order.orderId);
-      } catch (error) {
+    // Cancel orders in parallel for better performance
+    const cancellationPromises = openOrders.map(order =>
+      this.cancelOrder(order.orderId).catch(error => {
         logger.error('Failed to cancel order during kill switch', {
           orderId: order.orderId,
           error: error instanceof Error ? error.message : String(error),
         });
-      }
-    }
+        return null;
+      })
+    );
+
+    await Promise.allSettled(cancellationPromises);
 
     logger.warn('Kill switch complete', {
-      cancelledOrders: openOrders.length,
+      totalOrders: openOrders.length,
     });
   }
 
@@ -257,14 +276,14 @@ export class TradingClient {
   /**
    * Map CLOB order to our Order type
    */
-  private mapOrder(clobOrder: any): Order {
+  private mapOrder(clobOrder: ClobOrder): Order {
     return {
-      orderId: clobOrder.id || clobOrder.orderID,
+      orderId: clobOrder.id || clobOrder.orderID || '',
       clientOrderId: clobOrder.clientOrderId,
-      tokenId: clobOrder.asset_id || clobOrder.tokenID,
+      tokenId: clobOrder.asset_id || clobOrder.tokenID || '',
       side: clobOrder.side === 'BUY' ? 'BUY' : 'SELL',
       price: String(clobOrder.price),
-      size: String(clobOrder.size || clobOrder.originalSize),
+      size: String(clobOrder.size || clobOrder.originalSize || '0'),
       status: clobOrder.status === 'LIVE' ? 'OPEN' : clobOrder.status === 'MATCHED' ? 'MATCHED' : 'CANCELLED',
       createdAt: clobOrder.created_at || Date.now(),
       filledSize: String(clobOrder.sizeMatched || '0'),
@@ -273,49 +292,101 @@ export class TradingClient {
 
   /**
    * Recalculate positions from orders and fills
+   * Properly tracks cost basis through a sequence of buys and sells
    */
-  private async recalculatePositions(): Promise<void> {
-    // Group orders by token ID
-    const positionMap = new Map<string, { totalBought: number; totalSold: number; avgBuyPrice: number; avgSellPrice: number }>();
+  private recalculatePositions(): void {
+    // Group orders by token ID and track net position and cost basis
+    const positionMap = new Map<string, { netSize: number; avgPrice: number }>();
 
-    for (const order of this.state.orders) {
-      if (order.status !== 'MATCHED') continue;
+    // Process only matched orders with non-zero filled size, in chronological order
+    const matchedOrders = this.state.orders
+      .filter((order) => order.status === 'MATCHED' && Number(order.filledSize || 0) !== 0)
+      .sort((a, b) => a.createdAt - b.createdAt);
 
+    for (const order of matchedOrders) {
       const filledSize = Number(order.filledSize || 0);
       if (filledSize === 0) continue;
 
       const price = Number(order.price);
+      const isBuy = order.side === 'BUY';
+
       const existing = positionMap.get(order.tokenId) || {
-        totalBought: 0,
-        totalSold: 0,
-        avgBuyPrice: 0,
-        avgSellPrice: 0,
+        netSize: 0,
+        avgPrice: 0,
       };
 
-      if (order.side === 'BUY') {
-        const newTotal = existing.totalBought + filledSize;
-        existing.avgBuyPrice = (existing.avgBuyPrice * existing.totalBought + price * filledSize) / newTotal;
-        existing.totalBought = newTotal;
+      let { netSize, avgPrice } = existing;
+
+      if (netSize === 0) {
+        // Opening a new position
+        netSize = isBuy ? filledSize : -filledSize;
+        avgPrice = price;
+      } else if (netSize > 0) {
+        // Currently long
+        if (isBuy) {
+          // Add to long position: update weighted average cost
+          const newSize = netSize + filledSize;
+          avgPrice = (avgPrice * netSize + price * filledSize) / newSize;
+          netSize = newSize;
+        } else {
+          // Sell against long: reduce or flip
+          if (filledSize < netSize) {
+            // Partial close; cost basis of remaining unchanged
+            netSize -= filledSize;
+          } else if (filledSize === netSize) {
+            // Fully closed
+            netSize = 0;
+            avgPrice = 0;
+          } else {
+            // Over close: close long, open new short with remaining size
+            const remaining = filledSize - netSize;
+            netSize = -remaining;
+            avgPrice = price;
+          }
+        }
       } else {
-        const newTotal = existing.totalSold + filledSize;
-        existing.avgSellPrice = (existing.avgSellPrice * existing.totalSold + price * filledSize) / newTotal;
-        existing.totalSold = newTotal;
+        // Currently short (netSize < 0)
+        const currentShortSize = -netSize;
+        if (!isBuy) {
+          // Add to short position: update weighted average cost
+          const newSize = currentShortSize + filledSize;
+          avgPrice = (avgPrice * currentShortSize + price * filledSize) / newSize;
+          netSize = -newSize;
+        } else {
+          // Buy against short: reduce or flip
+          if (filledSize < currentShortSize) {
+            // Partial close; cost basis of remaining unchanged
+            netSize += filledSize;
+          } else if (filledSize === currentShortSize) {
+            // Fully closed
+            netSize = 0;
+            avgPrice = 0;
+          } else {
+            // Over close: close short, open new long with remaining size
+            const remaining = filledSize - currentShortSize;
+            netSize = remaining;
+            avgPrice = price;
+          }
+        }
       }
 
-      positionMap.set(order.tokenId, existing);
+      positionMap.set(order.tokenId, { netSize, avgPrice });
     }
 
-    // Convert to positions
-    this.state.positions = Array.from(positionMap.entries()).map(([tokenId, data]) => {
-      const netSize = data.totalBought - data.totalSold;
-      const avgPrice = netSize > 0 ? data.avgBuyPrice : data.avgSellPrice;
+    // Convert to positions, filtering out zero positions
+    this.state.positions = Array.from(positionMap.entries())
+      .map(([tokenId, data]) => {
+        if (data.netSize === 0) {
+          return null;
+        }
 
-      return {
-        tokenId,
-        size: String(netSize),
-        averagePrice: String(avgPrice),
-      };
-    }).filter(p => Number(p.size) !== 0);
+        return {
+          tokenId,
+          size: String(data.netSize),
+          averagePrice: String(data.avgPrice),
+        };
+      })
+      .filter((p): p is Position => p !== null);
   }
 }
 
