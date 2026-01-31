@@ -67,6 +67,10 @@ LOG_LEVEL=info
 LIVE_TRADING=false
 COMPLIANCE_ACCEPTED=false
 
+# Trading credentials (optional - only required for live trading)
+# PRIVATE_KEY=your_wallet_private_key_here
+CHAIN_ID=137
+
 # Server
 PORT=3000
 
@@ -74,6 +78,34 @@ PORT=3000
 RETRY_ATTEMPTS=3
 RETRY_DELAY=1000
 ```
+
+### Live Trading Setup
+
+⚠️ **WARNING**: Live trading involves real money and real risk. Only enable after thorough testing in paper mode.
+
+To enable live trading:
+
+1. **Set up wallet credentials**: Export your private key from your wallet (e.g., MetaMask) and add it to `.env`:
+   ```env
+   PRIVATE_KEY=0x...your_private_key_here
+   CHAIN_ID=137  # Polygon Mainnet
+   ```
+
+2. **Enable trading gates**: Both flags must be set to `true`:
+   ```env
+   LIVE_TRADING=true
+   COMPLIANCE_ACCEPTED=true
+   ```
+
+3. **Fund your wallet**: Ensure your wallet has sufficient USDC on Polygon for trading
+
+4. **Verify setup**: Start the server and check `/status` endpoint to confirm trading is enabled
+
+**Security Notes:**
+- Never commit your private key to git
+- Use environment variable management tools (e.g., dotenv, secret managers)
+- Rotate keys regularly
+- Use a dedicated trading wallet with limited funds
 
 ## Usage
 
@@ -132,12 +164,47 @@ npm run dev
 
 The server provides the following endpoints:
 
+**Market Data:**
 - `GET /health` - Server health status
 - `GET /feed/status` - WebSocket feed connection status
 - `GET /orderbooks` - List all cached orderbooks with summaries
 - `GET /orderbook/:tokenId` - Get full orderbook for a specific token
 
+**Trading (requires live trading to be enabled):**
+- `GET /status` - Trading status and wallet information
+- `GET /state` - Complete trading state (orders, positions, balances)
+- `GET /orders` - List all orders
+- `GET /fills` - List all fills
+- `POST /kill-switch` - Emergency: cancel all open orders
+
 Configure which tokens to monitor via the `TOKEN_IDS` environment variable.
+
+### Trading Dashboard
+
+Access the web-based trading dashboard:
+
+```bash
+# Terminal 1: Start backend server
+npm run dev
+
+# Terminal 2: Start frontend dashboard
+cd apps/frontend
+npm run dev
+```
+
+Then open http://localhost:8080 in your browser.
+
+The dashboard displays:
+- Trading status (Live/Paper mode)
+- Wallet address
+- Open orders count
+- Active positions
+- Available balance
+- Watched markets with best bid/ask
+- Positions with PnL
+- Open orders
+- Recent fills
+- Emergency kill switch button
 
 ## Project Structure
 
@@ -189,16 +256,33 @@ The Gamma API provides market and event information:
 
 ### CLOB API
 
-The CLOB (Central Limit Order Book) API provides orderbook data:
+The CLOB (Central Limit Order Book) API provides orderbook data and trading capabilities:
 - **Base URL**: https://clob.polymarket.com
 - **Endpoints Used**:
   - `GET /book?token_id=<TOKEN_ID>` - Get orderbook for token
+  - `POST /order` - Create new order (live trading)
+  - `DELETE /order/:orderId` - Cancel order (live trading)
+  - `GET /orders` - Get user orders (live trading)
+
+**Note**: Trading endpoints require authentication via wallet signature.
 
 ## Example Workflow
 
+### Read-Only Mode
 1. **Find Markets**: Use `npm run markets` to discover available markets
 2. **Get Token IDs**: Note the token IDs for outcomes you're interested in
 3. **Check Orderbook**: Use `npm run book -- --tokenId <TOKEN_ID>` to see current prices
+4. **Monitor Live**: Start server with `npm run dev` and view dashboard at http://localhost:8080
+
+### Live Trading Mode
+1. **Complete setup**: Follow [Live Trading Setup](#live-trading-setup) instructions
+2. **Start server**: Run `npm run dev` with trading enabled
+3. **Open dashboard**: Navigate to http://localhost:8080
+4. **Monitor status**: Verify "LIVE TRADING" badge and wallet address
+5. **View markets**: Check watched markets for opportunities
+6. **Place orders**: Use trading client API (programmatic) or integrate with dashboard
+7. **Monitor positions**: Track open orders, positions, and PnL in real-time
+8. **Emergency stop**: Use kill switch button to cancel all orders if needed
 
 ## Development
 
@@ -228,7 +312,7 @@ The project uses TypeScript's strict mode with the following compiler options:
 
 ## Current Status
 
-**Phase:** MVP - Real-Time Data Streaming ✅
+**Phase:** Live Trading Integration ✅
 
 **Completed:**
 - ✅ Market data fetching
@@ -239,14 +323,18 @@ The project uses TypeScript's strict mode with the following compiler options:
 - ✅ In-memory orderbook cache
 - ✅ Auto-reconnect with backoff strategy
 - ✅ HTTP server with orderbook API endpoints
+- ✅ Live trading integration with CLOB client
+- ✅ Idempotency via clientOrderId
+- ✅ Startup reconciliation (orders, balances, positions)
+- ✅ Trading API endpoints (/status, /state, /orders, /fills)
+- ✅ Web-based trading dashboard
+- ✅ Kill switch for emergency order cancellation
 
 **In Progress:**
 - 🔄 Risk management framework
 - 🔄 Paper trading engine
 
 **Planned:**
-- ⏳ Authentication (L1/L2)
-- ⏳ Live trading engine
 - ⏳ Market making strategy
 - ⏳ Arbitrage detection
 - ⏳ Multi-market orchestration
@@ -255,13 +343,17 @@ See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap
 
 ## Limitations
 
-Current version is **read-only**:
-- ❌ No trading functionality yet
-- ❌ No authentication required
-- ❌ No order placement
-- ✅ Only data retrieval
+**Safety and Compliance:**
+- ⚠️ Live trading is disabled by default - requires explicit opt-in via two environment flags
+- ⚠️ No VPN/proxy/geo-bypass capabilities - respects Polymarket's regional restrictions
+- ⚠️ User is responsible for compliance with local laws and regulations
 
-Full trading capabilities are planned in upcoming phases.
+**Current Limitations:**
+- ❌ No paper trading simulation yet (on roadmap)
+- ❌ No automated trading strategies yet (on roadmap)
+- ❌ No risk management framework yet (on roadmap)
+
+See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap.
 
 ## Contributing
 

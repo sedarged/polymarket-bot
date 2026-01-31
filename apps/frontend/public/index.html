@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Trading Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f1419;
+      color: #e7e9ea;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: #16181c;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-badge.live {
+      background: #00ba7c;
+      color: #000;
+    }
+
+    .status-badge.paper {
+      background: #ffd700;
+      color: #000;
+    }
+
+    .status-badge.disconnected {
+      background: #f4212e;
+      color: #fff;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #16181c;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #2f3336;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #71767b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .card-label {
+      font-size: 12px;
+      color: #71767b;
+    }
+
+    .table-container {
+      background: #16181c;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #2f3336;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #71767b;
+      text-transform: uppercase;
+      border-bottom: 1px solid #2f3336;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #2f3336;
+      font-size: 14px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .buy {
+      color: #00ba7c;
+    }
+
+    .sell {
+      color: #f4212e;
+    }
+
+    .button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .button:hover {
+      opacity: 0.8;
+    }
+
+    .button-danger {
+      background: #f4212e;
+      color: #fff;
+    }
+
+    .button-primary {
+      background: #1d9bf0;
+      color: #fff;
+    }
+
+    .kill-switch-container {
+      background: #16181c;
+      padding: 20px;
+      border-radius: 8px;
+      border: 2px solid #f4212e;
+      text-align: center;
+    }
+
+    .kill-switch-warning {
+      color: #f4212e;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #71767b;
+    }
+
+    .error {
+      background: #2a1a1f;
+      border: 1px solid #f4212e;
+      color: #f4212e;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: #71767b;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Polymarket Trading Dashboard</h1>
+      <div id="statusBadge" class="status-badge">Loading...</div>
+    </header>
+
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Wallet Address</div>
+        <div id="walletAddress" class="card-value" style="font-size: 14px; word-break: break-all;">-</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Open Orders</div>
+        <div id="openOrders" class="card-value">-</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Active Positions</div>
+        <div id="activePositions" class="card-value">-</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Available Balance</div>
+        <div id="availableBalance" class="card-value">-</div>
+        <div class="card-label">USDC</div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="card-title">Watched Markets</div>
+      <div id="marketsTable">
+        <div class="loading">Loading markets...</div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="card-title">Positions</div>
+      <div id="positionsTable">
+        <div class="loading">Loading positions...</div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="card-title">Open Orders</div>
+      <div id="ordersTable">
+        <div class="loading">Loading orders...</div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <div class="card-title">Recent Fills</div>
+      <div id="fillsTable">
+        <div class="loading">Loading fills...</div>
+      </div>
+    </div>
+
+    <div class="kill-switch-container">
+      <div class="kill-switch-warning">⚠️ Emergency Kill Switch</div>
+      <p style="margin-bottom: 12px; color: #71767b;">Immediately cancels all open orders</p>
+      <button id="killSwitch" class="button button-danger">CANCEL ALL ORDERS</button>
+    </div>
+  </div>
+
+  <script>
+    // NOTE: Hardcoded for local development. For production, use environment-based config.
+    const API_URL = 'http://localhost:3000';
+    let refreshInterval;
+
+    async function fetchData(endpoint) {
+      const response = await fetch(`${API_URL}${endpoint}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${endpoint}`);
+      }
+      return response.json();
+    }
+
+    function formatAddress(address) {
+      if (!address) return '-';
+      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+
+    function formatTimestamp(timestamp) {
+      return new Date(timestamp).toLocaleString();
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('error').style.display = 'none';
+    }
+
+    async function updateStatus() {
+      try {
+        const status = await fetchData('/status');
+        
+        const badge = document.getElementById('statusBadge');
+        if (status.liveTrading) {
+          badge.textContent = 'LIVE TRADING';
+          badge.className = 'status-badge live';
+        } else {
+          badge.textContent = 'PAPER MODE';
+          badge.className = 'status-badge paper';
+        }
+
+        document.getElementById('walletAddress').textContent = 
+          status.walletAddress || 'Not connected';
+
+        hideError();
+      } catch (error) {
+        showError('Failed to fetch status');
+        document.getElementById('statusBadge').className = 'status-badge disconnected';
+        document.getElementById('statusBadge').textContent = 'DISCONNECTED';
+      }
+    }
+
+    async function updateState() {
+      try {
+        const state = await fetchData('/state');
+
+        // Update summary cards
+        const openOrders = state.orders.filter(o => o.status === 'OPEN').length;
+        document.getElementById('openOrders').textContent = openOrders;
+        document.getElementById('activePositions').textContent = state.positions.length;
+
+        const balance = state.balances.find(b => b.currency === 'USDC');
+        document.getElementById('availableBalance').textContent = 
+          balance ? Number(balance.available).toFixed(2) : '0.00';
+
+        // Update positions table
+        updatePositionsTable(state.positions);
+
+        // Update orders table
+        updateOrdersTable(state.orders.filter(o => o.status === 'OPEN'));
+
+        // Update fills table
+        updateFillsTable(state.fills);
+
+      } catch (error) {
+        console.error('Failed to update state:', error);
+      }
+    }
+
+    async function updateMarkets() {
+      try {
+        const data = await fetchData('/orderbooks');
+        
+        if (data.length === 0) {
+          document.getElementById('marketsTable').innerHTML = 
+            '<div class="empty">No markets being watched</div>';
+          return;
+        }
+
+        const html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Token ID</th>
+                <th>Best Bid</th>
+                <th>Best Ask</th>
+                <th>Mid Price</th>
+                <th>Spread</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(m => `
+                <tr>
+                  <td>${m.tokenId.slice(0, 10)}...</td>
+                  <td class="buy">${m.summary.bestBid || '-'}</td>
+                  <td class="sell">${m.summary.bestAsk || '-'}</td>
+                  <td>${m.summary.mid || '-'}</td>
+                  <td>${m.summary.spread || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+        
+        document.getElementById('marketsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('marketsTable').innerHTML = 
+          '<div class="empty">Failed to load markets</div>';
+      }
+    }
+
+    function updatePositionsTable(positions) {
+      if (positions.length === 0) {
+        document.getElementById('positionsTable').innerHTML = 
+          '<div class="empty">No open positions</div>';
+        return;
+      }
+
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Token ID</th>
+              <th>Size</th>
+              <th>Avg Price</th>
+              <th>Market Value</th>
+              <th>Unrealized PnL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${positions.map(p => `
+              <tr>
+                <td>${p.tokenId.slice(0, 10)}...</td>
+                <td>${Number(p.size).toFixed(2)}</td>
+                <td>${Number(p.averagePrice).toFixed(4)}</td>
+                <td>${p.marketValue ? Number(p.marketValue).toFixed(2) : '-'}</td>
+                <td>${p.unrealizedPnl ? Number(p.unrealizedPnl).toFixed(2) : '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      
+      document.getElementById('positionsTable').innerHTML = html;
+    }
+
+    function updateOrdersTable(orders) {
+      if (orders.length === 0) {
+        document.getElementById('ordersTable').innerHTML = 
+          '<div class="empty">No open orders</div>';
+        return;
+      }
+
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Token ID</th>
+              <th>Side</th>
+              <th>Price</th>
+              <th>Size</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orders.map(o => `
+              <tr>
+                <td>${o.orderId.slice(0, 8)}...</td>
+                <td>${o.tokenId.slice(0, 10)}...</td>
+                <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${o.side}</td>
+                <td>${Number(o.price).toFixed(4)}</td>
+                <td>${Number(o.size).toFixed(2)}</td>
+                <td>${formatTimestamp(o.createdAt)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      
+      document.getElementById('ordersTable').innerHTML = html;
+    }
+
+    function updateFillsTable(fills) {
+      if (fills.length === 0) {
+        document.getElementById('fillsTable').innerHTML = 
+          '<div class="empty">No fills yet</div>';
+        return;
+      }
+
+      const recentFills = fills.slice(-10).reverse();
+
+      const html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Token ID</th>
+              <th>Side</th>
+              <th>Price</th>
+              <th>Size</th>
+              <th>Fee</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${recentFills.map(f => `
+              <tr>
+                <td>${f.orderId.slice(0, 8)}...</td>
+                <td>${f.tokenId.slice(0, 10)}...</td>
+                <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${f.side}</td>
+                <td>${Number(f.price).toFixed(4)}</td>
+                <td>${Number(f.size).toFixed(2)}</td>
+                <td>${f.fee ? Number(f.fee).toFixed(4) : '-'}</td>
+                <td>${formatTimestamp(f.timestamp)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      
+      document.getElementById('fillsTable').innerHTML = html;
+    }
+
+    async function activateKillSwitch() {
+      if (!confirm('Are you sure you want to cancel ALL open orders? This action cannot be undone.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/kill-switch`, {
+          method: 'POST',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to activate kill switch');
+        }
+
+        alert('Kill switch activated! All orders cancelled.');
+        await updateState();
+      } catch (error) {
+        alert('Failed to activate kill switch: ' + error.message);
+      }
+    }
+
+    async function refresh() {
+      await Promise.all([
+        updateStatus(),
+        updateState(),
+        updateMarkets(),
+      ]);
+    }
+
+    // Initialize
+    document.getElementById('killSwitch').addEventListener('click', activateKillSwitch);
+    
+    refresh();
+    refreshInterval = setInterval(refresh, 5000); // Refresh every 5 seconds
+  </script>
+</body>
+</html>

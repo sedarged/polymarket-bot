@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@polymarket/clob-client": "^5.2.1",
     "@polymarket/shared": "file:../../packages/shared",
     "@types/ws": "^8.18.1",
     "axios": "^1.13.4",

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsx src/index.ts"
+    "dev": "npx http-server public -p 8080 -c-1",
+    "start": "npx http-server public -p 8080"
   },
   "dependencies": {
     "@polymarket/shared": "file:../../packages/shared"

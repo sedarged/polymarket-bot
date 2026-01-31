@@ -77,3 +77,40 @@ export interface WSLastTradePrice {
 }
 
 export type WSMarketMessage = WSOrderbookSnapshot | WSPriceChange | WSLastTradePrice;
+
+// Trading types
+export interface Order {
+  orderId: string;
+  clientOrderId?: string;
+  tokenId: string;
+  side: 'BUY' | 'SELL';
+  price: string;
+  size: string;
+  status: 'OPEN' | 'MATCHED' | 'CANCELLED';
+  createdAt: number;
+  filledSize?: string;
+}
+
+export interface Fill {
+  orderId: string;
+  tokenId: string;
+  side: 'BUY' | 'SELL';
+  price: string;
+  size: string;
+  timestamp: number;
+  fee?: string;
+}
+
+export interface Position {
+  tokenId: string;
+  size: string;
+  averagePrice: string;
+  marketValue?: string;
+  unrealizedPnl?: string;
+}
+
+export interface Balance {
+  currency: string;
+  available: string;
+  total: string;
+}
