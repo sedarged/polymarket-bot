@@ -6,6 +6,12 @@ import { marketFeedService } from './marketFeedService';
 import { calculateOrderbookSummary } from '../utils/orderbook';
 import { tradingClient } from '../clients/tradingClient';
 import { isLiveTradingEnabled } from '../utils/liveTrading';
+import { PaperTradingEngine } from '../trading/paperTradingEngine';
+import { RiskManager } from '../trading/riskManager';
+
+// Singleton instances for paper trading
+let paperEngine: PaperTradingEngine | null = null;
+let riskManager: RiskManager | null = null;
 
 const respondJson = (res: http.ServerResponse, statusCode: number, payload: unknown): void => {
   const body = JSON.stringify(payload);
@@ -15,9 +21,31 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
     // WARNING: CORS set to '*' for development. In production, restrict to specific origins.
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   });
   res.end(body);
+};
+
+/**
+ * Validate admin token from Authorization header
+ */
+const validateAdminToken = (req: http.IncomingMessage): boolean => {
+  if (!config.adminToken || config.adminToken.trim() === '') {
+    logger.error('ADMIN_TOKEN is not configured; admin endpoints are disabled');
+    return false;
+  }
+
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return false;
+  }
+
+  // Support both "Bearer <token>" and plain token
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.substring(7) 
+    : authHeader;
+
+  return token === config.adminToken;
 };
 
 export function createServer(): http.Server {
@@ -30,7 +58,7 @@ export function createServer(): http.Server {
       res.writeHead(200, {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       });
       res.end();
       return;
@@ -157,15 +185,67 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Kill switch - cancel all orders
+    // Kill switch - cancel all orders (legacy endpoint, requires auth)
     if (method === 'POST' && url === '/kill-switch') {
+      // Validate admin token (same as /kill endpoint)
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' });
+        logger.warn('Legacy kill-switch endpoint access denied: invalid admin token');
+        return;
+      }
+
       try {
-        await tradingClient.cancelAllOrders();
-        respondJson(res, 200, { success: true, message: 'All orders cancelled' });
-        logger.warn('Kill switch activated via API');
+        // Cancel orders in both live and paper trading
+        if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+          await tradingClient.cancelAllOrders();
+        }
+        if (paperEngine) {
+          paperEngine.cancelAllOrders();
+        }
+        if (riskManager) {
+          riskManager.kill();
+        }
+
+        respondJson(res, 200, { success: true, message: 'Kill switch activated: all orders cancelled' });
+        logger.warn('Kill switch activated via API (legacy endpoint)');
       } catch (error) {
         respondJson(res, 500, {
-          error: error instanceof Error ? error.message : 'Failed to cancel orders',
+          error: error instanceof Error ? error.message : 'Failed to activate kill switch',
+        });
+      }
+      return;
+    }
+
+    // Kill endpoint with admin token auth (as per requirements)
+    if (method === 'POST' && url === '/kill') {
+      // Validate admin token
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' });
+        logger.warn('Kill endpoint access denied: invalid admin token');
+        return;
+      }
+
+      try {
+        // Cancel orders in both live and paper trading
+        if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+          await tradingClient.cancelAllOrders();
+        }
+        if (paperEngine) {
+          paperEngine.cancelAllOrders();
+        }
+        if (riskManager) {
+          riskManager.kill();
+        }
+
+        respondJson(res, 200, { 
+          success: true, 
+          message: 'Kill switch activated: all orders cancelled, trading disabled',
+          riskManager: riskManager ? riskManager.getMetrics() : null,
+        });
+        logger.error('Kill switch activated via /kill endpoint');
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to activate kill switch',
         });
       }
       return;
@@ -180,6 +260,26 @@ export function startServer(): http.Server {
   
   // Start market feed service
   marketFeedService.start();
+  
+  // Initialize paper trading engine (paper mode only)
+  if (!isLiveTradingEnabled()) {
+    paperEngine = new PaperTradingEngine({
+      slippage: config.paperTradingSlippage,
+      feeRate: config.paperTradingFeeRate,
+    });
+
+    logger.info('Paper trading mode enabled');
+  }
+
+  // Initialize risk manager (applies to both paper and live trading)
+  riskManager = new RiskManager({
+    maxExposurePerMarket: config.riskMaxExposurePerMarket,
+    maxOpenOrders: config.riskMaxOpenOrders,
+    maxDrawdown: config.riskMaxDrawdown,
+    errorRateThreshold: config.riskErrorRateThreshold,
+    errorRateWindow: config.riskErrorRateWindow,
+  });
+  logger.info('Risk manager initialized');
   
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {

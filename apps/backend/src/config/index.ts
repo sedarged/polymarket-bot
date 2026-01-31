@@ -57,6 +57,17 @@ const envSchema = z.object({
   // Chain ID: 137 = Polygon Mainnet, 80002 = Polygon Amoy Testnet
   // WARNING: Only Polygon Mainnet (137) is officially supported for live trading
   CHAIN_ID: numberFromEnv(137, z.number().int().positive()),
+  // Paper Trading Configuration
+  PAPER_TRADING_SLIPPAGE: numberFromEnv(0.01, z.number().nonnegative().max(1)),
+  PAPER_TRADING_FEE_RATE: numberFromEnv(0.002, z.number().nonnegative().max(1)),
+  // Risk Management Configuration
+  RISK_MAX_EXPOSURE_PER_MARKET: numberFromEnv(1000, z.number().positive()),
+  RISK_MAX_OPEN_ORDERS: numberFromEnv(50, z.number().int().positive()),
+  RISK_MAX_DRAWDOWN: numberFromEnv(0.20, z.number().positive().max(1)),
+  RISK_ERROR_RATE_THRESHOLD: numberFromEnv(0.10, z.number().nonnegative().max(1)),
+  RISK_ERROR_RATE_WINDOW: numberFromEnv(100, z.number().int().positive()),
+  // Admin Authentication
+  ADMIN_TOKEN: z.string().optional(),
 });
 
 const configSchema = envSchema.transform((env) => ({
@@ -72,6 +83,14 @@ const configSchema = envSchema.transform((env) => ({
   port: env.PORT,
   privateKey: env.PRIVATE_KEY,
   chainId: env.CHAIN_ID,
+  paperTradingSlippage: env.PAPER_TRADING_SLIPPAGE,
+  paperTradingFeeRate: env.PAPER_TRADING_FEE_RATE,
+  riskMaxExposurePerMarket: env.RISK_MAX_EXPOSURE_PER_MARKET,
+  riskMaxOpenOrders: env.RISK_MAX_OPEN_ORDERS,
+  riskMaxDrawdown: env.RISK_MAX_DRAWDOWN,
+  riskErrorRateThreshold: env.RISK_ERROR_RATE_THRESHOLD,
+  riskErrorRateWindow: env.RISK_ERROR_RATE_WINDOW,
+  adminToken: env.ADMIN_TOKEN,
 }));
 
 export type Config = z.infer<typeof configSchema>;
