@@ -114,10 +114,12 @@ describe('RiskManager', () => {
     });
 
     it('should reject order when circuit breaker is tripped', () => {
-      // Record enough errors to trip circuit breaker
-      for (let i = 0; i < 5; i++) {
-        riskManager.recordError(`error-${i}`);
+      // Record enough errors to trip circuit breaker (2 errors out of 10 = 20%)
+      for (let i = 0; i < 8; i++) {
+        riskManager.recordOperation(false);
       }
+      riskManager.recordError('error-1');
+      riskManager.recordError('error-2');
 
       const result = riskManager.checkOrder(
         '0xtoken123',
@@ -173,17 +175,23 @@ describe('RiskManager', () => {
 
   describe('circuit breaker', () => {
     it('should not trip with low error rate', () => {
+      // Record 1 error out of 11 operations (9.09% error rate < 10% threshold)
+      for (let i = 0; i < 10; i++) {
+        riskManager.recordOperation(false); // success
+      }
       riskManager.recordError('error 1');
 
+      // Should not trip with 1/11 = 9.09% < 10% threshold
       expect(riskManager.isCircuitBreakerTripped()).toBe(false);
     });
 
     it('should trip with high error rate', () => {
-      // Record enough errors to exceed threshold
-      // threshold = 0.10, window = 10, so need >= 1 error
-      for (let i = 0; i < 2; i++) {
-        riskManager.recordError(`error-${i}`);
+      // Record 2 errors out of 10 operations (20% error rate > 10% threshold)
+      for (let i = 0; i < 8; i++) {
+        riskManager.recordOperation(false); // success
       }
+      riskManager.recordError('error-1');
+      riskManager.recordError('error-2');
 
       expect(riskManager.isCircuitBreakerTripped()).toBe(true);
     });

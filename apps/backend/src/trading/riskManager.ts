@@ -24,7 +24,7 @@ export interface RiskCheckResult {
  */
 export class RiskManager {
   private config: RiskManagerConfig;
-  private errors: { timestamp: number; error: string }[] = [];
+  private operations: { timestamp: number; isError: boolean }[] = [];
   private killed = false;
 
   constructor(config?: Partial<RiskManagerConfig>) {
@@ -118,22 +118,32 @@ export class RiskManager {
   }
 
   /**
+   * Record an operation (success or error) for circuit breaker tracking
+   */
+  recordOperation(isError: boolean, errorMessage?: string): void {
+    this.operations.push({
+      timestamp: Date.now(),
+      isError,
+    });
+
+    // Keep only recent operations (last minute)
+    const now = Date.now();
+    this.operations = this.operations.filter(e => now - e.timestamp < 60000);
+
+    if (isError && errorMessage) {
+      logger.warn('Error recorded for circuit breaker', {
+        error: errorMessage,
+        recentOperations: this.operations.length,
+        recentErrors: this.operations.filter(op => op.isError).length,
+      });
+    }
+  }
+
+  /**
    * Record an error for circuit breaker tracking
    */
   recordError(error: string): void {
-    this.errors.push({
-      timestamp: Date.now(),
-      error,
-    });
-
-    // Keep only recent errors within the window
-    const now = Date.now();
-    this.errors = this.errors.filter(e => now - e.timestamp < 60000); // Keep last minute
-
-    logger.warn('Error recorded for circuit breaker', {
-      error,
-      recentErrors: this.errors.length,
-    });
+    this.recordOperation(true, error);
   }
 
   /**
@@ -141,19 +151,26 @@ export class RiskManager {
    */
   isCircuitBreakerTripped(): boolean {
     const now = Date.now();
-    const recentErrors = this.errors.filter(e => now - e.timestamp < 60000);
+    const recentOps = this.operations.filter(e => now - e.timestamp < 60000);
 
-    // If we have enough operations to check
-    if (recentErrors.length >= this.config.errorRateWindow * this.config.errorRateThreshold) {
-      const errorRate = recentErrors.length / this.config.errorRateWindow;
-      if (errorRate >= this.config.errorRateThreshold) {
-        logger.error('Circuit breaker tripped', {
-          errorRate,
-          threshold: this.config.errorRateThreshold,
-          recentErrors: recentErrors.length,
-        });
-        return true;
-      }
+    // Need at least errorRateWindow operations to check
+    if (recentOps.length < this.config.errorRateWindow) {
+      return false;
+    }
+
+    // Calculate error rate from the last errorRateWindow operations
+    const lastWindowOps = recentOps.slice(-this.config.errorRateWindow);
+    const errorCount = lastWindowOps.filter(op => op.isError).length;
+    const errorRate = errorCount / this.config.errorRateWindow;
+
+    if (errorRate > this.config.errorRateThreshold) {
+      logger.error('Circuit breaker tripped', {
+        errorRate,
+        threshold: this.config.errorRateThreshold,
+        errorCount,
+        windowSize: this.config.errorRateWindow,
+      });
+      return true;
     }
 
     return false;
@@ -179,7 +196,7 @@ export class RiskManager {
    */
   reset(): void {
     this.killed = false;
-    this.errors = [];
+    this.operations = [];
     logger.info('Risk manager reset');
   }
 
@@ -191,9 +208,12 @@ export class RiskManager {
     recentErrors: number;
     circuitBreakerTripped: boolean;
   } {
+    const recentOps = this.operations.filter(op => Date.now() - op.timestamp < 60000);
+    const errorCount = recentOps.filter(op => op.isError).length;
+
     return {
       killed: this.killed,
-      recentErrors: this.errors.length,
+      recentErrors: errorCount,
       circuitBreakerTripped: this.isCircuitBreakerTripped(),
     };
   }
