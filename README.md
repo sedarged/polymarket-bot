@@ -6,6 +6,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 
 - **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
 - **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
+- **[GitHub Marketplace Setup](./docs/GITHUB_MARKETPLACE_SETUP.md)** - Setup guide for GitHub Apps, AI code review tools, and development automation
 - **[Runbook](./docs/RUNBOOK.md)** - Operational procedures for running the bot
 - **[Implementation Checklist](./docs/IMPLEMENTATION_CHECKLIST.md)** - Detailed development checklist
 - **[Architecture Decisions](./docs/ADR-0001.md)** - Key architectural decisions and rationale
@@ -268,8 +269,31 @@ Full trading capabilities are planned in upcoming phases.
 Contributions are welcome! Please:
 1. Read the [System Overview](./SYSTEM_OVERVIEW.md) to understand the system
 2. Check the [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for open tasks
-3. Follow existing code style and patterns
-4. Submit a Pull Request with clear description
+3. Set up development tools using the [GitHub Marketplace Setup Guide](./docs/GITHUB_MARKETPLACE_SETUP.md)
+4. Follow existing code style and patterns
+5. Submit a Pull Request with clear description
+
+### Development Setup for Contributors
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Run tests:**
+   ```bash
+   npm test
+   ```
+
+3. **Start development mode:**
+   ```bash
+   npm run dev
+   ```
+
+4. **Set up GitHub Apps** (for repository maintainers):
+   - Follow the [GitHub Marketplace Setup Guide](./docs/GITHUB_MARKETPLACE_SETUP.md)
+   - Install Qodo Merge for AI code reviews: https://github.com/apps/qodo-merge
+   - Enable Dependabot and Code Scanning for security
 
 ## Support
 
