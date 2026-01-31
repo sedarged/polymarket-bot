@@ -3,6 +3,8 @@ import { ClobClient } from '../clients/clob';
 import { logger } from '../utils/logger';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../utils/orderbook';
 import { Token } from '@polymarket/shared';
+import { config } from '../config';
+import axios from 'axios';
 
 export async function marketsCommand(limit?: number): Promise<void> {
   try {
@@ -43,6 +45,52 @@ export async function bookCommand(tokenId: string): Promise<void> {
   } catch (error) {
     logger.error('Failed to fetch orderbook', { error: (error as Error).message });
     throw error;
+  }
+}
+
+export async function killCommand(): Promise<void> {
+  try {
+    const url = `http://localhost:${config.port}/kill`;
+    const headers: Record<string, string> = {};
+    
+    if (config.adminToken) {
+      headers['Authorization'] = `Bearer ${config.adminToken}`;
+    }
+
+    console.log('\nActivating kill switch...\n');
+
+    const response = await axios.post(url, {}, { headers });
+
+    if (response.status === 200) {
+      console.log('✓ Kill switch activated successfully');
+      console.log(`  ${response.data.message}`);
+      if (response.data.riskManager) {
+        console.log('\nRisk Manager Status:');
+        console.log(`  Killed: ${response.data.riskManager.killed}`);
+        console.log(`  Recent Errors: ${response.data.riskManager.recentErrors}`);
+        console.log(`  Circuit Breaker Tripped: ${response.data.riskManager.circuitBreakerTripped}`);
+      }
+    } else {
+      console.error(`✗ Failed to activate kill switch: ${response.statusText}`);
+      process.exit(1);
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 401) {
+        console.error('✗ Unauthorized: Invalid or missing admin token');
+        console.error('  Set ADMIN_TOKEN in your .env file');
+      } else if (error.code === 'ECONNREFUSED') {
+        console.error('✗ Cannot connect to server');
+        console.error(`  Ensure the server is running on port ${config.port}`);
+      } else {
+        console.error(`✗ Error: ${error.response?.data?.error || error.message}`);
+      }
+    } else {
+      logger.error('Failed to activate kill switch', { 
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    process.exit(1);
   }
 }
 
@@ -87,10 +135,15 @@ export async function run(args: string[]): Promise<void> {
       await bookCommand(tokenId);
       break;
     }
+    case 'kill': {
+      await killCommand();
+      break;
+    }
     default:
       console.log('Usage:');
       console.log('  npm run markets [--limit <number>]');
       console.log('  npm run book --tokenId <token_id>');
+      console.log('  npm run kill');
       process.exit(1);
   }
 }

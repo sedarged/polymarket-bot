@@ -15,6 +15,7 @@
     "dev": "tsx src/index.ts",
     "markets": "tsx src/index.ts markets",
     "book": "tsx src/index.ts book",
+    "kill": "tsx src/index.ts kill",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
