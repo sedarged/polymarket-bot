@@ -197,8 +197,8 @@ npm run kill                     # Trigger kill switch via API
   RISK_ERROR_RATE_THRESHOLD: number
   
   // Paper Trading Parameters
-  PAPER_TRADING_SLIPPAGE: number    // Default: 0.001 (0.1%)
-  PAPER_TRADING_FEES: number        // Default: 0.001 (0.1%)
+  PAPER_TRADING_SLIPPAGE: number    // Default: 0.01 (1%)
+  PAPER_TRADING_FEE_RATE: number    // Default: 0.002 (0.2%)
 }
 ```
 
@@ -206,9 +206,9 @@ npm run kill                     # Trigger kill switch via API
 ```typescript
 import { config } from './config';
 
-// Type-safe access
-const apiUrl = config.GAMMA_API_URL;
-const isLive = config.LIVE_TRADING;
+// Type-safe access (camelCase properties)
+const apiUrl = config.gammaApiUrl;
+const isLive = config.liveTrading;
 ```
 
 ---
@@ -229,13 +229,13 @@ const isLive = config.LIVE_TRADING;
 
 **State Management:**
 ```typescript
-interface PaperTradingState {
-  orders: Map<string, Order>          // Active orders
+interface EngineState {
+  orders: Order[]                     // Active orders
   fills: Fill[]                       // Trade history
   positions: Map<string, Position>    // Current positions per token
-  balance: number                     // Available USDC
-  realizedPnL: number                 // Closed position P&L
-  unrealizedPnL: number               // Open position P&L
+  balance: number                     // Current available USDC
+  initialBalance: number              // Starting virtual USDC balance
+  realizedPnl: number                 // Closed position P&L
 }
 ```
 
@@ -366,34 +366,32 @@ On startup, fetch from CLOB API:
 ```typescript
 interface Order {
   orderId: string              // Unique order identifier
+  clientOrderId?: string       // Optional client-assigned ID
   tokenId: string              // Market token ID
   side: 'BUY' | 'SELL'        // Order direction
   price: string                // Limit price (decimal string)
   size: string                 // Order quantity (decimal string)
-  status: OrderStatus          // OPEN | MATCHED | CANCELLED | EXPIRED
+  status: OrderStatus          // OPEN | MATCHED | CANCELLED
   createdAt: number            // Unix timestamp
-  filledSize: string           // Quantity filled so far
-  remainingSize: string        // Quantity still open
+  filledSize?: string          // Quantity filled so far (optional)
 }
 
 interface Fill {
-  fillId: string               // Unique fill identifier
   orderId: string              // Associated order ID
   tokenId: string              // Market token ID
   side: 'BUY' | 'SELL'        // Fill direction
   price: string                // Execution price
   size: string                 // Fill quantity
-  fee: string                  // Trading fee paid
   timestamp: number            // Unix timestamp
+  fee?: string                 // Trading fee paid (optional)
 }
 
 interface Position {
   tokenId: string              // Market token ID
   size: string                 // Net position (positive=long, negative=short)
   averagePrice: string         // Average entry price
-  realizedPnL: string          // Closed position P&L
-  unrealizedPnL: string        // Open position P&L
-  lastUpdate: number           // Unix timestamp
+  marketValue?: string         // Current market value (optional)
+  unrealizedPnl?: string       // Open position P&L (optional)
 }
 ```
 
@@ -445,11 +443,14 @@ const markets = await gamma.getActiveMarkets();
 **Market Data Model:**
 ```typescript
 interface Market {
-  condition_id: string
+  id: string
   question: string
-  end_date_iso: string
+  active: boolean
+  closed: boolean
+  marketSlug: string
+  outcomes: string[]
+  outcomePrices: string[]
   tokens: Token[]
-  // ... additional fields
 }
 ```
 
@@ -480,12 +481,12 @@ const orderbook = await clob.getOrderbook(tokenId);
 interface Orderbook {
   market: string
   asset_id: string
-  bids: PriceLevel[]    // Buy orders (descending by price)
-  asks: PriceLevel[]    // Sell orders (ascending by price)
+  bids: OrderbookLevel[]    // Buy orders (descending by price)
+  asks: OrderbookLevel[]    // Sell orders (ascending by price)
   timestamp: number
 }
 
-interface PriceLevel {
+interface OrderbookLevel {
   price: string         // Limit price
   size: string          // Total quantity at this price
 }
@@ -1160,8 +1161,8 @@ polymarket-bot/
 │                      packages/shared/src/                               │
 │                                                                          │
 │                        ┌─────────────┐                                  │
-│                        │   types/    │                                  │
 │                        │  index.ts   │                                  │
+│                        │  (types)    │                                  │
 │                        └──────┬──────┘                                  │
 │                               │                                          │
 │                Used by all backend modules                              │
