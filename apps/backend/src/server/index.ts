@@ -12,6 +12,9 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(body),
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
   });
   res.end(body);
 };
@@ -20,6 +23,17 @@ export function createServer(): http.Server {
   return http.createServer(async (req, res) => {
     const method = req.method ?? 'GET';
     const url = req.url ?? '/';
+
+    // Handle CORS preflight
+    if (method === 'OPTIONS') {
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      });
+      res.end();
+      return;
+    }
 
     if (method === 'GET' && url === '/health') {
       const health = getHealthStatus();
