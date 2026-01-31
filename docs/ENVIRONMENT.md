@@ -143,10 +143,10 @@ npm run build
 npm run dev
 ```
 
-**Description**: Start the backend server in development mode with hot reload.
+**Description**: Start the backend server in development mode.
 
 **What it does**:
-- Runs `apps/backend/src/index.ts` using tsx
+- Runs `apps/backend/src/index.ts` using tsx (no automatic hot reload; restart required after code changes)
 - Starts HTTP server on port 3000 (configurable via PORT env var)
 - Initializes WebSocket market feed
 - Loads environment variables from `.env`
@@ -156,9 +156,10 @@ npm run dev
 - `GET /feed/status`: WebSocket feed status
 - `GET /orderbooks`: List cached orderbooks
 - `GET /orderbook/:tokenId`: Get specific orderbook
-- `GET /status`: Trading status (requires live trading)
+- `GET /status`: Trading status (available in paper and live modes; returns `liveTrading` flag)
 - `GET /state`: Complete trading state
-- `POST /kill-switch`: Cancel all orders (emergency)
+- `POST /kill-switch`: Cancel all orders (emergency, admin-only; requires `Authorization` header matching `ADMIN_TOKEN`, otherwise returns 401)
+- `POST /kill`: Newer kill endpoint (admin-only; same `Authorization`/`ADMIN_TOKEN` requirement as `/kill-switch`)
 
 #### Market Commands
 
@@ -203,7 +204,7 @@ npm test
 - Runs all test files in `apps/backend/tests/`
 - Reports test results and failures
 
-**Current status**: ✅ All 116 tests passing (13 test files)
+**Current status**: ✅ All tests currently passing; see CI for the latest status.
 
 ```bash
 npm run test:watch
@@ -353,7 +354,8 @@ cp .env.example .env
 # (Optional) Edit .env with your configuration
 nano .env
 
-# Build project
+# (Optional) Build project (currently may fail due to TypeScript errors; see "Known Issues")
+# You can skip this step for now and use `npm run dev` as described in the Development Mode section.
 npm run build
 ```
 
@@ -413,7 +415,7 @@ The `npm run build` command currently fails with TypeScript errors:
 
 ### Tests Status
 
-✅ **All tests passing**: 116 tests across 13 test files
+✅ **All tests passing** (run `npm test` or check CI for the current status)
 
 ## Proposed Improvements
 
