@@ -1,0 +1,1265 @@
+# Architecture Map - Polymarket Trading Bot
+
+**Version:** 1.0  
+**Last Updated:** 2026-01-31  
+**Audience:** Developers, architects, technical leads
+
+---
+
+## Table of Contents
+
+1. [System Architecture Overview](#system-architecture-overview)
+2. [Entrypoints](#entrypoints)
+3. [Configuration Layer](#configuration-layer)
+4. [Strategy Modules](#strategy-modules)
+5. [Execution Layer](#execution-layer)
+6. [Adapters](#adapters)
+7. [Persistence Layer](#persistence-layer)
+8. [Monitoring & Dashboard](#monitoring--dashboard)
+9. [Critical Paths](#critical-paths)
+10. [Technology Stack](#technology-stack)
+11. [Module Dependency Graph](#module-dependency-graph)
+
+---
+
+## System Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         POLYMARKET TRADING BOT                              │
+│                           (Monorepo Structure)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                          ENTRYPOINTS                                  │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────────┐   │ │
+│  │  │ HTTP Server  │  │ CLI Router   │  │   Frontend App          │   │ │
+│  │  │ (index.ts)   │  │ (cli/index)  │  │   (React - minimal)     │   │ │
+│  │  └──────┬───────┘  └──────┬───────┘  └─────────────────────────┘   │ │
+│  └─────────┼──────────────────┼────────────────────────────────────────┘ │
+│            │                  │                                            │
+│  ┌─────────▼──────────────────▼──────────────────────────────┐            │
+│  │                   CONFIGURATION LAYER                     │            │
+│  │         (Environment variables + Zod validation)          │            │
+│  └─────────────────────────────┬─────────────────────────────┘            │
+│                                │                                            │
+│  ┌─────────────────────────────▼─────────────────────────────────────────┐ │
+│  │                        STRATEGY MODULES                               │ │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │ │
+│  │  │  Paper Trading   │  │   Risk Manager   │  │  Trading Client  │  │ │
+│  │  │     Engine       │  │  (Circuit        │  │  (Live Trading)  │  │ │
+│  │  │  (Simulation)    │  │   Breakers)      │  │                  │  │ │
+│  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                        EXECUTION LAYER                                │ │
+│  │  ┌─────────────────────────────────────────────────────────────────┐ │ │
+│  │  │  Order Management: Create, Cancel, Modify, Track, Reconcile    │ │ │
+│  │  └─────────────────────────────────────────────────────────────────┘ │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                      ADAPTER LAYER                                    │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │ │
+│  │  │ Gamma Client │  │ CLOB Client  │  │ Market Feed  │  │ WebSocket│ │ │
+│  │  │  (Markets)   │  │ (Orderbook)  │  │  (Real-time) │  │  Base    │ │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘ │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                   PERSISTENCE LAYER (In-Memory)                       │ │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │ │
+│  │  │ Orderbook Cache  │  │  Trading State   │  │  Market State    │  │ │
+│  │  │   (Map<ID, OB>)  │  │ (Orders, Fills,  │  │  (Active         │  │ │
+│  │  │                  │  │  Positions, PnL) │  │   Markets)       │  │ │
+│  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                   MONITORING & OBSERVABILITY                          │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │ │
+│  │  │  Structured  │  │ Health Check │  │  API Status  │  │  Kill    │ │ │
+│  │  │   Logger     │  │   Endpoint   │  │  Endpoints   │  │  Switch  │ │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+            ┌───────────────┐ ┌───────────┐ ┌─────────────┐
+            │  Polymarket   │ │   CLOB    │ │  Polygon    │
+            │  Gamma API    │ │    API    │ │ Blockchain  │
+            │  (Markets)    │ │(Trading)  │ │  (Chain)    │
+            └───────────────┘ └───────────┘ └─────────────┘
+```
+
+---
+
+## Entrypoints
+
+### 1. HTTP Server (Primary Entrypoint)
+**Location:** `apps/backend/src/index.ts` → `apps/backend/src/server/index.ts`
+
+**Startup:**
+```bash
+npm run dev  # Development mode with tsx
+npm start    # Production mode (compiled)
+```
+
+**Responsibilities:**
+- Starts HTTP server on configured port (default: 3000)
+- Initializes MarketFeedService (WebSocket connections)
+- Exposes REST API endpoints for monitoring and trading
+- Handles graceful shutdown on SIGTERM/SIGINT
+
+**Routes:**
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | System health check |
+| `/status` | GET | Trading mode, wallet, connection status |
+| `/state` | GET | Complete trading state (orders, fills, positions) |
+| `/orders` | GET | List of active orders |
+| `/fills` | GET | Trade fill history |
+| `/orderbooks` | GET | All cached orderbooks |
+| `/orderbook/:tokenId` | GET | Specific orderbook with summary |
+| `/feed/status` | GET | Market feed connection status |
+| `/kill` | POST | Emergency kill switch (admin auth required) |
+
+### 2. CLI Router
+**Location:** `apps/backend/src/cli/index.ts`
+
+**Commands:**
+```bash
+npm run markets [--limit N]      # List active markets from Gamma
+npm run book --tokenId <ID>      # Display orderbook for token
+npm run kill                     # Trigger kill switch via API
+```
+
+**Responsibilities:**
+- Parse CLI arguments
+- Route to appropriate command handler
+- Direct access to Gamma/CLOB clients for read operations
+- HTTP client for control operations (kill switch)
+
+### 3. Frontend Application
+**Location:** `apps/frontend/`
+
+**Status:** Minimal placeholder (can be extended to React dashboard)
+
+**Current State:**
+- Basic TypeScript setup
+- Not currently integrated with backend
+- Placeholder for future monitoring dashboard
+
+---
+
+## Configuration Layer
+
+### Location
+`apps/backend/src/config/index.ts`
+
+### Configuration Method
+- **Environment Variables** loaded from `.env` file
+- **Zod Schema Validation** ensures type safety and required fields
+- **Fail-fast** on invalid or missing required configuration
+
+### Core Configuration Schema
+
+```typescript
+{
+  // API Endpoints
+  GAMMA_API_URL: string        // Default: https://gamma-api.polymarket.com
+  CLOB_API_URL: string         // Default: https://clob.polymarket.com
+  WS_MARKET_URL: string        // Default: wss://ws-subscriptions-clob.polymarket.com
+  
+  // Trading Configuration
+  TOKEN_IDS: string[]          // Comma-separated list of token IDs to monitor
+  LIVE_TRADING: boolean        // Default: false (paper trading)
+  COMPLIANCE_ACCEPTED: boolean // Must be true with LIVE_TRADING
+  
+  // Blockchain
+  CHAIN_ID: 137 | 80002        // 137=mainnet, 80002=testnet
+  PRIVATE_KEY?: string         // Required for live trading
+  
+  // Server
+  PORT: number                 // Default: 3000
+  LOG_LEVEL: string            // error | warn | info | debug
+  
+  // Security
+  ADMIN_TOKEN?: string         // Required for kill switch
+  
+  // Risk Limits
+  RISK_MAX_EXPOSURE_PER_MARKET: number
+  RISK_MAX_OPEN_ORDERS: number
+  RISK_MAX_DRAWDOWN: number
+  RISK_ERROR_RATE_THRESHOLD: number
+  
+  // Paper Trading Parameters
+  PAPER_TRADING_SLIPPAGE: number    // Default: 0.001 (0.1%)
+  PAPER_TRADING_FEES: number        // Default: 0.001 (0.1%)
+}
+```
+
+### Configuration Access Pattern
+```typescript
+import { config } from './config';
+
+// Type-safe access
+const apiUrl = config.GAMMA_API_URL;
+const isLive = config.LIVE_TRADING;
+```
+
+---
+
+## Strategy Modules
+
+### 1. Paper Trading Engine
+**Location:** `apps/backend/src/trading/paperTradingEngine.ts`
+
+**Purpose:** Simulate trading without real funds
+
+**Features:**
+- Deterministic order fills based on orderbook crossing
+- Simulated slippage and fees (configurable)
+- Position tracking (long/short)
+- PnL calculation (realized + unrealized)
+- Balance management (virtual USDC balance)
+
+**State Management:**
+```typescript
+interface PaperTradingState {
+  orders: Map<string, Order>          // Active orders
+  fills: Fill[]                       // Trade history
+  positions: Map<string, Position>    // Current positions per token
+  balance: number                     // Available USDC
+  realizedPnL: number                 // Closed position P&L
+  unrealizedPnL: number               // Open position P&L
+}
+```
+
+**Fill Logic:**
+1. Check if order price crosses current best bid/ask
+2. Apply slippage to fill price
+3. Deduct fees from fill
+4. Update position and balance
+5. Calculate PnL
+
+### 2. Risk Manager
+**Location:** `apps/backend/src/trading/riskManager.ts`
+
+**Purpose:** Enforce risk limits and circuit breakers
+
+**Circuit Breakers:**
+
+| Limit | Default | Action When Breached |
+|-------|---------|---------------------|
+| Max Exposure per Market | $1000 | Reject new orders |
+| Max Open Orders | 50 | Reject new orders |
+| Max Drawdown | 20% | Halt all trading |
+| Error Rate Threshold | 10% | Enter cooldown period |
+
+**Kill Switch:**
+- Emergency stop mechanism
+- Cancels all open orders
+- Disables new order placement
+- Requires manual reset via admin API
+- Triggered by: POST `/kill` with `ADMIN_TOKEN`
+
+**Pre-Trade Checks:**
+```typescript
+interface RiskCheckResult {
+  allowed: boolean
+  reason?: string
+  metrics: {
+    currentExposure: number
+    openOrderCount: number
+    currentDrawdown: number
+    errorRate: number
+  }
+}
+```
+
+### 3. Trading Client (Live)
+**Location:** `apps/backend/src/clients/tradingClient.ts`
+
+**Purpose:** Interface for live trading on Polymarket
+
+**Dependencies:**
+- `@polymarket/clob-client` - Official Polymarket SDK
+- `ethers` - Ethereum wallet management
+
+**Capabilities:**
+- Create limit orders (BUY/SELL)
+- Cancel orders
+- Fetch open orders
+- Fetch trade fills
+- Fetch positions and balances
+- State reconciliation on startup
+
+**Authentication Flow:**
+1. Load private key from environment
+2. Create ethers Wallet
+3. Initialize ClobClient with wallet
+4. Sign orders with L2 API credentials
+
+**State Reconciliation:**
+On startup, fetch from CLOB API:
+- All open orders
+- Current positions
+- Account balances
+- Compare with local state
+- Alert on discrepancies > threshold
+
+---
+
+## Execution Layer
+
+### Order Management Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ORDER LIFECYCLE                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. SIGNAL GENERATION                                       │
+│     ↓                                                       │
+│  2. RISK CHECKS (Pre-trade validation)                     │
+│     ├─ Exposure limits                                     │
+│     ├─ Position limits                                     │
+│     ├─ Drawdown limits                                     │
+│     └─ Circuit breaker status                              │
+│     ↓                                                       │
+│  3. ORDER CREATION                                          │
+│     ├─ Validate tick size                                  │
+│     ├─ Validate min order size                             │
+│     └─ Generate order ID                                   │
+│     ↓                                                       │
+│  4. ORDER SUBMISSION                                        │
+│     ├─ [Live] Sign with API credentials                    │
+│     ├─ [Live] Submit to CLOB API                           │
+│     ├─ [Paper] Add to simulated orderbook                  │
+│     └─ Store in local state                                │
+│     ↓                                                       │
+│  5. ORDER TRACKING                                          │
+│     ├─ WebSocket updates (user channel)                    │
+│     ├─ Status: OPEN → MATCHED → FILLED                     │
+│     └─ Partial fills supported                             │
+│     ↓                                                       │
+│  6. FILL PROCESSING                                         │
+│     ├─ Update position                                      │
+│     ├─ Update balance                                       │
+│     ├─ Calculate PnL                                        │
+│     └─ Emit fill event                                      │
+│     ↓                                                       │
+│  7. POST-TRADE                                              │
+│     ├─ Update metrics                                       │
+│     ├─ Check risk limits                                    │
+│     └─ Strategy reacts to fill                              │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Order Data Model
+
+```typescript
+interface Order {
+  orderId: string              // Unique order identifier
+  tokenId: string              // Market token ID
+  side: 'BUY' | 'SELL'        // Order direction
+  price: string                // Limit price (decimal string)
+  size: string                 // Order quantity (decimal string)
+  status: OrderStatus          // OPEN | MATCHED | CANCELLED | EXPIRED
+  createdAt: number            // Unix timestamp
+  filledSize: string           // Quantity filled so far
+  remainingSize: string        // Quantity still open
+}
+
+interface Fill {
+  fillId: string               // Unique fill identifier
+  orderId: string              // Associated order ID
+  tokenId: string              // Market token ID
+  side: 'BUY' | 'SELL'        // Fill direction
+  price: string                // Execution price
+  size: string                 // Fill quantity
+  fee: string                  // Trading fee paid
+  timestamp: number            // Unix timestamp
+}
+
+interface Position {
+  tokenId: string              // Market token ID
+  size: string                 // Net position (positive=long, negative=short)
+  averagePrice: string         // Average entry price
+  realizedPnL: string          // Closed position P&L
+  unrealizedPnL: string        // Open position P&L
+  lastUpdate: number           // Unix timestamp
+}
+```
+
+### Reconciliation Process
+
+**Trigger:** Server startup or WebSocket reconnect
+
+**Steps:**
+1. Fetch remote state from CLOB API:
+   - `GET /orders` - All open orders
+   - `GET /positions` - Current positions
+   - `GET /balances` - Account balances
+2. Compare with local state
+3. Identify discrepancies:
+   - Orders exist remotely but not locally
+   - Orders exist locally but not remotely
+   - Position size mismatch
+   - Balance mismatch
+4. Resolution strategy:
+   - **Remote state is source of truth**
+   - Update local state to match remote
+   - Log all discrepancies
+   - Alert if discrepancy > threshold
+
+---
+
+## Adapters
+
+### 1. Gamma Client (Market Discovery)
+**Location:** `apps/backend/src/clients/gamma.ts`
+
+**API Base:** `https://gamma-api.polymarket.com`
+
+**Endpoints:**
+- `GET /markets` - Fetch all active markets
+- `GET /events` - Fetch market events
+
+**Features:**
+- Retry logic with exponential backoff
+- Timeout handling (30s default)
+- Response validation
+
+**Usage:**
+```typescript
+const gamma = new GammaClient();
+const markets = await gamma.getActiveMarkets();
+```
+
+**Market Data Model:**
+```typescript
+interface Market {
+  condition_id: string
+  question: string
+  end_date_iso: string
+  tokens: Token[]
+  // ... additional fields
+}
+```
+
+### 2. CLOB Client (Orderbook)
+**Location:** `apps/backend/src/clients/clob.ts`
+
+**API Base:** `https://clob.polymarket.com`
+
+**Endpoints:**
+- `GET /book` - Fetch orderbook snapshot
+- `POST /order` - Create order (via SDK)
+- `DELETE /order` - Cancel order (via SDK)
+
+**Features:**
+- Wraps `@polymarket/clob-client` SDK
+- Retry logic
+- Timeout handling
+- Authentication with API credentials
+
+**Usage:**
+```typescript
+const clob = new ClobClient();
+const orderbook = await clob.getOrderbook(tokenId);
+```
+
+**Orderbook Data Model:**
+```typescript
+interface Orderbook {
+  market: string
+  asset_id: string
+  bids: PriceLevel[]    // Buy orders (descending by price)
+  asks: PriceLevel[]    // Sell orders (ascending by price)
+  timestamp: number
+}
+
+interface PriceLevel {
+  price: string         // Limit price
+  size: string          // Total quantity at this price
+}
+```
+
+### 3. Market Feed (Real-time Data)
+**Location:** `apps/backend/src/clients/marketFeed.ts`
+
+**WebSocket URL:** `wss://ws-subscriptions-clob.polymarket.com`
+
+**Channels:**
+- `market` - Orderbook updates for specific tokens
+
+**Message Types:**
+```typescript
+type MarketMessage = {
+  event_type: 'book' | 'last_trade_price'
+  market: string
+  asset_id: string
+  timestamp: number
+  // ... message-specific fields
+}
+```
+
+**Features:**
+- Auto-subscribe to configured tokens
+- Event-driven message handling
+- Integration with OrderbookCache
+- Automatic resync on reconnect
+
+**Usage:**
+```typescript
+const feed = new MarketFeedClient(tokenIds, orderbookCache);
+feed.on('orderbook', (tokenId, orderbook) => {
+  // Handle orderbook update
+});
+await feed.connect();
+```
+
+### 4. WebSocket Base Client
+**Location:** `apps/backend/src/clients/websocket.ts`
+
+**Purpose:** Abstract WebSocket connection management
+
+**Features:**
+- **Auto-reconnect** with exponential backoff + jitter
+- **State management:** DISCONNECTED → CONNECTING → CONNECTED → CLOSED
+- **Heartbeat/ping-pong** support
+- **Event emitter** pattern
+- **Configurable reconnect delays**
+
+**Connection States:**
+```typescript
+enum WebSocketState {
+  DISCONNECTED,  // Initial or after disconnect
+  CONNECTING,    // Connection attempt in progress
+  CONNECTED,     // Active connection
+  CLOSED         // Intentionally closed (no reconnect)
+}
+```
+
+**Reconnect Logic:**
+```typescript
+// Exponential backoff with jitter
+delay = min(baseDelay * 2^attempt + random(0, jitter), maxDelay)
+
+// Default config:
+baseDelay: 1000ms
+maxDelay: 30000ms
+maxReconnectAttempts: Infinity
+```
+
+**Events:**
+- `open` - Connection established
+- `message` - Message received
+- `close` - Connection closed
+- `error` - Error occurred
+- `reconnecting` - Reconnect attempt starting
+
+---
+
+## Persistence Layer
+
+### Current State: In-Memory Only ⚠️
+
+**Implications:**
+- All state lost on server restart
+- No audit trail persistence
+- Cannot replay or backtest historical data
+- Reconciliation required on every startup
+
+### 1. Orderbook Cache
+**Location:** `apps/backend/src/clients/orderbookCache.ts`
+
+**Data Structure:**
+```typescript
+class OrderbookCache {
+  private cache: Map<string, Orderbook>
+  
+  set(tokenId: string, orderbook: Orderbook): void
+  get(tokenId: string): Orderbook | undefined
+  clear(): void
+}
+```
+
+**Lifecycle:**
+- Populated by MarketFeedClient on orderbook updates
+- Cleared on WebSocket disconnect
+- Used by paper trading engine for fill simulation
+
+### 2. Trading State (In-Memory)
+**Location:** `apps/backend/src/trading/paperTradingEngine.ts` and `apps/backend/src/clients/tradingClient.ts`
+
+**Stored State:**
+- Active orders (Map)
+- Fill history (Array)
+- Positions (Map)
+- Balances (Object)
+- PnL metrics
+
+**Reconciliation:** 
+- Live trading client reconciles with CLOB API on startup
+- Paper trading state is lost on restart (no persistence)
+
+### 3. Future Persistence Requirements
+
+**Needed:**
+- Database for audit trail (orders, fills, positions)
+- Time-series database for metrics (PnL, exposure, etc.)
+- Object storage for orderbook snapshots
+- Event log for replay and debugging
+
+**Candidates:**
+- PostgreSQL for relational data (orders, fills, positions)
+- TimescaleDB or InfluxDB for time-series metrics
+- Redis for caching and session state
+- S3/GCS for orderbook snapshots
+
+---
+
+## Monitoring & Dashboard
+
+### 1. Structured Logging
+**Location:** `apps/backend/src/utils/logger.ts`
+
+**Format:** JSON-based structured logging
+
+**Log Levels:**
+- `ERROR` - Critical failures
+- `WARN` - Warning conditions
+- `INFO` - Informational messages
+- `DEBUG` - Detailed debug information
+
+**Configuration:**
+```typescript
+LOG_LEVEL=debug  # Set via environment variable
+```
+
+**Log Structure:**
+```json
+{
+  "level": "info",
+  "timestamp": "2026-01-31T20:00:00.000Z",
+  "message": "Order filled",
+  "orderId": "abc123",
+  "tokenId": "456",
+  "side": "BUY",
+  "price": "0.50",
+  "size": "10"
+}
+```
+
+**Usage:**
+```typescript
+import { logger } from './utils/logger';
+
+logger.info('Order submitted', { orderId, tokenId });
+logger.error('API error', { error: err.message });
+```
+
+### 2. Health Check
+**Endpoint:** `GET /health`
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "uptime": 3600,
+  "memory": {
+    "used": 50000000,
+    "total": 100000000
+  },
+  "timestamp": 1738357200000
+}
+```
+
+### 3. Status Endpoints
+
+**Trading Status:** `GET /status`
+```json
+{
+  "mode": "live" | "paper",
+  "liveTradingEnabled": true,
+  "walletAddress": "0x...",
+  "feedConnected": true,
+  "killSwitchActive": false
+}
+```
+
+**Trading State:** `GET /state`
+```json
+{
+  "orders": [...],
+  "fills": [...],
+  "positions": [...],
+  "balances": {...},
+  "pnl": {
+    "realized": "123.45",
+    "unrealized": "67.89",
+    "total": "191.34"
+  }
+}
+```
+
+**Market Feed Status:** `GET /feed/status`
+```json
+{
+  "connected": true,
+  "cachedOrderbooks": 5,
+  "subscriptions": ["token1", "token2", "token3"]
+}
+```
+
+### 4. Kill Switch
+**Endpoint:** `POST /kill`
+
+**Authentication:** Requires `Authorization: Bearer <ADMIN_TOKEN>` header
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Kill switch activated",
+  "cancelledOrders": 10
+}
+```
+
+**Effects:**
+- Cancels all open orders
+- Sets `killSwitchActive = true`
+- Blocks all new order submissions
+- Requires manual reset to resume
+
+### 5. Frontend Dashboard (Future)
+**Location:** `apps/frontend/`
+
+**Planned Features:**
+- Real-time PnL chart
+- Active orders table
+- Position summary
+- Risk metrics gauges
+- Connection status indicators
+- Kill switch button
+- Log viewer
+
+---
+
+## Critical Paths
+
+### Path 1: Market Discovery → Data Ingest
+```
+┌──────────────────────────────────────────────────────────────┐
+│  CRITICAL PATH 1: MARKET DISCOVERY → DATA INGEST            │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. MARKET DISCOVERY                                         │
+│     ↓                                                        │
+│     GammaClient.getActiveMarkets()                          │
+│     ├─ GET https://gamma-api.polymarket.com/markets        │
+│     ├─ Parse response (markets + tokens)                    │
+│     └─ Filter by criteria (volume, liquidity, etc.)         │
+│     ↓                                                        │
+│  2. TOKEN SELECTION                                          │
+│     ↓                                                        │
+│     Extract TOKEN_IDS from config or discovery              │
+│     ├─ Validate token format                                │
+│     └─ Store token metadata                                 │
+│     ↓                                                        │
+│  3. ORDERBOOK BOOTSTRAP                                      │
+│     ↓                                                        │
+│     ClobClient.getOrderbook(tokenId)                        │
+│     ├─ GET https://clob.polymarket.com/book                │
+│     ├─ Parse bids/asks arrays                               │
+│     └─ Populate OrderbookCache                              │
+│     ↓                                                        │
+│  4. WEBSOCKET SUBSCRIPTION                                   │
+│     ↓                                                        │
+│     MarketFeedClient.connect()                              │
+│     ├─ WebSocket handshake                                  │
+│     ├─ Subscribe to market channel for each token           │
+│     └─ Start receiving real-time updates                    │
+│     ↓                                                        │
+│  5. DATA INGEST LOOP                                         │
+│     ↓                                                        │
+│     On WebSocket message:                                    │
+│     ├─ Parse orderbook update                               │
+│     ├─ Update OrderbookCache                                │
+│     ├─ Emit 'orderbook' event                               │
+│     └─ Strategy consumes update                             │
+│                                                              │
+│  FAILURE MODES:                                              │
+│  • Gamma API unavailable → Retry or use fallback list       │
+│  • CLOB API unavailable → Cannot bootstrap, wait & retry    │
+│  • WebSocket disconnect → Auto-reconnect + resync           │
+│  • Invalid orderbook data → Log error, skip update          │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Path 2: Signal → Risk Check → Order
+```
+┌──────────────────────────────────────────────────────────────┐
+│  CRITICAL PATH 2: SIGNAL GENERATION → ORDER PLACEMENT       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. SIGNAL GENERATION                                        │
+│     ↓                                                        │
+│     Strategy analyzes orderbook update                      │
+│     ├─ Market making: Calculate bid/ask quotes              │
+│     ├─ Arbitrage: Detect YES+NO price inefficiency          │
+│     └─ Generate order intent (side, price, size)            │
+│     ↓                                                        │
+│  2. PRE-TRADE VALIDATION                                     │
+│     ↓                                                        │
+│     Validate order parameters                                │
+│     ├─ Price aligns with tick size (e.g., $0.01)           │
+│     ├─ Size meets minimum order size (e.g., 1 share)       │
+│     ├─ Side is valid (BUY or SELL)                          │
+│     └─ Token ID is valid                                     │
+│     ↓                                                        │
+│  3. RISK CHECKS                                              │
+│     ↓                                                        │
+│     RiskManager.checkOrder(order)                           │
+│     ├─ Check exposure: position + order ≤ max exposure      │
+│     ├─ Check order count: open orders < max open orders     │
+│     ├─ Check drawdown: current drawdown < max drawdown      │
+│     ├─ Check error rate: recent errors < threshold          │
+│     ├─ Check kill switch: not activated                     │
+│     └─ Return RiskCheckResult                               │
+│     ↓                                                        │
+│     If any check fails → REJECT order, log reason           │
+│     ↓                                                        │
+│  4. ORDER CREATION                                           │
+│     ↓                                                        │
+│     Create Order object                                      │
+│     ├─ Generate unique order ID                             │
+│     ├─ Set status = OPEN                                    │
+│     ├─ Set timestamp                                         │
+│     └─ Store in local state                                 │
+│     ↓                                                        │
+│  5. ORDER SUBMISSION                                         │
+│     ↓                                                        │
+│     [LIVE MODE]                                              │
+│     TradingClient.createOrder(order)                        │
+│     ├─ Sign order with API credentials (HMAC)               │
+│     ├─ POST to CLOB API                                     │
+│     ├─ Receive order confirmation                           │
+│     └─ Update order status                                  │
+│     ↓                                                        │
+│     [PAPER MODE]                                             │
+│     PaperTradingEngine.createOrder(order)                   │
+│     ├─ Add to simulated order list                          │
+│     ├─ Check if order crosses orderbook (immediate fill)    │
+│     └─ Update simulated state                               │
+│     ↓                                                        │
+│  6. POST-SUBMISSION                                          │
+│     ↓                                                        │
+│     Emit 'order_created' event                              │
+│     ├─ Update metrics                                        │
+│     ├─ Log order details                                     │
+│     └─ Wait for fill updates                                │
+│                                                              │
+│  FAILURE MODES:                                              │
+│  • Risk check fails → Order rejected, log reason            │
+│  • API error → Retry with backoff, alert on repeated fails  │
+│  • Order rejected by exchange → Log, analyze, adjust        │
+│  • Kill switch active → Block order, alert operator         │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Path 3: Order Lifecycle → PnL/Reporting
+```
+┌──────────────────────────────────────────────────────────────┐
+│  CRITICAL PATH 3: ORDER LIFECYCLE → PNL → REPORTING         │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. ORDER SUBMITTED (from Path 2)                            │
+│     ↓                                                        │
+│     Order status: OPEN                                       │
+│     ├─ Order sits on orderbook                              │
+│     ├─ Wait for counterparty                                │
+│     └─ Subscribe to order updates (WebSocket user channel)  │
+│     ↓                                                        │
+│  2. ORDER MATCHING                                           │
+│     ↓                                                        │
+│     [LIVE MODE]                                              │
+│     ├─ CLOB engine matches order                            │
+│     ├─ WebSocket sends 'order_matched' message              │
+│     └─ Update order status: MATCHED                         │
+│     ↓                                                        │
+│     [PAPER MODE]                                             │
+│     ├─ On orderbook update, check if order crosses          │
+│     ├─ Simulate matching against best bid/ask               │
+│     └─ Update order status: MATCHED                         │
+│     ↓                                                        │
+│  3. ORDER FILLING                                            │
+│     ↓                                                        │
+│     Create Fill object                                       │
+│     ├─ fillId: unique identifier                            │
+│     ├─ orderId: reference to order                          │
+│     ├─ price: execution price                               │
+│     ├─ size: filled quantity                                │
+│     ├─ fee: trading fee (if any)                            │
+│     └─ timestamp: fill time                                 │
+│     ↓                                                        │
+│     Update Order                                             │
+│     ├─ filledSize += fill.size                              │
+│     ├─ remainingSize -= fill.size                           │
+│     └─ If remainingSize == 0 → status = FILLED              │
+│     ↓                                                        │
+│  4. POSITION UPDATE                                          │
+│     ↓                                                        │
+│     Update Position for tokenId                             │
+│     ├─ BUY: size += fill.size                               │
+│     ├─ SELL: size -= fill.size                              │
+│     ├─ Recalculate averagePrice                             │
+│     └─ Update lastUpdate timestamp                          │
+│     ↓                                                        │
+│  5. BALANCE UPDATE                                           │
+│     ↓                                                        │
+│     Update USDC balance                                      │
+│     ├─ BUY: balance -= (fill.price * fill.size + fill.fee) │
+│     ├─ SELL: balance += (fill.price * fill.size - fill.fee)│
+│     └─ Validate balance remains non-negative                │
+│     ↓                                                        │
+│  6. PNL CALCULATION                                          │
+│     ↓                                                        │
+│     If position closed (size = 0):                           │
+│     ├─ Calculate realized PnL                               │
+│     ├─ realizedPnL = sellValue - buyValue - fees            │
+│     └─ Update cumulative realized PnL                       │
+│     ↓                                                        │
+│     If position still open:                                  │
+│     ├─ Calculate unrealized PnL                             │
+│     ├─ unrealizedPnL = currentValue - costBasis             │
+│     └─ Update unrealized PnL                                │
+│     ↓                                                        │
+│  7. METRICS UPDATE                                           │
+│     ↓                                                        │
+│     Update trading metrics                                   │
+│     ├─ Total fills count                                    │
+│     ├─ Total volume traded                                  │
+│     ├─ Win rate (profitable trades / total trades)          │
+│     ├─ Average fill price                                   │
+│     └─ Current drawdown                                     │
+│     ↓                                                        │
+│  8. REPORTING & LOGGING                                      │
+│     ↓                                                        │
+│     Log fill event                                           │
+│     ├─ Structured JSON log                                  │
+│     ├─ Include all fill details                             │
+│     └─ Include PnL impact                                   │
+│     ↓                                                        │
+│     Emit 'fill' event                                        │
+│     ├─ Strategy reacts to fill                              │
+│     ├─ Risk manager updates exposure                        │
+│     └─ Monitoring dashboard updates                         │
+│     ↓                                                        │
+│     Expose via API endpoints                                 │
+│     ├─ GET /state - Full trading state                      │
+│     ├─ GET /fills - Fill history                            │
+│     └─ GET /orders - Order status                           │
+│                                                              │
+│  FAILURE MODES:                                              │
+│  • Fill notification missed → Reconciliation detects gap    │
+│  • PnL calculation error → Log error, alert, manual review  │
+│  • Balance goes negative → Circuit breaker triggers         │
+│  • Position size mismatch → Reconciliation corrects         │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Complete Critical Path Visualization
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        COMPLETE CRITICAL PATH                               │
+│                   (Market → Order → Fill → PnL → Report)                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    MARKET DISCOVERY           DATA INGEST              SIGNAL GENERATION
+    ===============            ===========              =================
+           │                        │                          │
+           ▼                        ▼                          ▼
+    ┌──────────────┐       ┌──────────────┐          ┌──────────────┐
+    │ Gamma API:   │       │ CLOB REST:   │          │ Strategy     │
+    │ Get Active   │──────▶│ Bootstrap    │─────────▶│ Analyzes     │
+    │ Markets      │       │ Orderbooks   │          │ Orderbook    │
+    └──────────────┘       └──────────────┘          └──────┬───────┘
+                                   │                         │
+                                   ▼                         ▼
+                           ┌──────────────┐          ┌──────────────┐
+                           │ WebSocket:   │          │ Generate     │
+                           │ Real-time    │          │ Order Intent │
+                           │ Updates      │          │ (side, $, Ø) │
+                           └──────┬───────┘          └──────┬───────┘
+                                  │                         │
+                                  ▼                         │
+                           ┌──────────────┐                │
+                           │ Orderbook    │                │
+                           │ Cache        │                │
+                           └──────────────┘                │
+                                                            │
+    RISK CHECKS                ORDER SUBMISSION            FILL PROCESSING
+    ===========                ================            ===============
+           │                          │                          │
+           ▼                          ▼                          ▼
+    ┌──────────────┐         ┌──────────────┐          ┌──────────────┐
+    │ Risk Manager │         │ [LIVE]       │          │ WebSocket:   │
+    │ Validates:   │────────▶│ CLOB API     │─────────▶│ Fill         │
+    │ • Exposure   │         │ Submit Order │          │ Notification │
+    │ • Limits     │         │              │          └──────┬───────┘
+    │ • Drawdown   │         │ [PAPER]      │                 │
+    │ • Kill SW    │         │ Simulate     │                 ▼
+    └──────────────┘         │ Fill         │          ┌──────────────┐
+           │                 └──────┬───────┘          │ Update:      │
+           │                        │                  │ • Position   │
+           ▼                        ▼                  │ • Balance    │
+    ┌──────────────┐         ┌──────────────┐         │ • PnL        │
+    │ If PASS:     │         │ Order Status │         └──────┬───────┘
+    │ Continue     │         │ = OPEN       │                │
+    │              │         └──────────────┘                ▼
+    │ If FAIL:     │                                  ┌──────────────┐
+    │ Reject Order │                                  │ Realized PnL │
+    └──────────────┘                                  │ Unrealized   │
+                                                      │ PnL          │
+                                                      └──────┬───────┘
+                                                             │
+    REPORTING & MONITORING                                   │
+    ======================                                   │
+           │                                                 │
+           ▼                                                 ▼
+    ┌──────────────┐         ┌──────────────┐       ┌──────────────┐
+    │ Structured   │         │ HTTP API     │       │ Metrics      │
+    │ Logs (JSON)  │◀────────│ Endpoints    │◀──────│ Update       │
+    └──────────────┘         │ /state       │       │ • Volume     │
+           │                 │ /fills       │       │ • Win Rate   │
+           │                 │ /orders      │       │ • Exposure   │
+           │                 └──────────────┘       └──────────────┘
+           ▼
+    ┌──────────────┐
+    │ Dashboard    │
+    │ (Future)     │
+    └──────────────┘
+
+    ⚠️  FAILURE RECOVERY POINTS:
+    • WebSocket disconnect → Auto-reconnect + resync from REST API
+    • API error → Exponential backoff retry
+    • Risk check fail → Order rejected, log reason
+    • Kill switch → Cancel all orders, halt trading
+    • State mismatch → Reconciliation on startup/reconnect
+```
+
+---
+
+## Technology Stack
+
+### Runtime & Language
+- **Node.js** >= 20.0.0
+- **TypeScript** (strict mode)
+- **tsx** (development execution)
+
+### HTTP & Networking
+- **Native http module** (server)
+- **axios** (HTTP client)
+- **ws** (WebSocket client)
+
+### Blockchain & Trading
+- **ethers.js** v6 (wallet management)
+- **@polymarket/clob-client** (official Polymarket SDK)
+
+### Configuration & Validation
+- **Zod** (schema validation)
+- **dotenv** (environment variables)
+
+### Logging & Monitoring
+- **Custom logger** (JSON structured logs)
+
+### Testing
+- **Vitest** (unit and integration tests)
+
+### Build & Tooling
+- **TypeScript Compiler** (tsc)
+- **npm workspaces** (monorepo management)
+
+### Monorepo Structure
+```
+polymarket-bot/
+├── apps/
+│   ├── backend/          # Node.js + TypeScript
+│   └── frontend/         # React (minimal)
+└── packages/
+    └── shared/           # Shared TypeScript types
+```
+
+---
+
+## Module Dependency Graph
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         MODULE DEPENDENCIES                              │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│                          apps/backend/src/                               │
+│                                                                          │
+│                        ┌─────────────────┐                              │
+│                        │   index.ts      │ (Entry point)                │
+│                        └────────┬────────┘                              │
+│                                 │                                        │
+│                  ┌──────────────┼──────────────┐                        │
+│                  │              │              │                         │
+│         ┌────────▼────────┐    │    ┌────────▼────────┐                │
+│         │ server/index.ts │    │    │  cli/index.ts   │                │
+│         └────────┬────────┘    │    └────────┬────────┘                │
+│                  │             │             │                          │
+│                  │             │             │                          │
+│    ┌─────────────┼─────────────┼─────────────┼─────────────┐           │
+│    │             │             │             │             │           │
+│    ▼             ▼             ▼             ▼             ▼           │
+│ ┌──────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌────────┐      │
+│ │config│   │  logger │   │ clients │   │ trading │   │ server │      │
+│ └──┬───┘   └─────────┘   └────┬────┘   └────┬────┘   └────────┘      │
+│    │                           │             │                         │
+│    │                           │             │                         │
+│    │         ┌─────────────────┼─────────────┤                         │
+│    │         │                 │             │                         │
+│    │         ▼                 ▼             ▼                         │
+│    │   ┌──────────┐     ┌──────────┐  ┌──────────────┐               │
+│    │   │  gamma   │     │   clob   │  │ paperTrading │               │
+│    │   │  Client  │     │  Client  │  │   Engine     │               │
+│    │   └──────────┘     └──────────┘  └──────────────┘               │
+│    │         │                 │             │                         │
+│    │         │                 │             │                         │
+│    │         ▼                 ▼             ▼                         │
+│    │   ┌──────────┐     ┌──────────┐  ┌──────────────┐               │
+│    │   │ websocket│     │  market  │  │ riskManager  │               │
+│    │   │   Base   │     │   Feed   │  └──────────────┘               │
+│    │   └──────────┘     └────┬─────┘                                  │
+│    │         │               │                                         │
+│    │         │               ▼                                         │
+│    │         │         ┌──────────┐                                    │
+│    │         │         │orderbook │                                    │
+│    │         │         │  Cache   │                                    │
+│    │         │         └──────────┘                                    │
+│    │         │                                                          │
+│    │         └────────── Uses WebSocket Base                           │
+│    │                                                                    │
+│    └─────────── Provides config to all modules                         │
+│                                                                          │
+│                                                                          │
+│                      packages/shared/src/                               │
+│                                                                          │
+│                        ┌─────────────┐                                  │
+│                        │   types/    │                                  │
+│                        │  index.ts   │                                  │
+│                        └──────┬──────┘                                  │
+│                               │                                          │
+│                Used by all backend modules                              │
+│                (Token, Market, Orderbook, Order, Fill, Position)        │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+DEPENDENCY RULES:
+1. config/ has no dependencies (leaf module)
+2. types/ (shared) has no dependencies
+3. utils/ (logger) has minimal dependencies
+4. clients/ depend on config, logger, types
+5. trading/ depends on clients, config, logger, types
+6. server/ depends on all modules (top-level orchestration)
+7. cli/ depends on clients, config, logger
+8. index.ts depends on server and cli (router)
+
+CIRCULAR DEPENDENCY PREVENTION:
+- All modules import from config (one-way)
+- Types in shared package (no backend imports)
+- Logger is utility only (imported, never imports business logic)
+- Clients don't import from trading
+- Trading imports from clients (one-way)
+```
+
+---
+
+## Compliance & Safety
+
+### Hard Rules (Non-Negotiable)
+
+1. **Compliance First**
+   - No VPN/proxy/geo-bypass implementation
+   - Respect geoblocking and ToS
+   - Compliance checks before live trading
+
+2. **Default Paper Trading**
+   - System starts in paper trading mode
+   - Explicit flags required for live trading
+
+3. **Live Trading Gates**
+   - Requires `LIVE_TRADING=true`
+   - Requires `COMPLIANCE_ACCEPTED=true`
+   - Both must be set, or orders are blocked (fail closed)
+
+4. **Secret Management**
+   - Never commit secrets to repository
+   - Use `.env` files (gitignored)
+   - Provide `.env.example` template
+   - Frontend never receives secrets
+
+5. **Reliability**
+   - WebSocket reconnect with resync
+   - Idempotent order operations
+   - Startup reconciliation
+   - Circuit breakers for safety
+   - Kill switch for emergencies
+
+6. **Testing**
+   - PR not done until `npm test` passes
+   - Maintain existing test coverage
+   - Add tests for new features
+
+---
+
+## Future Architecture Improvements
+
+### Short-Term
+- [ ] Add database persistence (PostgreSQL)
+- [ ] Implement time-series metrics (TimescaleDB/InfluxDB)
+- [ ] Build React monitoring dashboard
+- [ ] Add Redis caching layer
+- [ ] Implement audit trail logging
+
+### Medium-Term
+- [ ] Multi-strategy support with plugin architecture
+- [ ] Advanced risk analytics
+- [ ] Machine learning signal integration
+- [ ] Multi-market portfolio optimization
+- [ ] Automated backtesting framework
+
+### Long-Term
+- [ ] Distributed system for high availability
+- [ ] Cross-exchange arbitrage
+- [ ] Cloud-native deployment (Kubernetes)
+- [ ] Advanced monitoring with Grafana/Prometheus
+- [ ] Mobile app for monitoring and alerts
+
+---
+
+## References
+
+- [System Overview (Non-technical)](../SYSTEM_OVERVIEW.md)
+- [ADR-0001: Architecture Decisions](./ADR-0001.md)
+- [Implementation Checklist](./IMPLEMENTATION_CHECKLIST.md)
+- [Runbook (Operational Procedures)](./RUNBOOK.md)
+- [Master Development Plan](../MASTER_DEVELOPMENT_PLAN.md)
+
+---
+
+**Document End**
