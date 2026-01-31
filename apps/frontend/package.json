@@ -4,14 +4,21 @@
   "private": true,
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsx src/index.ts"
+    "dev": "npx http-server public -p 8080 -c-1",
+    "start": "npx http-server public -p 8080"
   },
   "dependencies": {
-    "@polymarket/shared": "file:../../packages/shared"
+    "@polymarket/shared": "file:../../packages/shared",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

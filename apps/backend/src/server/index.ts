@@ -4,6 +4,8 @@ import { logger } from '../utils/logger';
 import { config } from '../config';
 import { marketFeedService } from './marketFeedService';
 import { calculateOrderbookSummary } from '../utils/orderbook';
+import { tradingClient } from '../clients/tradingClient';
+import { isLiveTradingEnabled } from '../utils/liveTrading';
 
 const respondJson = (res: http.ServerResponse, statusCode: number, payload: unknown): void => {
   const body = JSON.stringify(payload);
@@ -15,7 +17,7 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
 };
 
 export function createServer(): http.Server {
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     const method = req.method ?? 'GET';
     const url = req.url ?? '/';
 
@@ -77,6 +79,76 @@ export function createServer(): http.Server {
       return;
     }
 
+    // Trading status
+    if (method === 'GET' && url === '/status') {
+      const status = {
+        liveTrading: isLiveTradingEnabled(),
+        tradingClientInitialized: tradingClient.isInitialized(),
+        walletAddress: tradingClient.getAddress(),
+        marketFeedConnected: marketFeedService.isConnected(),
+        timestamp: Date.now(),
+      };
+      respondJson(res, 200, status);
+      logger.info('Trading status retrieved');
+      return;
+    }
+
+    // Trading state (orders, positions, balances)
+    if (method === 'GET' && url === '/state') {
+      try {
+        const state = tradingClient.getState();
+        respondJson(res, 200, state);
+        logger.info('Trading state retrieved');
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to get state',
+        });
+      }
+      return;
+    }
+
+    // Get orders
+    if (method === 'GET' && url === '/orders') {
+      try {
+        const state = tradingClient.getState();
+        respondJson(res, 200, { orders: state.orders });
+        logger.info('Orders retrieved', { count: state.orders.length });
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to get orders',
+        });
+      }
+      return;
+    }
+
+    // Get fills
+    if (method === 'GET' && url === '/fills') {
+      try {
+        const state = tradingClient.getState();
+        respondJson(res, 200, { fills: state.fills });
+        logger.info('Fills retrieved', { count: state.fills.length });
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to get fills',
+        });
+      }
+      return;
+    }
+
+    // Kill switch - cancel all orders
+    if (method === 'POST' && url === '/kill-switch') {
+      try {
+        await tradingClient.cancelAllOrders();
+        respondJson(res, 200, { success: true, message: 'All orders cancelled' });
+        logger.warn('Kill switch activated via API');
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to cancel orders',
+        });
+      }
+      return;
+    }
+
     respondJson(res, 404, { error: 'Not Found' });
   });
 }
@@ -87,6 +159,16 @@ export function startServer(): http.Server {
   // Start market feed service
   marketFeedService.start();
   
+  // Initialize trading client if live trading is enabled
+  if (isLiveTradingEnabled()) {
+    tradingClient.initialize().catch((error) => {
+      logger.error('Failed to initialize trading client', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      logger.warn('Server will continue without trading capabilities');
+    });
+  }
+  
   server.listen(config.port, () => {
     logger.info('Server listening', { port: config.port });
   });
@@ -95,10 +177,25 @@ export function startServer(): http.Server {
   const shutdown = () => {
     logger.info('Shutting down server...');
     marketFeedService.stop();
-    server.close(() => {
-      logger.info('Server stopped');
-      process.exit(0);
-    });
+    
+    // Cancel all orders before shutdown if trading is enabled
+    if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+      tradingClient.cancelAllOrders().catch((error) => {
+        logger.error('Failed to cancel orders during shutdown', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }).finally(() => {
+        server.close(() => {
+          logger.info('Server stopped');
+          process.exit(0);
+        });
+      });
+    } else {
+      server.close(() => {
+        logger.info('Server stopped');
+        process.exit(0);
+      });
+    }
   };
 
   process.on('SIGTERM', shutdown);

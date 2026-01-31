@@ -52,6 +52,9 @@ const envSchema = z.object({
   LIVE_TRADING: booleanFromEnv.default(false),
   COMPLIANCE_ACCEPTED: booleanFromEnv.default(false),
   PORT: numberFromEnv(3000, z.number().int().positive()),
+  // Trading credentials (optional - only required for live trading)
+  PRIVATE_KEY: z.string().optional(),
+  CHAIN_ID: numberFromEnv(137, z.number().int().positive()), // 137 = Polygon Mainnet
 });
 
 const configSchema = envSchema.transform((env) => ({
@@ -65,6 +68,8 @@ const configSchema = envSchema.transform((env) => ({
   liveTrading: env.LIVE_TRADING,
   complianceAccepted: env.COMPLIANCE_ACCEPTED,
   port: env.PORT,
+  privateKey: env.PRIVATE_KEY,
+  chainId: env.CHAIN_ID,
 }));
 
 export type Config = z.infer<typeof configSchema>;
