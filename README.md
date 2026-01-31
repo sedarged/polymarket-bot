@@ -5,6 +5,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 ## 📚 Documentation
 
 - **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
+- **[Architecture Map](./docs/ARCHITECTURE.md)** - Technical architecture documentation with critical paths and module dependencies
 - **[Environment Setup](./docs/ENVIRONMENT.md)** - Complete development environment and command reference
 - **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
 - **[Runbook](./docs/RUNBOOK.md)** - Operational procedures for running the bot
