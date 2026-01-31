@@ -98,6 +98,26 @@ describe('RiskManager', () => {
       expect(result.allowed).toBe(true);
     });
 
+    it('should reject order when sell increases short exposure beyond limit', () => {
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '-90', // Currently short 90
+        averagePrice: '0.50',
+      }];
+
+      // SELL 20 would increase short to -110, which exceeds limit of 100
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'SELL',
+        '20',
+        [],
+        positions
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Max exposure');
+    });
+
     it('should reject order when kill switch is active', () => {
       riskManager.kill();
 

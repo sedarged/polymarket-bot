@@ -30,8 +30,9 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
  * Validate admin token from Authorization header
  */
 const validateAdminToken = (req: http.IncomingMessage): boolean => {
-  if (!config.adminToken) {
-    return true; // If no token configured, allow access (for development)
+  if (!config.adminToken || config.adminToken.trim() === '') {
+    logger.error('ADMIN_TOKEN is not configured; admin endpoints are disabled');
+    return false;
   }
 
   const authHeader = req.headers['authorization'];
@@ -184,8 +185,15 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Kill switch - cancel all orders (legacy endpoint, auth optional)
+    // Kill switch - cancel all orders (legacy endpoint, requires auth)
     if (method === 'POST' && url === '/kill-switch') {
+      // Validate admin token (same as /kill endpoint)
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' });
+        logger.warn('Legacy kill-switch endpoint access denied: invalid admin token');
+        return;
+      }
+
       try {
         // Cancel orders in both live and paper trading
         if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
@@ -253,23 +261,25 @@ export function startServer(): http.Server {
   // Start market feed service
   marketFeedService.start();
   
-  // Initialize paper trading engine and risk manager
+  // Initialize paper trading engine (paper mode only)
   if (!isLiveTradingEnabled()) {
     paperEngine = new PaperTradingEngine({
       slippage: config.paperTradingSlippage,
       feeRate: config.paperTradingFeeRate,
     });
-    
-    riskManager = new RiskManager({
-      maxExposurePerMarket: config.riskMaxExposurePerMarket,
-      maxOpenOrders: config.riskMaxOpenOrders,
-      maxDrawdown: config.riskMaxDrawdown,
-      errorRateThreshold: config.riskErrorRateThreshold,
-      errorRateWindow: config.riskErrorRateWindow,
-    });
 
-    logger.info('Paper trading mode enabled with risk management');
+    logger.info('Paper trading mode enabled');
   }
+
+  // Initialize risk manager (applies to both paper and live trading)
+  riskManager = new RiskManager({
+    maxExposurePerMarket: config.riskMaxExposurePerMarket,
+    maxOpenOrders: config.riskMaxOpenOrders,
+    maxDrawdown: config.riskMaxDrawdown,
+    errorRateThreshold: config.riskErrorRateThreshold,
+    errorRateWindow: config.riskErrorRateWindow,
+  });
+  logger.info('Risk manager initialized');
   
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {

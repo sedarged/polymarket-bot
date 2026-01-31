@@ -271,6 +271,7 @@ export class PaperTradingEngine {
 
   /**
    * Update position after a fill
+   * Fees are incorporated into cost basis for position tracking
    */
   private updatePosition(
     tokenId: string,
@@ -282,12 +283,16 @@ export class PaperTradingEngine {
     const existing = this.state.positions.get(tokenId);
 
     if (!existing) {
-      // New position
+      // New position - incorporate fee into cost basis
       const netSize = side === 'BUY' ? fillSize : -fillSize;
+      // For buys, fee increases cost basis; for sells, fee increases cost basis of short
+      const feePerUnit = fee / fillSize;
+      const adjustedPrice = side === 'BUY' ? fillPrice + feePerUnit : fillPrice + feePerUnit;
+      
       this.state.positions.set(tokenId, {
         tokenId,
         size: String(netSize),
-        averagePrice: String(fillPrice),
+        averagePrice: String(adjustedPrice),
       });
       return;
     }
@@ -296,69 +301,91 @@ export class PaperTradingEngine {
     const currentAvgPrice = Number(existing.averagePrice);
 
     if (currentSize === 0) {
-      // Opening a new position
+      // Opening a new position - incorporate fee into cost basis
       const netSize = side === 'BUY' ? fillSize : -fillSize;
+      const feePerUnit = fee / fillSize;
+      const adjustedPrice = side === 'BUY' ? fillPrice + feePerUnit : fillPrice + feePerUnit;
       existing.size = String(netSize);
-      existing.averagePrice = String(fillPrice);
+      existing.averagePrice = String(adjustedPrice);
     } else if (currentSize > 0) {
       // Currently long
       if (side === 'BUY') {
-        // Add to long position
+        // Add to long position - incorporate fee into cost basis
         const newSize = currentSize + fillSize;
-        const newAvgPrice = (currentAvgPrice * currentSize + fillPrice * fillSize) / newSize;
+        const feePerUnit = fee / fillSize;
+        const adjustedFillPrice = fillPrice + feePerUnit;
+        const newAvgPrice = (currentAvgPrice * currentSize + adjustedFillPrice * fillSize) / newSize;
         existing.size = String(newSize);
         existing.averagePrice = String(newAvgPrice);
       } else {
         // Reduce or flip long position
         if (fillSize < currentSize) {
-          // Partial close - realize PnL
+          // Partial close - realize PnL (subtract fee from proceeds)
           const pnl = (fillPrice - currentAvgPrice) * fillSize - fee;
           this.state.realizedPnl += pnl;
           existing.size = String(currentSize - fillSize);
           // Average price stays the same
         } else if (fillSize === currentSize) {
-          // Full close - realize PnL
+          // Full close - realize PnL (subtract fee from proceeds)
           const pnl = (fillPrice - currentAvgPrice) * fillSize - fee;
           this.state.realizedPnl += pnl;
           this.state.positions.delete(tokenId);
         } else {
           // Over close: close long and open short
-          const closePnl = (fillPrice - currentAvgPrice) * currentSize - fee;
+          // Split fee proportionally between closing and opening
+          const closingPortion = currentSize / fillSize;
+          const openingPortion = 1 - closingPortion;
+          const closingFee = fee * closingPortion;
+          const openingFee = fee * openingPortion;
+          
+          const closePnl = (fillPrice - currentAvgPrice) * currentSize - closingFee;
           this.state.realizedPnl += closePnl;
+          
           const remaining = fillSize - currentSize;
+          const feePerUnit = openingFee / remaining;
           existing.size = String(-remaining);
-          existing.averagePrice = String(fillPrice);
+          existing.averagePrice = String(fillPrice + feePerUnit);
         }
       }
     } else {
       // Currently short (currentSize < 0)
       const currentShortSize = -currentSize;
       if (side === 'SELL') {
-        // Add to short position
+        // Add to short position - incorporate fee into cost basis
         const newSize = currentShortSize + fillSize;
-        const newAvgPrice = (currentAvgPrice * currentShortSize + fillPrice * fillSize) / newSize;
+        const feePerUnit = fee / fillSize;
+        const adjustedFillPrice = fillPrice + feePerUnit;
+        const newAvgPrice = (currentAvgPrice * currentShortSize + adjustedFillPrice * fillSize) / newSize;
         existing.size = String(-newSize);
         existing.averagePrice = String(newAvgPrice);
       } else {
         // Reduce or flip short position
         if (fillSize < currentShortSize) {
-          // Partial close - realize PnL
+          // Partial close - realize PnL (subtract fee from proceeds)
           const pnl = (currentAvgPrice - fillPrice) * fillSize - fee;
           this.state.realizedPnl += pnl;
           existing.size = String(-(currentShortSize - fillSize));
           // Average price stays the same
         } else if (fillSize === currentShortSize) {
-          // Full close - realize PnL
+          // Full close - realize PnL (subtract fee from proceeds)
           const pnl = (currentAvgPrice - fillPrice) * fillSize - fee;
           this.state.realizedPnl += pnl;
           this.state.positions.delete(tokenId);
         } else {
           // Over close: close short and open long
-          const closePnl = (currentAvgPrice - fillPrice) * currentShortSize - fee;
+          // Split fee proportionally between closing and opening
+          const closingPortion = currentShortSize / fillSize;
+          const openingPortion = 1 - closingPortion;
+          const closingFee = fee * closingPortion;
+          const openingFee = fee * openingPortion;
+          
+          const closePnl = (currentAvgPrice - fillPrice) * currentShortSize - closingFee;
           this.state.realizedPnl += closePnl;
+          
           const remaining = fillSize - currentShortSize;
+          const feePerUnit = openingFee / remaining;
           existing.size = String(remaining);
-          existing.averagePrice = String(fillPrice);
+          existing.averagePrice = String(fillPrice + feePerUnit);
         }
       }
     }

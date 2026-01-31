@@ -82,16 +82,16 @@ export class RiskManager {
     // Check max exposure per market
     const orderSize = Number(size);
     const currentPosition = positions.find(p => p.tokenId === tokenId);
-    const currentSize = currentPosition ? Math.abs(Number(currentPosition.size)) : 0;
+    const currentSignedSize = currentPosition ? Number(currentPosition.size) : 0;
+    
+    // Calculate new signed position size (positive = long, negative = short)
+    const newSignedSize = currentSignedSize + (side === 'BUY' ? orderSize : -orderSize);
+    const newExposure = Math.abs(newSignedSize);
 
-    const newSize = side === 'BUY' 
-      ? currentSize + orderSize 
-      : Math.abs(currentSize - orderSize);
-
-    if (newSize > this.config.maxExposurePerMarket) {
+    if (newExposure > this.config.maxExposurePerMarket) {
       return {
         allowed: false,
-        reason: `Max exposure per market exceeded: ${newSize} > ${this.config.maxExposurePerMarket}`,
+        reason: `Max exposure per market exceeded: ${newExposure} > ${this.config.maxExposurePerMarket}`,
       };
     }
 

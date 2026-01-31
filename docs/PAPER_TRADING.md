@@ -26,12 +26,14 @@ PAPER_TRADING_FEE_RATE=0.002     # 0.2% fee per trade
 
 ### Usage
 
-The paper trading engine is automatically initialized when `LIVE_TRADING=false` (the default). Access it through the server API:
+The paper trading engine is automatically initialized when `LIVE_TRADING=false` (the default).
 
-- `GET /status` - Get trading status including paper/live mode
-- `GET /state` - Get current orders, fills, positions, and balances
-- `GET /orders` - Get all orders
-- `GET /fills` - Get all fills
+The backend exposes the current trading **client** state (which will reflect paper trading when `LIVE_TRADING=false`, and live trading when `LIVE_TRADING=true` and `COMPLIANCE_ACCEPTED=true`) via these endpoints:
+
+- `GET /status` - Get overall trading status, including whether the bot is in paper or live mode
+- `GET /state` - Get current trading client state (orders, fills, positions, balances)
+- `GET /orders` - Get all known orders from the trading client
+- `GET /fills` - Get all known fills from the trading client
 
 ## Risk Manager
 
@@ -101,11 +103,15 @@ The kill switch will:
 
 ### Legacy Endpoint
 
-A legacy `/kill-switch` endpoint is also available without authentication for backward compatibility:
+A legacy `/kill-switch` endpoint is available for backward compatibility. **In production, this endpoint is protected with the same `ADMIN_TOKEN` authentication as `/kill` to prevent unauthorized access.**
 
 ```bash
-curl -X POST http://localhost:3000/kill-switch
+# Example authenticated usage
+curl -X POST http://localhost:3000/kill-switch \
+  -H "Authorization: ******
 ```
+
+**Security Warning**: Never expose the kill switch endpoint without authentication on any network-accessible interface.
 
 ## WebSocket Reconnection
 

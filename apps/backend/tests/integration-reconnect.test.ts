@@ -1,7 +1,30 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MarketFeedClient } from '../src/clients/marketFeed';
 import { WebSocketServer } from 'ws';
 import { WSOrderbookSnapshot } from '@polymarket/shared';
+
+// Mock the ClobClient to prevent real REST API calls during reconnection
+vi.mock('../src/clients/clob', () => {
+  const mockGetOrderbook = vi.fn().mockResolvedValue({
+    market: 'test-market',
+    asset_id: '0xabcdef123456',
+    bids: [
+      { price: '0.50', size: '100' },
+      { price: '0.49', size: '50' },
+    ],
+    asks: [
+      { price: '0.51', size: '100' },
+      { price: '0.52', size: '50' },
+    ],
+    timestamp: Date.now(),
+  });
+
+  return {
+    ClobClient: class MockClobClient {
+      getOrderbook = mockGetOrderbook;
+    },
+  };
+});
 
 describe('Market Feed Integration - WebSocket Reconnect and Safe Resume', () => {
   let server: WebSocketServer;
