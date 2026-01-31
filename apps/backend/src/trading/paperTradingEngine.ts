@@ -1,5 +1,4 @@
 import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
-import { config } from '../config';
 import { logger } from '../utils/logger';
 
 export interface PaperTradingEngineConfig {

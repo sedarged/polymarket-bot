@@ -1,5 +1,4 @@
 import { Order, Position } from '@polymarket/shared';
-import { config } from '../config';
 import { logger } from '../utils/logger';
 
 export interface RiskManagerConfig {
@@ -36,7 +35,13 @@ export class RiskManager {
       errorRateWindow: config?.errorRateWindow ?? 100,
     };
 
-    logger.info('Risk manager initialized', this.config);
+    logger.info('Risk manager initialized', {
+      maxExposurePerMarket: this.config.maxExposurePerMarket,
+      maxOpenOrders: this.config.maxOpenOrders,
+      maxDrawdown: this.config.maxDrawdown,
+      errorRateThreshold: this.config.errorRateThreshold,
+      errorRateWindow: this.config.errorRateWindow,
+    });
   }
 
   /**
