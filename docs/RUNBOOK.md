@@ -3,42 +3,196 @@
 ## Purpose
 Operational procedures for running the Polymarket bot in production.
 
+## Prerequisites
+
+### Required Environment Variables
+```bash
+# Trading gates (BOTH required for live trading)
+LIVE_TRADING=true
+COMPLIANCE_ACCEPTED=true
+
+# Wallet credentials
+PRIVATE_KEY=0x...your_private_key
+CHAIN_ID=137  # Polygon Mainnet
+
+# API endpoints (defaults are fine for production)
+CLOB_API_URL=https://clob.polymarket.com
+GAMMA_API_URL=https://gamma-api.polymarket.com
+WS_MARKET_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
+
+# Monitoring
+TOKEN_IDS=comma,separated,token,ids
+PORT=3000
+LOG_LEVEL=info
+```
+
+### Wallet Requirements
+- Funded with USDC on Polygon network
+- Private key securely stored (use secret manager, not plaintext files)
+- Separate from personal wallet (trading wallet only)
+- Limited funds based on risk tolerance
+
 ## Startup
+
 1. **Environment prep**
-   - Export required secrets (wallet private key, API key/secret/passphrase).
-   - Confirm secrets are injected via env/secret manager (no plaintext files).
-   - Verify system clock sync (NTP).
+   - Set `LIVE_TRADING=true` and `COMPLIANCE_ACCEPTED=true`
+   - Export wallet private key via secure secret manager
+   - Verify CHAIN_ID matches network (137 for Polygon Mainnet)
+   - Confirm no secrets in plaintext files (.env should be .gitignored)
+   - Verify system clock sync (NTP)
+
 2. **Dependency checks**
-   - Ensure network connectivity to Polygon and Polymarket endpoints.
-   - Verify any database or local state store is reachable.
+   - Ensure network connectivity to Polygon RPC endpoints
+   - Verify Polymarket API endpoints are reachable
+   - Test wallet can sign transactions on Polygon
+   - Confirm sufficient USDC balance in wallet
+
 3. **Launch sequence**
-   - Start the bot process (systemd, Docker, or npm script).
-   - Confirm logs show config loaded and initial health checks passed.
-4. **Auth validation**
-   - Run a lightweight authenticated call to verify L2 credentials.
-5. **State sync**
-   - Fetch open orders and positions and reconcile local state.
-6. **Market data**
-   - Connect to market WS channels and validate snapshot ingestion.
-7. **Activate strategy**
-   - Enable trading only after WS and state reconciliation succeed.
+   ```bash
+   # Start backend server
+   npm run dev
+   
+   # Verify startup logs show:
+   # - "Trading client initialized" with wallet address
+   # - "Starting reconciliation"
+   # - "Reconciliation complete" with counts
+   # - "Server listening"
+   ```
+
+4. **Verify initialization**
+   ```bash
+   # Check trading status
+   curl http://localhost:3000/status
+   
+   # Should show:
+   # - liveTrading: true
+   # - tradingClientInitialized: true
+   # - walletAddress: 0x...
+   # - marketFeedConnected: true
+   ```
+
+5. **State reconciliation (automatic)**
+   - Trading client fetches all open orders from CLOB
+   - Fetches wallet balance and allowances
+   - Recalculates positions from order history
+   - Logs reconciliation summary
+
+6. **Market data connection**
+   - WebSocket connects to market feed
+   - Subscribes to TOKEN_IDS if configured
+   - Begins caching orderbook snapshots
+   - Verify with: `curl http://localhost:3000/feed/status`
+
+7. **Dashboard access**
+   ```bash
+   # In separate terminal
+   cd apps/frontend
+   npm run dev
+   
+   # Open browser to http://localhost:8080
+   # Verify dashboard shows:
+   # - "LIVE TRADING" badge (green)
+   # - Wallet address
+   # - Current balances
+   # - Any existing orders/positions
+   ```
 
 ## Health Checks
-- **Connectivity:** REST + WS endpoints reachable and authenticated where required.
-- **Order flow:** Place/cancel in paper mode and ensure lifecycle events are logged.
-- **State integrity:** Open orders and positions reconcile without mismatch.
+
+### API Endpoints
+```bash
+# System health
+curl http://localhost:3000/health
+# Expected: { status: "ok", uptime: ... }
+
+# Trading status
+curl http://localhost:3000/status
+# Expected: { liveTrading: true, tradingClientInitialized: true, walletAddress: "0x...", ... }
+
+# Market feed
+curl http://localhost:3000/feed/status
+# Expected: { connected: true, tokenIds: [...], cachedOrderbooks: N }
+
+# Trading state
+curl http://localhost:3000/state
+# Expected: { orders: [...], fills: [...], positions: [...], balances: [...] }
+
+# Cached orderbooks
+curl http://localhost:3000/orderbooks
+# Expected: [ { tokenId, market, summary: { bestBid, bestAsk, mid, spread } }, ... ]
+```
+
+### Verification Checklist
+- ✅ **Connectivity:** All API endpoints respond within 2s
+- ✅ **WebSocket:** Market feed connected (feed/status shows connected: true)
+- ✅ **Wallet:** Trading status shows correct wallet address
+- ✅ **Reconciliation:** State endpoint returns current orders/positions
+- ✅ **Dashboard:** Web UI loads and displays live data
+- ✅ **Order flow:** Can place test order (if applicable)
+- ✅ **State integrity:** Open orders match CLOB API, positions calculate correctly
 
 ## Shutdown (Graceful)
-1. Trigger shutdown via admin command or SIGTERM.
-2. Cancel all open orders.
-3. Stop strategy loop.
-4. Flush logs and persist state.
+
+The server implements graceful shutdown on SIGTERM/SIGINT:
+
+```bash
+# Send shutdown signal (Ctrl+C or kill command)
+kill -SIGTERM <pid>
+```
+
+**Automatic shutdown sequence:**
+1. Server receives SIGTERM/SIGINT signal
+2. If live trading enabled and client initialized:
+   - Cancels all open orders
+   - Waits for cancellations to complete
+3. Closes WebSocket connections
+4. Stops HTTP server
+5. Logs "Server stopped" and exits
+
+**Manual shutdown:**
+```bash
+# Trigger via Ctrl+C in terminal
+# Or send signal:
+kill -SIGTERM $(pgrep -f "npm run dev")
+```
 
 ## Kill Switch (Emergency)
-- Use the kill switch endpoint/command to:
-  1. Cancel all open orders immediately.
-  2. Halt all trading loops.
-  3. Emit a critical alert to operator channels.
+
+Immediately cancel all open orders without shutting down the server.
+
+### Via Dashboard
+1. Open dashboard at http://localhost:8080
+2. Scroll to bottom "Emergency Kill Switch" section
+3. Click red "CANCEL ALL ORDERS" button
+4. Confirm action in popup
+5. All open orders will be cancelled immediately
+
+### Via API
+```bash
+curl -X POST http://localhost:3000/kill-switch
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "All orders cancelled"
+}
+```
+
+**When to use:**
+- Sudden adverse market movement
+- Strategy malfunction detected
+- System anomaly or unexpected behavior
+- Need to immediately stop all trading activity
+- Risk limit breach
+
+**Post kill-switch:**
+1. Review logs for root cause
+2. Check final positions in dashboard
+3. Reconcile state: `curl http://localhost:3000/state`
+4. Fix issue before resuming trading
+5. Restart server if necessary
 
 ## Incident Response
 ### WebSocket Disconnects
