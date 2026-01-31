@@ -69,8 +69,9 @@ This master development plan organizes all development tasks for the Polymarket 
     - docs/ directory with PLAN.md, RUNBOOK.md, ADR-0001.md
     - README.md with project overview and usage instructions
     - EXAMPLES.md with CLI usage examples
+    - GitHub Marketplace setup guide for development tools
   - **Dependencies:** None
-  - **Notes:** Documentation exists in docs/ directory
+  - **Notes:** Documentation exists in docs/ directory, including GITHUB_MARKETPLACE_SETUP.md for tool setup
 
 ---
 
