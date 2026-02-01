@@ -77,6 +77,21 @@ This directory contains formal audit reports, security analyses, and compliance 
 
 ---
 
+### [LEARNING_SYSTEM.md](./LEARNING_SYSTEM.md) - Evidence-Based Learning System Design
+**Date:** 2026-02-01  
+**Status:** Draft (Design Complete, Implementation Pending)  
+**Scope:** Paper-trading-only learning and experimentation system design
+
+**Summary:**
+- Defines event store schema for market events, signals, decisions, outcomes
+- Documents offline evaluation framework and metrics
+- Proposes bandit allocation logic for strategy experiments
+- Establishes promotion criteria and governance (paper-only)
+
+**Recommendation:** Review with project owner and align with dashboard workstream (#30).
+
+---
+
 ## Report Organization
 
 Each audit report follows a standardized format:
@@ -139,6 +154,7 @@ Additional reports to be added:
 
 - **Performance Audit** - Latency, throughput, resource usage
 - **Compliance Assessment** - Regulatory requirements and ToS adherence
+- **Learning System Implementation Plan** - Execution plan and milestones for learning system rollout
 - **Penetration Test Results** - External security assessment
 - **Load Test Analysis** - System behavior under stress
 - **Disaster Recovery Test** - Backup and recovery procedures
