@@ -325,6 +325,76 @@ See also:
 
 ## Development
 
+### Automated Workflows
+
+This project includes comprehensive GitHub automation for code quality and security:
+
+#### 🔄 Continuous Integration
+
+**Runs automatically on every push and PR:**
+- Type checking and builds (`npm run build`)
+- Unit tests (`npm test`)
+- Test coverage reporting
+- Security audits (`npm audit`)
+- Secret scanning (TruffleHog)
+
+**View results:** Check the Actions tab on GitHub after pushing
+
+**Local testing before push:**
+```bash
+npm ci
+npm run build
+npm test
+npm audit --audit-level=high
+```
+
+#### 📦 Dependency Management
+
+**Dependabot runs daily security scans** on trading packages:
+- Backend (daily) - CRITICAL for trading code
+- Frontend (weekly)
+- GitHub Actions (monthly)
+
+**Action required:** Review Dependabot PRs weekly and merge security updates immediately.
+
+#### 📝 Automated Releases
+
+**Release Please** generates changelogs and releases automatically:
+- Uses conventional commits (`feat:`, `fix:`, `security:`)
+- Auto-generates CHANGELOG.md (never edit manually!)
+- Creates GitHub releases with version tags
+- Builds and uploads release artifacts
+
+**Commit format:**
+```bash
+feat: add new feature
+fix: resolve bug
+security: fix vulnerability (A-015)
+```
+
+See [Conventional Commits](https://www.conventionalcommits.org/) for details.
+
+#### 🏷️ Smart PR Automation
+
+**Automatic PR enhancements:**
+- Auto-labeling by component (backend, frontend, trading, etc.)
+- Security review flags for sensitive files
+- Size labeling (xs/s/m/l/xl)
+- Quality checks (description length, test mentions, issue links)
+- Large PR warnings (>500 lines)
+
+#### 📋 Issue Templates
+
+**Bug Report Template** includes trading-specific fields:
+- Severity (Critical/High/Medium/Low)
+- Area (Trading Logic, WebSocket, Order Management, etc.)
+- Trading Mode (Paper vs Live)
+- Audit references for known findings
+
+**Complete guide:** See [docs/automation.md](./docs/automation.md) for full documentation.
+
+**For AI agents:** See [AGENTS.md](./AGENTS.md) for automation requirements and best practices.
+
 ### Building
 
 ```bash

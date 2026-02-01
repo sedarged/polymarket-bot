@@ -1,0 +1,54 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: node
+          package-name: polymarket-bot
+          changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"security","section":"Security","hidden":false},{"type":"perf","section":"Performance","hidden":false},{"type":"refactor","section":"Code Refactoring","hidden":false},{"type":"docs","section":"Documentation","hidden":false},{"type":"test","section":"Tests","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false},{"type":"ci","section":"CI/CD","hidden":false}]'
+          
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+        
+      - uses: actions/setup-node@v4
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          node-version: 20
+          cache: npm
+          
+      - name: Install and build
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          npm ci
+          npm run build
+          
+      - name: Create release tarball
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          tar -czf polymarket-bot-${{ steps.release.outputs.tag_name }}.tar.gz \
+            apps/backend/dist \
+            apps/frontend/public \
+            package.json \
+            README.md \
+            REPORTS
+          
+      - name: Upload release artifact
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ steps.release.outputs.tag_name }} \
+            polymarket-bot-${{ steps.release.outputs.tag_name }}.tar.gz

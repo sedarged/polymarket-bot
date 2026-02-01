@@ -1,0 +1,261 @@
+name: PR Automation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  auto-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+            });
+
+            const labels = new Set();
+            
+            for (const file of files) {
+              if (file.filename.startsWith('apps/backend/')) {
+                labels.add('backend');
+              }
+              if (file.filename.startsWith('apps/frontend/')) {
+                labels.add('frontend');
+              }
+              if (file.filename.includes('clients/')) {
+                labels.add('api-client');
+              }
+              if (file.filename.includes('websocket') || file.filename.includes('market-feed')) {
+                labels.add('websocket');
+              }
+              if (file.filename.includes('trading') || file.filename.includes('order')) {
+                labels.add('trading');
+              }
+              if (file.filename.endsWith('.md')) {
+                labels.add('documentation');
+              }
+              if (file.filename.includes('.test.') || file.filename.includes('.spec.')) {
+                labels.add('testing');
+              }
+              if (file.filename.startsWith('.github/')) {
+                labels.add('ci/cd');
+              }
+              if (file.filename.includes('SECURITY') || file.filename.includes('security')) {
+                labels.add('security');
+              }
+            }
+
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: Array.from(labels)
+              });
+            }
+
+  security-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const securityFiles = files.filter(f => 
+              f.filename.includes('trading') ||
+              f.filename.includes('order') ||
+              f.filename.includes('clob') ||
+              f.filename.includes('private-key') ||
+              f.filename.includes('.env') ||
+              f.filename.includes('wallet') ||
+              f.filename.includes('kill-switch')
+            );
+
+            if (securityFiles.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                labels: ['security-review-needed']
+              });
+
+              const commentBody = `🔒 **Security Review Required**\n\nThis PR modifies security-sensitive files:\n${securityFiles.map(f => `- \`${f.filename}\``).join('\n')}\n\n**Required checks:**\n- [ ] No hardcoded secrets or private keys\n- [ ] Proper input validation (Zod schemas)\n- [ ] Error handling in place\n- [ ] Tests cover security scenarios\n- [ ] Review against audit findings (REPORTS/AUDIT.md)\n- [ ] Trading logic properly gated (LIVE_TRADING + COMPLIANCE_ACCEPTED)\n\n**Audit References:**\nSee [REPORTS/AUDIT.md](REPORTS/AUDIT.md) for known security findings.`;
+
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100,
+              });
+
+              const existingComment = comments.find(
+                (comment) =>
+                  typeof comment.body === 'string' &&
+                  comment.body.startsWith('🔒 **Security Review Required**')
+              );
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: commentBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: commentBody,
+                });
+              }
+            }
+
+  size-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const totalChanges = files.reduce((sum, file) => sum + file.changes, 0);
+            let sizeLabel = '';
+            
+            if (totalChanges < 10) sizeLabel = 'size/xs';
+            else if (totalChanges < 100) sizeLabel = 'size/s';
+            else if (totalChanges < 500) sizeLabel = 'size/m';
+            else if (totalChanges < 1000) sizeLabel = 'size/l';
+            else sizeLabel = 'size/xl';
+
+            const currentLabels = pr.labels.map(l => l.name);
+            const sizeLabels = currentLabels.filter(l => l.startsWith('size/'));
+            
+            for (const label of sizeLabels) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                name: label
+              }).catch(() => {});
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [sizeLabel]
+            });
+
+            if (totalChanges > 500) {
+              const existingComments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+              });
+
+              const botComment = existingComments.data.find(
+                comment => comment.user.type === 'Bot' && comment.body.includes('large PR')
+              );
+
+              if (!botComment) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: `⚠️ **Large PR Warning**\n\nThis PR has **${totalChanges} changes**. For a trading bot, smaller PRs are safer and easier to review.\n\n**Recommendations:**\n- Break into smaller, focused PRs\n- Separate refactoring from features\n- Keep PRs under 500 lines when possible\n- Consider security implications of large changes`
+                });
+              }
+            }
+
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            const issues = [];
+
+            if (body.trim().length < 30) {
+              issues.push('❌ PR description is too short (minimum 30 characters)');
+            }
+
+            const hasIssueLink = /(?:closes?|closed|fixe?s|fixed|resolves?|resolved)\s*:?\s*#\d+/i.test(body);
+            if (!hasIssueLink) {
+              issues.push('💡 Consider linking to an issue using "Closes #123"');
+            }
+
+            if (!body.toLowerCase().includes('test')) {
+              issues.push('🧪 No mention of tests. Did you add/update tests?');
+            }
+
+            if (pr.title.toLowerCase().includes('security') || pr.title.toLowerCase().includes('fix')) {
+              if (!body.includes('A-0') && !body.includes('audit')) {
+                issues.push('📋 Security fix: Reference audit finding (e.g., "Addresses A-001")');
+              }
+            }
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            const hasCodeChanges = files.some(f => f.filename.endsWith('.ts') || f.filename.endsWith('.js'));
+            const hasTestChanges = files.some(f => f.filename.includes('.test.') || f.filename.includes('.spec.'));
+
+            if (hasCodeChanges && !hasTestChanges && !body.toLowerCase().includes('no tests needed')) {
+              issues.push('🧪 Code changes without test changes. Trading bot requires high test coverage.');
+            }
+
+            if (issues.length > 0) {
+              const qualityBody = `## 📋 PR Quality Check\n\n${issues.join('\n')}\n\n**Note:** These are suggestions to improve PR quality for a production trading bot.`;
+
+              // Avoid duplicate quality-check comments: update existing one if present
+              const { data: existingComments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+              });
+
+              const existingQualityComment = existingComments.find(
+                (comment) => typeof comment.body === 'string' && comment.body.startsWith('## 📋 PR Quality Check')
+              );
+
+              if (existingQualityComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingQualityComment.id,
+                  body: qualityBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: qualityBody,
+                });
+              }
+            }

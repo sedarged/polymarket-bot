@@ -113,6 +113,139 @@ polymarket-bot/
 └── [root docs]      # STATUS.md, AGENTS.md, CHANGELOG.md, README.md
 ```
 
+## Automated Workflows & Release Management
+
+### Conventional Commits (REQUIRED)
+
+All commits MUST follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+**Format:** `<type>: <description>`
+
+**Types:**
+- `feat:` - New feature (bumps minor version: 1.0.0 → 1.1.0)
+- `fix:` - Bug fix (bumps patch version: 1.0.0 → 1.0.1)
+- `security:` - Security fix (bumps patch, HIGH PRIORITY)
+- `perf:` - Performance improvement
+- `refactor:` - Code refactoring (no behavior change)
+- `docs:` - Documentation changes
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance (dependencies, build, etc.)
+- `ci:` - CI/CD changes
+
+**Breaking changes:** Use `feat!:` or add `BREAKING CHANGE:` in footer (bumps major version: 1.0.0 → 2.0.0)
+
+**Examples:**
+```bash
+feat: add kill switch for emergency trading halt
+fix: prevent double order submission on retry
+security: add input validation for order parameters (A-015)
+docs: update troubleshooting guide
+test: add integration tests for order placement
+```
+
+**Audit References:**
+For security fixes, ALWAYS reference the audit finding:
+```bash
+security: sanitize user inputs (A-015)
+
+Addresses audit finding A-015 by implementing Zod schema
+validation for all order parameters. Added comprehensive tests.
+```
+
+### Never Edit CHANGELOG.md Manually
+
+**CRITICAL:** The CHANGELOG.md file is **auto-generated** by Release Please based on conventional commits.
+
+- Manual edits will be **overwritten**
+- Instead, write descriptive conventional commit messages
+- Include details in commit body (not just title)
+- Reference issue numbers and audit findings
+
+### CI/CD Pipeline
+
+**Runs automatically on every push and PR:**
+
+1. **Test & Build:**
+   - Type checking (`npm run build`)
+   - Unit tests (`npm test`)
+   - Test coverage report
+
+2. **Security Checks:**
+   - Dependency audit (`npm audit`)
+   - Secret scanning (TruffleHog)
+
+**Local testing before push:**
+```bash
+npm ci              # Install dependencies
+npm run build       # Type check
+npm test            # Run tests
+npm audit --audit-level=high  # Security check
+```
+
+**If CI fails:**
+1. Check the Actions tab for details
+2. Run the failing command locally
+3. Fix the issue and push again
+
+### Dependabot Security Updates
+
+**Daily scans for vulnerabilities** in trading packages:
+- Root + Backend: Daily (CRITICAL - trading code)
+- Frontend: Weekly
+- GitHub Actions: Monthly
+
+**Action required:**
+1. Review Dependabot PRs weekly
+2. **Merge security updates immediately** - real money at risk
+3. Test backend changes carefully before merging
+4. Close outdated PRs (Dependabot will recreate)
+
+### PR Automation
+
+**Automatic enhancements on every PR:**
+
+1. **Auto-labeling** by component:
+   - `backend`, `frontend`, `api-client`
+   - `websocket`, `trading`, `documentation`
+   - `testing`, `ci/cd`, `security`
+
+2. **Security review flags** for sensitive files:
+   - Trading logic, order management
+   - API clients (CLOB, Gamma)
+   - Credentials (.env, private-key, wallet)
+   - Safety features (kill-switch)
+
+3. **Size labeling:**
+   - `size/xs` (<10), `size/s` (10-99), `size/m` (100-499)
+   - `size/l` (500-999), `size/xl` (1000+)
+   - Warning comment for PRs >500 lines
+
+4. **Quality checks:**
+   - Minimum 30 character description
+   - Issue linking (e.g., "Closes #123")
+   - Test mentions
+   - Audit references for security fixes
+
+### Hard Rules
+
+1. **No hardcoded secrets** - Use environment variables only
+2. **No manual CHANGELOG edits** - Use conventional commits
+3. **Always use conventional commits** - Required for releases
+4. **Test trading logic thoroughly** - Add tests for all changes
+5. **Reference audit findings** - Use A-XXX format in security commits
+6. **Keep PRs under 500 lines** - Easier to review for trading bot
+7. **Merge security updates immediately** - Dependabot PRs with `security` label
+
+### Release Process
+
+1. Merge commits to `main` using conventional format
+2. Release Please creates/updates a release PR with changelog
+3. Maintainer reviews and merges release PR
+4. Release Please creates GitHub release with version tag
+5. Artifacts are built and uploaded automatically
+
+For complete documentation, see [docs/automation.md](./docs/automation.md).
+
 ## When to Update Status
 
 The status automation runs:
