@@ -4,13 +4,22 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 
 ## 📚 Documentation
 
-- **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
-- **[Architecture Map](./docs/ARCHITECTURE.md)** - Technical architecture documentation with critical paths and module dependencies
-- **[Environment Setup](./docs/ENVIRONMENT.md)** - Complete development environment and command reference
-- **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
-- **[Runbook](./docs/RUNBOOK.md)** - Operational procedures for running the bot
-- **[Implementation Checklist](./docs/IMPLEMENTATION_CHECKLIST.md)** - Detailed development checklist
-- **[Architecture Decisions](./docs/ADR-0001.md)** - Key architectural decisions and rationale
+**Quick Start:**
+- **[STATUS.md](./STATUS.md)** - Current work status and priorities (updated automatically from GitHub Issues)
+- **[System Overview](./docs/architecture-overview.md)** - Plain language explanation of how the system works (start here!)
+- **[Documentation Index](./docs/README.md)** - Complete documentation catalog and navigation
+
+**For Contributors:**
+- **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
+- **[CHANGELOG.md](./CHANGELOG.md)** - Release history and notable changes
+
+**Detailed Documentation:**
+- **[Architecture Map](./docs/architecture.md)** - Technical architecture documentation with critical paths and module dependencies
+- **[Environment Setup](./docs/environment.md)** - Complete development environment and command reference
+- **[Master Development Plan](./docs/master-plan.md)** - Comprehensive task list with checkboxes and roadmap
+- **[Runbook](./docs/runbook.md)** - Operational procedures for running the bot
+- **[Implementation Checklist](./docs/implementation-checklist.md)** - Detailed development checklist
+- **[Architecture Decisions](./docs/adr/0001-initial-architecture.md)** - Key architectural decisions and rationale
 
 ## Features
 
@@ -30,7 +39,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - Node.js >= 20.0.0
 - npm (v10+ recommended)
 
-For complete environment details, see **[Environment Setup](./docs/ENVIRONMENT.md)**.
+For complete environment details, see **[Environment Setup](./docs/environment.md)**.
 
 ## Installation
 
@@ -343,7 +352,7 @@ The project uses TypeScript's strict mode with the following compiler options:
 - ⏳ Arbitrage detection
 - ⏳ Multi-market orchestration
 
-See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap.
+See [Master Development Plan](./docs/master-plan.md) for complete roadmap.
 
 ## Limitations
 
@@ -357,13 +366,13 @@ See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap
 - ❌ No automated trading strategies yet (on roadmap)
 - ❌ No risk management framework yet (on roadmap)
 
-See [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for complete roadmap.
+See [Master Development Plan](./docs/master-plan.md) for complete roadmap.
 
 ## Contributing
 
 Contributions are welcome! Please:
-1. Read the [System Overview](./SYSTEM_OVERVIEW.md) to understand the system
-2. Check the [Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md) for open tasks
+1. Read the [System Overview](./docs/architecture-overview.md) to understand the system
+2. Check the [Master Development Plan](./docs/master-plan.md) for open tasks
 3. Follow existing code style and patterns
 4. Submit a Pull Request with clear description
 
@@ -371,7 +380,7 @@ Contributions are welcome! Please:
 
 - **Issues**: Open a GitHub issue for bugs or feature requests
 - **Questions**: Use GitHub Discussions
-- **Documentation**: See [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) for detailed explanations
+- **Documentation**: See [System Overview](./docs/architecture-overview.md) for detailed explanations
 
 ## License
 

@@ -1,0 +1,83 @@
+name: Task
+description: Create a new task or feature request
+title: "[Brief description]"
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! Please fill out this form to help us understand and prioritize your task.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgent is this task?
+      options:
+        - P0 - Critical (blocks releases, security issues, major bugs)
+        - P1 - High (important for current milestone)
+        - P2 - Normal (standard backlog item)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which area of the codebase does this affect?
+      options:
+        - Backend
+        - Frontend
+        - Trading Logic
+        - WebSocket/API
+        - Documentation
+        - DevOps/Infrastructure
+        - Testing
+        - Security
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs to be done?
+      description: Clearly describe the task, feature, or issue
+      placeholder: |
+        Example: Implement automatic WebSocket reconnection with exponential backoff
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this needed?
+      description: Explain the motivation, context, or problem this solves
+      placeholder: |
+        Example: Currently, if the WebSocket connection drops, the bot stops receiving market updates and cannot trade effectively.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How will we know this is complete? List specific, testable criteria
+      placeholder: |
+        - [ ] WebSocket automatically reconnects on disconnect
+        - [ ] Exponential backoff implemented (1s, 2s, 4s, 8s, max 30s)
+        - [ ] State is resynced after reconnection
+        - [ ] Tests added for reconnection logic
+        - [ ] Tested with intentional disconnects
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other information, links, screenshots, or examples
+      placeholder: |
+        Links to related issues, documentation, or external resources
+    validations:
+      required: false

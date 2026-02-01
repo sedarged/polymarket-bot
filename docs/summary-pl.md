@@ -6,7 +6,7 @@
 
 Zgodnie z Twoim żądaniem, utworzyłem kompleksowy plan rozwoju i przegląd systemu:
 
-#### 1. **MASTER_DEVELOPMENT_PLAN.md** (32 KB, 947 linii)
+#### 1. **master-plan.md** (32 KB, 947 linii)
 Master plan rozwoju z 69 szczegółowymi zadaniami zorganizowanymi w 13 kategorii:
 
 - **✅ Checkboxy** do zaznaczania ukończonych zadań
@@ -31,7 +31,7 @@ Master plan rozwoju z 69 szczegółowymi zadaniami zorganizowanymi w 13 kategori
 12. Testowanie i zapewnienie jakości
 13. Przyszłe ulepszenia
 
-#### 2. **SYSTEM_OVERVIEW.md** (27 KB, 753 linie)
+#### 2. **architecture-overview.md** (27 KB, 753 linie)
 Przegląd systemu w prostym języku dla wszystkich:
 
 - **Wyjaśnienie czym jest Polymarket** i jak działa
@@ -71,8 +71,8 @@ Przegląd systemu w prostym języku dla wszystkich:
 
 ```
 polymarket-bot/
-├── MASTER_DEVELOPMENT_PLAN.md    ← Plan rozwoju z zadaniami (69 zadań)
-├── SYSTEM_OVERVIEW.md             ← Przegląd systemu (prosty język)
+├── master-plan.md    ← Plan rozwoju z zadaniami (69 zadań)
+├── architecture-overview.md             ← Przegląd systemu (prosty język)
 ├── README.md                      ← Szybki start i linki
 ├── docs/
 │   ├── PLAN.md                   ← Plan PR i rollout
@@ -87,8 +87,8 @@ polymarket-bot/
 
 ### Jak Korzystać
 
-1. **Start tutaj:** Przeczytaj [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - prosty język, wszystko wyjaśnione
-2. **Plan rozwoju:** Zobacz [MASTER_DEVELOPMENT_PLAN.md](./MASTER_DEVELOPMENT_PLAN.md) - wszystkie zadania z checkboxami
+1. **Start tutaj:** Przeczytaj [architecture-overview.md](./architecture-overview.md) - prosty język, wszystko wyjaśnione
+2. **Plan rozwoju:** Zobacz [master-plan.md](./master-plan.md) - wszystkie zadania z checkboxami
 3. **Operacje:** Sprawdź [docs/RUNBOOK.md](./docs/RUNBOOK.md) - jak uruchomić i zarządzać botem
 
 ---
@@ -99,7 +99,7 @@ polymarket-bot/
 
 As requested, I've created comprehensive development plan and system overview:
 
-#### 1. **MASTER_DEVELOPMENT_PLAN.md** (32 KB, 947 lines)
+#### 1. **master-plan.md** (32 KB, 947 lines)
 Master development plan with 69 detailed tasks organized in 13 categories:
 
 - **✅ Checkboxes** to mark completed tasks
@@ -124,7 +124,7 @@ Master development plan with 69 detailed tasks organized in 13 categories:
 12. Testing & Quality Assurance
 13. Future Enhancements
 
-#### 2. **SYSTEM_OVERVIEW.md** (27 KB, 753 lines)
+#### 2. **architecture-overview.md** (27 KB, 753 lines)
 System overview in plain language for everyone:
 
 - **Explanation of Polymarket** and how it works
@@ -162,8 +162,8 @@ System overview in plain language for everyone:
 
 ### How to Use
 
-1. **Start here:** Read [SYSTEM_OVERVIEW.md](./SYSTEM_OVERVIEW.md) - plain language, everything explained
-2. **Development plan:** Check [MASTER_DEVELOPMENT_PLAN.md](./MASTER_DEVELOPMENT_PLAN.md) - all tasks with checkboxes
+1. **Start here:** Read [architecture-overview.md](./architecture-overview.md) - plain language, everything explained
+2. **Development plan:** Check [master-plan.md](./master-plan.md) - all tasks with checkboxes
 3. **Operations:** See [docs/RUNBOOK.md](./docs/RUNBOOK.md) - how to run and manage the bot
 
 ---
