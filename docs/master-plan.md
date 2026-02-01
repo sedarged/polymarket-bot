@@ -68,7 +68,7 @@ This master development plan organizes all development tasks for the Polymarket 
   - **Acceptance Criteria:**
     - docs/ directory with PLAN.md, RUNBOOK.md, ADR-0001.md
     - README.md with project overview and usage instructions
-    - EXAMPLES.md with CLI usage examples
+    - examples.md with CLI usage examples
   - **Dependencies:** None
   - **Notes:** Documentation exists in docs/ directory
 
@@ -732,7 +732,7 @@ This master development plan organizes all development tasks for the Polymarket 
     - Rollback procedures
   - **Dependencies:** All trading and monitoring tasks
   - **Priority:** HIGH
-  - **Notes:** Basic runbook exists in docs/RUNBOOK.md
+  - **Notes:** Basic runbook exists in docs/runbook.md
 
 - [ ] **TASK-056: Configuration Documentation**
   - **Description:** Document all configuration options and their effects
@@ -923,11 +923,11 @@ This master development plan organizes all development tasks for the Polymarket 
 
 ## 🔗 Related Documents
 
-- [System Overview](./SYSTEM_OVERVIEW.md) - Plain language explanation of the system
-- [Implementation Checklist](./docs/IMPLEMENTATION_CHECKLIST.md) - Detailed checklist
+- [System Overview](./architecture-overview.md) - Plain language explanation of the system
+- [Implementation Checklist](./docs/implementation-checklist.md) - Detailed checklist
 - [Plan](./docs/PLAN.md) - PR rollout plan
-- [Runbook](./docs/RUNBOOK.md) - Operational procedures
-- [ADR-0001](./docs/ADR-0001.md) - Architecture decisions
+- [Runbook](./docs/runbook.md) - Operational procedures
+- [ADR-0001](./docs/adr/0001-initial-architecture.md) - Architecture decisions
 - [Open Questions](./docs/OPEN_QUESTIONS.md) - Unresolved questions
 
 ---

@@ -599,7 +599,7 @@ The bot has two primary operating modes:
 
 **Recommended Path:**
 1. Read this overview (you're doing it! 🎉)
-2. Read the runbook (docs/RUNBOOK.md)
+2. Read the runbook (docs/runbook.md)
 3. Practice starting/stopping in paper mode
 4. Monitor paper trading for a week
 5. Shadow an experienced operator
@@ -657,9 +657,9 @@ The bot has two primary operating modes:
 ### Documentation
 - **This Overview**: High-level system understanding
 - **Master Development Plan**: Detailed task list and roadmap
-- **Runbook** (docs/RUNBOOK.md): Operational procedures
-- **Implementation Checklist** (docs/IMPLEMENTATION_CHECKLIST.md): Detailed technical checklist
-- **ADR-0001** (docs/ADR-0001.md): Architecture decisions
+- **Runbook** (docs/runbook.md): Operational procedures
+- **Implementation Checklist** (docs/implementation-checklist.md): Detailed technical checklist
+- **ADR-0001** (docs/adr/0001-initial-architecture.md): Architecture decisions
 - **README.md**: Quick start and usage
 
 ### Support Channels
@@ -750,4 +750,4 @@ A: The bot would need to be updated to support API changes. Monitor Polymarket's
 
 **Document End**
 
-For technical implementation details, see [MASTER_DEVELOPMENT_PLAN.md](./MASTER_DEVELOPMENT_PLAN.md)
+For technical implementation details, see [master-plan.md](./master-plan.md)

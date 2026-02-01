@@ -7,24 +7,24 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Getting Started
 - [README](../README.md) - Project overview, installation, and quick start
 - [STATUS](../STATUS.md) - Current work status and priorities (auto-updated from Issues)
-- [System Overview](../SYSTEM_OVERVIEW.md) - Plain language explanation of how the system works
-- [Examples](../EXAMPLES.md) - CLI usage examples and common patterns
+- [System Overview](./architecture-overview.md) - Plain language explanation of how the system works
+- [Examples](./examples.md) - CLI usage examples and common patterns
 
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
-- [Environment Setup](./ENVIRONMENT.md) - Complete development environment and command reference
-- [Master Development Plan](../MASTER_DEVELOPMENT_PLAN.md) - Comprehensive task list and roadmap
-- [Implementation Checklist](./IMPLEMENTATION_CHECKLIST.md) - Detailed development checklist
+- [Environment Setup](./environment.md) - Complete development environment and command reference
+- [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
+- [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
 
 ### Architecture & Design
-- [Architecture Map](./ARCHITECTURE.md) - Technical architecture documentation with critical paths
+- [Architecture Map](./architecture.md) - Technical architecture documentation with critical paths
 - [Architecture Decision Records (ADR)](./ADR-0001.md) - Key architectural decisions and rationale
-- [Plan](./PLAN.md) - PR rollout plan and phased development strategy
+- [Plan](./plan.md) - PR rollout plan and phased development strategy
 
 ### Operations
-- [Runbook](./RUNBOOK.md) - Operational procedures for running the bot
+- [Runbook](./runbook.md) - Operational procedures for running the bot
 - [Paper Trading Guide](./PAPER_TRADING.md) - Safe testing without real money
-- [Report Digest](./REPORT_DIGEST.md) - Analysis summaries and findings
+- [Report Digest](./report-digest.md) - Analysis summaries and findings
 
 ### AI & Automation
 - [Project Layout](./ai/project-layout.md) - Repository structure and key files
@@ -34,7 +34,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ### Reference
 - [CHANGELOG](../CHANGELOG.md) - Release history and notable changes
-- [Open Questions](./OPEN_QUESTIONS.md) - Unresolved questions and discussions
+- [Open Questions](./open-questions.md) - Unresolved questions and discussions
 
 ## 📂 Documentation Structure
 
@@ -44,10 +44,10 @@ polymarket-bot/
 ├── STATUS.md                    # Current work status (auto-synced)
 ├── AGENTS.md                    # AI agent guidelines
 ├── CHANGELOG.md                 # Release history
-├── SYSTEM_OVERVIEW.md           # System explanation (start here!)
-├── EXAMPLES.md                  # Usage examples
-├── MASTER_DEVELOPMENT_PLAN.md   # Development roadmap
-├── PODSUMOWANIE.md              # Polish summary
+├── architecture-overview.md           # System explanation (start here!)
+├── examples.md                  # Usage examples
+├── master-plan.md   # Development roadmap
+├── summary-pl.md              # Polish summary
 │
 └── docs/
     ├── README.md                # This file
@@ -72,21 +72,21 @@ polymarket-bot/
 ## 🎯 Documentation by Role
 
 ### For New Contributors
-1. Start with [System Overview](../SYSTEM_OVERVIEW.md) for the big picture
+1. Start with [System Overview](./architecture-overview.md) for the big picture
 2. Review [AGENTS.md](../AGENTS.md) for contribution guidelines
 3. Check [STATUS.md](../STATUS.md) for current priorities
-4. Read [Environment Setup](./ENVIRONMENT.md) to get your dev environment ready
+4. Read [Environment Setup](./environment.md) to get your dev environment ready
 
 ### For Developers
-1. [Architecture Map](./ARCHITECTURE.md) - Understand the technical design
-2. [Implementation Checklist](./IMPLEMENTATION_CHECKLIST.md) - Track implementation progress
+1. [Architecture Map](./architecture.md) - Understand the technical design
+2. [Implementation Checklist](./implementation-checklist.md) - Track implementation progress
 3. [Common Pitfalls](./ai/common-pitfalls.md) - Avoid known issues
 4. [ADR-0001](./ADR-0001.md) - Understand key decisions
 
 ### For Operators
-1. [Runbook](./RUNBOOK.md) - How to run and manage the bot
+1. [Runbook](./runbook.md) - How to run and manage the bot
 2. [Paper Trading Guide](./PAPER_TRADING.md) - Test safely before live trading
-3. [Environment Setup](./ENVIRONMENT.md) - Configuration and environment variables
+3. [Environment Setup](./environment.md) - Configuration and environment variables
 
 ### For AI Agents
 1. [AGENTS.md](../AGENTS.md) - Your primary contract and guidelines
@@ -120,5 +120,5 @@ polymarket-bot/
 ## 📞 Getting Help
 
 - **Issues**: Current and resolved issues are tracked in [STATUS.md](../STATUS.md)
-- **Questions**: Check [Open Questions](./OPEN_QUESTIONS.md) or open a new issue
+- **Questions**: Check [Open Questions](./open-questions.md) or open a new issue
 - **Decisions**: Review [ADR-0001](./ADR-0001.md) for rationale behind choices

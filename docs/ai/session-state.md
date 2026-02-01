@@ -137,7 +137,7 @@ npm run build
 ## References
 
 ### Documentation Read
-- [System Overview](../../SYSTEM_OVERVIEW.md) - [Key takeaways]
+- [System Overview](../../architecture-overview.md) - [Key takeaways]
 - [Architecture](../ARCHITECTURE.md) - [Relevant sections]
 - [Runbook](../RUNBOOK.md) - [Operational context]
 

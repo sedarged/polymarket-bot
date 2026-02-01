@@ -121,18 +121,18 @@ GitHub-specific configuration.
 - `docs/README.md` - Full documentation index
 
 ### Development
-- `MASTER_DEVELOPMENT_PLAN.md` - Comprehensive roadmap
-- `docs/IMPLEMENTATION_CHECKLIST.md` - Implementation tasks
+- `master-plan.md` - Comprehensive roadmap
+- `docs/implementation-checklist.md` - Implementation tasks
 - `docs/PLAN.md` - PR rollout plan
 
 ### Technical Reference
 - `SYSTEM_OVERVIEW.md` - System explanation
 - `docs/ARCHITECTURE.md` - Technical architecture
-- `docs/ADR-0001.md` - Architecture decisions
+- `docs/adr/0001-initial-architecture.md` - Architecture decisions
 - `EXAMPLES.md` - Usage examples
 
 ### Operations
-- `docs/RUNBOOK.md` - Operational procedures
+- `docs/runbook.md` - Operational procedures
 - `docs/ENVIRONMENT.md` - Environment setup
 - `docs/PAPER_TRADING.md` - Paper trading guide
 
@@ -157,7 +157,7 @@ GitHub-specific configuration.
 2. Add handlers in `apps/backend/src/websocket/handlers/`
 3. Update reconnection logic if needed
 4. Add tests in `apps/backend/tests/websocket/`
-5. Update `docs/RUNBOOK.md` if affects operations
+5. Update `docs/runbook.md` if affects operations
 
 ### Adding documentation
 1. Determine category (getting started, development, architecture, operations)
