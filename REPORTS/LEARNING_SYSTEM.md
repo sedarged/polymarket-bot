@@ -157,6 +157,25 @@ interface PerformanceMetricEvent {
 }
 ```
 
+#### Experiment Result Event
+```ts
+interface ExperimentResultEvent {
+  experimentId: string;
+  strategyId: string;
+  cohort: 'control' | 'treatment';
+  startAt: string;
+  endAt: string;
+  allocation: number; // fraction of paper capital
+  metrics: {
+    pnl: number;
+    sharpe: number;
+    maxDrawdown: number;
+    winRate: number;
+  };
+  notes?: string;
+}
+```
+
 ---
 
 ## 3. Feature/Signal Catalog
@@ -219,7 +238,17 @@ interface SignalDefinition {
 
 ---
 
-## 5. Bandit & Allocation Logic (Paper Trading Only)
+## 5. Experimentation Capabilities (Paper Trading Only)
+
+### A/B Testing & Gradual Rollout
+- **A/B testing** uses experiment cohorts (control vs treatment) logged in the event store.
+- **Gradual rollout** is achieved via allocation weights (e.g., 10% → 25% → 50%).
+- **Manual evaluation** is supported by experiment reports and review checklists.
+- **Automated evaluation** is supported through scheduled metric aggregation jobs.
+
+---
+
+## 6. Bandit & Allocation Logic (Paper Trading Only)
 
 ### Objective
 Allocate paper trading capital across competing strategies to explore and exploit promising candidates without risking real funds.
@@ -247,7 +276,7 @@ allocation = softmax(score, explorationFactor)
 
 ---
 
-## 6. Promotion Criteria & Governance
+## 7. Promotion Criteria & Governance
 
 Promotion criteria are **paper-only**. Promotion means a strategy can move from experimental to candidate status, not to live trading.
 
@@ -266,7 +295,7 @@ Promotion criteria are **paper-only**. Promotion means a strategy can move from 
 
 ---
 
-## 7. Integration Plan
+## 8. Integration Plan
 
 ### Paper Trading Engine
 - Strategy decisions flow into the existing paper trading simulator.
@@ -289,9 +318,17 @@ Promotion criteria are **paper-only**. Promotion means a strategy can move from 
 - Event store abstracts into a queryable API for backtesting.
 - Retention policies applied by storage tier.
 
+### Data Flow & Storage Approach
+1. WebSocket/REST ingestion writes `MarketEvent` and `OrderBookUpdateEvent`.
+2. Feature engine writes `SignalEvent` and ties signals to `featureSetId`.
+3. Strategies write `StrategyDecisionEvent` and reference input signals.
+4. Paper trading simulator writes `ExecutionOutcomeEvent`.
+5. Metric aggregation writes `PerformanceMetricEvent` and `ExperimentResultEvent`.
+6. Offline evaluator reads immutable event logs for backtests.
+
 ---
 
-## 8. Schema Definitions (Detailed)
+## 9. Schema Definitions (Detailed)
 
 ### Market Event Schema
 ```ts
@@ -365,7 +402,7 @@ interface PerformanceMetricsRecord {
 
 ---
 
-## 9. Compliance & Safety
+## 10. Compliance & Safety
 
 - **Paper trading only**: All executions are simulated. No live trading APIs are invoked by the learning system.
 - **Fail closed**: If required configuration is missing, strategy execution halts.
@@ -374,7 +411,7 @@ interface PerformanceMetricsRecord {
 
 ---
 
-## 10. Next Steps
+## 11. Next Steps
 
 1. Implement event store writer with versioned schema validation.
 2. Add replay engine for offline evaluation.
@@ -392,4 +429,3 @@ interface PerformanceMetricsRecord {
 - [ ] Offline evaluation pipeline scaffolding
 - [ ] Dashboard metrics endpoints
 - [ ] Compliance review (paper-only)
-
