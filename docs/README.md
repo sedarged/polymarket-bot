@@ -16,6 +16,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
+- [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist

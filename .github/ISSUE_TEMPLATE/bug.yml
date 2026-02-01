@@ -1,0 +1,120 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[BUG]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🚨 **SECURITY BUGS**: If this is a security issue, please email privately instead of filing a public issue.
+        
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical (data loss, security, trading failures)
+        - High (major feature broken, money at risk)
+        - Medium (feature partially broken)
+        - Low (cosmetic, minor issue)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Trading Logic
+        - WebSocket/Market Feed
+        - Order Management
+        - API Client (CLOB/Gamma)
+        - Frontend/Dashboard
+        - Backend/Server
+        - Configuration
+        - Documentation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Trading Mode
+      options:
+        - Paper Trading (default)
+        - Live Trading (real money)
+        - Not Applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened?
+      placeholder: Clear description of the unexpected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Start bot with: `npm run dev`
+        2. Configure TOKEN_IDS=0x123...
+        3. Observe behavior: ...
+        4. Expected: ... but got: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Include error messages or logs (redact sensitive data!)
+      render: shell
+      placeholder: |
+        Paste relevant logs here.
+        IMPORTANT: Remove any private keys, API keys, or wallet addresses!
+
+  - type: input
+    id: version
+    attributes:
+      label: Version/Commit
+      description: Which version or commit are you running?
+      placeholder: "commit SHA or branch name"
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant environment details
+      placeholder: |
+        - Node version: (run `node --version`)
+        - OS: (e.g., Ubuntu 22.04, macOS 14, Windows 11)
+        - Deployment: (local, Docker, cloud platform)
+      value: |
+        - Node version: 
+        - OS: 
+        - Deployment: 
+
+  - type: textarea
+    id: audit-reference
+    attributes:
+      label: Audit Reference (if applicable)
+      description: If this bug is related to a known audit finding, reference it here
+      placeholder: "e.g., Related to A-001 (plaintext private key storage)"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I've searched existing issues for duplicates
+          required: true
+        - label: I've redacted any sensitive information (keys, addresses)
+          required: true
+        - label: I've included reproduction steps
+          required: true
