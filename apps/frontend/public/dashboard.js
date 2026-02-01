@@ -15,7 +15,25 @@ const state = {
   events: [],
   logs: [],
   alerts: [],
-  configChanges: []
+  configChanges: [],
+  // Track current configuration values for accurate change logs
+  currentConfig: {
+    risk: {
+      maxExposure: '1000',
+      maxOpenOrders: '50',
+      maxDrawdown: '20'
+    },
+    strategy: {
+      type: 'market-maker',
+      orderSize: '100',
+      refreshInterval: '5'
+    },
+    reconnect: {
+      attempts: '5',
+      delay: '1000',
+      maxDelay: '30000'
+    }
+  }
 };
 
 // Utility functions
@@ -584,10 +602,19 @@ async function saveRiskConfig() {
   
   errorEl.classList.add('hidden');
   
-  // In a real implementation, this would save to backend
-  addConfigChange('Risk', 'maxExposure', '1000', maxExposure);
-  addConfigChange('Risk', 'maxOpenOrders', '50', maxOpenOrders);
-  addConfigChange('Risk', 'maxDrawdown', '20', maxDrawdown);
+  // Track changes with actual previous values from state
+  if (maxExposure !== state.currentConfig.risk.maxExposure) {
+    addConfigChange('Risk', 'maxExposure', state.currentConfig.risk.maxExposure, maxExposure);
+    state.currentConfig.risk.maxExposure = maxExposure;
+  }
+  if (maxOpenOrders !== state.currentConfig.risk.maxOpenOrders) {
+    addConfigChange('Risk', 'maxOpenOrders', state.currentConfig.risk.maxOpenOrders, maxOpenOrders);
+    state.currentConfig.risk.maxOpenOrders = maxOpenOrders;
+  }
+  if (maxDrawdown !== state.currentConfig.risk.maxDrawdown) {
+    addConfigChange('Risk', 'maxDrawdown', state.currentConfig.risk.maxDrawdown, maxDrawdown);
+    state.currentConfig.risk.maxDrawdown = maxDrawdown;
+  }
   
   showSuccess('Risk configuration saved');
   addEvent('CONFIG', 'Risk configuration updated');
@@ -608,9 +635,19 @@ async function saveStrategyConfig() {
   
   errorEl.classList.add('hidden');
   
-  addConfigChange('Strategy', 'type', 'market-maker', strategyType);
-  addConfigChange('Strategy', 'orderSize', '100', orderSize);
-  addConfigChange('Strategy', 'refreshInterval', '5', refreshInterval);
+  // Track changes with actual previous values from state
+  if (strategyType !== state.currentConfig.strategy.type) {
+    addConfigChange('Strategy', 'type', state.currentConfig.strategy.type, strategyType);
+    state.currentConfig.strategy.type = strategyType;
+  }
+  if (orderSize !== state.currentConfig.strategy.orderSize) {
+    addConfigChange('Strategy', 'orderSize', state.currentConfig.strategy.orderSize, orderSize);
+    state.currentConfig.strategy.orderSize = orderSize;
+  }
+  if (refreshInterval !== state.currentConfig.strategy.refreshInterval) {
+    addConfigChange('Strategy', 'refreshInterval', state.currentConfig.strategy.refreshInterval, refreshInterval);
+    state.currentConfig.strategy.refreshInterval = refreshInterval;
+  }
   
   showSuccess('Strategy configuration saved');
   addEvent('CONFIG', 'Strategy configuration updated');
@@ -631,9 +668,19 @@ async function saveReconnectConfig() {
   
   errorEl.classList.add('hidden');
   
-  addConfigChange('Reconnect', 'attempts', '5', attempts);
-  addConfigChange('Reconnect', 'delay', '1000', delay);
-  addConfigChange('Reconnect', 'maxDelay', '30000', maxDelay);
+  // Track changes with actual previous values from state
+  if (attempts !== state.currentConfig.reconnect.attempts) {
+    addConfigChange('Reconnect', 'attempts', state.currentConfig.reconnect.attempts, attempts);
+    state.currentConfig.reconnect.attempts = attempts;
+  }
+  if (delay !== state.currentConfig.reconnect.delay) {
+    addConfigChange('Reconnect', 'delay', state.currentConfig.reconnect.delay, delay);
+    state.currentConfig.reconnect.delay = delay;
+  }
+  if (maxDelay !== state.currentConfig.reconnect.maxDelay) {
+    addConfigChange('Reconnect', 'maxDelay', state.currentConfig.reconnect.maxDelay, maxDelay);
+    state.currentConfig.reconnect.maxDelay = maxDelay;
+  }
   
   showSuccess('Reconnect configuration saved');
   addEvent('CONFIG', 'Reconnect configuration updated');

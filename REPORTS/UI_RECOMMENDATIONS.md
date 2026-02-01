@@ -98,8 +98,8 @@ This document provides comprehensive UI/UX recommendations and documentation for
 **Design:**
 - Horizontal tab bar with active state highlighting
 - Scrollable on mobile (no content overflow)
-- Tab state preserved during refresh
-- Each tab lazy-loads content when activated
+- Tab state resets to Overview on page refresh (persistence is a future enhancement)
+- All data is loaded as part of the global refresh cycle (per-tab lazy loading is a future enhancement)
 
 ### 2.3 Dashboard Cards
 
@@ -407,13 +407,11 @@ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 - Proper heading hierarchy (h1 → card-title)
 - Button elements for all clickable actions
 - Form labels associated with inputs
-- Table headers with scope attributes
 
 **Keyboard Navigation:**
 - Tab order follows visual flow
 - All interactive elements accessible via Tab
 - Enter/Space activates buttons
-- Escape closes modals
 
 **Color Contrast:**
 - All text meets WCAG AA standard (4.5:1 minimum)
@@ -422,22 +420,28 @@ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
 ### 6.2 Future Enhancements
 
 **Recommended Additions:**
-1. **ARIA Labels**
+1. **Table Scope Attributes**
+   - Add `scope="col"` to table header cells for screen reader clarity
+
+2. **Modal Escape Key**
+   - Add keyboard handler to close modals with Escape key
+
+3. **ARIA Labels**
    - `aria-label` for icon-only buttons
    - `aria-live` regions for dynamic updates
    - `role="alert"` for critical notifications
 
-2. **Screen Reader Support**
+4. **Screen Reader Support**
    - Announce mode changes (LIVE/PAPER)
    - Read alert messages aloud
    - Describe chart data (if charts added)
 
-3. **Focus Management**
+5. **Focus Management**
    - Trap focus within modals
    - Return focus after modal close
    - Skip-to-content link
 
-4. **Motion Preferences**
+6. **Motion Preferences**
    ```css
    @media (prefers-reduced-motion: reduce) {
      * {
@@ -558,10 +562,10 @@ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
    - Avoid frequent reflows
    - Virtual scrolling for large lists (future: if >1000 items)
 
-3. **Lazy Loading**
-   - Tab content loaded on demand
-   - Tables render only visible rows
-   - Images lazy-loaded (if added)
+3. **Efficient DOM Updates**
+   - Batch updates in single `innerHTML` assignment
+   - Avoid frequent reflows
+   - Virtual scrolling for large lists (future: if >1000 items)
 
 4. **Caching Strategy**
    - Client-side state management
