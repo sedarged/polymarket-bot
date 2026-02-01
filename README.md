@@ -267,6 +267,8 @@ npm run test:coverage
 
 The Gamma API provides market and event information:
 - **Base URL**: https://gamma-api.polymarket.com
+- **Purpose**: Market discovery and metadata
+- **Documentation**: https://docs.polymarket.com/developers/gamma-markets-api/overview
 - **Endpoints Used**:
   - `GET /markets` - List markets
   - `GET /events` - List events
@@ -275,6 +277,8 @@ The Gamma API provides market and event information:
 
 The CLOB (Central Limit Order Book) API provides orderbook data and trading capabilities:
 - **Base URL**: https://clob.polymarket.com
+- **Purpose**: Orderbook and trading
+- **Documentation**: https://docs.polymarket.com/developers/CLOB/introduction
 - **Endpoints Used**:
   - `GET /book?token_id=<TOKEN_ID>` - Get orderbook for token
   - `POST /order` - Create new order (live trading)
@@ -282,6 +286,24 @@ The CLOB (Central Limit Order Book) API provides orderbook data and trading capa
   - `GET /orders` - Get user orders (live trading)
 
 **Note**: Trading endpoints require authentication via wallet signature.
+
+### WebSocket API
+- **URL**: wss://ws-subscriptions-clob.polymarket.com/ws/market
+- **Purpose**: Real-time market data
+- **Documentation**: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
+
+### Implementation Alignment
+For a comprehensive review of how this repository aligns with official Polymarket API documentation, see [REPORTS/RESEARCH_REVIEW.md](./REPORTS/RESEARCH_REVIEW.md).
+
+**Summary:**
+- ✅ Fully aligned with official CLOB, Gamma, and WebSocket APIs
+- ✅ Uses official `@polymarket/clob-client` SDK for trading
+- ✅ Implements best practices: reconnection, resync, idempotency
+- ⚠️ Recommended enhancements: Rate limiting awareness, structured error handling
+
+See also:
+- [ADR-0002: Rate Limiting Strategy](./docs/adr/0002-rate-limiting-strategy.md)
+- [ADR-0003: API Error Handling](./docs/adr/0003-api-error-handling.md)
 
 ## Example Workflow
 

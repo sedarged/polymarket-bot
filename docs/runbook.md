@@ -3,6 +3,15 @@
 ## Purpose
 Operational procedures for running the Polymarket bot in production.
 
+## Official API Documentation
+This runbook references the official Polymarket API documentation:
+- **CLOB API:** https://docs.polymarket.com/developers/CLOB/introduction
+- **Gamma API:** https://docs.polymarket.com/developers/gamma-markets-api/overview
+- **WebSocket API:** https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
+- **Rate Limits:** https://docs.polymarket.com/quickstart/introduction/rate-limits
+
+For detailed implementation alignment, see [REPORTS/RESEARCH_REVIEW.md](../REPORTS/RESEARCH_REVIEW.md).
+
 ## Prerequisites
 
 ### Required Environment Variables

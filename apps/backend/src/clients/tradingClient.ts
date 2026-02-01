@@ -5,6 +5,28 @@ import { logger } from '../utils/logger';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
 
+/**
+ * Trading Client for Live Order Placement
+ * 
+ * Official Documentation: https://docs.polymarket.com/developers/CLOB/orders/create-order
+ * SDK: @polymarket/clob-client v5.2.1
+ * 
+ * This client uses the official Polymarket CLOB SDK for order placement and management.
+ * It handles L1/L2 authentication automatically via the SDK and provides:
+ * - Idempotent order placement using clientOrderId
+ * - Startup reconciliation of open orders and positions
+ * - Kill switch for emergency order cancellation
+ * - Order state tracking and management
+ * 
+ * Implementation Review: See REPORTS/RESEARCH_REVIEW.md Section 2.4
+ * Authentication: Fully aligned with official L1/L2 flow via SDK ✓
+ * Chain ID: 137 (Polygon Mainnet) ✓
+ * Security: Dual-gate system (LIVE_TRADING + COMPLIANCE_ACCEPTED) ✓
+ * 
+ * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
+ * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
+ * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
+ */
 export interface TradingState {
   orders: Order[];
   fills: Fill[];
