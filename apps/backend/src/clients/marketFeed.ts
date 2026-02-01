@@ -11,6 +11,29 @@ import {
   Orderbook,
 } from '@polymarket/shared';
 
+/**
+ * Market Feed WebSocket Client
+ * 
+ * Official Documentation: https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
+ * WebSocket URL: wss://ws-subscriptions-clob.polymarket.com/ws/market
+ * 
+ * Provides real-time market data updates via WebSocket connection with:
+ * - Automatic reconnection with exponential backoff
+ * - State resync after connection loss using REST API fallback
+ * - Subscription management for multiple asset IDs
+ * - Message handling for book snapshots, price changes, and last trades
+ * 
+ * Implementation Review: See REPORTS/RESEARCH_REVIEW.md Section 2.3
+ * Follows best practices from official documentation:
+ * - Reconnection with exponential backoff ✓
+ * - REST API resync after reconnect ✓
+ * - Proper subscription message format ✓
+ * - Idempotent resync operations ✓
+ * 
+ * @see {@link https://docs.polymarket.com/developers/CLOB/websocket/wss-overview}
+ * @see {@link https://docs.polymarket.com/quickstart/websocket/WSS-Quickstart}
+ * @see {@link ../../../REPORTS/RESEARCH_REVIEW.md}
+ */
 export interface MarketFeedOptions {
   url: string;
   tokenIds: string[];

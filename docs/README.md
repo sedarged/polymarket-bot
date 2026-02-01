@@ -35,6 +35,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Reference
 - [CHANGELOG](../CHANGELOG.md) - Release history and notable changes
 - [Open Questions](./open-questions.md) - Unresolved questions and discussions
+- [API Documentation Alignment](../REPORTS/RESEARCH_REVIEW.md) - Comprehensive review of Polymarket API implementation
 
 ## 📂 Documentation Structure
 
@@ -59,7 +60,9 @@ polymarket-bot/
     │   └── session-state.md
     │
     ├── adr/                     # Architecture Decision Records
-    │   └── 0001-initial-architecture.md
+    │   ├── 0001-initial-architecture.md
+    │   ├── 0002-rate-limiting-strategy.md
+    │   └── 0003-api-error-handling.md
     │
     ├── architecture.md          # Technical architecture
     ├── environment.md           # Development environment
@@ -70,6 +73,9 @@ polymarket-bot/
     ├── open-questions.md
     ├── report-digest.md
     └── migration-log.md              # Architecture decisions
+│
+└── REPORTS/                     # Research and analysis reports
+    └── RESEARCH_REVIEW.md       # API documentation alignment review
 ```
 
 ## 🎯 Documentation by Role
