@@ -20,7 +20,7 @@ To update this status:
 *No P0 issues*
 
 ## Next — P1 (High Priority)
-- [P1] #30 [Task] Production Dashboard UI/UX Upgrade
+*No P1 issues*
 
 ## Next — P2 (Normal Priority)
 *No P2 issues*
@@ -29,6 +29,7 @@ To update this status:
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
 - [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
 - [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
+- [P1] #30 [Task] Production Dashboard UI/UX Upgrade
 - [P1] #29 [Task] Learning System Design and Implementation
 - [P1] #28 [Task] Production-Grade Trading Bot Gap Analysis
 - [P1] #27 [Task] Polymarket CLOB/Gamma API Documentation Alignment
@@ -40,7 +41,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-01T19:37:13.019Z*
+*Last updated: 2026-02-01T21:25:02.568Z*
 
 <!-- STATUS_SYNC_END -->
 
