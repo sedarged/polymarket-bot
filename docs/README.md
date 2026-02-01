@@ -10,6 +10,10 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [System Overview](./architecture-overview.md) - Plain language explanation of how the system works
 - [Examples](./examples.md) - CLI usage examples and common patterns
 
+### Security & Audits
+- [Security Audit Report](../REPORTS/AUDIT.md) - Comprehensive security & reliability audit (27 findings)
+- [Reports Index](../REPORTS/README.md) - All audit and analysis reports
+
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Environment Setup](./environment.md) - Complete development environment and command reference

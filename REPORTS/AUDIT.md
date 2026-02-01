@@ -1200,6 +1200,14 @@ clientOrderId,
   - "Reliability: WebSocket reconnect + resync" - **Missing dedup (A-010)**
   - "Kill switch capability" - **Not persistent (A-002)**
 
+### Common Pitfalls Guide
+- [Common Pitfalls: Double Order Submission](../docs/ai/common-pitfalls.md#1-double-order-submission)
+  - **Related to A-006:** Weak client order ID generation
+- [Common Pitfalls: Missing Live Trading Gates](../docs/ai/common-pitfalls.md#2-missing-live-trading-gates)
+  - **Properly implemented:** Two-factor gate with LIVE_TRADING and COMPLIANCE_ACCEPTED
+- [Common Pitfalls: WebSocket Reconnection](../docs/ai/common-pitfalls.md)
+  - **Related to A-010:** Missing message deduplication on reconnect
+
 ### Architecture Documentation
 - [Architecture: Critical Paths](../docs/architecture.md)
   - WebSocket Reconnection - **Race condition (A-007), no dedup (A-010)**

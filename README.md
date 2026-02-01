@@ -13,6 +13,10 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
 - **[CHANGELOG.md](./CHANGELOG.md)** - Release history and notable changes
 
+**Security & Audits:**
+- **[Security Audit Report](./REPORTS/AUDIT.md)** - Comprehensive security & reliability audit (27 findings)
+- **[Reports Index](./REPORTS/README.md)** - All audit and analysis reports
+
 **Detailed Documentation:**
 - **[Architecture Map](./docs/architecture.md)** - Technical architecture documentation with critical paths and module dependencies
 - **[Environment Setup](./docs/environment.md)** - Complete development environment and command reference
