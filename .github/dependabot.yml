@@ -16,7 +16,9 @@ updates:
         patterns:
           - "*"
         update-types:
-          - "security"
+          - "patch"
+          - "minor"
+          - "major"
 
   # Backend workspace (CRITICAL - handles trading)
   - package-ecosystem: "npm"
@@ -36,8 +38,9 @@ updates:
           - "ws"
           - "zod"
         update-types:
-          - "security"
           - "patch"
+          - "minor"
+          - "major"
 
   # Frontend workspace
   - package-ecosystem: "npm"
