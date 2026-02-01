@@ -147,14 +147,21 @@ export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number
 ): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Operation timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    }),
-  ]);
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timeoutId);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
 }
 
 export function sleep(ms: number): Promise<void> {

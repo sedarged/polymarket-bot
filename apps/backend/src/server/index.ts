@@ -73,9 +73,8 @@ export function createServer(): http.Server {
 
     // Readiness probe endpoint
     if (method === 'GET' && url === '/ready') {
-      const circuitBreakerMetrics = marketFeedService.getCircuitBreakerMetrics
-        ? [marketFeedService.getCircuitBreakerMetrics()]
-        : [];
+      const cbMetrics = marketFeedService.getCircuitBreakerMetrics();
+      const circuitBreakerMetrics = cbMetrics ? [cbMetrics] : [];
       
       const readiness = getReadinessStatus(
         marketFeedService.isConnected(),
@@ -91,6 +90,7 @@ export function createServer(): http.Server {
 
     // Metrics endpoint for monitoring
     if (method === 'GET' && url === '/metrics') {
+      const cbMetrics = marketFeedService.getCircuitBreakerMetrics();
       const metrics = {
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
@@ -108,9 +108,7 @@ export function createServer(): http.Server {
           cachedOrderbooks: marketFeedService.getAllOrderbooks().size,
           tokenIds: config.tokenIds.length,
         },
-        circuitBreakers: marketFeedService.getCircuitBreakerMetrics
-          ? [marketFeedService.getCircuitBreakerMetrics()]
-          : [],
+        circuitBreakers: cbMetrics ? [cbMetrics] : [],
       };
       respondJson(res, 200, metrics);
       logger.info('Metrics retrieved');

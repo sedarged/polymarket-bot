@@ -1,6 +1,6 @@
 # Reliability and SRE Implementation Summary
 
-This document summarizes the reliability and SRE improvements implemented in PR #[TBD].
+This document summarizes the reliability and SRE improvements implemented for the Polymarket bot.
 
 ## Overview
 

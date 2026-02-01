@@ -430,10 +430,11 @@ curl http://localhost:3000/health
 
 **Purpose**: Check if application is running and responsive (liveness probe).
 
-**Response**:
+**Response**: The top-level `status` field will be one of `"ok"`, `"degraded"`, or `"unhealthy"`.
+
 ```json
 {
-  "status": "ok" | "degraded" | "unhealthy",
+  "status": "ok",
   "timestamp": "2026-02-01T08:00:00.000Z",
   "liveTradingEnabled": false,
   "uptime": 123456,
@@ -460,8 +461,10 @@ curl http://localhost:3000/health
 ```
 
 **Status Codes**:
-- `200 OK`: Application is healthy
-- Non-200: Application has issues (check `status` field)
+- `200 OK`: Endpoint is reachable. Application health is indicated by the JSON `status` field:
+  - `ok`: Application is healthy
+  - `degraded`: Application is experiencing partial issues but is still running
+  - `unhealthy`: Application is unhealthy (investigation required)
 
 **Use for**: Kubernetes liveness probe, basic health monitoring
 

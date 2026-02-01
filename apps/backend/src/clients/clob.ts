@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 import { config } from '../config';
 import { retry, ErrorType, classifyError } from '../utils/retry';
 import { CircuitBreaker } from '../utils/circuitBreaker';
