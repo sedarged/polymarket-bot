@@ -1,0 +1,180 @@
+name: Status Sync
+
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: read
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: status-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Generate status content
+        id: generate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Fetch all open issues (not PRs)
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            // Filter out pull requests
+            const issues = openIssues.filter(issue => !issue.pull_request);
+            
+            // Fetch recently closed issues (last 14 days)
+            const fourteenDaysAgo = new Date();
+            fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+            
+            const { data: closedIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              since: fourteenDaysAgo.toISOString(),
+              per_page: 100
+            });
+            
+            const recentlyClosed = closedIssues.filter(issue => !issue.pull_request);
+            
+            // Categorize issues
+            const inProgress = [];
+            const p0Issues = [];
+            const p1Issues = [];
+            const p2Issues = [];
+            
+            for (const issue of issues) {
+              const labels = issue.labels.map(l => typeof l === 'string' ? l : l.name);
+              
+              if (labels.includes('in-progress')) {
+                inProgress.push(issue);
+              } else if (labels.includes('P0')) {
+                p0Issues.push(issue);
+              } else if (labels.includes('P1')) {
+                p1Issues.push(issue);
+              } else if (labels.includes('P2')) {
+                p2Issues.push(issue);
+              }
+            }
+            
+            // Format function
+            function formatIssue(issue) {
+              const labels = issue.labels.map(l => typeof l === 'string' ? l : l.name);
+              const priority = labels.find(l => ['P0', 'P1', 'P2'].includes(l)) || '';
+              const prefix = priority ? `[${priority}] ` : '';
+              return `- ${prefix}#${issue.number} ${issue.title}`;
+            }
+            
+            // Build the status content
+            let statusContent = '<!-- STATUS_SYNC_START -->\n';
+            statusContent += '<!-- This section is automatically updated. Do not edit manually. -->\n\n';
+            
+            statusContent += '## Now (In Progress)\n';
+            if (inProgress.length > 0) {
+              statusContent += inProgress.map(formatIssue).join('\n') + '\n';
+            } else {
+              statusContent += '*No issues currently in progress*\n';
+            }
+            statusContent += '\n';
+            
+            statusContent += '## Next — P0 (Critical)\n';
+            if (p0Issues.length > 0) {
+              statusContent += p0Issues.map(formatIssue).join('\n') + '\n';
+            } else {
+              statusContent += '*No P0 issues*\n';
+            }
+            statusContent += '\n';
+            
+            statusContent += '## Next — P1 (High Priority)\n';
+            if (p1Issues.length > 0) {
+              statusContent += p1Issues.map(formatIssue).join('\n') + '\n';
+            } else {
+              statusContent += '*No P1 issues*\n';
+            }
+            statusContent += '\n';
+            
+            statusContent += '## Next — P2 (Normal Priority)\n';
+            if (p2Issues.length > 0) {
+              statusContent += p2Issues.map(formatIssue).join('\n') + '\n';
+            } else {
+              statusContent += '*No P2 issues*\n';
+            }
+            statusContent += '\n';
+            
+            statusContent += '## Recently Closed (Last 14 Days)\n';
+            if (recentlyClosed.length > 0) {
+              statusContent += recentlyClosed.map(formatIssue).join('\n') + '\n';
+            } else {
+              statusContent += '*No recently closed issues*\n';
+            }
+            statusContent += '\n';
+            
+            const now = new Date().toISOString();
+            statusContent += `*Last updated: ${now}*\n\n`;
+            statusContent += '<!-- STATUS_SYNC_END -->';
+            
+            // Read current STATUS.md
+            const statusFile = 'STATUS.md';
+            let fileContent = fs.readFileSync(statusFile, 'utf8');
+            
+            // Replace content between markers
+            const startMarker = '<!-- STATUS_SYNC_START -->';
+            const endMarker = '<!-- STATUS_SYNC_END -->';
+            
+            const startIndex = fileContent.indexOf(startMarker);
+            const endIndex = fileContent.indexOf(endMarker);
+            
+            if (startIndex === -1 || endIndex === -1) {
+              core.setFailed('Could not find STATUS_SYNC markers in STATUS.md');
+              return;
+            }
+            
+            const before = fileContent.substring(0, startIndex);
+            const after = fileContent.substring(endIndex + endMarker.length);
+            
+            const newContent = before + statusContent + after;
+            
+            // Write updated content
+            fs.writeFileSync(statusFile, newContent, 'utf8');
+            
+            console.log('Status updated successfully');
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'Auto-sync STATUS.md from GitHub Issues'
+          branch: automation/status-sync
+          delete-branch: true
+          title: 'Auto-sync: Update STATUS.md'
+          body: |
+            Automated status synchronization from GitHub Issues.
+            
+            This PR updates STATUS.md with the current state of issues:
+            - In Progress issues (label: in-progress)
+            - P0, P1, P2 issues
+            - Recently closed issues (last 14 days)
+            
+            **Automation**: This PR is created automatically by the status-sync workflow.
+          labels: automation

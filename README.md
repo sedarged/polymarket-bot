@@ -4,7 +4,16 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 
 ## 📚 Documentation
 
+**Quick Start:**
+- **[STATUS.md](./STATUS.md)** - Current work status and priorities (updated automatically from GitHub Issues)
 - **[System Overview](./SYSTEM_OVERVIEW.md)** - Plain language explanation of how the system works (start here!)
+- **[Documentation Index](./docs/README.md)** - Complete documentation catalog and navigation
+
+**For Contributors:**
+- **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
+- **[CHANGELOG.md](./CHANGELOG.md)** - Release history and notable changes
+
+**Detailed Documentation:**
 - **[Architecture Map](./docs/ARCHITECTURE.md)** - Technical architecture documentation with critical paths and module dependencies
 - **[Environment Setup](./docs/ENVIRONMENT.md)** - Complete development environment and command reference
 - **[Master Development Plan](./MASTER_DEVELOPMENT_PLAN.md)** - Comprehensive task list with checkboxes and roadmap
