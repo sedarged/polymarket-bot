@@ -18,12 +18,12 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ### Architecture & Design
 - [Architecture Map](./architecture.md) - Technical architecture documentation with critical paths
-- [Architecture Decision Records (ADR)](./ADR-0001.md) - Key architectural decisions and rationale
+- [Architecture Decision Records (ADR)](./migration-log.md) - Key architectural decisions and rationale
 - [Plan](./plan.md) - PR rollout plan and phased development strategy
 
 ### Operations
 - [Runbook](./runbook.md) - Operational procedures for running the bot
-- [Paper Trading Guide](./PAPER_TRADING.md) - Safe testing without real money
+- [Paper Trading Guide](./paper-trading.md) - Safe testing without real money
 - [Report Digest](./report-digest.md) - Analysis summaries and findings
 
 ### AI & Automation
@@ -58,15 +58,18 @@ polymarket-bot/
     │   ├── decision-trees.md
     │   └── session-state.md
     │
-    ├── ARCHITECTURE.md          # Technical architecture
-    ├── ENVIRONMENT.md           # Development environment
-    ├── RUNBOOK.md               # Operations manual
-    ├── PAPER_TRADING.md         # Paper trading guide
-    ├── PLAN.md                  # Development plan
-    ├── IMPLEMENTATION_CHECKLIST.md
-    ├── OPEN_QUESTIONS.md
-    ├── REPORT_DIGEST.md
-    └── ADR-0001.md              # Architecture decisions
+    ├── adr/                     # Architecture Decision Records
+    │   └── 0001-initial-architecture.md
+    │
+    ├── architecture.md          # Technical architecture
+    ├── environment.md           # Development environment
+    ├── runbook.md               # Operations manual
+    ├── paper-trading.md         # Paper trading guide
+    ├── plan.md                  # Development plan
+    ├── implementation-checklist.md
+    ├── open-questions.md
+    ├── report-digest.md
+    └── migration-log.md              # Architecture decisions
 ```
 
 ## 🎯 Documentation by Role
@@ -81,11 +84,11 @@ polymarket-bot/
 1. [Architecture Map](./architecture.md) - Understand the technical design
 2. [Implementation Checklist](./implementation-checklist.md) - Track implementation progress
 3. [Common Pitfalls](./ai/common-pitfalls.md) - Avoid known issues
-4. [ADR-0001](./ADR-0001.md) - Understand key decisions
+4. [ADR-0001](./migration-log.md) - Understand key decisions
 
 ### For Operators
 1. [Runbook](./runbook.md) - How to run and manage the bot
-2. [Paper Trading Guide](./PAPER_TRADING.md) - Test safely before live trading
+2. [Paper Trading Guide](./paper-trading.md) - Test safely before live trading
 3. [Environment Setup](./environment.md) - Configuration and environment variables
 
 ### For AI Agents
@@ -121,4 +124,4 @@ polymarket-bot/
 
 - **Issues**: Current and resolved issues are tracked in [STATUS.md](../STATUS.md)
 - **Questions**: Check [Open Questions](./open-questions.md) or open a new issue
-- **Decisions**: Review [ADR-0001](./ADR-0001.md) for rationale behind choices
+- **Decisions**: Review [ADR-0001](./migration-log.md) for rationale behind choices
