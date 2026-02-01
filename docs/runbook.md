@@ -419,6 +419,137 @@ Escalation target(s): TBD (Slack/Discord/Telegram).
 
 ## Monitoring and Alerting
 
+### Observability Endpoints
+
+The bot exposes several endpoints for monitoring and health checks:
+
+#### Health Endpoint (Liveness)
+```bash
+curl http://localhost:3000/health
+```
+
+**Purpose**: Check if application is running and responsive (liveness probe).
+
+**Response**:
+```json
+{
+  "status": "ok" | "degraded" | "unhealthy",
+  "timestamp": "2026-02-01T08:00:00.000Z",
+  "liveTradingEnabled": false,
+  "uptime": 123456,
+  "checks": {
+    "memory": {
+      "status": "ok",
+      "message": "128MB / 256MB used",
+      "details": {
+        "heapUsed": 128,
+        "heapTotal": 256,
+        "utilization": 50
+      }
+    },
+    "uptime": {
+      "status": "ok",
+      "message": "123s",
+      "details": {
+        "uptimeMs": 123456,
+        "startTime": "2026-02-01T07:58:00.000Z"
+      }
+    }
+  }
+}
+```
+
+**Status Codes**:
+- `200 OK`: Application is healthy
+- Non-200: Application has issues (check `status` field)
+
+**Use for**: Kubernetes liveness probe, basic health monitoring
+
+---
+
+#### Readiness Endpoint (Readiness)
+```bash
+curl http://localhost:3000/ready
+```
+
+**Purpose**: Check if application is ready to accept traffic (readiness probe).
+
+**Response**:
+```json
+{
+  "ready": true,
+  "timestamp": "2026-02-01T08:00:00.000Z",
+  "checks": {
+    "marketFeed": {
+      "ready": true,
+      "message": "Market feed WebSocket connected"
+    },
+    "tradingClient": {
+      "ready": true,
+      "message": "Trading client initialized"
+    },
+    "circuitBreaker_clob-api": {
+      "ready": true,
+      "message": "Circuit breaker closed"
+    }
+  }
+}
+```
+
+**Status Codes**:
+- `200 OK`: Application is ready
+- `503 Service Unavailable`: Application is not ready (check `checks` for details)
+
+**Use for**: Kubernetes readiness probe, load balancer health check
+
+---
+
+#### Metrics Endpoint
+```bash
+curl http://localhost:3000/metrics
+```
+
+**Purpose**: Expose operational metrics for monitoring systems.
+
+**Response**:
+```json
+{
+  "timestamp": "2026-02-01T08:00:00.000Z",
+  "uptime": 123.456,
+  "memory": {
+    "heapUsed": 128,
+    "heapTotal": 256,
+    "rss": 300
+  },
+  "trading": {
+    "liveTrading": false,
+    "initialized": true
+  },
+  "marketFeed": {
+    "connected": true,
+    "cachedOrderbooks": 5,
+    "tokenIds": 5
+  },
+  "circuitBreakers": [
+    {
+      "name": "clob-api",
+      "state": "closed",
+      "failures": 2,
+      "successes": 150,
+      "consecutiveFailures": 0,
+      "consecutiveSuccesses": 10,
+      "lastFailureTime": 1769934415000,
+      "lastSuccessTime": 1769934525000,
+      "totalRequests": 152
+    }
+  ]
+}
+```
+
+**Use for**: Prometheus scraping, Datadog, custom monitoring dashboards
+
+---
+
 ### Key Metrics to Monitor
 
 #### System Health Metrics
@@ -466,12 +597,20 @@ curl http://localhost:3000/feed/status
 | Metric | Warning | Critical | Action |
 |--------|---------|----------|--------|
 | Memory Usage | > 70% | > 85% | Restart server, investigate leak |
+| Circuit Breaker State | half-open | open | Check service health, review errors |
+| Circuit Breaker Failures | > 3 in 5min | > 10 in 5min | Investigate root cause, check service |
 | Open Orders | > 80% of max | > 95% of max | Review strategy, cancel old orders |
 | Drawdown | > 15% | > 18% | Pause trading, review positions |
 | Error Rate | > 5% | > 8% | Investigate errors, check API status |
 | WS Disconnects | > 3/hour | > 5/hour | Check network, API status |
 | Order Rejections | > 10% | > 20% | Review risk parameters |
 | API Response Time | > 2s | > 5s | Check API health, reduce load |
+| Readiness Check | failing 1-2 checks | failing 3+ checks | Fix dependencies, check connectivity |
+
+**Additional Circuit Breaker Alerts**:
+- **Circuit opens**: Immediate Sev-2 alert, investigate service failure
+- **Circuit stays open > 5min**: Escalate to Sev-1, manual intervention required
+- **Circuit flapping** (open/close cycles): Investigate intermittent issues, adjust thresholds
 
 ### Log Monitoring
 
@@ -678,6 +817,73 @@ npm run dev | grep ERROR | tail -50
    - Check internet connectivity
    - Verify firewall rules
    - Test with curl: `curl https://clob.polymarket.com`
+
+### Issue: Circuit breaker opened
+
+**Symptoms:**
+- Logs show "Circuit breaker opened"
+- Requests failing with "Circuit breaker is open" message
+- Service degraded or unavailable
+
+**Diagnosis:**
+```bash
+# Check circuit breaker status via metrics endpoint
+curl http://localhost:3000/metrics | jq '.circuitBreakers'
+
+# Example output:
+# [{
+#   "name": "clob-api",
+#   "state": "open",
+#   "failures": 5,
+#   "consecutiveFailures": 5,
+#   "lastFailureTime": 1234567890
+# }]
+
+# Check recent error logs
+npm run dev | grep "Circuit breaker" | tail -20
+```
+
+**Resolution:**
+
+1. **Identify root cause:**
+   - Check service availability: `curl https://clob.polymarket.com`
+   - Review error logs for failure patterns
+   - Check if issue is network, auth, or service-side
+
+2. **For transient issues (network, temporary outage):**
+   ```bash
+   # Wait for circuit breaker to automatically transition to half-open
+   # Default reset timeout: 60 seconds
+   # Monitor logs for "Circuit breaker half-open" message
+   
+   # Check circuit breaker status
+   curl http://localhost:3000/metrics | jq '.circuitBreakers[].state'
+   ```
+
+3. **For persistent issues:**
+   - Fix underlying problem (network, credentials, service outage)
+   - Circuit breaker will automatically recover when service is healthy
+   - If needed, restart bot to force fresh state
+
+4. **Manual recovery (use with caution):**
+   - Circuit breaker will auto-recover when service is healthy
+   - No manual intervention needed in most cases
+   - For testing only: call internal reset method (requires code access)
+
+**Circuit Breaker States:**
+- **closed**: Normal operation, requests pass through
+- **open**: Service failing, requests rejected immediately (protecting from cascade failures)
+- **half_open**: Testing if service recovered, allowing limited requests
+
+**Prevention:**
+- Ensure proper error handling in all API calls
+- Monitor error rates and set up alerts
+- Use retry logic with appropriate backoff
+- Review and adjust circuit breaker thresholds if too sensitive
+
+**See also:**
+- [Error Taxonomy](./error-taxonomy.md) - Error classification and handling strategies
+- Circuit breaker metrics: `GET /metrics` endpoint
 
 ### Issue: Incorrect PnL calculations
 
