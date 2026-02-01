@@ -35,6 +35,186 @@ PORT=3000
 LOG_LEVEL=info
 ```
 
+### Environment Validation Script
+
+Run this script before starting the bot to validate your environment:
+
+```bash
+#!/bin/bash
+# File: scripts/validate-env.sh
+
+echo "=== Environment Validation ==="
+
+# Check Node.js version
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 20 ]; then
+  echo "❌ Node.js version must be >= 20 (current: $(node -v))"
+  exit 1
+fi
+echo "✅ Node.js version: $(node -v)"
+
+# Check .env file exists
+if [ ! -f .env ]; then
+  echo "❌ .env file not found"
+  echo "   Copy .env.example to .env and configure it"
+  exit 1
+fi
+echo "✅ .env file exists"
+
+# Safely load environment variables without executing arbitrary code
+load_env_safe() {
+  while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    case "$key" in
+      ''|\#*) continue ;;
+    esac
+    
+    # Trim whitespace from key
+    key="${key%%[[:space:]]*}"
+    
+    # Trim leading/trailing whitespace from value
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    
+    # Only accept safe shell variable names
+    if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      export "$key=$value"
+    fi
+  done < .env
+}
+
+# Load environment variables safely
+load_env_safe
+
+check_var() {
+  if [ -z "${!1}" ]; then
+    echo "❌ $1 is not set"
+    return 1
+  else
+    echo "✅ $1 is set"
+    return 0
+  fi
+}
+
+ERRORS=0
+
+# Critical variables for live trading
+if [ "$LIVE_TRADING" = "true" ]; then
+  echo ""
+  echo "=== Live Trading Mode Checks ==="
+  
+  if [ "$COMPLIANCE_ACCEPTED" != "true" ]; then
+    echo "❌ COMPLIANCE_ACCEPTED must be 'true' for live trading"
+    ERRORS=$((ERRORS + 1))
+  else
+    echo "✅ COMPLIANCE_ACCEPTED is true"
+  fi
+  
+  if [ -z "$PRIVATE_KEY" ]; then
+    echo "❌ PRIVATE_KEY is required for live trading"
+    ERRORS=$((ERRORS + 1))
+  else
+    # Check PRIVATE_KEY format
+    if [[ ! "$PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+      echo "❌ PRIVATE_KEY format invalid (must be 0x + 64 hex chars)"
+      ERRORS=$((ERRORS + 1))
+    else
+      echo "✅ PRIVATE_KEY format valid"
+    fi
+  fi
+  
+  if [ "$CHAIN_ID" != "137" ]; then
+    echo "⚠️  CHAIN_ID is $CHAIN_ID (mainnet is 137)"
+  else
+    echo "✅ CHAIN_ID is 137 (Polygon Mainnet)"
+  fi
+  
+  # Check ADMIN_TOKEN for kill switch access
+  if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "change_me_to_a_strong_random_admin_token" ]; then
+    echo "⚠️  ADMIN_TOKEN not configured or using default"
+    echo "   Kill switch endpoint will be disabled"
+  else
+    echo "✅ ADMIN_TOKEN is configured"
+  fi
+else
+  echo ""
+  echo "=== Paper Trading Mode ==="
+  echo "✅ Running in paper trading mode (safe)"
+fi
+
+# Check API endpoints
+echo ""
+echo "=== API Endpoint Checks ==="
+
+check_endpoint() {
+  local url=$1
+  local name=$2
+  
+  if curl --output /dev/null --silent --head --fail "$url" 2>/dev/null; then
+    echo "✅ $name is reachable: $url"
+  else
+    echo "❌ $name is not reachable: $url"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+
+check_endpoint "$CLOB_API_URL" "CLOB API"
+check_endpoint "$GAMMA_API_URL" "Gamma API"
+
+# WebSocket check
+echo ""
+echo "=== WebSocket Check ==="
+if command -v wscat &> /dev/null; then
+  timeout 5 wscat -c "$WS_MARKET_URL" -x 'ping' &> /dev/null
+  if [ $? -eq 0 ] || [ $? -eq 124 ]; then
+    echo "✅ WebSocket endpoint is reachable"
+  else
+    echo "❌ WebSocket endpoint is not reachable"
+    ERRORS=$((ERRORS + 1))
+  fi
+else
+  echo "⚠️  wscat not installed, skipping WebSocket test"
+  echo "   Install with: npm install -g wscat"
+fi
+
+# Check dependencies
+echo ""
+echo "=== Dependency Checks ==="
+if [ ! -d "node_modules" ]; then
+  echo "❌ node_modules not found. Run: npm install"
+  ERRORS=$((ERRORS + 1))
+else
+  echo "✅ node_modules exists"
+fi
+
+# Check PORT availability
+echo ""
+echo "=== Port Check ==="
+if lsof -Pi :$PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+  echo "⚠️  Port $PORT is already in use"
+  echo "   Another process may be running, or change PORT in .env"
+else
+  echo "✅ Port $PORT is available"
+fi
+
+# Final summary
+echo ""
+echo "=== Validation Summary ==="
+if [ $ERRORS -eq 0 ]; then
+  echo "✅ All checks passed! Ready to start the bot."
+  exit 0
+else
+  echo "❌ $ERRORS error(s) found. Please fix before starting."
+  exit 1
+fi
+```
+
+To use:
+```bash
+chmod +x scripts/validate-env.sh
+./scripts/validate-env.sh
+```
+
 ### Wallet Requirements
 - Funded with USDC on Polygon network
 - Private key securely stored (use secret manager, not plaintext files)
@@ -118,7 +298,7 @@ curl http://localhost:3000/health
 curl http://localhost:3000/status
 # Expected: { liveTrading: true, tradingClientInitialized: true, walletAddress: "0x...", ... }
 
-# Market feed
+# Market feed status
 curl http://localhost:3000/feed/status
 # Expected: { connected: true, tokenIds: [...], cachedOrderbooks: N }
 
@@ -237,17 +417,528 @@ curl -X POST http://localhost:3000/kill-switch
 
 Escalation target(s): TBD (Slack/Discord/Telegram).
 
-## Routine Maintenance
-- **Daily:** Review PnL, error rate logs, and open positions.
-- **Weekly:** Check strategy parameters, market list, and compliance flags.
-- **Monthly:** Review incident history and update runbook as needed.
+## Monitoring and Alerting
 
-## Backups and Retention
-- Persist order/position snapshots daily.
-- Retain logs and metrics for at least 30 days (adjust per policy).
+### Key Metrics to Monitor
+
+#### System Health Metrics
+```bash
+# CPU and Memory
+curl http://localhost:3000/health
+
+# Expected healthy values:
+# - memory.used < memory.total * 0.8 (80%)
+# - uptime > 0 and steadily increasing
+# - status: "ok"
+```
+
+#### Trading Metrics
+```bash
+# Active orders count
+curl http://localhost:3000/orders | jq 'length'
+
+# Expected: Should be within RISK_MAX_OPEN_ORDERS limit
+
+# Position exposure
+curl http://localhost:3000/state | jq '.positions[] | {tokenId, size, marketValue}'
+
+# Expected: Each position marketValue < RISK_MAX_EXPOSURE_PER_MARKET
+
+# PnL status
+curl http://localhost:3000/state | jq '.pnl'
+
+# Expected: drawdown < RISK_MAX_DRAWDOWN
+```
+
+#### Connection Health
+```bash
+# Market feed status
+curl http://localhost:3000/feed/status
+
+# Expected:
+# - connected: true
+# - cachedOrderbooks: > 0
+# - subscriptions array not empty
+```
+
+### Alerting Thresholds
+
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| Memory Usage | > 70% | > 85% | Restart server, investigate leak |
+| Open Orders | > 80% of max | > 95% of max | Review strategy, cancel old orders |
+| Drawdown | > 15% | > 18% | Pause trading, review positions |
+| Error Rate | > 5% | > 8% | Investigate errors, check API status |
+| WS Disconnects | > 3/hour | > 5/hour | Check network, API status |
+| Order Rejections | > 10% | > 20% | Review risk parameters |
+| API Response Time | > 2s | > 5s | Check API health, reduce load |
+
+### Log Monitoring
+
+**Critical logs to watch:**
+```bash
+# Follow logs in real-time
+npm run dev | grep -E "(ERROR|WARN|kill|circuit|reconciliation)"
+
+# Error patterns to alert on:
+# - "ERROR" - Any error log
+# - "WebSocket disconnected" - Connection issues
+# - "Reconciliation failed" - State mismatch
+# - "Kill switch activated" - Emergency stop
+# - "Circuit breaker triggered" - Risk limit breach
+# - "Order rejected" - Risk check failure
+```
+
+**Log aggregation setup:**
+```bash
+# Export logs to file for analysis
+npm run dev 2>&1 | tee -a logs/bot-$(date +%Y%m%d).log
+
+# Rotate logs daily (add to crontab)
+0 0 * * * find logs/ -name "bot-*.log" -mtime +30 -delete
+```
+
+## Troubleshooting Guide
+
+### Issue: Bot won't start
+
+**Symptoms:**
+- Process exits immediately
+- "Invalid configuration" error
+- Missing environment variables
+
+**Diagnosis:**
+```bash
+# Check configuration
+npm run dev
+
+# Look for config errors in output
+# Common issues:
+# - Missing LIVE_TRADING or COMPLIANCE_ACCEPTED
+# - Invalid PRIVATE_KEY format
+# - Missing required env vars
+```
+
+**Resolution:**
+1. Verify `.env` file exists and is readable
+2. Check all required variables are set (see `.env.example`)
+3. Validate PRIVATE_KEY format: must start with `0x`
+4. Ensure CHAIN_ID is 137 (mainnet) or 80002 (testnet)
+5. Check file permissions: `chmod 600 .env`
+
+### Issue: WebSocket keeps disconnecting
+
+**Symptoms:**
+- Frequent "WebSocket disconnected" logs
+- "Reconnecting in..." messages
+- Orderbook cache frequently cleared
+
+**Diagnosis:**
+```bash
+# Check connection status
+curl http://localhost:3000/feed/status
+
+# Monitor reconnection frequency
+npm run dev | grep -c "WebSocket disconnected"
+
+# Test WebSocket endpoint directly
+wscat -c wss://ws-subscriptions-clob.polymarket.com/ws/market
+```
+
+**Resolution:**
+1. **Network issues:** Check firewall, proxy settings
+2. **API rate limiting:** Reduce subscription count in TOKEN_IDS
+3. **Server overload:** Check Polymarket status page
+4. **Invalid subscriptions:** Verify TOKEN_IDS are valid, active markets
+5. **Increase reconnect delays:** Adjust backoff parameters if needed
+
+### Issue: Orders not being placed
+
+**Symptoms:**
+- Strategy generates signals but no orders submitted
+- "Order rejected" logs
+- Kill switch status shows active
+
+**Diagnosis:**
+```bash
+# Check trading status
+curl http://localhost:3000/status
+
+# Expected: liveTrading: true, tradingClientInitialized: true
+
+# Check risk manager state
+curl http://localhost:3000/state | jq '{
+  orders: .orders | length,
+  exposure: .positions | map(.marketValue) | add,
+  pnl: .pnl,
+  balance: .balances
+}'
+```
+
+**Resolution:**
+
+1. **Emergency stop active:**
+   ```bash
+   # Check trading status
+   curl http://localhost:3000/status
+   
+   # Note: Kill switch status is not exposed via API
+   # It requires manual inspection of RiskManager state
+   # To resume, restart the server (kill switch resets on restart)
+   ```
+
+2. **Risk limits breached:**
+   - Check exposure < RISK_MAX_EXPOSURE_PER_MARKET
+   - Check open orders < RISK_MAX_OPEN_ORDERS  
+   - Check drawdown < RISK_MAX_DRAWDOWN
+   - Adjust limits in `.env` if too restrictive
+
+3. **Insufficient balance:**
+   ```bash
+   # Check USDC balance
+   curl http://localhost:3000/state | jq '.balances'
+   
+   # Fund wallet if balance too low
+   ```
+
+4. **Live trading not enabled:**
+   ```bash
+   # Verify both flags are set
+   grep -E "LIVE_TRADING|COMPLIANCE_ACCEPTED" .env
+   
+   # Both must be true for live trading
+   ```
+
+### Issue: State reconciliation fails
+
+**Symptoms:**
+- "Reconciliation failed" error on startup
+- Mismatched order counts
+- Incorrect position sizes
+
+**Diagnosis:**
+```bash
+# Check local vs remote state
+curl http://localhost:3000/state > local_state.json
+
+# Compare with CLOB API (requires auth)
+# Check for:
+# - Orders in local state but not on exchange
+# - Orders on exchange but not in local state
+# - Position size mismatches
+```
+
+**Resolution:**
+1. **Stale local state:** Restart server to force fresh reconciliation
+2. **Network timeout:** Increase reconciliation timeout
+3. **API errors:** Check CLOB API status and credentials
+4. **State corruption:** If persistent, clear state and restart
+   ```bash
+   # Restart will fetch fresh state from exchange
+   npm run dev
+   ```
+
+### Issue: High error rate
+
+**Symptoms:**
+- Circuit breaker triggers
+- Error rate > 10%
+- Frequent API failures
+
+**Diagnosis:**
+```bash
+# Check recent errors
+npm run dev | grep ERROR | tail -50
+
+# Common error patterns:
+# - 429 Too Many Requests - Rate limited
+# - 401 Unauthorized - Invalid credentials
+# - 500 Internal Server Error - API down
+# - ECONNRESET - Connection issues
+```
+
+**Resolution:**
+
+1. **Rate limiting (429 errors):**
+   - Reduce order submission frequency
+   - Increase retry delays
+   - Check API rate limits: https://docs.polymarket.com/quickstart/introduction/rate-limits
+
+2. **Authentication errors (401):**
+   - Verify PRIVATE_KEY is correct
+   - Check CHAIN_ID matches network
+   - Regenerate API credentials if needed
+
+3. **API downtime (500 errors):**
+   - Check Polymarket status page
+   - Enable circuit breaker to pause during outage
+   - Monitor and retry when service recovers
+
+4. **Network issues (ECONNRESET):**
+   - Check internet connectivity
+   - Verify firewall rules
+   - Test with curl: `curl https://clob.polymarket.com`
+
+### Issue: Incorrect PnL calculations
+
+**Symptoms:**
+- Unrealized PnL doesn't match expectations
+- Realized PnL incorrect after closing position
+- Balance doesn't add up
+
+**Diagnosis:**
+```bash
+# Get detailed PnL breakdown
+curl http://localhost:3000/state | jq '{
+  pnl: .pnl,
+  positions: .positions,
+  fills: .fills | length,
+  balance: .balances
+}'
+
+# Cross-check with exchange
+# For paper trading, verify:
+# - Slippage applied correctly (default 1%)
+# - Fees deducted correctly (default 0.2%)
+# - Position averaging calculated correctly
+```
+
+**Resolution:**
+1. **Paper trading:** Check PAPER_TRADING_SLIPPAGE and PAPER_TRADING_FEE_RATE
+2. **Missing fills:** Force reconciliation by restarting
+3. **Stale prices:** Ensure orderbook updates are flowing
+4. **Rounding errors:** Check decimal precision in calculations
+
+### Issue: Dashboard not loading
+
+**Symptoms:**
+- Frontend shows blank page
+- Connection refused on port 8080
+- API calls timing out
+
+**Diagnosis:**
+```bash
+# Check if frontend is running
+curl http://localhost:8080
+
+# Check if backend API is accessible
+curl http://localhost:3000/health
+
+# Check ports in use
+lsof -i :3000
+lsof -i :8080
+```
+
+**Resolution:**
+1. **Frontend not started:**
+   ```bash
+   cd apps/frontend
+   npm install
+   npm run dev
+   ```
+
+2. **Port conflict:**
+   - Change PORT in .env (backend)
+   - Change port in frontend config
+
+3. **CORS issues:**
+   - Backend may need CORS headers for frontend
+   - Check browser console for errors
+
+4. **API timeout:**
+   - Verify backend is healthy: `curl http://localhost:3000/health`
+   - Check firewall rules
+
+## Routine Maintenance
+
+### Daily Checks
+```bash
+# Morning routine (5 minutes)
+1. Check system health
+   curl http://localhost:3000/health
+
+2. Review overnight PnL
+   curl http://localhost:3000/state | jq '.pnl'
+
+3. Check error logs
+   grep ERROR logs/bot-$(date +%Y%m%d).log | wc -l
+
+4. Verify open positions
+   curl http://localhost:3000/state | jq '.positions'
+
+5. Check market feed status
+   curl http://localhost:3000/feed/status
+
+# Daily metrics to record:
+# - Total PnL (realized + unrealized)
+# - Number of trades
+# - Error count
+# - Uptime percentage
+# - Max drawdown
+```
+
+### Weekly Reviews
+```bash
+# Weekly review (30 minutes)
+1. Analyze strategy performance
+   - Win rate
+   - Average trade size
+   - Best/worst trades
+   - Market conditions
+
+2. Review risk parameters
+   - Are limits appropriate?
+   - Any breaches this week?
+   - Adjust if needed
+
+3. Check compliance
+   - LIVE_TRADING and COMPLIANCE_ACCEPTED still correct
+   - No secret leaks in logs
+   - Wallet security intact
+
+4. Update market list
+   - Remove inactive markets from TOKEN_IDS
+   - Add new opportunities
+   - Check liquidity
+
+5. System updates
+   - Check for npm package updates
+   - Review changelog
+   - Plan upgrade window
+```
+
+### Monthly Maintenance
+```bash
+# Monthly maintenance (2 hours)
+1. Full incident review
+   - Document all issues encountered
+   - Update runbook with solutions
+   - Identify patterns
+
+2. Performance optimization
+   - Analyze bottlenecks
+   - Optimize queries
+   - Review caching strategy
+
+3. Security audit
+   - Rotate credentials if needed
+   - Review access logs
+   - Check for vulnerabilities
+
+4. Backup verification
+   - Test backup restoration
+   - Verify data integrity
+   - Update backup procedures
+
+5. Documentation updates
+   - Update runbook
+   - Record lessons learned
+   - Update architecture docs
+```
+
+## Backup and Recovery
+
+### State Backup
+```bash
+# Manual backup of current state
+curl http://localhost:3000/state > backup/state-$(date +%Y%m%d-%H%M%S).json
+
+# Automated daily backup (add to crontab)
+0 2 * * * curl http://localhost:3000/state > /path/to/backup/state-$(date +%Y%m%d).json
+```
+
+### Configuration Backup
+```bash
+# Backup .env file (exclude secrets)
+grep -v "PRIVATE_KEY" .env > backup/config-$(date +%Y%m%d).env.template
+
+# Full backup including secrets (encrypted)
+gpg -c .env > backup/env-$(date +%Y%m%d).env.gpg
+```
+
+### Log Retention
+```bash
+# Archive logs older than 30 days
+find logs/ -name "bot-*.log" -mtime +30 -exec gzip {} \;
+
+# Move to archive storage
+mv logs/*.gz /path/to/archive/
+
+# Delete very old archives (> 90 days)
+find /path/to/archive/ -name "bot-*.log.gz" -mtime +90 -delete
+```
+
+### Recovery Procedure
+```bash
+# 1. Stop the bot
+npm run dev  # Ctrl+C or kill switch
+
+# 2. Restore from backup
+cp backup/env-YYYYMMDD.env.gpg .env.gpg
+gpg -d .env.gpg > .env
+chmod 600 .env
+
+# 3. Verify configuration
+grep -E "LIVE_TRADING|COMPLIANCE_ACCEPTED|PRIVATE_KEY" .env
+
+# 4. Start in paper mode first
+sed -i.bak 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env && rm -f .env.bak
+npm run dev
+
+# 5. Verify health
+curl http://localhost:3000/health
+
+# 6. Re-enable live trading if all checks pass
+sed -i.bak 's/LIVE_TRADING=false/LIVE_TRADING=true/' .env && rm -f .env.bak
+# Restart: Ctrl+C, then npm run dev
+```
 
 ## Rollback Procedure
-1. Stop the bot via graceful shutdown.
-2. Revert to last known good release.
-3. Start bot in read-only/paper mode.
-4. Validate connectivity and state before re-enabling trading.
+
+### Version Rollback
+```bash
+# 1. Stop the bot gracefully
+# Use Ctrl+C or send SIGTERM to the process
+
+# 2. Checkout previous version
+git log --oneline  # Find last good commit
+git checkout <commit-hash>
+
+# 3. Reinstall dependencies
+npm install
+
+# 4. Start in paper mode for validation
+sed -i.bak 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env && rm -f .env.bak
+npm run dev
+
+# 5. Run smoke tests
+npm test
+curl http://localhost:3000/health
+
+# 6. If tests pass, re-enable live trading
+# Edit .env: LIVE_TRADING=true
+npm run dev
+```
+
+### Emergency Rollback (Production Down)
+```bash
+# Ultra-fast rollback when production is broken
+
+# 1. Kill switch + shutdown
+curl -X POST http://localhost:3000/kill-switch
+pkill -f "npm run dev"
+
+# 2. Quick checkout to last stable
+git checkout main  # or last known good tag
+npm install --prefer-offline
+
+# 3. Start immediately (assumes .env is still valid)
+npm run dev &
+
+# 4. Verify it's working
+sleep 10
+curl http://localhost:3000/health
+
+# 5. Monitor logs closely
+tail -f logs/bot-$(date +%Y%m%d).log
+```

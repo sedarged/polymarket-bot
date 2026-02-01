@@ -365,5 +365,5 @@ npx tsc --noEmit
 
 - [Common Pitfalls](./common-pitfalls.md) - Detailed pitfall explanations
 - [Project Layout](./project-layout.md) - Find relevant code
-- [RUNBOOK](../RUNBOOK.md) - Operational procedures
-- [ENVIRONMENT](../ENVIRONMENT.md) - Configuration details
+- [Runbook](../runbook.md) - Operational procedures
+- [Environment Setup](../environment.md) - Configuration details

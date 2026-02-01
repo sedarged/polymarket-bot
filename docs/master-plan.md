@@ -924,11 +924,11 @@ This master development plan organizes all development tasks for the Polymarket 
 ## 🔗 Related Documents
 
 - [System Overview](./architecture-overview.md) - Plain language explanation of the system
-- [Implementation Checklist](./docs/implementation-checklist.md) - Detailed checklist
-- [Plan](./docs/PLAN.md) - PR rollout plan
-- [Runbook](./docs/runbook.md) - Operational procedures
-- [ADR-0001](./docs/adr/0001-initial-architecture.md) - Architecture decisions
-- [Open Questions](./docs/OPEN_QUESTIONS.md) - Unresolved questions
+- [Implementation Checklist](./implementation-checklist.md) - Detailed checklist
+- [Plan](./plan.md) - PR rollout plan
+- [Runbook](./runbook.md) - Operational procedures
+- [ADR-0001](./adr/0001-initial-architecture.md) - Architecture decisions
+- [Open Questions](./open-questions.md) - Unresolved questions
 
 ---
 
