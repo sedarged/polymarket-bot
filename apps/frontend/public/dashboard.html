@@ -552,6 +552,18 @@
       display: none;
     }
 
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
     /* Modal */
     .modal {
       display: none;
@@ -807,18 +819,18 @@
             <button class="button button-primary button-small" id="saveRiskConfigBtn">💾 Save</button>
           </div>
           <div class="form-group">
-            <label class="form-label">Max Exposure Per Market (USDC)</label>
-            <input type="number" class="form-input" id="maxExposure" value="1000">
+            <label class="form-label" for="maxExposure">Max Exposure Per Market (USDC)</label>
+            <input type="number" class="form-input" id="maxExposure" value="1000" min="1">
             <p class="form-help">Maximum position size per market</p>
           </div>
           <div class="form-group">
-            <label class="form-label">Max Open Orders</label>
-            <input type="number" class="form-input" id="maxOpenOrders" value="50">
+            <label class="form-label" for="maxOpenOrders">Max Open Orders</label>
+            <input type="number" class="form-input" id="maxOpenOrders" value="50" min="1">
             <p class="form-help">Maximum concurrent open orders</p>
           </div>
           <div class="form-group">
-            <label class="form-label">Max Drawdown (%)</label>
-            <input type="number" class="form-input" id="maxDrawdown" value="20" step="0.1">
+            <label class="form-label" for="maxDrawdown">Max Drawdown (%)</label>
+            <input type="number" class="form-input" id="maxDrawdown" value="20" step="0.1" min="0" max="100">
             <p class="form-help">Kill switch triggers at this loss percentage</p>
           </div>
           <div id="riskConfigError" class="form-error hidden"></div>
@@ -830,7 +842,7 @@
             <button class="button button-primary button-small" id="saveStrategyConfigBtn">💾 Save</button>
           </div>
           <div class="form-group">
-            <label class="form-label">Trading Strategy</label>
+            <label class="form-label" for="strategyType">Trading Strategy</label>
             <select class="form-input" id="strategyType">
               <option value="market-maker">Market Maker</option>
               <option value="arbitrage">Arbitrage</option>
@@ -839,13 +851,13 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Order Size (USDC)</label>
-            <input type="number" class="form-input" id="orderSize" value="100">
+            <label class="form-label" for="orderSize">Order Size (USDC)</label>
+            <input type="number" class="form-input" id="orderSize" value="100" min="1">
             <p class="form-help">Default order size</p>
           </div>
           <div class="form-group">
-            <label class="form-label">Refresh Interval (seconds)</label>
-            <input type="number" class="form-input" id="refreshInterval" value="5">
+            <label class="form-label" for="refreshInterval">Refresh Interval (seconds)</label>
+            <input type="number" class="form-input" id="refreshInterval" value="5" min="1">
             <p class="form-help">How often to refresh market data</p>
           </div>
           <div id="strategyConfigError" class="form-error hidden"></div>
@@ -859,16 +871,16 @@
         </div>
         <div class="grid">
           <div class="form-group">
-            <label class="form-label">Reconnect Attempts</label>
-            <input type="number" class="form-input" id="reconnectAttempts" value="5">
+            <label class="form-label" for="reconnectAttempts">Reconnect Attempts</label>
+            <input type="number" class="form-input" id="reconnectAttempts" value="5" min="1">
           </div>
           <div class="form-group">
-            <label class="form-label">Reconnect Delay (ms)</label>
-            <input type="number" class="form-input" id="reconnectDelay" value="1000">
+            <label class="form-label" for="reconnectDelay">Reconnect Delay (ms)</label>
+            <input type="number" class="form-input" id="reconnectDelay" value="1000" min="100" step="100">
           </div>
           <div class="form-group">
-            <label class="form-label">Max Reconnect Delay (ms)</label>
-            <input type="number" class="form-input" id="maxReconnectDelay" value="30000">
+            <label class="form-label" for="maxReconnectDelay">Max Reconnect Delay (ms)</label>
+            <input type="number" class="form-input" id="maxReconnectDelay" value="30000" min="1000" step="1000">
           </div>
         </div>
         <div id="reconnectConfigError" class="form-error hidden"></div>
@@ -898,6 +910,7 @@
         <div class="card-header">
           <div class="card-title">Application Logs</div>
           <div style="display: flex; gap: 8px;">
+            <label for="logLevelFilter" class="visually-hidden">Log Level Filter</label>
             <select class="form-input" id="logLevelFilter" style="width: auto; padding: 6px 12px;">
               <option value="all">All Levels</option>
               <option value="error">Error</option>
@@ -993,16 +1006,18 @@
           This will immediately cancel ALL open orders and halt trading operations.
           This action cannot be undone.
         </p>
-        <div class="form-group">
-          <label class="form-label">Admin Token (Required)</label>
-          <input type="password" class="form-input" id="killSwitchToken" placeholder="Enter admin token">
-          <p class="form-help">Authentication required for this critical operation</p>
-        </div>
-        <div id="killSwitchError" class="form-error hidden"></div>
+        <form id="killSwitchForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="killSwitchToken">Admin Token (Required)</label>
+            <input type="password" class="form-input" id="killSwitchToken" placeholder="Enter admin token" autocomplete="off">
+            <p class="form-help">Authentication required for this critical operation</p>
+          </div>
+          <div id="killSwitchError" class="form-error hidden"></div>
+        </form>
       </div>
       <div class="modal-footer">
-        <button class="button button-secondary" id="cancelKillSwitchBtn">Cancel</button>
-        <button class="button button-danger" id="confirmKillSwitchBtn">🛑 Activate Kill Switch</button>
+        <button type="button" class="button button-secondary" id="cancelKillSwitchBtn">Cancel</button>
+        <button type="button" class="button button-danger" id="confirmKillSwitchBtn">🛑 Activate Kill Switch</button>
       </div>
     </div>
   </div>
