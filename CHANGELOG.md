@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated issue-to-status synchronization via GitHub Actions
 - Agent guidelines and contracts in AGENTS.md
 - Comprehensive documentation index and AI guides
+- Small PR Implementation Plan (13 PRs) addressing audit findings
+- Detailed acceptance criteria and evidence requirements for each PR
+- PR dependency graph and timeline estimates
+- Evidence collection template for PR reviews
 
 ### Changed
 - Reorganized documentation structure for better discoverability
