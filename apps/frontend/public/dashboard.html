@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polymarket Trading Bot - Production Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #16181c;
+      --bg-tertiary: #1c1f24;
+      --border-color: #2f3336;
+      --text-primary: #e7e9ea;
+      --text-secondary: #71767b;
+      --color-live: #00ba7c;
+      --color-paper: #ffd700;
+      --color-danger: #f4212e;
+      --color-warning: #ff9500;
+      --color-info: #1d9bf0;
+      --color-success: #00ba7c;
+      --spacing-xs: 8px;
+      --spacing-sm: 12px;
+      --spacing-md: 16px;
+      --spacing-lg: 20px;
+      --spacing-xl: 24px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      padding: var(--spacing-lg);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* Persistent Safety Banner */
+    .safety-banner {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: var(--bg-secondary);
+      border: 2px solid;
+      border-radius: 8px;
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .safety-banner.paper {
+      border-color: var(--color-paper);
+    }
+
+    .safety-banner.live {
+      border-color: var(--color-danger);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { border-color: var(--color-danger); }
+      50% { border-color: #ff6b7a; }
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .mode-indicator {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mode-indicator.paper {
+      background: var(--color-paper);
+      color: #000;
+    }
+
+    .mode-indicator.live {
+      background: var(--color-danger);
+      color: #fff;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0.7; }
+    }
+
+    .mode-icon {
+      font-size: 18px;
+    }
+
+    .banner-status {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .status-item {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-dot.connected {
+      background: var(--color-success);
+      box-shadow: 0 0 8px var(--color-success);
+    }
+
+    .status-dot.disconnected {
+      background: var(--color-danger);
+    }
+
+    .banner-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+    }
+
+    header {
+      background: var(--bg-secondary);
+      padding: var(--spacing-lg);
+      border-radius: 8px;
+      margin-bottom: var(--spacing-lg);
+      border: 1px solid var(--border-color);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Tab Navigation */
+    .tabs {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-lg);
+      border-bottom: 2px solid var(--border-color);
+      overflow-x: auto;
+      padding-bottom: var(--spacing-xs);
+    }
+
+    .tab {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .tab.active {
+      color: var(--color-info);
+      border-bottom-color: var(--color-info);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Grid Layouts */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    @media (max-width: 768px) {
+      .grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-secondary);
+      padding: var(--spacing-lg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card-value {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: var(--spacing-xs);
+      line-height: 1;
+    }
+
+    .card-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .card-change {
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-change.positive {
+      color: var(--color-success);
+    }
+
+    .card-change.negative {
+      color: var(--color-danger);
+    }
+
+    /* Tables */
+    .table-container {
+      background: var(--bg-secondary);
+      padding: var(--spacing-lg);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: var(--spacing-lg);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: var(--spacing-sm);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: var(--spacing-sm);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background: var(--bg-tertiary);
+    }
+
+    /* Buttons */
+    .button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .button:hover:not(:disabled) {
+      opacity: 0.8;
+      transform: translateY(-1px);
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .button-primary {
+      background: var(--color-info);
+      color: #fff;
+    }
+
+    .button-danger {
+      background: var(--color-danger);
+      color: #fff;
+    }
+
+    .button-warning {
+      background: var(--color-warning);
+      color: #fff;
+    }
+
+    .button-success {
+      background: var(--color-success);
+      color: #fff;
+    }
+
+    .button-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .button-small {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: var(--spacing-sm);
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--color-info);
+    }
+
+    .form-help {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .form-error {
+      color: var(--color-danger);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Alerts */
+    .alert {
+      padding: var(--spacing-md);
+      border-radius: 6px;
+      margin-bottom: var(--spacing-md);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .alert-danger {
+      background: rgba(244, 33, 46, 0.1);
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger);
+    }
+
+    .alert-warning {
+      background: rgba(255, 149, 0, 0.1);
+      border: 1px solid var(--color-warning);
+      color: var(--color-warning);
+    }
+
+    .alert-info {
+      background: rgba(29, 155, 240, 0.1);
+      border: 1px solid var(--color-info);
+      color: var(--color-info);
+    }
+
+    .alert-success {
+      background: rgba(0, 186, 124, 0.1);
+      border: 1px solid var(--color-success);
+      color: var(--color-success);
+    }
+
+    /* Event Feed */
+    .event-feed {
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .event-item {
+      padding: var(--spacing-xs);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .event-timestamp {
+      color: var(--text-secondary);
+      min-width: 80px;
+    }
+
+    .event-type {
+      font-weight: 600;
+      min-width: 100px;
+    }
+
+    .event-message {
+      flex: 1;
+    }
+
+    /* Log Viewer */
+    .log-viewer {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: var(--spacing-md);
+      max-height: 500px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      margin-bottom: var(--spacing-xs);
+      padding: 4px;
+      border-radius: 3px;
+    }
+
+    .log-entry.error {
+      background: rgba(244, 33, 46, 0.1);
+      color: var(--color-danger);
+    }
+
+    .log-entry.warn {
+      background: rgba(255, 149, 0, 0.1);
+      color: var(--color-warning);
+    }
+
+    .log-entry.info {
+      color: var(--text-primary);
+    }
+
+    .log-entry.debug {
+      color: var(--text-secondary);
+    }
+
+    /* Utility Classes */
+    .text-center {
+      text-align: center;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .buy {
+      color: var(--color-success);
+    }
+
+    .sell {
+      color: var(--color-danger);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: var(--spacing-xl);
+      max-width: 500px;
+      width: 90%;
+    }
+
+    .modal-header {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .modal-body {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: var(--spacing-sm);
+      justify-content: flex-end;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-success {
+      background: var(--color-success);
+      color: #000;
+    }
+
+    .badge-danger {
+      background: var(--color-danger);
+      color: #fff;
+    }
+
+    .badge-warning {
+      background: var(--color-warning);
+      color: #000;
+    }
+
+    .badge-info {
+      background: var(--color-info);
+      color: #fff;
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: var(--spacing-sm);
+      }
+
+      .card-value {
+        font-size: 28px;
+      }
+
+      .banner-left {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .tabs {
+        font-size: 12px;
+      }
+
+      .tab {
+        padding: var(--spacing-xs) var(--spacing-md);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Persistent Safety Banner -->
+    <div id="safetyBanner" class="safety-banner paper">
+      <div class="banner-left">
+        <div id="modeIndicator" class="mode-indicator paper">
+          <span class="mode-icon">🟡</span>
+          <span>Paper Mode</span>
+        </div>
+        <div class="banner-status">
+          <div class="status-item">
+            <span class="status-dot connected" id="feedStatusDot"></span>
+            <span id="feedStatus">Market Feed: Connected</span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot connected" id="tradingStatusDot"></span>
+            <span id="tradingStatus">Trading: Initialized</span>
+          </div>
+        </div>
+      </div>
+      <div class="banner-actions">
+        <button type="button" id="reconnectBtn" class="button button-secondary button-small">🔄 Reconnect</button>
+        <button type="button" id="killSwitchBtn" class="button button-danger button-small">🛑 Kill Switch</button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header>
+      <h1>Polymarket Trading Bot</h1>
+      <p class="subtitle">Production Dashboard v1.0</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="overview">Overview</button>
+      <button type="button" class="tab" data-tab="monitoring">Monitoring</button>
+      <button type="button" class="tab" data-tab="controls">Controls</button>
+      <button type="button" class="tab" data-tab="alerts">Alerts & Logs</button>
+      <button type="button" class="tab" data-tab="learning">Learning System</button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Wallet Address</div>
+          <div id="walletAddress" class="card-value" style="font-size: 14px; word-break: break-all;">-</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Open Orders</div>
+          <div id="openOrders" class="card-value">-</div>
+          <div class="card-label">Active</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Positions</div>
+          <div id="activePositions" class="card-value">-</div>
+          <div class="card-label">Markets</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Available Balance</div>
+          <div id="availableBalance" class="card-value">-</div>
+          <div class="card-label">USDC</div>
+        </div>
+      </div>
+
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-title">Realized PnL (24h)</div>
+          <div id="realizedPnL" class="card-value">$0.00</div>
+          <div class="card-change positive" id="pnlChange" style="display: none;">
+            <span>↑</span>
+            <span>+0.00%</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Unrealized PnL</div>
+          <div id="unrealizedPnL" class="card-value">$0.00</div>
+          <div class="card-label">Current Positions</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="card-title">Watched Markets</div>
+        <div id="marketsTable">
+          <div class="loading">Loading markets...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monitoring Tab -->
+    <div id="monitoring" class="tab-content">
+      <div class="table-container">
+        <div class="card-header">
+          <div class="card-title">Open Orders</div>
+          <button type="button" class="button button-secondary button-small" id="refreshOrdersBtn">🔄 Refresh</button>
+        </div>
+        <div id="ordersTable">
+          <div class="loading">Loading orders...</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="card-header">
+          <div class="card-title">Positions</div>
+          <button type="button" class="button button-secondary button-small" id="refreshPositionsBtn">🔄 Refresh</button>
+        </div>
+        <div id="positionsTable">
+          <div class="loading">Loading positions...</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="card-header">
+          <div class="card-title">Recent Fills</div>
+          <button type="button" class="button button-secondary button-small" id="refreshFillsBtn">🔄 Refresh</button>
+        </div>
+        <div id="fillsTable">
+          <div class="loading">Loading fills...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Real-Time Event Feed</div>
+        <div class="event-feed" id="eventFeed">
+          <div class="empty">Waiting for events...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls Tab -->
+    <div id="controls" class="tab-content">
+      <div class="grid-2col">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Risk Configuration</div>
+            <button type="button" class="button button-primary button-small" id="saveRiskConfigBtn">💾 Save</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="maxExposure">Max Exposure Per Market (USDC)</label>
+            <input type="number" class="form-input" id="maxExposure" value="1000" min="1">
+            <p class="form-help">Maximum position size per market</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="maxOpenOrders">Max Open Orders</label>
+            <input type="number" class="form-input" id="maxOpenOrders" value="50" min="1">
+            <p class="form-help">Maximum concurrent open orders</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="maxDrawdown">Max Drawdown (%)</label>
+            <input type="number" class="form-input" id="maxDrawdown" value="20" step="0.1" min="0" max="100">
+            <p class="form-help">Kill switch triggers at this loss percentage</p>
+          </div>
+          <div id="riskConfigError" class="form-error hidden"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Strategy Parameters</div>
+            <button type="button" class="button button-primary button-small" id="saveStrategyConfigBtn">💾 Save</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="strategyType">Trading Strategy</label>
+            <select class="form-input" id="strategyType">
+              <option value="market-maker">Market Maker</option>
+              <option value="arbitrage">Arbitrage</option>
+              <option value="momentum">Momentum</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="orderSize">Order Size (USDC)</label>
+            <input type="number" class="form-input" id="orderSize" value="100" min="1">
+            <p class="form-help">Default order size</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="refreshInterval">Refresh Interval (seconds)</label>
+            <input type="number" class="form-input" id="refreshInterval" value="5" min="1">
+            <p class="form-help">How often to refresh market data</p>
+          </div>
+          <div id="strategyConfigError" class="form-error hidden"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Reconnect Configuration</div>
+          <button type="button" class="button button-primary button-small" id="saveReconnectConfigBtn">💾 Save</button>
+        </div>
+        <div class="grid">
+          <div class="form-group">
+            <label class="form-label" for="reconnectAttempts">Reconnect Attempts</label>
+            <input type="number" class="form-input" id="reconnectAttempts" value="5" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reconnectDelay">Reconnect Delay (ms)</label>
+            <input type="number" class="form-input" id="reconnectDelay" value="1000" min="100" step="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="maxReconnectDelay">Max Reconnect Delay (ms)</label>
+            <input type="number" class="form-input" id="maxReconnectDelay" value="30000" min="1000" step="1000">
+          </div>
+        </div>
+        <div id="reconnectConfigError" class="form-error hidden"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Configuration Change Log</div>
+        <div class="log-viewer" id="configChangeLog">
+          <div class="empty">No configuration changes yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts & Logs Tab -->
+    <div id="alerts" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Alerts</div>
+          <button type="button" class="button button-secondary button-small" id="clearAlertsBtn">🗑️ Clear All</button>
+        </div>
+        <div id="alertsPanel">
+          <div class="empty">No active alerts</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Application Logs</div>
+          <div style="display: flex; gap: 8px;">
+            <label for="logLevelFilter" class="visually-hidden">Log Level Filter</label>
+            <select class="form-input" id="logLevelFilter" style="width: auto; padding: 6px 12px;">
+              <option value="all">All Levels</option>
+              <option value="error">Error</option>
+              <option value="warn">Warning</option>
+              <option value="info">Info</option>
+              <option value="debug">Debug</option>
+            </select>
+            <button type="button" class="button button-secondary button-small" id="exportLogsBtn">💾 Export</button>
+            <button type="button" class="button button-secondary button-small" id="clearLogsBtn">🗑️ Clear</button>
+          </div>
+        </div>
+        <div class="log-viewer" id="logViewer">
+          <div class="empty">No logs available</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">System Metrics</div>
+        <div id="systemMetrics">
+          <div class="loading">Loading metrics...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Learning System Tab -->
+    <div id="learning" class="tab-content">
+      <div class="alert alert-info">
+        <span>ℹ️</span>
+        <span>Learning system is currently in paper trading mode only. All experiments run with simulated orders.</span>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Active Experiments</div>
+          <div id="activeExperiments" class="card-value">0</div>
+          <div class="card-label">Running</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Strategies Tested</div>
+          <div id="strategiesTested" class="card-value">0</div>
+          <div class="card-label">Total</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Best Performing</div>
+          <div id="bestStrategy" class="card-value" style="font-size: 16px;">-</div>
+          <div class="card-label">Strategy</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Experiment Uptime</div>
+          <div id="experimentUptime" class="card-value">-</div>
+          <div class="card-label">Hours</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Experiment Status</div>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          The learning system captures market events, strategy decisions, and execution outcomes
+          for offline evaluation and controlled experimentation.
+        </p>
+        <button type="button" class="button button-primary" id="startExperimentBtn">▶️ Start New Experiment</button>
+        <button type="button" class="button button-secondary" id="viewExperimentsBtn" style="margin-left: 8px;">📊 View Results</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Integration Points</div>
+        <div style="font-size: 14px; color: var(--text-secondary);">
+          <ul style="list-style: none; padding: 0;">
+            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+              <strong>Event Store:</strong> <span id="eventStoreStatus" class="badge badge-warning">Not Connected</span>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+              <strong>Feature Engine:</strong> <span id="featureEngineStatus" class="badge badge-warning">Not Initialized</span>
+            </li>
+            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+              <strong>Evaluation Framework:</strong> <span id="evalFrameworkStatus" class="badge badge-warning">Not Active</span>
+            </li>
+            <li style="padding: 8px 0;">
+              <strong>Bandit Allocator:</strong> <span id="banditStatus" class="badge badge-warning">Not Running</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kill Switch Confirmation Modal -->
+  <div id="killSwitchModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">⚠️ Confirm Kill Switch Activation</div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px;">
+          This will immediately cancel ALL open orders and halt trading operations.
+          This action cannot be undone.
+        </p>
+        <form id="killSwitchForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="killSwitchToken">Admin Token (Required)</label>
+            <input type="password" class="form-input" id="killSwitchToken" placeholder="Enter admin token" autocomplete="off">
+            <p class="form-help">Authentication required for this critical operation</p>
+          </div>
+          <div id="killSwitchError" class="form-error hidden"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="button button-secondary" id="cancelKillSwitchBtn">Cancel</button>
+        <button type="button" class="button button-danger" id="confirmKillSwitchBtn">🛑 Activate Kill Switch</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
