@@ -3,8 +3,11 @@
 /**
  * Generate GitHub issues for all audit findings
  * 
- * This script parses REPORTS/AUDIT.md and generates issue content files
+ * This script uses a hardcoded list of audit findings to generate issue content files
  * that can be batch-created using GitHub CLI.
+ * 
+ * NOTE: Findings are manually maintained in the `auditFindings` array below.
+ * When REPORTS/AUDIT.md is updated, this array must be updated accordingly.
  */
 
 import fs from 'fs/promises';
@@ -52,7 +55,8 @@ function mapArea(finding: AuditFinding): string {
 
 // Generate issue content for an audit finding
 function generateIssue(finding: AuditFinding): IssueTemplate {
-  const area = mapArea(finding);
+  // Use finding.area if provided, otherwise fallback to mapArea()
+  const area = finding.area || mapArea(finding);
   
   const title = `[${area}] ${finding.title} - Audit Finding ${finding.id}`;
   
@@ -86,7 +90,7 @@ This is a ${finding.severity} severity finding that ${finding.severity === 'CRIT
 - [ ] PR links to this issue and parent #23
 ${finding.linkedPR ? `- [ ] Follows PR plan: ${finding.linkedPR}` : ''}`;
 
-  const context = `**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#${finding.id.toLowerCase()})
+  const context = `**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding ${finding.id})
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 ${finding.linkedPR ? `**PR Plan:** ${finding.linkedPR}` : ''}
 
@@ -384,25 +388,8 @@ const auditFindings: AuditFinding[] = [
   {
     id: 'A-015',
     severity: 'MEDIUM',
-    title: 'No Input Validation for Orders',
-    file: 'apps/backend/src/clients/tradingClient.ts',
-    evidence: 'Order parameters not validated before submission',
-    impact: [
-      'Invalid orders submitted to API',
-      'API rejections',
-      'State inconsistency',
-      'Poor error messages'
-    ],
-    fix: 'Add Zod schema validation for order parameters (size, price, side). Validate before submission.',
-    priority: 'P1',
-    area: 'Trading Logic',
-    linkedPR: 'PR-004: Type Safety & Validation'
-  },
-  {
-    id: 'A-016',
-    severity: 'MEDIUM',
-    title: 'Cache Timer Resource Leak',
-    file: 'apps/backend/src/clients/orderbookCache.ts',
+    title: 'Cache Staleness',
+    file: 'apps/backend/src/clients/orderbookCache.ts:5-6,15',
     evidence: 'No TTL enforcement on cached orderbooks, lastUpdate stored but never checked',
     impact: [
       'Stale orderbook data used for trading',
@@ -411,6 +398,23 @@ const auditFindings: AuditFinding[] = [
       'Misleading market data'
     ],
     fix: 'Add TTL check (default 60 seconds). Invalidate/refresh old data. Add cache hit/miss metrics.',
+    priority: 'P1',
+    area: 'WebSocket/API',
+    linkedPR: 'PR-006: WebSocket Reliability'
+  },
+  {
+    id: 'A-016',
+    severity: 'MEDIUM',
+    title: 'WebSocket Reconnect Timer Leak',
+    file: 'apps/backend/src/clients/websocket.ts:153-156',
+    evidence: 'Reconnect timer not cleared on close',
+    impact: [
+      'Timer may fire after close',
+      'Memory leak',
+      'Resource exhaustion',
+      'Incomplete cleanup'
+    ],
+    fix: 'Ensure reconnectTimer cleared in all close paths. Add cleanup tests.',
     priority: 'P1',
     area: 'WebSocket/API',
     linkedPR: 'PR-006: WebSocket Reliability'

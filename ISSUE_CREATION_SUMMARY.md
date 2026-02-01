@@ -46,8 +46,7 @@ issues/audit-implementation/
 # Make sure you're authenticated with GitHub CLI
 gh auth status
 
-# Run the batch creation script
-cd /home/runner/work/polymarket-bot/polymarket-bot
+# From the repository root, run the batch creation script
 ./scripts/create-audit-issues.sh
 ```
 

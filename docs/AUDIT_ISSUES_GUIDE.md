@@ -23,7 +23,8 @@ issues/audit-implementation/
 ### 2. Created Automation Scripts
 
 **Generation Script:** `scripts/generate-audit-issues.ts`
-- Parses AUDIT.md findings
+- Uses a hardcoded `auditFindings` array (does not parse REPORTS/AUDIT.md directly)
+- When REPORTS/AUDIT.md is updated, the array must be updated accordingly
 - Generates structured markdown for each issue
 - Creates batch creation script
 - Produces comprehensive index
@@ -83,7 +84,6 @@ Issues are organized into 13 PRs from `docs/small-pr-plan.md`:
 #### PR-004: Type Safety & Validation (P1)
 - A-005: Unsafe Type Coercion and Casting
 - A-013: Undefined Order ID in Reconciliation
-- A-015: No Input Validation for Orders
 - A-024: Missing Private Key Format Validation
 - A-026: Dead Code with @ts-ignore
 
@@ -91,7 +91,8 @@ Issues are organized into 13 PRs from `docs/small-pr-plan.md`:
 - A-014: Improper Position Calculation
 
 #### PR-006: WebSocket Reliability (P1)
-- A-016: Cache Timer Resource Leak
+- A-015: Cache Staleness
+- A-016: WebSocket Reconnect Timer Leak
 - A-017: Graceful Shutdown Race Conditions
 
 #### PR-007: Paper Trading Enhancements (P1)

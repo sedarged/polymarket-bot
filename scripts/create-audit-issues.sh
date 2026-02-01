@@ -18,7 +18,7 @@ echo ""
 echo "Creating issue 1/27: A-001..."
 gh issue create \
   --repo "$REPO" \
-  --title "[Backend] Plaintext Private Key Storage - Audit Finding A-001" \
+  --title "[Security] Plaintext Private Key Storage - Audit Finding A-001" \
   --body "Addresses audit finding **A-001** (CRITICAL severity).
 
 **File:** \`apps/backend/src/config/index.ts:56\`
@@ -64,14 +64,14 @@ This is a CRITICAL severity finding that BLOCKS live trading.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-001)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-001)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-001: Critical Security Fixes
 
 **Related Findings:** See REPORTS/AUDIT.md for related issues in same category.
 
 **Keywords for auto-labeling:** security" \
-  --label "P0,backend,security" \
+  --label "P0,security,security" \
   --assignee "@me"
 
 # Issue 2: A-002
@@ -124,7 +124,7 @@ This is a CRITICAL severity finding that BLOCKS live trading.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-002)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-002)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-001: Critical Security Fixes
 
@@ -184,7 +184,7 @@ This is a CRITICAL severity finding that BLOCKS live trading.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-003)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-003)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-001: Critical Security Fixes
 
@@ -244,7 +244,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-004)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-004)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-002: Authentication & Rate Limiting
 
@@ -304,7 +304,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-005)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-005)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-004: Type Safety & Validation
 
@@ -364,7 +364,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-006)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-006)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-003: Data Integrity & Idempotency
 
@@ -424,7 +424,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-007)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-007)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-003: Data Integrity & Idempotency
 
@@ -484,7 +484,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-008)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-008)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-002: Authentication & Rate Limiting
 
@@ -544,7 +544,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-009)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-009)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-002: Authentication & Rate Limiting
 
@@ -604,7 +604,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-010)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-010)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-003: Data Integrity & Idempotency
 
@@ -664,7 +664,7 @@ This is a HIGH severity finding that must be resolved before production.
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-011)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-011)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-002: Authentication & Rate Limiting
 
@@ -724,7 +724,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-012)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-012)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-008: Circuit Breaker & Resilience
 
@@ -784,7 +784,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-013)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-013)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-004: Type Safety & Validation
 
@@ -844,7 +844,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-014)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-014)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-005: State Reconciliation
 
@@ -858,70 +858,10 @@ This is a MEDIUM severity finding that should be addressed for production readin
 echo "Creating issue 15/27: A-015..."
 gh issue create \
   --repo "$REPO" \
-  --title "[Trading Logic] No Input Validation for Orders - Audit Finding A-015" \
+  --title "[WebSocket/API] Cache Staleness - Audit Finding A-015" \
   --body "Addresses audit finding **A-015** (MEDIUM severity).
 
-**File:** \`apps/backend/src/clients/tradingClient.ts\`
-
-**Issue:**
-Order parameters not validated before submission
-
-**Technical Approach:**
-Add Zod schema validation for order parameters (size, price, side). Validate before submission.
-
----
-
-## Why is this needed?
-
-**Audit Severity:** MEDIUM
-
-**Impact:**
-- Invalid orders submitted to API
-- API rejections
-- State inconsistency
-- Poor error messages
-
-**Production Risk:**
-This is a MEDIUM severity finding that should be addressed for production readiness.
-
-**Reference:** REPORTS/AUDIT.md finding A-015
-
----
-
-## Acceptance Criteria
-
-- [ ] Audit finding A-015 fully addressed
-- [ ] Implementation matches audit recommendations
-- [ ] Tests added for the fix (or updated if exists)
-- [ ] \`npm test\` passes
-- [ ] \`npm run build\` succeeds
-- [ ] Documentation updated (if applicable)
-- [ ] Hard rules respected (no secrets, proper gating)
-- [ ] PR links to this issue and parent #23
-- [ ] Follows PR plan: PR-004: Type Safety & Validation
-
----
-
-## Additional Context
-
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-015)
-**Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
-**PR Plan:** PR-004: Type Safety & Validation
-
-**Related Findings:** See REPORTS/AUDIT.md for related issues in same category.
-
-**Keywords for auto-labeling:** trading" \
-  --label "P1,trading logic" \
-  --assignee "@me"
-
-# Issue 16: A-016
-echo "Creating issue 16/27: A-016..."
-gh issue create \
-  --repo "$REPO" \
-  --title "[WebSocket/API] Cache Timer Resource Leak - Audit Finding A-016" \
-  --body "Addresses audit finding **A-016** (MEDIUM severity).
-
-**File:** \`apps/backend/src/clients/orderbookCache.ts\`
+**File:** \`apps/backend/src/clients/orderbookCache.ts:5-6,15\`
 
 **Issue:**
 No TTL enforcement on cached orderbooks, lastUpdate stored but never checked
@@ -940,6 +880,66 @@ Add TTL check (default 60 seconds). Invalidate/refresh old data. Add cache hit/m
 - Incorrect price discovery
 - Bad fills in paper trading
 - Misleading market data
+
+**Production Risk:**
+This is a MEDIUM severity finding that should be addressed for production readiness.
+
+**Reference:** REPORTS/AUDIT.md finding A-015
+
+---
+
+## Acceptance Criteria
+
+- [ ] Audit finding A-015 fully addressed
+- [ ] Implementation matches audit recommendations
+- [ ] Tests added for the fix (or updated if exists)
+- [ ] \`npm test\` passes
+- [ ] \`npm run build\` succeeds
+- [ ] Documentation updated (if applicable)
+- [ ] Hard rules respected (no secrets, proper gating)
+- [ ] PR links to this issue and parent #23
+- [ ] Follows PR plan: PR-006: WebSocket Reliability
+
+---
+
+## Additional Context
+
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-015)
+**Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
+**PR Plan:** PR-006: WebSocket Reliability
+
+**Related Findings:** See REPORTS/AUDIT.md for related issues in same category.
+
+**Keywords for auto-labeling:** websocket" \
+  --label "P1,websocket-api" \
+  --assignee "@me"
+
+# Issue 16: A-016
+echo "Creating issue 16/27: A-016..."
+gh issue create \
+  --repo "$REPO" \
+  --title "[WebSocket/API] WebSocket Reconnect Timer Leak - Audit Finding A-016" \
+  --body "Addresses audit finding **A-016** (MEDIUM severity).
+
+**File:** \`apps/backend/src/clients/websocket.ts:153-156\`
+
+**Issue:**
+Reconnect timer not cleared on close
+
+**Technical Approach:**
+Ensure reconnectTimer cleared in all close paths. Add cleanup tests.
+
+---
+
+## Why is this needed?
+
+**Audit Severity:** MEDIUM
+
+**Impact:**
+- Timer may fire after close
+- Memory leak
+- Resource exhaustion
+- Incomplete cleanup
 
 **Production Risk:**
 This is a MEDIUM severity finding that should be addressed for production readiness.
@@ -964,7 +964,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-016)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-016)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-006: WebSocket Reliability
 
@@ -1024,7 +1024,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-017)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-017)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-006: WebSocket Reliability
 
@@ -1084,7 +1084,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-018)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-018)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-008: Circuit Breaker & Resilience
 
@@ -1144,7 +1144,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-019)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-019)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-007: Paper Trading Enhancements
 
@@ -1204,7 +1204,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-020)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-020)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-007: Paper Trading Enhancements
 
@@ -1264,7 +1264,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-021)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-021)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-004: Type Safety & Validation
 
@@ -1278,7 +1278,7 @@ This is a MEDIUM severity finding that should be addressed for production readin
 echo "Creating issue 22/27: A-022..."
 gh issue create \
   --repo "$REPO" \
-  --title "[Trading Logic] Potential Logging Information Exposure - Audit Finding A-022" \
+  --title "[Backend] Potential Logging Information Exposure - Audit Finding A-022" \
   --body "Addresses audit finding **A-022** (LOW severity).
 
 **File:** \`apps/backend/src/clients/tradingClient.ts:62-65\`
@@ -1324,14 +1324,14 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-022)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-022)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-010: Logging & Privacy
 
 **Related Findings:** See REPORTS/AUDIT.md for related issues in same category.
 
-**Keywords for auto-labeling:** trading" \
-  --label "P2,trading logic" \
+**Keywords for auto-labeling:** " \
+  --label "P2,backend" \
   --assignee "@me"
 
 # Issue 23: A-023
@@ -1384,7 +1384,7 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-023)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-023)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-008: Circuit Breaker & Resilience
 
@@ -1444,7 +1444,7 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-024)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-024)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-004: Type Safety & Validation
 
@@ -1458,7 +1458,7 @@ This is a LOW severity finding that should be addressed for production readiness
 echo "Creating issue 25/27: A-025..."
 gh issue create \
   --repo "$REPO" \
-  --title "[Backend] Insufficient Test Coverage - Audit Finding A-025" \
+  --title "[Testing] Insufficient Test Coverage - Audit Finding A-025" \
   --body "Addresses audit finding **A-025** (LOW severity).
 
 **File:** \`All components\`
@@ -1504,14 +1504,14 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-025)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-025)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-011: Test Coverage Expansion
 
 **Related Findings:** See REPORTS/AUDIT.md for related issues in same category.
 
 **Keywords for auto-labeling:** testing" \
-  --label "P1,backend" \
+  --label "P1,testing" \
   --assignee "@me"
 
 # Issue 26: A-026
@@ -1564,7 +1564,7 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-026)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-026)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-004: Type Safety & Validation
 
@@ -1624,7 +1624,7 @@ This is a LOW severity finding that should be addressed for production readiness
 
 ## Additional Context
 
-**Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md#a-027)
+**Audit Report:** [REPORTS/AUDIT.md](../../REPORTS/AUDIT.md) (finding A-027)
 **Parent Issue:** #23 (🚀 Polymarket Bot - Complete Production Audit & Learning System)
 **PR Plan:** PR-009: Observability & Metrics
 

@@ -1,6 +1,6 @@
 # Audit Finding Implementation Issues - Index
 
-**Generated:** 2026-02-01T21:56:45.934Z
+**Generated:** 2026-02-01T22:55:14.104Z
 **Total Issues:** 27
 
 ## Summary by Priority
@@ -24,7 +24,7 @@
 
 | # | ID | Severity | Title | Priority | Area | PR Plan |
 |---|----|----------|-------|----------|------|---------|
-| 1 | A-001 | CRITICAL | Plaintext Private Key Storage | P0 | Backend | PR-001: Critical Security Fixes |
+| 1 | A-001 | CRITICAL | Plaintext Private Key Storage | P0 | Security | PR-001: Critical Security Fixes |
 | 2 | A-002 | CRITICAL | Kill Switch State Not Persisted | P0 | Trading Logic | PR-001: Critical Security Fixes |
 | 3 | A-003 | CRITICAL | Wildcard CORS Configuration | P0 | Backend | PR-001: Critical Security Fixes |
 | 4 | A-004 | HIGH | Admin Authentication Not Required | P1 | Backend | PR-002: Authentication & Rate Limiting |
@@ -38,17 +38,17 @@
 | 12 | A-012 | MEDIUM | Error Swallowing in Strategy Execution | P1 | Backend | PR-008: Circuit Breaker & Resilience |
 | 13 | A-013 | MEDIUM | Undefined Order ID in Reconciliation | P1 | Trading Logic | PR-004: Type Safety & Validation |
 | 14 | A-014 | MEDIUM | Improper Position Calculation | P1 | Trading Logic | PR-005: State Reconciliation |
-| 15 | A-015 | MEDIUM | No Input Validation for Orders | P1 | Trading Logic | PR-004: Type Safety & Validation |
-| 16 | A-016 | MEDIUM | Cache Timer Resource Leak | P1 | WebSocket/API | PR-006: WebSocket Reliability |
+| 15 | A-015 | MEDIUM | Cache Staleness | P1 | WebSocket/API | PR-006: WebSocket Reliability |
+| 16 | A-016 | MEDIUM | WebSocket Reconnect Timer Leak | P1 | WebSocket/API | PR-006: WebSocket Reliability |
 | 17 | A-017 | MEDIUM | Graceful Shutdown Race Conditions | P1 | Backend | PR-006: WebSocket Reliability |
 | 18 | A-018 | MEDIUM | Circuit Breaker Does Not Auto-Reset | P1 | Trading Logic | PR-008: Circuit Breaker & Resilience |
 | 19 | A-019 | MEDIUM | Paper Trading Partial Fill Simulation Missing | P1 | Trading Logic | PR-007: Paper Trading Enhancements |
 | 20 | A-020 | MEDIUM | Slippage Calculation Incorrect | P1 | Trading Logic | PR-007: Paper Trading Enhancements |
 | 21 | A-021 | MEDIUM | Potential Integer Overflow | P2 | Trading Logic | PR-004: Type Safety & Validation |
-| 22 | A-022 | LOW | Potential Logging Information Exposure | P2 | Trading Logic | PR-010: Logging & Privacy |
+| 22 | A-022 | LOW | Potential Logging Information Exposure | P2 | Backend | PR-010: Logging & Privacy |
 | 23 | A-023 | LOW | Missing Jitter in Backoff Calculation | P2 | Backend | PR-008: Circuit Breaker & Resilience |
 | 24 | A-024 | LOW | Missing Private Key Format Validation | P2 | Backend | PR-004: Type Safety & Validation |
-| 25 | A-025 | LOW | Insufficient Test Coverage | P1 | Backend | PR-011: Test Coverage Expansion |
+| 25 | A-025 | LOW | Insufficient Test Coverage | P1 | Testing | PR-011: Test Coverage Expansion |
 | 26 | A-026 | LOW | Dead Code with @ts-ignore | P2 | Trading Logic | PR-004: Type Safety & Validation |
 | 27 | A-027 | LOW | Missing Metrics for Observability | P1 | Backend | PR-009: Observability & Metrics |
 

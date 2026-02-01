@@ -68,7 +68,7 @@ Mapped to PR Plan: 13 PRs in docs/small-pr-plan.md
 ACTION 1: CREATE ALL 27 ISSUES ON GITHUB (2-3 minutes)
 ────────────────────────────────────────────────────────────────────────────
 
-   $ cd /path/to/polymarket-bot
+   # From the repository root:
    $ gh auth status                    # Verify authentication
    $ ./scripts/create-audit-issues.sh  # Create all 27 issues
 
