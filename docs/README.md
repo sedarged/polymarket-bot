@@ -26,8 +26,8 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Architecture & Design
 - [Architecture Map](./architecture.md) - Technical architecture documentation with critical paths
 - [Architecture Decision Records (ADR)](./migration-log.md) - Key architectural decisions and rationale
-- [Plan](./plan.md) - Original PR rollout plan (10 PRs)
-- [Small PR Plan](./small-pr-plan.md) - Detailed PR breakdown (13 PRs with audit fixes)
+- [Original PR Plan](./plan.md) - Original 10-PR rollout plan
+- [Small PR Plan](./small-pr-plan.md) - Detailed 13-PR breakdown addressing audit fixes
 
 ### Operations
 - [Runbook](./runbook.md) - Operational procedures for running the bot

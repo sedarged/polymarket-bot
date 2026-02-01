@@ -69,13 +69,15 @@ This plan builds on the existing foundation already in place (paper trading, Web
 ```bash
 # Kill switch persistence test
 npm run dev &
-# Activate kill switch via API
-curl -X POST http://localhost:3000/kill-switch
+PID=$!
+# Activate kill switch via API (requires admin token)
+curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" http://localhost:3000/kill-switch
 # Kill process
 kill $PID
 # Restart - should still be killed
 npm run dev
 # Verify kill switch remains active
+curl http://localhost:3000/status
 ```
 
 **Links:**
@@ -97,8 +99,9 @@ npm run dev
    - Document token generation
 
 2. **Rate Limiting (A-008)**
-   - Add `express-rate-limit` to all HTTP endpoints
-   - Implement per-IP rate limits
+   - Add rate limiting to all HTTP endpoints
+   - Implement per-IP rate limits using a lightweight solution compatible with Node `http` server
+   - Use in-memory rate limiting or `rate-limiter-flexible` library
    - Add configurable rate limit settings
    - Log rate limit violations
 
@@ -127,7 +130,7 @@ npm run dev
 - `apps/backend/src/utils/retry.ts`
 - `apps/backend/src/clients/tradingClient.ts`
 - `apps/backend/src/config/index.ts`
-- `package.json` (add express-rate-limit)
+- `package.json` (add rate-limiter-flexible if needed)
 - `.env.example`
 - `docs/environment.md`
 
@@ -146,7 +149,7 @@ for i in {1..100}; do curl http://localhost:3000/health; done
 ```
 
 **Dependencies:**
-- None (can be done immediately)
+- PR-001
 
 **Links:**
 - [Audit A-004: Auth Bypass](../REPORTS/AUDIT.md#a-004-high---auth-bypass)
@@ -222,7 +225,7 @@ describe('Idempotency', () => {
 
 **Changes:**
 1. **Unsafe Type Parsing (A-005)**
-   - Remove all `@ts-ignore` comments
+   - Remove all `@ts-ignore` comments (addresses A-026)
    - Add Zod schemas for API responses
    - Validate balance fetch response
    - Add type guards
@@ -239,11 +242,17 @@ describe('Idempotency', () => {
    - Fail fast on invalid key format
    - Add validation tests
 
+4. **Integer Overflow Prevention (A-021)**
+   - Replace orderIdCounter with UUID-based IDs (handled in PR-003)
+   - Or use BigInt for counter with timestamp boundary reset
+   - Document counter overflow mitigation strategy
+
 **Acceptance Criteria:**
-- [ ] No `@ts-ignore` comments in production code
-- [ ] All API responses validated with Zod
-- [ ] Orders require valid orderId
-- [ ] Private key format validated on startup
+- [ ] No `@ts-ignore` comments in production code (A-026 resolved)
+- [ ] All API responses validated with Zod (A-005 resolved)
+- [ ] Orders require valid orderId (A-013 resolved)
+- [ ] Private key format validated on startup (A-024 resolved)
+- [ ] Integer overflow mitigated (A-021 resolved)
 - [ ] Type errors caught at compile time
 - [ ] Validation tests comprehensive
 
@@ -265,6 +274,10 @@ PRIVATE_KEY=invalid npm run dev
 
 **Links:**
 - [Audit A-005: Unsafe Parsing](../REPORTS/AUDIT.md#a-005-high---unsafe-parsing)
+- [Audit A-013: Undefined Order ID](../REPORTS/AUDIT.md#a-013-medium---undefined-order-id)
+- [Audit A-021: Integer Overflow](../REPORTS/AUDIT.md#a-021-medium---integer-overflow-risk)
+- [Audit A-024: Missing Validation](../REPORTS/AUDIT.md#a-024-low---missing-validation)
+- [Audit A-026: Dead Code](../REPORTS/AUDIT.md#a-026-low---ts-ignore-technical-debt)
 - [TypeScript Strict Mode](../tsconfig.base.json)
 
 ---

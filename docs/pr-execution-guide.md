@@ -11,7 +11,7 @@ This guide provides practical instructions for implementing the [Small PR Implem
 3. **Pick the next PR:** Follow the dependency graph
 4. **Execute the PR:** Follow the template below
 5. **Collect evidence:** Use the evidence template
-6. **Report progress:** Use `report_progress` tool
+6. **Update status:** Add issue labels so STATUS automation can track progress
 
 ### For Human Developers
 
@@ -131,14 +131,14 @@ $ cat data/kill-switch-state.json
 {"active": true, "timestamp": "2026-02-01T12:00:00Z"}
 
 # Stop bot
-$ kill 12345
+$ kill "$PID"
 
 # Restart bot
 $ npm run dev &
-[1] 12346
+PID=$!
 
-# Verify kill switch still active (check logs)
-$ curl http://localhost:3000/api/status
+# Verify kill switch still active (check logs or status endpoint)
+$ curl http://localhost:3000/status
 {"killSwitch": "active", "trading": "disabled"}
 \`\`\`
 
@@ -147,7 +147,7 @@ $ curl http://localhost:3000/api/status
 \`\`\`bash
 # Verify CORS restricted
 $ curl -H "Origin: https://evil.com" \
-  -I http://localhost:3000/api/health
+  -I http://localhost:3000/health
 
 # Should NOT include Access-Control-Allow-Origin: *
 # Should include specific origin or no CORS header
@@ -160,9 +160,9 @@ $ curl -H "Origin: https://evil.com" \
 $ grep -r "PRIVATE_KEY" logs/
 # Should show no matches or only encrypted references
 
-# Verify secret manager integration
-$ node -e "const config = require('./dist/config'); console.log(config.getPrivateKey())"
-# Should show encrypted or vault reference, not plaintext
+# Verify secret manager integration (check config source, not the key itself)
+$ node -e "const { parseConfig } = require('./apps/backend/dist/config'); const cfg = parseConfig(); console.log('Private key source:', cfg.privateKey ? 'configured' : 'missing')"
+# Should confirm key is configured without revealing the value
 \`\`\`
 
 ## Security Checklist
@@ -217,9 +217,9 @@ $ node -e "const config = require('./dist/config'); console.log(config.getPrivat
 
 ## Breaking Changes
 
-- **BREAKING:** `ALLOWED_ORIGINS` environment variable now required
+- **Behavior change:** `ALLOWED_ORIGINS` environment variable is now supported; if unset, CORS defaults to `http://localhost:3000`
 - **BREAKING:** Kill switch state file required in `data/` directory
-- **Migration:** See docs/migration/v0.2.0.md
+- **Migration:** See docs/migration-log.md for upgrade guidance
 
 ## Screenshots
 
@@ -310,10 +310,10 @@ For every PR, collect and include:
 
 ### Evidence Storage
 
-- Create `PR-NNN-EVIDENCE.md` file
-- Paste into PR description
-- Commit to branch (in `/evidence/` directory)
-- Link from PR
+- Create a local `PR-NNN-EVIDENCE.md` file using the template above
+- Use it as a working scratchpad while implementing the PR
+- When opening or updating the PR, paste the contents into the PR description
+- Do **not** commit the evidence file to the repo (evidence lives in the PR description)
 
 ---
 
@@ -490,24 +490,11 @@ chmod +x .git/hooks/pre-commit
 
 ### For AI Agents
 
-Use the `report_progress` tool after completing work:
+Update issue/PR labels so STATUS automation can track progress:
 
-```typescript
-report_progress({
-  commitMessage: "PR-001: Implement secrets management",
-  prDescription: `
-## Small PR Implementation Plan
-
-- [x] PR-001: Critical Security Fixes
-  - [x] Secrets management implemented
-  - [x] Kill switch persistence added
-  - [x] CORS security enhanced
-- [ ] PR-002: Auth & Rate Limiting
-- [ ] PR-003: Data Integrity & Idempotency
-...
-  `
-});
-```
+1. Add `in-progress` label when starting work
+2. Remove `in-progress` and add completion notes when done
+3. STATUS.md updates automatically via GitHub Actions (every 6 hours or on issue changes)
 
 ### For Humans
 
@@ -552,7 +539,7 @@ Update STATUS.md by:
 ### Templates
 - [Evidence Template](#step-4-evidence-collection) - This document
 - [Review Checklist](#review-checklist) - This document
-- [ADR Template](./adr/TEMPLATE.md) - For architectural decisions
+- [ADR Examples](./adr/) - For architectural decisions
 
 ### Tools
 - `npm test` - Run tests

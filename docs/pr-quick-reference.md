@@ -285,7 +285,7 @@ These can run in parallel:
 | A-018 | MEDIUM | PR-008 | No CB auto-reset |
 | A-019 | MEDIUM | PR-007 | Partial fill simulation |
 | A-020 | MEDIUM | PR-007 | Slippage calculation |
-| A-021 | MEDIUM | (Deferred) | Integer overflow |
+| A-021 | MEDIUM | PR-004 | Integer overflow (mitigated via UUID in PR-003) |
 | A-022 | LOW | PR-010 | Logging exposure |
 | A-023 | LOW | PR-008 | No backoff jitter |
 | A-024 | LOW | PR-004 | Missing key validation |
@@ -330,7 +330,7 @@ npm test -- --coverage
 curl http://localhost:3000/health
 
 # Kill switch status
-curl http://localhost:3000/api/status
+curl http://localhost:3000/status
 ```
 
 ---
