@@ -146,17 +146,15 @@ describe('OrderbookCache', () => {
       expect(updated).toBe(false);
     });
 
-    it('should update lastUpdate timestamp', () => {
+    it('should update lastUpdate timestamp', async () => {
       const beforeUpdate = cache.getLastUpdate(mockTokenId);
       
       // Small delay to ensure timestamp changes
-      const delay = new Promise(resolve => setTimeout(resolve, 10));
-      delay.then(() => {
-        cache.updateLevel(mockTokenId, 'buy', '0.55', '150');
-        
-        const afterUpdate = cache.getLastUpdate(mockTokenId);
-        expect(afterUpdate).toBeGreaterThan(beforeUpdate!);
-      });
+      await new Promise(resolve => setTimeout(resolve, 10));
+      cache.updateLevel(mockTokenId, 'buy', '0.55', '150');
+
+      const afterUpdate = cache.getLastUpdate(mockTokenId);
+      expect(afterUpdate).toBeGreaterThan(beforeUpdate ?? 0);
     });
   });
 
