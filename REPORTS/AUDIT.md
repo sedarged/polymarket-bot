@@ -407,7 +407,9 @@ if (isLiveTradingEnabled()) {
       total: balancesData.balance || '0',
     }];
   } catch (err) {
-    logger.error('CRITICAL: Could not fetch balances', { error });
+    logger.error('CRITICAL: Could not fetch balances', { 
+      error: err instanceof Error ? err.message : String(err) 
+    });
     throw new Error('Reconciliation failed: unable to fetch balances');
   }
 } else {
