@@ -93,12 +93,36 @@ jobs:
                 labels: ['security-review-needed']
               });
 
-              await github.rest.issues.createComment({
+              const commentBody = `🔒 **Security Review Required**\n\nThis PR modifies security-sensitive files:\n${securityFiles.map(f => `- \`${f.filename}\``).join('\n')}\n\n**Required checks:**\n- [ ] No hardcoded secrets or private keys\n- [ ] Proper input validation (Zod schemas)\n- [ ] Error handling in place\n- [ ] Tests cover security scenarios\n- [ ] Review against audit findings (REPORTS/AUDIT.md)\n- [ ] Trading logic properly gated (LIVE_TRADING + COMPLIANCE_ACCEPTED)\n\n**Audit References:**\nSee [REPORTS/AUDIT.md](REPORTS/AUDIT.md) for known security findings.`;
+
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `🔒 **Security Review Required**\n\nThis PR modifies security-sensitive files:\n${securityFiles.map(f => `- \`${f.filename}\``).join('\n')}\n\n**Required checks:**\n- [ ] No hardcoded secrets or private keys\n- [ ] Proper input validation (Zod schemas)\n- [ ] Error handling in place\n- [ ] Tests cover security scenarios\n- [ ] Review against audit findings (REPORTS/AUDIT.md)\n- [ ] Trading logic properly gated (LIVE_TRADING + COMPLIANCE_ACCEPTED)\n\n**Audit References:**\nSee [REPORTS/AUDIT.md](../blob/main/REPORTS/AUDIT.md) for known security findings.`
+                per_page: 100,
               });
+
+              const existingComment = comments.find(
+                (comment) =>
+                  typeof comment.body === 'string' &&
+                  comment.body.startsWith('🔒 **Security Review Required**')
+              );
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingComment.id,
+                  body: commentBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: commentBody,
+                });
+              }
             }
 
   size-check:
@@ -177,7 +201,7 @@ jobs:
               issues.push('❌ PR description is too short (minimum 30 characters)');
             }
 
-            const hasIssueLink = /(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)s?\s*:?\s*#\d+/i.test(body);
+            const hasIssueLink = /(?:closes?|closed|fixe?s|fixed|resolves?|resolved)\s*:?\s*#\d+/i.test(body);
             if (!hasIssueLink) {
               issues.push('💡 Consider linking to an issue using "Closes #123"');
             }
@@ -206,10 +230,32 @@ jobs:
             }
 
             if (issues.length > 0) {
-              await github.rest.issues.createComment({
+              const qualityBody = `## 📋 PR Quality Check\n\n${issues.join('\n')}\n\n**Note:** These are suggestions to improve PR quality for a production trading bot.`;
+
+              // Avoid duplicate quality-check comments: update existing one if present
+              const { data: existingComments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: pr.number,
-                body: `## 📋 PR Quality Check\n\n${issues.join('\n')}\n\n**Note:** These are suggestions to improve PR quality for a production trading bot.`
               });
+
+              const existingQualityComment = existingComments.find(
+                (comment) => typeof comment.body === 'string' && comment.body.startsWith('## 📋 PR Quality Check')
+              );
+
+              if (existingQualityComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingQualityComment.id,
+                  body: qualityBody,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: qualityBody,
+                });
+              }
             }
