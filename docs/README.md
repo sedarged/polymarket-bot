@@ -19,11 +19,14 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
+- [Small PR Implementation Plan](./small-pr-plan.md) - Phased PR rollout with acceptance criteria
+- [PR Execution Guide](./pr-execution-guide.md) - Step-by-step guide for executing PRs
 
 ### Architecture & Design
 - [Architecture Map](./architecture.md) - Technical architecture documentation with critical paths
 - [Architecture Decision Records (ADR)](./migration-log.md) - Key architectural decisions and rationale
-- [Plan](./plan.md) - PR rollout plan and phased development strategy
+- [Plan](./plan.md) - Original PR rollout plan (10 PRs)
+- [Small PR Plan](./small-pr-plan.md) - Detailed PR breakdown (13 PRs with audit fixes)
 
 ### Operations
 - [Runbook](./runbook.md) - Operational procedures for running the bot
