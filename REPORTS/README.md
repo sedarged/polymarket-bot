@@ -27,6 +27,56 @@ This directory contains formal audit reports, security analyses, and compliance 
 
 ---
 
+### [GAP_ANALYSIS.md](./GAP_ANALYSIS.md) - Production Readiness Gap Analysis
+**Date:** 2026-02-01  
+**Status:** Complete  
+**Scope:** Comprehensive production readiness evaluation across 8 critical categories
+
+**Summary:**
+- **Overall Status:** 🟡 NOT PRODUCTION READY - Requires 4-6 weeks of hardening
+- **Categories Evaluated:** Data Ingest (7/10), Strategy Interface (6/10), Execution Engine (6/10), Risk Controls (7/10), Reliability (5/10), Persistence (3/10), Observability (3/10), Polygon Ops (N/A)
+- **58 days of development effort** identified across P0/P1/P2 priorities
+- **4 critical blockers:** No persistence layer, no metrics/alerting, no periodic reconciliation, no audit trail
+
+**Key Gaps:**
+- No database - all state is in-memory (PA-001)
+- No metrics collection or alerting infrastructure (OB-001, OB-002)
+- No periodic reconciliation - only at startup (RE-001)
+- No partial fill handling (EE-001)
+- Kill switch state not persisted (RS-001)
+
+**Roadmap:**
+- **Milestone 1 (2 weeks):** Critical blockers - persistence, metrics, reconciliation
+- **Milestone 2 (2 weeks):** Operational resilience - partial fills, drift detection, error taxonomy
+- **Milestone 3 (2 weeks):** Production hardening - deduplication, timeouts, P&L tracking
+- **Milestone 4 (2 weeks):** Strategy framework - pluggable strategies (optional)
+
+**Recommendation:** Complete Milestones 1-3 (6 weeks) before production deployment. Run 7 consecutive days of paper trading at 100% uptime as final gate.
+
+---
+
+### [RESEARCH_REVIEW.md](./RESEARCH_REVIEW.md) - API Documentation Alignment Review
+**Date:** 2026-02-01  
+**Status:** Complete  
+**Scope:** Comprehensive review of implementation against official Polymarket API documentation
+
+**Summary:**
+- **Overall Assessment:** Strong alignment with official APIs
+- **CLOB API:** Using official `@polymarket/clob-client` SDK - excellent alignment
+- **Gamma API:** Correctly implemented market data fetching
+- **WebSocket API:** Properly implemented real-time feeds with reconnection
+- **Minor gaps:** Error handling completeness, rate limiting visibility
+
+**Key Findings:**
+- Implementation leverages official SDK (reduces custom code risk)
+- Authentication flow matches official docs (L1 + L2 auth)
+- Order management follows documented patterns
+- WebSocket subscriptions correctly implemented
+
+**Recommendation:** Current implementation is well-aligned. Address minor error handling gaps from audit findings.
+
+---
+
 ## Report Organization
 
 Each audit report follows a standardized format:
