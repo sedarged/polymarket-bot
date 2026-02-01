@@ -27,6 +27,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ### Operations
 - [Runbook](./runbook.md) - Operational procedures for running the bot
+- [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Paper Trading Guide](./paper-trading.md) - Safe testing without real money
 - [Report Digest](./report-digest.md) - Analysis summaries and findings
 

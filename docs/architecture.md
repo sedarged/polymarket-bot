@@ -566,6 +566,143 @@ maxReconnectAttempts: Infinity
 - `error` - Error occurred
 - `reconnecting` - Reconnect attempt starting
 
+### WebSocket State Machine Diagram
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                    WEBSOCKET CONNECTION STATE MACHINE                  │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│                         ┌──────────────┐                              │
+│                         │              │                              │
+│                    ┌────│ DISCONNECTED │◀────┐                        │
+│                    │    │  (Initial)   │     │                        │
+│                    │    └──────┬───────┘     │                        │
+│                    │           │             │                        │
+│           close()  │           │ connect()   │  error /               │
+│                    │           │             │  connection lost       │
+│                    │           ▼             │                        │
+│                    │    ┌──────────────┐     │                        │
+│                    │    │              │     │                        │
+│                    │    │  CONNECTING  │─────┘                        │
+│                    │    │  (Handshake) │     │                        │
+│                    │    └──────┬───────┘     │                        │
+│                    │           │             │                        │
+│                    │           │ onopen      │                        │
+│                    │           │             │                        │
+│                    │           ▼             │                        │
+│                    │    ┌──────────────┐     │                        │
+│                    │    │              │     │                        │
+│                    └───▶│  CONNECTED   │─────┘                        │
+│                         │   (Active)   │                              │
+│                         └──────┬───────┘                              │
+│                                │                                       │
+│                                │ close(manual)                         │
+│                                ▼                                       │
+│                         ┌──────────────┐                              │
+│                         │              │                              │
+│                         │    CLOSED    │                              │
+│                         │  (Terminal)  │                              │
+│                         └──────────────┘                              │
+│                                                                        │
+│  TRANSITIONS:                                                          │
+│  • DISCONNECTED → CONNECTING: User calls connect()                    │
+│  • CONNECTING → CONNECTED: WebSocket handshake succeeds               │
+│  • CONNECTING → DISCONNECTED: Connection fails, auto-retry            │
+│  • CONNECTED → DISCONNECTED: Connection lost, auto-reconnect          │
+│  • CONNECTED → CLOSED: User calls close() or maxAttempts reached      │
+│  • DISCONNECTED → CLOSED: User calls close() permanently              │
+│                                                                        │
+│  RECONNECT BEHAVIOR:                                                   │
+│  • DISCONNECTED state triggers auto-reconnect after backoff delay     │
+│  • Exponential backoff: delay = min(baseDelay * 2^attempt, maxDelay) │
+│  • Jitter added to prevent thundering herd: delay += random(0-1000ms)│
+│  • On CONNECTED, reset reconnect counter to 0                         │
+│  • On CLOSED, no further reconnect attempts                           │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Order Lifecycle State Machine
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     ORDER LIFECYCLE STATE MACHINE                      │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│                        ┌──────────────┐                               │
+│                        │              │                               │
+│                   ┌────│   CREATED    │                               │
+│                   │    │  (Pre-submit)│                               │
+│                   │    └──────┬───────┘                               │
+│                   │           │                                        │
+│                   │           │ Submit to exchange                     │
+│                   │           │                                        │
+│                   │           ▼                                        │
+│                   │    ┌──────────────┐                               │
+│      Risk check   │    │              │                               │
+│      fails        │    │     OPEN     │◀──┐                           │
+│                   │    │ (On exchange)│   │                           │
+│                   │    └──────┬───────┘   │                           │
+│                   │           │            │ Partial fill             │
+│                   │           │            │                           │
+│                   │    ┌──────┴───────┬────┴─────┐                    │
+│                   │    │              │          │                     │
+│        Cancel     │    ▼              ▼          │                     │
+│                   │  ┌──────┐    ┌─────────┐    │                     │
+│                   └─▶│      │    │         │    │                     │
+│                      │REJECT│    │ MATCHED │    │                     │
+│                      │ ED   │    │(Partial)│────┘                     │
+│                      │      │    │         │                           │
+│                      └──────┘    └────┬────┘                           │
+│                          │            │                                │
+│                          │            │ Complete fill                  │
+│                          │            │                                │
+│                          │            ▼                                │
+│                          │     ┌──────────────┐                        │
+│                          │     │              │                        │
+│                          │     │    FILLED    │                        │
+│                          │     │  (Complete)  │                        │
+│                          │     └──────────────┘                        │
+│                          │            │                                │
+│                          │            │                                │
+│                          │            ▼                                │
+│                          │     ┌──────────────┐                        │
+│                          │     │              │                        │
+│                          └────▶│   TERMINAL   │                        │
+│                                │   (Final)    │                        │
+│                                └──────────────┘                        │
+│                                       ▲                                │
+│                                       │                                │
+│                                       │                                │
+│                                ┌──────┴───────┐                        │
+│                                │              │                        │
+│                                │  CANCELLED   │                        │
+│                                │ (User action)│                        │
+│                                └──────────────┘                        │
+│                                                                        │
+│  STATES:                                                               │
+│  • CREATED: Order validated, awaiting submission                      │
+│  • REJECTED: Failed risk checks or validation                         │
+│  • OPEN: Successfully submitted to exchange, awaiting match           │
+│  • MATCHED: Partially or fully matched, awaiting settlement           │
+│  • FILLED: Order fully executed                                       │
+│  • CANCELLED: Order cancelled by user or system                       │
+│  • TERMINAL: Final state (FILLED, CANCELLED, or REJECTED)             │
+│                                                                        │
+│  TRANSITIONS:                                                          │
+│  • CREATED → REJECTED: Risk check fails                               │
+│  • CREATED → OPEN: Successfully submitted to exchange                 │
+│  • OPEN → MATCHED: Counterparty found, fill in progress               │
+│  • OPEN → CANCELLED: User or system cancels order                     │
+│  • MATCHED → MATCHED: Partial fill, order still active                │
+│  • MATCHED → FILLED: Order fully executed                             │
+│  • MATCHED → CANCELLED: Remaining quantity cancelled                  │
+│  • {FILLED, CANCELLED, REJECTED} → TERMINAL: Final state reached      │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## Persistence Layer
@@ -1058,6 +1195,289 @@ logger.error('API error', { error: err.message });
     • Risk check fail → Order rejected, log reason
     • Kill switch → Cancel all orders, halt trading
     • State mismatch → Reconciliation on startup/reconnect
+```
+
+---
+
+## Data Flow Diagrams
+
+### Complete System Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                           COMPLETE SYSTEM DATA FLOW                                 │
+│                     (External APIs → Internal State → Reports)                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+EXTERNAL SOURCES                 INGESTION LAYER              PROCESSING LAYER
+================                 ===============              ================
+
+┌──────────────────┐            ┌──────────────────┐        ┌──────────────────┐
+│  Gamma API       │────────────│  GammaClient     │───────▶│ Market Registry  │
+│  (Markets)       │  HTTP GET  │  (REST)          │        │ (Active Markets) │
+└──────────────────┘            └──────────────────┘        └────────┬─────────┘
+                                                                      │
+                                                                      │ Market metadata
+                                                                      ▼
+┌──────────────────┐            ┌──────────────────┐        ┌──────────────────┐
+│  CLOB API        │────────────│  ClobClient      │───────▶│ Orderbook Cache  │
+│  (Orderbook)     │  HTTP GET  │  (REST)          │        │ Map<ID, OB>      │
+└──────────────────┘            └──────────────────┘        └────────┬─────────┘
+                                                                      │
+                                                                      │ Price data
+                                                                      ▼
+┌──────────────────┐            ┌──────────────────┐        ┌──────────────────┐
+│  WS Market Feed  │════════════│ MarketFeedClient │═══════▶│  Event Stream    │
+│  (Real-time)     │  WebSocket │ (Subscriptions)  │        │  (Orderbook      │
+└──────────────────┘            └──────────────────┘        │   Updates)       │
+                                                             └────────┬─────────┘
+                                                                      │
+                                                                      │ Live updates
+                                                                      ▼
+                                        
+STRATEGY LAYER                   EXECUTION LAYER              STATE MANAGEMENT
+==============                   ===============              ================
+
+┌──────────────────┐            ┌──────────────────┐        ┌──────────────────┐
+│  Strategy Logic  │            │  RiskManager     │        │  Trading State   │
+│  (Signal Gen)    │───────────▶│  (Pre-trade      │───────▶│  • Orders        │
+│  • Market Making │  Order     │   Validation)    │ Pass   │  • Fills         │
+│  • Arbitrage     │  Intent    │  • Limits        │        │  • Positions     │
+│  • Signals       │            │  • Drawdown      │        │  • Balances      │
+└──────────────────┘            │  • Kill Switch   │        └────────┬─────────┘
+        ▲                       └────────┬─────────┘                 │
+        │                                │                            │
+        │ Market data                    │ Reject                     │
+        │                                ▼                            ▼
+        │                       ┌──────────────────┐        ┌──────────────────┐
+        └───────────────────────│  Log & Alert     │        │  PnL Calculator  │
+                                │  (Rejected)      │        │  • Realized      │
+                                └──────────────────┘        │  • Unrealized    │
+                                                            │  • Total         │
+                                                            └────────┬─────────┘
+                                         │                           │
+                                         │ If Pass                   │
+                                         ▼                           ▼
+
+TRADING LAYER                    RECONCILIATION               OUTPUT LAYER
+=============                    ==============               ============
+
+┌──────────────────┐            ┌──────────────────┐        ┌──────────────────┐
+│  [LIVE MODE]     │            │  Startup         │        │  HTTP API        │
+│  TradingClient   │◀───────────│  Reconciliation  │        │  • /state        │
+│  • Create order  │  Compare   │  • Fetch remote  │        │  • /orders       │
+│  • Cancel order  │            │  • Compare local │        │  • /fills        │
+│  • Sign + submit │            │  • Update state  │        │  • /orderbooks   │
+└────────┬─────────┘            └──────────────────┘        └────────┬─────────┘
+         │                                                            │
+         │ Order confirmation                                         │
+         ▼                                                            ▼
+┌──────────────────┐                                        ┌──────────────────┐
+│  [PAPER MODE]    │                                        │  Dashboard UI    │
+│  PaperEngine     │                                        │  (Future)        │
+│  • Simulate fill │                                        │  • Live PnL      │
+│  • Apply slippage│                                        │  • Orders table  │
+│  • Update state  │                                        │  • Kill switch   │
+└────────┬─────────┘                                        └──────────────────┘
+         │
+         │ Fill events
+         ▼
+┌──────────────────┐                                        ┌──────────────────┐
+│  Fill Processing │                                        │  Structured Logs │
+│  • Update pos    │───────────────────────────────────────▶│  (JSON)          │
+│  • Update bal    │   Log all events                      │  • Trades        │
+│  • Calculate PnL │                                        │  • Errors        │
+└──────────────────┘                                        │  • Metrics       │
+                                                            └──────────────────┘
+
+DATA FLOW SUMMARY:
+1. Market data flows: Gamma → Markets, CLOB/WS → Orderbooks → Strategy
+2. Order flow: Strategy → Risk → Execution → State
+3. Fill flow: Execution → State → PnL → Logs/API
+4. State flow: All changes → Trading State → API/Dashboard
+5. Reconciliation: Startup/Reconnect → Fetch Remote → Update Local → Log
+```
+
+### WebSocket Reconnection and Resync Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    WEBSOCKET RECONNECTION & RESYNC FLOW                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  1. NORMAL OPERATION                                                        │
+│     ┌─────────────┐                                                        │
+│     │ WS CONNECTED│───▶ Receiving real-time orderbook updates              │
+│     └──────┬──────┘                                                        │
+│            │                                                                │
+│            ▼                                                                │
+│     ┌─────────────────────────────────────────────────────────┐           │
+│     │  CONNECTION LOST (Network issue, server restart, etc.)  │           │
+│     └──────┬──────────────────────────────────────────────────┘           │
+│            │                                                                │
+│            ▼                                                                │
+│  2. DETECTION & LOGGING                                                     │
+│     ┌─────────────┐                                                        │
+│     │ onclose()   │───▶ Log: "WebSocket disconnected"                      │
+│     │ event fires │───▶ Set state: DISCONNECTED                            │
+│     └──────┬──────┘───▶ Clear orderbook cache (stale data)                │
+│            │                                                                │
+│            ▼                                                                │
+│  3. BACKOFF CALCULATION                                                     │
+│     ┌──────────────────────────────────────────────────────┐              │
+│     │ Calculate delay = min(baseDelay * 2^attempt, maxDelay)│              │
+│     │ Add jitter: delay += random(0, 1000ms)               │              │
+│     │ Log: "Reconnecting in {delay}ms (attempt {N})"      │              │
+│     └──────┬───────────────────────────────────────────────┘              │
+│            │                                                                │
+│            ▼                                                                │
+│  4. RECONNECTION ATTEMPT                                                    │
+│     ┌─────────────┐                                                        │
+│     │ setTimeout  │───▶ Call connect() again                               │
+│     │ (delay)     │───▶ Set state: CONNECTING                              │
+│     └──────┬──────┘                                                        │
+│            │                                                                │
+│     ┌──────┴───────┐                                                       │
+│     │              │                                                        │
+│     ▼              ▼                                                        │
+│  SUCCESS        FAILURE                                                     │
+│     │              │                                                        │
+│     │              └──▶ Increment attempt counter                           │
+│     │                  Go back to step 3 (exponential backoff)             │
+│     │                                                                       │
+│     ▼                                                                       │
+│  5. RESYNC STATE (Critical)                                                 │
+│     ┌─────────────┐                                                        │
+│     │ onopen()    │───▶ Log: "WebSocket reconnected"                       │
+│     │ event fires │───▶ Set state: CONNECTED                               │
+│     └──────┬──────┘───▶ Reset reconnect counter = 0                        │
+│            │                                                                │
+│            ▼                                                                │
+│     ┌──────────────────────────────────────────────────────┐              │
+│     │ ORDERBOOK RESYNC (Bootstrap from REST API)           │              │
+│     │                                                       │              │
+│     │  For each tokenId in subscriptions:                  │              │
+│     │    1. GET /book?token_id={tokenId} (CLOB REST API)   │              │
+│     │    2. Parse orderbook snapshot                       │              │
+│     │    3. Update OrderbookCache with fresh data          │              │
+│     │    4. Log: "Resynced orderbook for {tokenId}"       │              │
+│     │                                                       │              │
+│     └──────┬───────────────────────────────────────────────┘              │
+│            │                                                                │
+│            ▼                                                                │
+│     ┌──────────────────────────────────────────────────────┐              │
+│     │ RE-SUBSCRIBE TO CHANNELS                             │              │
+│     │                                                       │              │
+│     │  For each tokenId:                                   │              │
+│     │    1. Send subscribe message to market channel       │              │
+│     │    2. Log: "Subscribed to {tokenId}"                │              │
+│     │                                                       │              │
+│     └──────┬───────────────────────────────────────────────┘              │
+│            │                                                                │
+│            ▼                                                                │
+│  6. RESUME NORMAL OPERATION                                                 │
+│     ┌─────────────┐                                                        │
+│     │ FULLY SYNCED│───▶ Resume receiving real-time updates                 │
+│     │ & CONNECTED │───▶ Strategy can safely trade again                    │
+│     └─────────────┘                                                        │
+│                                                                             │
+│  FAILURE HANDLING:                                                          │
+│  • If resync fails → Log error, retry resync (with backoff)                │
+│  • If max reconnect attempts reached → Enter CLOSED state, alert operator   │
+│  • During resync, trading is paused to prevent stale data trades           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Risk Check Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        RISK CHECK DATA FLOW                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  INPUT: Order Intent                                                    │
+│  ┌────────────────────────────────────────────────────────┐           │
+│  │ { tokenId, side, price, size, strategy }               │           │
+│  └───────────────────────┬────────────────────────────────┘           │
+│                          │                                             │
+│                          ▼                                             │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │ RISK MANAGER: checkOrder(order)                                │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
+│                          │                                             │
+│            ┌─────────────┼─────────────┐                              │
+│            │             │             │                               │
+│            ▼             ▼             ▼                               │
+│   ┌───────────────┐ ┌────────────┐ ┌─────────────┐                  │
+│   │ CHECK 1:      │ │ CHECK 2:   │ │ CHECK 3:    │                  │
+│   │ Kill Switch   │ │ Exposure   │ │ Position    │                  │
+│   │               │ │ Limit      │ │ Limits      │                  │
+│   └───────┬───────┘ └─────┬──────┘ └──────┬──────┘                  │
+│           │               │               │                           │
+│           │               │               │                           │
+│   Is kill switch         Current pos     Open order                  │
+│   active?                + order size    count < max?                │
+│   └──NO───┐              < max exposure? └──YES──┐                   │
+│           │              └──YES──┐               │                   │
+│           │                      │               │                   │
+│           ▼                      ▼               ▼                    │
+│   ┌───────────────┐      ┌────────────┐  ┌─────────────┐           │
+│   │ CHECK 4:      │      │ CHECK 5:   │  │ CHECK 6:    │           │
+│   │ Drawdown      │      │ Error Rate │  │ Balance     │           │
+│   │ Threshold     │      │ Threshold  │  │ Sufficient  │           │
+│   └───────┬───────┘      └─────┬──────┘  └──────┬──────┘           │
+│           │                    │                │                    │
+│  Current drawdown      Error rate in      Balance > order            │
+│  < max drawdown?       window < threshold? cost + fee?               │
+│  └──YES──┐             └──YES──┐          └──YES──┐                 │
+│           │                    │                   │                 │
+│           └────────────────────┴───────────────────┘                 │
+│                                │                                      │
+│                                ▼                                      │
+│                    ┌───────────────────────┐                         │
+│                    │ ALL CHECKS PASSED     │                         │
+│                    └───────────┬───────────┘                         │
+│                                │                                      │
+│                                ▼                                      │
+│  OUTPUT: RiskCheckResult                                             │
+│  ┌────────────────────────────────────────────────────────┐          │
+│  │ {                                                       │          │
+│  │   allowed: true,                                        │          │
+│  │   metrics: {                                            │          │
+│  │     currentExposure: $500,                              │          │
+│  │     openOrderCount: 3,                                  │          │
+│  │     currentDrawdown: 0.05,                              │          │
+│  │     errorRate: 0.02                                     │          │
+│  │   }                                                     │          │
+│  │ }                                                       │          │
+│  └───────────────────────┬────────────────────────────────┘          │
+│                          │                                            │
+│                          ▼                                            │
+│              ┌───────────────────────┐                               │
+│              │ PROCEED TO ORDER      │                               │
+│              │ SUBMISSION            │                               │
+│              └───────────────────────┘                               │
+│                                                                       │
+│  REJECTION FLOW (Any check fails):                                   │
+│  ┌────────────────────────────────────────────────────────┐          │
+│  │ {                                                       │          │
+│  │   allowed: false,                                       │          │
+│  │   reason: "Kill switch active" | "Exposure limit" |     │          │
+│  │           "Too many orders" | "Drawdown exceeded" |     │          │
+│  │           "High error rate" | "Insufficient balance",   │          │
+│  │   metrics: { ... }                                      │          │
+│  │ }                                                       │          │
+│  └───────────────────────┬────────────────────────────────┘          │
+│                          │                                            │
+│                          ▼                                            │
+│              ┌───────────────────────┐                               │
+│              │ REJECT ORDER          │                               │
+│              │ LOG REASON            │                               │
+│              │ EMIT REJECTION EVENT  │                               │
+│              └───────────────────────┘                               │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
