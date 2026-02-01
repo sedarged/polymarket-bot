@@ -95,6 +95,12 @@ class MarketFeedService {
   isConnected(): boolean {
     return this.isRunning && this.client?.isConnected() === true;
   }
+
+  getCircuitBreakerMetrics() {
+    // MarketFeedService doesn't use a circuit breaker directly
+    // Return null to indicate no circuit breaker metrics available
+    return null;
+  }
 }
 
 // Export singleton instance
