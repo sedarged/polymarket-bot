@@ -20,7 +20,7 @@ jobs:
           package-name: polymarket-bot
           changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"security","section":"Security","hidden":false},{"type":"perf","section":"Performance","hidden":false},{"type":"refactor","section":"Code Refactoring","hidden":false},{"type":"docs","section":"Documentation","hidden":false},{"type":"test","section":"Tests","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false},{"type":"ci","section":"CI/CD","hidden":false}]'
           
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: ${{ steps.release.outputs.release_created }}
         
       - uses: actions/setup-node@v6
