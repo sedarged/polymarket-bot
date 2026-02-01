@@ -381,6 +381,7 @@ interface ExecutionOutcomeRecord {
   status: 'accepted' | 'rejected' | 'partial_fill' | 'filled';
   requested: { side: 'buy' | 'sell'; price: number; size: number };
   executed: { price: number; size: number };
+  fees: number; // paper-only simulated fees
   latencyMs: number;
   rejectionReason?: string;
 }
@@ -397,6 +398,7 @@ interface PerformanceMetricsRecord {
   maxDrawdown: number;
   winRate: number;
   turnover: number;
+  inventoryUtilization: number;
 }
 ```
 
