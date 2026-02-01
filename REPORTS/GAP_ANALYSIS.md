@@ -58,17 +58,23 @@ This comprehensive gap analysis evaluates the Polymarket Trading Bot's readiness
 - ✅ Automatic state resync after reconnection via CLOB REST API
 - ✅ Orderbook cache with snapshot + delta updates ([orderbookCache.ts](../apps/backend/src/clients/orderbookCache.ts))
 - ✅ Connection state management (DISCONNECTED → CONNECTING → CONNECTED → RECONNECTING)
-- ✅ Configurable reconnection parameters (max delay: 30s, backoff multiplier: 1.5)
+- ✅ Configurable reconnection parameters (max delay: 30s, backoff multiplier: 2, jitter: 0.1)
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/clients/websocket.ts:L104-L145
-private async reconnect(): Promise<void> {
+// apps/backend/src/clients/websocket.ts:L101-L128
+private scheduleReconnect(): void {
+  // Calculate delay with exponential backoff and jitter
+  const jitter = 1 + (Math.random() * 2 - 1) * this.reconnectJitter;
   const delay = Math.min(
-    this.reconnectDelay * Math.pow(this.options.backoffMultiplier || 1.5, this.reconnectAttempt),
-    this.options.maxReconnectDelay || 30000
-  ) + Math.random() * 1000; // Jitter
-  // ... reconnection logic
+    this.currentReconnectDelay * jitter,
+    this.maxReconnectDelay
+  );
+  // ... after delay, update currentReconnectDelay with backoff multiplier
+  this.currentReconnectDelay = Math.min(
+    this.currentReconnectDelay * this.reconnectBackoffMultiplier,
+    this.maxReconnectDelay
+  );
 }
 ```
 
@@ -121,12 +127,16 @@ private async reconnect(): Promise<void> {
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/trading/paperTradingEngine.ts:L82-L130
-async simulateOrder(params: OrderParams): Promise<SimulatedOrder> {
-  // Realistic fill logic with slippage
-  const fillPrice = this.calculateFillPrice(side, price, orderbook);
-  const totalCost = filledSize * fillPrice;
-  const fees = totalCost * this.makerFee;
+// apps/backend/src/trading/paperTradingEngine.ts:L74-L100
+tryFillOrder(orderId: string, orderbook: Orderbook): boolean {
+  // Get best bid/ask from orderbook
+  const bestBid = orderbook.bids.length > 0 ? Number(orderbook.bids[0].price) : null;
+  const bestAsk = orderbook.asks.length > 0 ? Number(orderbook.asks[0].price) : null;
+  
+  // Determine if order can be filled based on crossing best bid/ask
+  if (order.side === 'BUY' && bestAsk !== null && orderPrice >= bestAsk) {
+    fillPrice = bestAsk * (1 + this.config.slippage);
+  }
   // ... position tracking, P&L calculation
 }
 ```
@@ -189,13 +199,25 @@ async simulateOrder(params: OrderParams): Promise<SimulatedOrder> {
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/clients/tradingClient.ts:L142-L162
-async placeOrder(params: PlaceOrderParams): Promise<Order> {
-  const clientOrderId = `${process.pid}-${Date.now()}-${this.orderIdCounter++}`;
-  const orderArgs: OrderArgs = { /* ... */ };
-  const order = await this.clobClient.postOrder(orderArgs, OrderType.GTC);
-  this.ordersByClientId.set(clientOrderId, order);
-  return order;
+// apps/backend/src/clients/tradingClient.ts:L151-L178
+async createOrder(
+  tokenId: string,
+  side: 'BUY' | 'SELL',
+  price: string,
+  size: string
+): Promise<Order> {
+  // Generate unique clientOrderId for idempotency
+  const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
+  
+  // Create order via CLOB client
+  const response = await this.client.createOrder({
+    tokenID: tokenId,
+    side: side === 'BUY' ? 'BUY' : 'SELL',
+    price: Number(price),
+    size: Number(size),
+    clientOrderId,
+  });
+  // ... map response to Order
 }
 ```
 
@@ -266,17 +288,24 @@ async placeOrder(params: PlaceOrderParams): Promise<Order> {
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/trading/riskManager.ts:L157-L182
-private checkCircuitBreaker(): void {
-  if (this.operations.length < 100) return;
-  const recentOps = this.operations.filter(
-    op => Date.now() - op.timestamp < 60000
-  );
-  const errorCount = recentOps.filter(op => op.success === false).length;
-  const errorRate = errorCount / recentOps.length;
-  if (errorRate >= this.config.circuitBreakerThreshold) {
-    this.circuitBreakerTripped = true;
-    this.logger.error('Circuit breaker tripped', { errorRate, errorCount });
+// apps/backend/src/trading/riskManager.ts:L157-L179
+isCircuitBreakerTripped(): boolean {
+  const now = Date.now();
+  const recentOps = this.operations.filter(e => now - e.timestamp < 60000);
+  
+  // Need at least errorRateWindow operations to check
+  if (recentOps.length < this.config.errorRateWindow) {
+    return false;
+  }
+  
+  // Calculate error rate from the last errorRateWindow operations
+  const lastWindowOps = recentOps.slice(-this.config.errorRateWindow);
+  const errorCount = lastWindowOps.filter(op => op.isError).length;
+  const errorRate = errorCount / this.config.errorRateWindow;
+  
+  if (errorRate > this.config.errorRateThreshold) {
+    logger.error('Circuit breaker tripped', { errorRate, threshold: this.config.errorRateThreshold });
+    return true;
   }
 }
 ```
@@ -353,17 +382,14 @@ private checkCircuitBreaker(): void {
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/clients/tradingClient.ts:L53-L75
-async initialize(): Promise<void> {
-  // Startup reconciliation
-  const openOrders = await this.clobClient.getOpenOrders();
-  openOrders.forEach(order => {
-    if (order.orderID) {
-      this.ordersById.set(order.orderID, order);
-    }
-  });
-  const positions = await this.reconcilePositions();
-  // ...
+// apps/backend/src/clients/tradingClient.ts:L102-L112
+async reconcile(): Promise<void> {
+  // Fetch open orders
+  const openOrders = await this.client.getOrders();
+  this.state.orders = openOrders.map(this.mapOrder);
+  
+  // Calculate positions from orders and fills
+  this.recalculatePositions();
 }
 ```
 
@@ -451,17 +477,19 @@ async initialize(): Promise<void> {
 ### Evidence
 
 **Implemented:**
-- ✅ In-memory orderbook cache
-- ✅ In-memory order tracking (ordersById, ordersByClientId maps)
+- ✅ In-memory trading state tracking via arrays (orders, fills, positions, balances)
 - ✅ In-memory position calculation
 - ✅ In-memory P&L calculation (paper trading)
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/clients/tradingClient.ts:L38-L45
-private ordersById: Map<string, Order> = new Map();
-private ordersByClientId: Map<string, Order> = new Map();
-private positionsByMarket: Map<string, Position> = new Map();
+// apps/backend/src/clients/tradingClient.ts:L30-L35
+interface TradingState {
+  orders: Order[];
+  fills: Fill[];
+  positions: Position[];
+  balances: Balance[];
+}
 ```
 
 **Missing:**
@@ -568,14 +596,14 @@ private positionsByMarket: Map<string, Position> = new Map();
 
 **Key Code References:**
 ```typescript
-// apps/backend/src/server/health.ts:L5-L14
-export const healthCheck: RequestHandler = (req, res) => {
-  res.json({
+// apps/backend/src/server/health.ts:L10-L16
+export function getHealthStatus(currentConfig: Config = config): HealthStatus {
+  return {
     status: 'ok',
     timestamp: new Date().toISOString(),
-    liveTrading: isLiveTrading()
-  });
-};
+    liveTradingEnabled: isLiveTradingEnabled(currentConfig),
+  };
+}
 ```
 
 **Missing:**
