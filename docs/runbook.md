@@ -61,8 +61,30 @@ if [ ! -f .env ]; then
 fi
 echo "✅ .env file exists"
 
-# Check required variables
-source .env
+# Safely load environment variables without executing arbitrary code
+load_env_safe() {
+  while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    case "$key" in
+      ''|\#*) continue ;;
+    esac
+    
+    # Trim whitespace from key
+    key="${key%%[[:space:]]*}"
+    
+    # Trim leading/trailing whitespace from value
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    
+    # Only accept safe shell variable names
+    if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      export "$key=$value"
+    fi
+  done < .env
+}
+
+# Load environment variables safely
+load_env_safe
 
 check_var() {
   if [ -z "${!1}" ]; then
@@ -105,6 +127,14 @@ if [ "$LIVE_TRADING" = "true" ]; then
     echo "⚠️  CHAIN_ID is $CHAIN_ID (mainnet is 137)"
   else
     echo "✅ CHAIN_ID is 137 (Polygon Mainnet)"
+  fi
+  
+  # Check ADMIN_TOKEN for kill switch access
+  if [ -z "$ADMIN_TOKEN" ] || [ "$ADMIN_TOKEN" = "change_me_to_a_strong_random_admin_token" ]; then
+    echo "⚠️  ADMIN_TOKEN not configured or using default"
+    echo "   Kill switch endpoint will be disabled"
+  else
+    echo "✅ ADMIN_TOKEN is configured"
   fi
 else
   echo ""
@@ -268,7 +298,7 @@ curl http://localhost:3000/health
 curl http://localhost:3000/status
 # Expected: { liveTrading: true, tradingClientInitialized: true, walletAddress: "0x...", ... }
 
-# Market feed
+# Market feed status
 curl http://localhost:3000/feed/status
 # Expected: { connected: true, tokenIds: [...], cachedOrderbooks: N }
 
@@ -534,7 +564,7 @@ wscat -c wss://ws-subscriptions-clob.polymarket.com/ws/market
 # Check trading status
 curl http://localhost:3000/status
 
-# Expected: liveTrading: true, killSwitchActive: false
+# Expected: liveTrading: true, tradingClientInitialized: true
 
 # Check risk manager state
 curl http://localhost:3000/state | jq '{
@@ -547,13 +577,14 @@ curl http://localhost:3000/state | jq '{
 
 **Resolution:**
 
-1. **Kill switch active:**
+1. **Emergency stop active:**
    ```bash
-   # Check if kill switch is active
-   curl http://localhost:3000/status | jq '.killSwitchActive'
+   # Check trading status
+   curl http://localhost:3000/status
    
-   # If true, manually reset (requires restart or manual code intervention)
-   # This is by design - kill switch requires manual intervention
+   # Note: Kill switch status is not exposed via API
+   # It requires manual inspection of RiskManager state
+   # To resume, restart the server (kill switch resets on restart)
    ```
 
 2. **Risk limits breached:**
@@ -851,14 +882,14 @@ chmod 600 .env
 grep -E "LIVE_TRADING|COMPLIANCE_ACCEPTED|PRIVATE_KEY" .env
 
 # 4. Start in paper mode first
-sed -i 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env
+sed -i.bak 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env && rm -f .env.bak
 npm run dev
 
 # 5. Verify health
 curl http://localhost:3000/health
 
 # 6. Re-enable live trading if all checks pass
-sed -i 's/LIVE_TRADING=false/LIVE_TRADING=true/' .env
+sed -i.bak 's/LIVE_TRADING=false/LIVE_TRADING=true/' .env && rm -f .env.bak
 # Restart: Ctrl+C, then npm run dev
 ```
 
@@ -867,7 +898,7 @@ sed -i 's/LIVE_TRADING=false/LIVE_TRADING=true/' .env
 ### Version Rollback
 ```bash
 # 1. Stop the bot gracefully
-kill -SIGTERM $(pgrep -f "npm run dev")
+# Use Ctrl+C or send SIGTERM to the process
 
 # 2. Checkout previous version
 git log --oneline  # Find last good commit
@@ -877,7 +908,8 @@ git checkout <commit-hash>
 npm install
 
 # 4. Start in paper mode for validation
-LIVE_TRADING=false npm run dev
+sed -i.bak 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env && rm -f .env.bak
+npm run dev
 
 # 5. Run smoke tests
 npm test

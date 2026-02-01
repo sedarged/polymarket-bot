@@ -544,6 +544,7 @@ enum WebSocketState {
   DISCONNECTED,  // Initial or after disconnect
   CONNECTING,    // Connection attempt in progress
   CONNECTED,     // Active connection
+  RECONNECTING,  // Scheduled reconnect after disconnect
   CLOSED         // Intentionally closed (no reconnect)
 }
 ```
@@ -575,49 +576,56 @@ maxReconnectAttempts: Infinity
 │                                                                        │
 │                         ┌──────────────┐                              │
 │                         │              │                              │
-│                    ┌────│ DISCONNECTED │◀────┐                        │
-│                    │    │  (Initial)   │     │                        │
-│                    │    └──────┬───────┘     │                        │
-│                    │           │             │                        │
-│           close()  │           │ connect()   │  error /               │
-│                    │           │             │  connection lost       │
-│                    │           ▼             │                        │
-│                    │    ┌──────────────┐     │                        │
-│                    │    │              │     │                        │
-│                    │    │  CONNECTING  │─────┘                        │
-│                    │    │  (Handshake) │     │                        │
-│                    │    └──────┬───────┘     │                        │
-│                    │           │             │                        │
-│                    │           │ onopen      │                        │
-│                    │           │             │                        │
-│                    │           ▼             │                        │
-│                    │    ┌──────────────┐     │                        │
-│                    │    │              │     │                        │
-│                    └───▶│  CONNECTED   │─────┘                        │
-│                         │   (Active)   │                              │
-│                         └──────┬───────┘                              │
-│                                │                                       │
-│                                │ close(manual)                         │
-│                                ▼                                       │
-│                         ┌──────────────┐                              │
-│                         │              │                              │
-│                         │    CLOSED    │                              │
-│                         │  (Terminal)  │                              │
-│                         └──────────────┘                              │
+│                    ┌────│ DISCONNECTED │                              │
+│                    │    │  (Initial)   │                              │
+│                    │    └──────┬───────┘                              │
+│                    │           │                                       │
+│           close()  │           │ connect()                            │
+│                    │           │                                       │
+│                    │           ▼                                       │
+│                    │    ┌──────────────┐                              │
+│                    │    │              │                              │
+│                    │    │  CONNECTING  │                              │
+│                    │    │  (Handshake) │                              │
+│                    │    └──────┬───────┘                              │
+│                    │           │                                       │
+│                    │      ┌────┴────┐                                 │
+│                    │      │         │                                 │
+│                    │  onopen    error/close                           │
+│                    │      │         │                                 │
+│                    │      ▼         ▼                                 │
+│                    │  ┌─────────┐ ┌──────────────┐                   │
+│                    │  │         │ │              │                   │
+│                    └─▶│CONNECTED│ │ RECONNECTING │◀─┐                │
+│                       │(Active) │ │ (Backoff)    │  │                │
+│                       └────┬────┘ └──────┬───────┘  │                │
+│                            │             │          │                │
+│                     error/ │             │ timeout  │                │
+│                     close  │             │          │                │
+│                            └─────────────┴──────────┘                │
+│                            │                                          │
+│                            │ close(manual)                            │
+│                            ▼                                          │
+│                     ┌──────────────┐                                 │
+│                     │              │                                 │
+│                     │    CLOSED    │                                 │
+│                     │  (Terminal)  │                                 │
+│                     └──────────────┘                                 │
 │                                                                        │
 │  TRANSITIONS:                                                          │
 │  • DISCONNECTED → CONNECTING: User calls connect()                    │
 │  • CONNECTING → CONNECTED: WebSocket handshake succeeds               │
-│  • CONNECTING → DISCONNECTED: Connection fails, auto-retry            │
-│  • CONNECTED → DISCONNECTED: Connection lost, auto-reconnect          │
-│  • CONNECTED → CLOSED: User calls close() or maxAttempts reached      │
-│  • DISCONNECTED → CLOSED: User calls close() permanently              │
+│  • CONNECTING → RECONNECTING: Connection fails, scheduleReconnect()   │
+│  • CONNECTED → RECONNECTING: Connection lost, scheduleReconnect()     │
+│  • RECONNECTING → CONNECTING: After backoff delay expires             │
+│  • {CONNECTING, CONNECTED, RECONNECTING} → CLOSED: User calls close() │
 │                                                                        │
 │  RECONNECT BEHAVIOR:                                                   │
-│  • DISCONNECTED state triggers auto-reconnect after backoff delay     │
-│  • Exponential backoff: delay = min(baseDelay * 2^attempt, maxDelay) │
-│  • Jitter added to prevent thundering herd: delay += random(0-1000ms)│
-│  • On CONNECTED, reset reconnect counter to 0                         │
+│  • RECONNECTING state schedules reconnect after backoff delay         │
+│  • Exponential backoff: delay *= backoffMultiplier each attempt       │
+│  • Jitter applied as multiplier: delay *= (1 + random(-0.1, +0.1))   │
+│  • Capped at maxDelay: delay = min(delay * jitter, maxDelay)         │
+│  • On CONNECTED, reset reconnect counter and current delay            │
 │  • On CLOSED, no further reconnect attempts                           │
 │                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
@@ -852,8 +860,8 @@ logger.error('API error', { error: err.message });
 ```json
 {
   "connected": true,
-  "cachedOrderbooks": 5,
-  "subscriptions": ["token1", "token2", "token3"]
+  "tokenIds": ["token1", "token2", "token3"],
+  "cachedOrderbooks": 5
 }
 ```
 
@@ -1319,15 +1327,18 @@ DATA FLOW SUMMARY:
 │  2. DETECTION & LOGGING                                                     │
 │     ┌─────────────┐                                                        │
 │     │ onclose()   │───▶ Log: "WebSocket disconnected"                      │
-│     │ event fires │───▶ Set state: DISCONNECTED                            │
+│     │ event fires │───▶ Set state: RECONNECTING                            │
 │     └──────┬──────┘───▶ Clear orderbook cache (stale data)                │
 │            │                                                                │
 │            ▼                                                                │
 │  3. BACKOFF CALCULATION                                                     │
 │     ┌──────────────────────────────────────────────────────┐              │
-│     │ Calculate delay = min(baseDelay * 2^attempt, maxDelay)│              │
-│     │ Add jitter: delay += random(0, 1000ms)               │              │
-│     │ Log: "Reconnecting in {delay}ms (attempt {N})"      │              │
+│     │ Calculate delay = min(currentDelay * jitter, maxDelay)│              │
+│     │ - jitter: random multiplier (1 ± reconnectJitter)     │              │
+│     │   e.g., jitter=0.1 → multiplier between 0.9 and 1.1  │              │
+│     │ - currentDelay increases after each attempt:          │              │
+│     │   currentDelay *= backoffMultiplier (default 2x)      │              │
+│     │ Log: "Scheduling reconnect in {delay}ms (attempt {N})"│              │
 │     └──────┬───────────────────────────────────────────────┘              │
 │            │                                                                │
 │            ▼                                                                │
@@ -1406,33 +1417,24 @@ DATA FLOW SUMMARY:
 │  │ RISK MANAGER: checkOrder(order)                                │  │
 │  └─────────────────────────────────────────────────────────────────┘  │
 │                          │                                             │
-│            ┌─────────────┼─────────────┐                              │
-│            │             │             │                               │
-│            ▼             ▼             ▼                               │
-│   ┌───────────────┐ ┌────────────┐ ┌─────────────┐                  │
-│   │ CHECK 1:      │ │ CHECK 2:   │ │ CHECK 3:    │                  │
-│   │ Kill Switch   │ │ Exposure   │ │ Position    │                  │
-│   │               │ │ Limit      │ │ Limits      │                  │
-│   └───────┬───────┘ └─────┬──────┘ └──────┬──────┘                  │
-│           │               │               │                           │
-│           │               │               │                           │
-│   Is kill switch         Current pos     Open order                  │
-│   active?                + order size    count < max?                │
-│   └──NO───┐              < max exposure? └──YES──┐                   │
-│           │              └──YES──┐               │                   │
-│           │                      │               │                   │
-│           ▼                      ▼               ▼                    │
-│   ┌───────────────┐      ┌────────────┐  ┌─────────────┐           │
-│   │ CHECK 4:      │      │ CHECK 5:   │  │ CHECK 6:    │           │
-│   │ Drawdown      │      │ Error Rate │  │ Balance     │           │
-│   │ Threshold     │      │ Threshold  │  │ Sufficient  │           │
-│   └───────┬───────┘      └─────┬──────┘  └──────┬──────┘           │
-│           │                    │                │                    │
-│  Current drawdown      Error rate in      Balance > order            │
-│  < max drawdown?       window < threshold? cost + fee?               │
-│  └──YES──┐             └──YES──┐          └──YES──┐                 │
-│           │                    │                   │                 │
-│           └────────────────────┴───────────────────┘                 │
+│            ┌─────────────┼─────────────┬─────────────┐                │
+│            │             │             │             │                │
+│            ▼             ▼             ▼             ▼                │
+│   ┌───────────────┐ ┌────────────┐ ┌──────────┐ ┌──────────┐        │
+│   │ CHECK 1:      │ │ CHECK 2:   │ │ CHECK 3: │ │ CHECK 4: │        │
+│   │ Kill Switch   │ │ Circuit    │ │ Max Open │ │ Max      │        │
+│   │ Active?       │ │ Breaker    │ │ Orders   │ │ Exposure │        │
+│   │               │ │ (Error     │ │          │ │ Per      │        │
+│   │               │ │  Rate)     │ │          │ │ Market   │        │
+│   └───────┬───────┘ └─────┬──────┘ └────┬─────┘ └────┬─────┘        │
+│           │               │              │            │               │
+│           │               │              │            │               │
+│   Is kill switch    Error rate     Open order   Current pos         │
+│   active?           < threshold?   count < max?  + order < max      │
+│   └──NO───┐         └──YES──┐      └──YES──┐    exposure?          │
+│           │                 │              │     └──YES──┐           │
+│           │                 │              │             │           │
+│           └─────────────────┴──────────────┴─────────────┘           │
 │                                │                                      │
 │                                ▼                                      │
 │                    ┌───────────────────────┐                         │
@@ -1443,13 +1445,7 @@ DATA FLOW SUMMARY:
 │  OUTPUT: RiskCheckResult                                             │
 │  ┌────────────────────────────────────────────────────────┐          │
 │  │ {                                                       │          │
-│  │   allowed: true,                                        │          │
-│  │   metrics: {                                            │          │
-│  │     currentExposure: $500,                              │          │
-│  │     openOrderCount: 3,                                  │          │
-│  │     currentDrawdown: 0.05,                              │          │
-│  │     errorRate: 0.02                                     │          │
-│  │   }                                                     │          │
+│  │   allowed: true                                         │          │
 │  │ }                                                       │          │
 │  └───────────────────────┬────────────────────────────────┘          │
 │                          │                                            │
@@ -1463,10 +1459,10 @@ DATA FLOW SUMMARY:
 │  ┌────────────────────────────────────────────────────────┐          │
 │  │ {                                                       │          │
 │  │   allowed: false,                                       │          │
-│  │   reason: "Kill switch active" | "Exposure limit" |     │          │
-│  │           "Too many orders" | "Drawdown exceeded" |     │          │
-│  │           "High error rate" | "Insufficient balance",   │          │
-│  │   metrics: { ... }                                      │          │
+│  │   reason: "Trading is killed by risk manager" |         │          │
+│  │           "Circuit breaker tripped: error rate" |       │          │
+│  │           "Max open orders limit reached" |             │          │
+│  │           "Max exposure per market exceeded"            │          │
 │  │ }                                                       │          │
 │  └───────────────────────┬────────────────────────────────┘          │
 │                          │                                            │
@@ -1476,6 +1472,9 @@ DATA FLOW SUMMARY:
 │              │ LOG REASON            │                               │
 │              │ EMIT REJECTION EVENT  │                               │
 │              └───────────────────────┘                               │
+│                                                                       │
+│  NOTE: Drawdown check is separate (checkDrawdown method)             │
+│  Balance validation happens at order submission, not risk check      │
 │                                                                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
