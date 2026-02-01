@@ -362,4 +362,4 @@ Before deploying:
 
 - [Decision Trees](./decision-trees.md) - Troubleshooting specific scenarios
 - [Project Layout](./project-layout.md) - Where to find code
-- [RUNBOOK](../RUNBOOK.md) - Operational procedures
+- [Runbook](../runbook.md) - Operational procedures

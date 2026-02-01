@@ -89,7 +89,7 @@ polymarket-bot/
 
 1. **Start tutaj:** Przeczytaj [architecture-overview.md](./architecture-overview.md) - prosty język, wszystko wyjaśnione
 2. **Plan rozwoju:** Zobacz [master-plan.md](./master-plan.md) - wszystkie zadania z checkboxami
-3. **Operacje:** Sprawdź [docs/RUNBOOK.md](./docs/RUNBOOK.md) - jak uruchomić i zarządzać botem
+3. **Operacje:** Sprawdź [runbook.md](./runbook.md) - jak uruchomić i zarządzać botem
 
 ---
 
@@ -164,7 +164,7 @@ System overview in plain language for everyone:
 
 1. **Start here:** Read [architecture-overview.md](./architecture-overview.md) - plain language, everything explained
 2. **Development plan:** Check [master-plan.md](./master-plan.md) - all tasks with checkboxes
-3. **Operations:** See [docs/RUNBOOK.md](./docs/RUNBOOK.md) - how to run and manage the bot
+3. **Operations:** See [runbook.md](./runbook.md) - how to run and manage the bot
 
 ---
 

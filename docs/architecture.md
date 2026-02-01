@@ -1675,11 +1675,11 @@ CIRCULAR DEPENDENCY PREVENTION:
 
 ## References
 
-- [System Overview (Non-technical)](../SYSTEM_OVERVIEW.md)
-- [ADR-0001: Architecture Decisions](./ADR-0001.md)
-- [Implementation Checklist](./IMPLEMENTATION_CHECKLIST.md)
-- [Runbook (Operational Procedures)](./RUNBOOK.md)
-- [Master Development Plan](../MASTER_DEVELOPMENT_PLAN.md)
+- [System Overview (Non-technical)](./architecture-overview.md)
+- [ADR-0001: Architecture Decisions](./adr/0001-initial-architecture.md)
+- [Implementation Checklist](./implementation-checklist.md)
+- [Runbook (Operational Procedures)](./runbook.md)
+- [Master Development Plan](./master-plan.md)
 
 ---
 

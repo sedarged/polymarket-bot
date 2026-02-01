@@ -522,9 +522,9 @@ Consider adding:
 
 - [System Overview](./architecture-overview.md) - Detailed system explanation
 - [Master Development Plan](./master-plan.md) - Roadmap and tasks
-- [Runbook](./RUNBOOK.md) - Operational procedures
-- [Implementation Checklist](./IMPLEMENTATION_CHECKLIST.md) - Development checklist
-- [Architecture Decisions](./ADR-0001.md) - Key architectural decisions
+- [Runbook](./runbook.md) - Operational procedures
+- [Implementation Checklist](./implementation-checklist.md) - Development checklist
+- [Architecture Decisions](./adr/0001-initial-architecture.md) - Key architectural decisions
 - [README](../README.md) - Quick start guide
 
 ## Version History
