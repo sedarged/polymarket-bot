@@ -1,0 +1,5 @@
+# Updated Issue Template for Issue #27
+
+Labels: P1, Documentation
+
+Details of the issue...
