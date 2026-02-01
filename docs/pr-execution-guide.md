@@ -121,9 +121,8 @@ $ npm run lint
 $ npm run dev &
 [1] 12345
 
-# Activate kill switch
-$ curl -X POST http://localhost:3000/api/kill-switch \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Activate kill switch (requires admin token)
+$ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/kill-switch
 {"success": true, "message": "Kill switch activated"}
 
 # Verify kill switch state file created

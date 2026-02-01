@@ -453,7 +453,7 @@ The bot has two primary operating modes:
 
 **How to trigger:**
 - CLI command: `npm run kill-switch`
-- API endpoint: `POST /api/kill-switch`
+- API endpoint: `POST /kill-switch`
 - Manual script/alert integration
 
 **What happens:**
