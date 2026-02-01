@@ -1,5 +1,5 @@
 import http from 'http';
-import { getHealthStatus } from './health';
+import { getHealthStatus, getReadinessStatus } from './health';
 import { logger } from '../utils/logger';
 import { config } from '../config';
 import { marketFeedService } from './marketFeedService';
@@ -67,7 +67,53 @@ export function createServer(): http.Server {
     if (method === 'GET' && url === '/health') {
       const health = getHealthStatus();
       respondJson(res, 200, health);
-      logger.info('Health check', { path: '/health' });
+      logger.info('Health check', { path: '/health', status: health.status });
+      return;
+    }
+
+    // Readiness probe endpoint
+    if (method === 'GET' && url === '/ready') {
+      const circuitBreakerMetrics = marketFeedService.getCircuitBreakerMetrics
+        ? [marketFeedService.getCircuitBreakerMetrics()]
+        : [];
+      
+      const readiness = getReadinessStatus(
+        marketFeedService.isConnected(),
+        tradingClient.isInitialized(),
+        circuitBreakerMetrics
+      );
+      
+      const statusCode = readiness.ready ? 200 : 503;
+      respondJson(res, statusCode, readiness);
+      logger.info('Readiness check', { path: '/ready', ready: readiness.ready });
+      return;
+    }
+
+    // Metrics endpoint for monitoring
+    if (method === 'GET' && url === '/metrics') {
+      const metrics = {
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: {
+          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        },
+        trading: {
+          liveTrading: isLiveTradingEnabled(),
+          initialized: tradingClient.isInitialized(),
+        },
+        marketFeed: {
+          connected: marketFeedService.isConnected(),
+          cachedOrderbooks: marketFeedService.getAllOrderbooks().size,
+          tokenIds: config.tokenIds.length,
+        },
+        circuitBreakers: marketFeedService.getCircuitBreakerMetrics
+          ? [marketFeedService.getCircuitBreakerMetrics()]
+          : [],
+      };
+      respondJson(res, 200, metrics);
+      logger.info('Metrics retrieved');
       return;
     }
 
