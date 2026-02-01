@@ -184,6 +184,8 @@ export class RateLimitError extends PolymarketApiError {
 ### 2. Error Parsing Utility
 
 ```typescript
+import axios from 'axios';
+
 /**
  * Parse axios error into structured PolymarketApiError
  */
@@ -266,6 +268,12 @@ export function isRetryableError(error: any): boolean {
 
 ```typescript
 // apps/backend/src/clients/clob.ts
+import axios, { AxiosInstance } from 'axios';
+import { config } from '../config';
+import { logger } from '../utils/logger';
+import { retry } from '../utils/retry';
+import { Orderbook } from '@polymarket/shared';
+import { parseApiError, isRetryableError } from '../utils/errors';
 
 export class ClobClient {
   async getOrderbook(tokenId: string): Promise<Orderbook> {
@@ -287,12 +295,16 @@ export class ClobClient {
           error: apiError.toJSON(),
         });
         
+        // Note: The current retry utility (apps/backend/src/utils/retry.ts) will retry
+        // all errors. To implement error-specific retry logic, the retry utility would 
+        // need to be enhanced to support a shouldRetry callback option.
+        // For now, structured errors improve logging and debugging.
+        
         throw apiError;
       }
     }, {
       attempts: config.retryAttempts,
       delay: config.retryDelay,
-      shouldRetry: (error) => isRetryableError(error),
     });
   }
 }
@@ -446,7 +458,7 @@ app.post('/api/orders', async (req, res) => {
 
 ## References
 - [Polymarket CLOB Order Documentation](https://docs.polymarket.com/developers/CLOB/orders/create-order)
-- [REPORTS/RESEARCH_REVIEW.md](../REPORTS/RESEARCH_REVIEW.md) - Section 4.2
+- [REPORTS/RESEARCH_REVIEW.md](../../REPORTS/RESEARCH_REVIEW.md) - Section 4.2
 - [Axios Error Handling](https://axios-http.com/docs/handling_errors)
 
 ## Related ADRs

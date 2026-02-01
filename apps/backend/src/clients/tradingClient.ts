@@ -25,7 +25,7 @@ import { Order, Fill, Position, Balance } from '@polymarket/shared';
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
  * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
- * @see {@link ../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
  */
 export interface TradingState {
   orders: Order[];

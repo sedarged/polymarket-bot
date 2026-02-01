@@ -18,7 +18,7 @@ import { Event, Market } from '@polymarket/shared';
  *              See docs/adr/0002-rate-limiting-strategy.md for enhancement plan
  * 
  * @see {@link https://docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide}
- * @see {@link ../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
  */
 export class GammaClient {
   private client: AxiosInstance;

@@ -32,7 +32,7 @@ import {
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/websocket/wss-overview}
  * @see {@link https://docs.polymarket.com/quickstart/websocket/WSS-Quickstart}
- * @see {@link ../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
  */
 export interface MarketFeedOptions {
   url: string;

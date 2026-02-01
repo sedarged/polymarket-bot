@@ -18,7 +18,7 @@ import { Orderbook } from '@polymarket/shared';
  *              See docs/adr/0002-rate-limiting-strategy.md for enhancement plan
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/introduction}
- * @see {@link ../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
  */
 export class ClobClient {
   private client: AxiosInstance;

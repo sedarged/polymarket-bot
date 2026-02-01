@@ -46,6 +46,8 @@ Implement optional request queueing to:
 
 ### Rate Limiter Class
 ```typescript
+import { logger } from '../utils/logger';
+
 export class RateLimiter {
   private requestCounts = new Map<string, number[]>();
   private readonly limits: Record<string, number> = {
@@ -94,6 +96,9 @@ export class RateLimiter {
 
 ### Enhanced Retry with Exponential Backoff
 ```typescript
+import axios from 'axios';
+import { logger } from '../utils/logger';
+
 export interface RetryOptions {
   attempts?: number;
   baseDelay?: number;
@@ -170,6 +175,13 @@ export async function retryWithBackoff<T>(
 
 ### Integration Example
 ```typescript
+import axios, { AxiosInstance } from 'axios';
+import { config } from '../config';
+import { logger } from '../utils/logger';
+import { Orderbook } from '@polymarket/shared';
+import { RateLimiter } from '../utils/rateLimiter';
+import { retryWithBackoff } from '../utils/retry';
+
 export class ClobClient {
   private client: AxiosInstance;
   private rateLimiter: RateLimiter;
@@ -241,7 +253,7 @@ export class ClobClient {
 
 ## References
 - [Polymarket Rate Limits Documentation](https://docs.polymarket.com/quickstart/introduction/rate-limits)
-- [REPORTS/RESEARCH_REVIEW.md](../REPORTS/RESEARCH_REVIEW.md) - Section 4.1
+- [REPORTS/RESEARCH_REVIEW.md](../../REPORTS/RESEARCH_REVIEW.md) - Section 4.1
 - [Exponential Backoff Best Practices](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/)
 
 ## Related ADRs
