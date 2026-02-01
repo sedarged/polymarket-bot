@@ -24,11 +24,12 @@ To update this status:
 - [P1] #29 [Task] Learning System Design and Implementation
 
 ## Next — P2 (Normal Priority)
-- [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
+*No P2 issues*
 
 ## Recently Closed (Last 14 Days)
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
 - [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
+- [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
 - [P1] #28 [Task] Production-Grade Trading Bot Gap Analysis
 - [P1] #27 [Task] Polymarket CLOB/Gamma API Documentation Alignment
 - #26 [Updated Template] Code Audit - Security & Reliability Gaps
@@ -39,7 +40,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-01T12:49:30.534Z*
+*Last updated: 2026-02-01T16:13:10.670Z*
 
 <!-- STATUS_SYNC_END -->
 
