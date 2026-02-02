@@ -17,13 +17,29 @@ To update this status:
 *No issues currently in progress*
 
 ## Next — P0 (Critical)
-*No P0 issues*
+- [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
+- [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
+- [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
 ## Next — P1 (High Priority)
-*No P1 issues*
+- [P1] #85 [Backend] Implement event store for learning system - Learning System
+- [P1] #84 [Backend] Add feature/signal catalog - Learning System
+- [P1] #83 [Backend] Create offline evaluation framework - Learning System
+- [P1] #82 [Backend] Implement bandit allocation logic - Learning System
+- [P1] #81 [Backend] Add promotion criteria and governance - Learning System
+- [P1] #76 [Documentation] Add troubleshooting guides to docs
+- [P1] #75 [Trading Logic] Enforce tick size and minimum order size for all orders
 
 ## Next — P2 (Normal Priority)
-*No P2 issues*
+- [P2] #90 [Frontend] Add authentication for admin operations - Dashboard
+- [P2] #89 [Frontend] Implement Overview tab (status, orders, PnL) - Dashboard
+- [P2] #88 [Frontend] Implement Controls tab (risk, strategy config) - Dashboard
+- [P2] #87 [Frontend] Implement Alerts & Logs tab - Dashboard
+- [P2] #86 [Frontend] Implement Learning System tab - Dashboard
+- [P2] #80 [DevOps] Create Dockerfile for production deployment
+- [P2] #79 [DevOps] Create docker-compose.yml for local/development deployment
+- [P2] #78 [Documentation] Complete docs/ARCHITECTURE.md
+- [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
@@ -36,12 +52,13 @@ To update this status:
 - #26 [Updated Template] Code Audit - Security & Reliability Gaps
 - #25 Repository Architecture Mapping
 - #24 Environment Discovery & Command Validation
+- #23 [Updated Template] 🚀 Polymarket Bot - Complete Production Audit & Learning System
 - #16 Live trading integration + reconciliation + minimal dashboard
 - #15 Paper trading engine, RiskManager, circuit breakers, kill switch
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-01T21:25:02.568Z*
+*Last updated: 2026-02-02T12:59:13.997Z*
 
 <!-- STATUS_SYNC_END -->
 
