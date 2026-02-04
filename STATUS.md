@@ -18,7 +18,6 @@ To update this status:
 
 ## Next — P0 (Critical)
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
-- [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
@@ -76,6 +75,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
 - [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
@@ -98,7 +98,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T06:54:45.092Z*
+*Last updated: 2026-02-04T08:41:05.578Z*
 
 <!-- STATUS_SYNC_END -->
 
