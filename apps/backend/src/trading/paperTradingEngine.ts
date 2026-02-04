@@ -1,5 +1,6 @@
 import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
 import { logger } from '../utils/logger';
+import { AuditTrail } from './auditTrail';
 
 export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
@@ -8,6 +9,7 @@ export interface PaperTradingEngineConfig {
   partialFillRate: number; // Base probability of partial fill (0-1), scaled by liquidity ratio. 0 = always full fill
   minFillRatio: number; // Minimum fill ratio for partial fills (0-1)
   maxFillRatio: number; // Maximum fill ratio for partial fills (0-1)
+  auditTrail?: AuditTrail; // Optional audit trail for recording all activity
 }
 
 export interface EngineState {
@@ -27,6 +29,7 @@ export class PaperTradingEngine {
   private config: PaperTradingEngineConfig;
   private state: EngineState;
   private orderIdCounter = 0;
+  private auditTrail?: AuditTrail;
 
   constructor(config?: Partial<PaperTradingEngineConfig>, initialBalance = 10000) {
     this.config = {
@@ -36,7 +39,10 @@ export class PaperTradingEngine {
       partialFillRate: config?.partialFillRate ?? 0.0, // Default: always full fill (backwards compatible)
       minFillRatio: config?.minFillRatio ?? 0.1, // Fill at least 10% of order
       maxFillRatio: config?.maxFillRatio ?? 0.9, // Fill at most 90% of order for partial fills
+      auditTrail: config?.auditTrail,
     };
+
+    this.auditTrail = config?.auditTrail;
 
     this.state = {
       orders: [],
@@ -76,6 +82,13 @@ export class PaperTradingEngine {
     };
 
     this.state.orders.push(order);
+    
+    // Record to audit trail if enabled
+    if (this.auditTrail) {
+      this.auditTrail.recordOrder(order);
+      this.auditTrail.recordOrderEvent(orderId, 'CREATED', `Order created: ${side} ${size} @ ${price}`);
+    }
+    
     logger.info('Paper order created', { orderId, tokenId, side, price, size });
     return order;
   }
@@ -177,6 +190,17 @@ export class PaperTradingEngine {
       order.status = 'PARTIALLY_FILLED';
     }
 
+    // Record to audit trail if enabled
+    if (this.auditTrail) {
+      this.auditTrail.recordFill(fill);
+      this.auditTrail.recordOrder(order); // Update order status
+      this.auditTrail.recordOrderEvent(
+        orderId, 
+        order.status, 
+        `Filled ${fillSize} @ ${fillPrice} (fee: ${fee})`
+      );
+    }
+
     // Update balance
     if (order.side === 'BUY') {
       this.state.balance -= fillValue + fee;
@@ -211,6 +235,13 @@ export class PaperTradingEngine {
     }
 
     order.status = 'CANCELLED';
+    
+    // Record to audit trail if enabled
+    if (this.auditTrail) {
+      this.auditTrail.recordOrder(order);
+      this.auditTrail.recordOrderEvent(orderId, 'CANCELLED', 'Order cancelled manually');
+    }
+    
     logger.info('Paper order cancelled', { orderId });
     return true;
   }
@@ -224,6 +255,12 @@ export class PaperTradingEngine {
     );
     for (const order of openOrders) {
       order.status = 'CANCELLED';
+      
+      // Record to audit trail if enabled
+      if (this.auditTrail) {
+        this.auditTrail.recordOrder(order);
+        this.auditTrail.recordOrderEvent(order.orderId, 'CANCELLED', 'Order cancelled (cancel all)');
+      }
     }
     logger.warn('All paper orders cancelled', { count: openOrders.length });
   }
