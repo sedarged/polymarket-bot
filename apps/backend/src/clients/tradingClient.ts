@@ -7,6 +7,7 @@ import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
 import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrdersGauge } from '../utils/metrics';
+import { validateOrderParametersOrThrow } from '../utils/orderValidation';
 
 /**
  * Trading Client for Live Order Placement with Partial Fill Tracking
@@ -208,6 +209,8 @@ export class TradingClient {
    * reused on retry. If not provided, a new UUID v4 will be generated.
    * 
    * Tracks in-flight order IDs to prevent duplicate submissions within the same process.
+   * 
+   * Validates all order parameters before submission (Audit Finding A-015)
    */
   async createOrder(
     tokenId: string,
@@ -222,9 +225,19 @@ export class TradingClient {
       throw new Error('Trading client not initialized');
     }
 
+    // Validate order parameters (Audit Finding A-015)
+    // This prevents malformed orders from propagating to the exchange
+    const validated = validateOrderParametersOrThrow({
+      tokenId,
+      side,
+      price,
+      size,
+      clientOrderId,
+    });
+
     // Generate unique clientOrderId using UUID v4 for cryptographic randomness (A-006)
     // Or use provided clientOrderId for true idempotency across retries
-    const orderId = clientOrderId || uuidv4();
+    const orderId = validated.clientOrderId || uuidv4();
     
     // Check for duplicate submission (prevents concurrent requests with same ID)
     if (this.submittedOrderIds.has(orderId)) {
@@ -238,14 +251,14 @@ export class TradingClient {
     this.submittedOrderIds.add(orderId);
 
     try {
-      logger.info('Creating order', { tokenId, side, price, size, clientOrderId: orderId });
+      logger.info('Creating order', { tokenId: validated.tokenId, side: validated.side, price: validated.price, size: validated.size, clientOrderId: orderId });
 
-      // Create order via CLOB client
+      // Create order via CLOB client using validated parameters
       const response = await this.client.createOrder({
-        tokenID: tokenId,
-        side: side === 'BUY' ? Side.BUY : Side.SELL,
-        price: Number(price),
-        size: Number(size),
+        tokenID: validated.tokenId,
+        side: validated.side === 'BUY' ? Side.BUY : Side.SELL,
+        price: Number(validated.price),
+        size: Number(validated.size),
         // @ts-ignore - clientOrderId might not be in types
         clientOrderId: orderId,
       });
@@ -253,14 +266,14 @@ export class TradingClient {
       const order: Order = {
         orderId: String(response.orderID || orderId),
         clientOrderId: orderId,
-        tokenId,
-        side,
-        price,
-        size,
+        tokenId: validated.tokenId,
+        side: validated.side,
+        price: validated.price,
+        size: validated.size,
         status: 'OPEN',
         createdAt: Date.now(),
         filledSize: '0',
-        remainingSize: size,
+        remainingSize: validated.size,
       };
 
       this.state.orders.push(order);
