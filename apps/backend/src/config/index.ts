@@ -124,6 +124,11 @@ const envSchema = z.object({
   // Reconciliation Configuration (Gap RE-001)
   // Interval in seconds for periodic reconciliation (default: 300 seconds = 5 minutes)
   RECONCILIATION_INTERVAL_SECONDS: numberFromEnv(300, z.number().int().positive().min(60).max(3600)),
+  // Rate Limiting Configuration (Audit Finding A-008)
+  // Maximum requests per IP per time window (default: 100 requests)
+  RATE_LIMIT_MAX_REQUESTS: numberFromEnv(100, z.number().int().positive().min(1).max(10000)),
+  // Time window for rate limiting in milliseconds (default: 60000 ms = 1 minute)
+  RATE_LIMIT_WINDOW_MS: numberFromEnv(60000, z.number().int().positive().min(1000).max(3600000)),
 });
 
 const configSchema = envSchema.refine(
@@ -169,6 +174,8 @@ const configSchema = envSchema.refine(
   adminToken: env.ADMIN_TOKEN,
   allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(s => s.length > 0),
   reconciliationIntervalSeconds: env.RECONCILIATION_INTERVAL_SECONDS,
+  rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
+  rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
 }));
 
 export type Config = z.infer<typeof configSchema>;

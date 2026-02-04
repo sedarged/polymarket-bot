@@ -9,10 +9,14 @@ import { isLiveTradingEnabled } from '../utils/liveTrading';
 import { PaperTradingEngine } from '../trading/paperTradingEngine';
 import { RiskManager } from '../trading/riskManager';
 import { getMetrics, getContentType } from '../utils/metrics';
+import { RateLimiter } from '../utils/rateLimiter';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
 let riskManager: RiskManager | null = null;
+
+// Rate limiter instance (Audit Finding A-008)
+let rateLimiter: RateLimiter | null = null;
 
 /**
  * Get CORS headers for a request
@@ -120,7 +124,44 @@ const requireAdminAuth = (req: http.IncomingMessage, res: http.ServerResponse, e
   return true;
 };
 
+/**
+ * Extract client IP address from request
+ * Handles proxy headers (X-Forwarded-For, X-Real-IP) for accurate rate limiting
+ */
+const getClientIp = (req: http.IncomingMessage): string => {
+  // Check X-Forwarded-For header (proxy/load balancer)
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    // X-Forwarded-For can be a comma-separated list: "client, proxy1, proxy2"
+    // The first IP is the original client
+    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+    return ips.split(',')[0].trim();
+  }
+
+  // Check X-Real-IP header (nginx proxy)
+  const realIp = req.headers['x-real-ip'];
+  if (realIp && !Array.isArray(realIp)) {
+    return realIp.trim();
+  }
+
+  // Fall back to socket remote address
+  return req.socket.remoteAddress || 'unknown';
+};
+
 export function createServer(): http.Server {
+  // Initialize rate limiter if not already initialized (Audit Finding A-008)
+  if (!rateLimiter) {
+    rateLimiter = new RateLimiter({
+      windowMs: config.rateLimitWindowMs,
+      maxRequests: config.rateLimitMaxRequests,
+    });
+    logger.info('Rate limiter initialized', {
+      windowMs: config.rateLimitWindowMs,
+      maxRequests: config.rateLimitMaxRequests,
+      audit: 'A-008',
+    });
+  }
+
   return http.createServer(async (req, res) => {
     const method = req.method ?? 'GET';
     const url = req.url ?? '/';
@@ -131,6 +172,31 @@ export function createServer(): http.Server {
       res.writeHead(200, corsHeaders);
       res.end();
       return;
+    }
+
+    // Rate limiting check (Audit Finding A-008)
+    // Applied to all endpoints to prevent DoS attacks and API abuse
+    if (rateLimiter) {
+      const clientIp = getClientIp(req);
+      const limitCheck = rateLimiter.checkLimit(clientIp);
+
+      if (!limitCheck.allowed) {
+        const headers: Record<string, string | number> = {
+          'Content-Type': 'application/json',
+          'Retry-After': String(limitCheck.retryAfter || 60),
+        };
+        
+        // Add CORS headers
+        Object.assign(headers, getCorsHeaders(req));
+
+        res.writeHead(429, headers);
+        res.end(JSON.stringify({
+          error: 'Too Many Requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          retryAfter: limitCheck.retryAfter,
+        }));
+        return;
+      }
     }
 
     if (method === 'GET' && url === '/health') {
@@ -433,6 +499,12 @@ export async function startServer(): Promise<http.Server> {
   // Graceful shutdown
   const shutdown = () => {
     logger.info('Shutting down server...');
+    
+    // Stop rate limiter cleanup
+    if (rateLimiter) {
+      rateLimiter.stop();
+    }
+    
     marketFeedService.stop();
     
     // Stop periodic reconciliation and clean up (Gap RE-001)
