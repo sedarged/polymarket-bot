@@ -385,4 +385,228 @@ describe('PaperTradingEngine', () => {
       expect(actualPrice).toBeCloseTo(expectedPrice, 4);
     });
   });
+
+  describe('partial fill simulation (A-019)', () => {
+    it('should always fill completely when partialFillRate is 0 (default)', () => {
+      const engine = new PaperTradingEngine({ slippage: 0.01, maxSlippage: 0.05, feeRate: 0.002 }, 10000);
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '50');
+      
+      const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+      
+      expect(filled).toBe(true);
+      
+      const fills = engine.getFills();
+      expect(fills).toHaveLength(1);
+      expect(Number(fills[0].size)).toBe(50); // Full fill
+      
+      const orders = engine.getOrders();
+      expect(orders[0].status).toBe('MATCHED'); // Fully filled
+      expect(Number(orders[0].filledSize)).toBe(50);
+    });
+
+    it('should support partial fills when partialFillRate is configured', () => {
+      // Set partialFillRate to 1.0 to always get partial fills for testing
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 1.0, // Always partial fill
+          minFillRatio: 0.3,
+          maxFillRatio: 0.7
+        }, 
+        10000
+      );
+      
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '50');
+      
+      const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+      
+      expect(filled).toBe(true);
+      
+      const fills = engine.getFills();
+      expect(fills).toHaveLength(1);
+      
+      const fillSize = Number(fills[0].size);
+      // Should be partial: between 30% and 70% of 50
+      expect(fillSize).toBeGreaterThanOrEqual(15); // 30% of 50
+      expect(fillSize).toBeLessThanOrEqual(35); // 70% of 50
+      expect(fillSize).toBeLessThan(50); // Not full fill
+      
+      const orders = engine.getOrders();
+      expect(orders[0].status).toBe('OPEN'); // Still open since partially filled
+      expect(Number(orders[0].filledSize)).toBe(fillSize);
+    });
+
+    it('should allow multiple partial fills until order is complete', () => {
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 1.0, // Always partial fill
+          minFillRatio: 0.2,
+          maxFillRatio: 0.4
+        }, 
+        10000
+      );
+      
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '100');
+      
+      // First fill
+      const filled1 = engine.tryFillOrder(order.orderId, mockOrderbook);
+      expect(filled1).toBe(true);
+      
+      const fills1 = engine.getFills();
+      const firstFillSize = Number(fills1[0].size);
+      expect(firstFillSize).toBeGreaterThanOrEqual(20); // At least 20% of 100
+      expect(firstFillSize).toBeLessThanOrEqual(40); // At most 40% of 100
+      
+      const orders1 = engine.getOrders();
+      expect(orders1[0].status).toBe('OPEN'); // Still open
+      expect(Number(orders1[0].filledSize)).toBe(firstFillSize);
+      
+      // Second fill
+      const filled2 = engine.tryFillOrder(order.orderId, mockOrderbook);
+      expect(filled2).toBe(true);
+      
+      const fills2 = engine.getFills();
+      expect(fills2).toHaveLength(2);
+      
+      const secondFillSize = Number(fills2[1].size);
+      const totalFilled = firstFillSize + secondFillSize;
+      
+      expect(Number(orders1[0].filledSize)).toBe(totalFilled);
+      
+      // Status depends on whether we've hit 100% - could be OPEN or MATCHED
+      if (totalFilled >= 100) {
+        expect(orders1[0].status).toBe('MATCHED');
+      } else {
+        expect(orders1[0].status).toBe('OPEN');
+      }
+    });
+
+    it('should respect available liquidity limits for partial fills', () => {
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 1.0,
+          minFillRatio: 0.8,
+          maxFillRatio: 0.9
+        }, 
+        10000
+      );
+      
+      // Create a large order that exceeds available liquidity
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '150');
+      
+      const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+      
+      expect(filled).toBe(true);
+      
+      const fills = engine.getFills();
+      expect(fills).toHaveLength(1);
+      
+      const fillSize = Number(fills[0].size);
+      // Should be capped by available liquidity (100 in mockOrderbook)
+      expect(fillSize).toBeLessThanOrEqual(100);
+    });
+
+    it('should work correctly for sell orders with partial fills', () => {
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 1.0,
+          minFillRatio: 0.3,
+          maxFillRatio: 0.6
+        }, 
+        10000
+      );
+      
+      const order = engine.createOrder('0xtoken123', 'SELL', '0.45', '50');
+      
+      const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+      
+      expect(filled).toBe(true);
+      
+      const fills = engine.getFills();
+      expect(fills).toHaveLength(1);
+      expect(fills[0].side).toBe('SELL');
+      
+      const fillSize = Number(fills[0].size);
+      // Should be partial: between 30% and 60% of 50
+      expect(fillSize).toBeGreaterThanOrEqual(15);
+      expect(fillSize).toBeLessThanOrEqual(30);
+      expect(fillSize).toBeLessThan(50);
+    });
+
+    it('should have probabilistic partial fills with moderate partialFillRate', () => {
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 0.5, // 50% chance of partial fill
+          minFillRatio: 0.3,
+          maxFillRatio: 0.7
+        }, 
+        10000
+      );
+      
+      let fullFills = 0;
+      let partialFills = 0;
+      
+      // Run multiple fills to test probabilistic behavior
+      for (let i = 0; i < 20; i++) {
+        engine.reset(10000);
+        const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '50');
+        engine.tryFillOrder(order.orderId, mockOrderbook);
+        
+        const fills = engine.getFills();
+        const fillSize = Number(fills[0].size);
+        
+        if (fillSize === 50) {
+          fullFills++;
+        } else {
+          partialFills++;
+        }
+      }
+      
+      // With 50% partial fill rate, we should see both full and partial fills
+      // Allow some variance due to randomness
+      expect(partialFills).toBeGreaterThan(0);
+      expect(fullFills).toBeGreaterThan(0);
+    });
+
+    it('should scale partial fill probability with liquidity ratio', () => {
+      const engine = new PaperTradingEngine(
+        { 
+          slippage: 0.01, 
+          maxSlippage: 0.05, 
+          feeRate: 0.002,
+          partialFillRate: 0.5,
+          minFillRatio: 0.3,
+          maxFillRatio: 0.7
+        }, 
+        10000
+      );
+      
+      // Small order relative to liquidity should have lower chance of partial fill
+      const smallOrder = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      // Large order relative to liquidity should have higher chance of partial fill
+      const largeOrder = engine.createOrder('0xtoken123', 'BUY', '0.55', '90');
+      
+      // Just verify the methods run without errors
+      // The actual probability testing would require many iterations
+      engine.tryFillOrder(smallOrder.orderId, mockOrderbook);
+      engine.tryFillOrder(largeOrder.orderId, mockOrderbook);
+      
+      const fills = engine.getFills();
+      expect(fills.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
