@@ -13,16 +13,74 @@ import { RiskManager } from '../trading/riskManager';
 let paperEngine: PaperTradingEngine | null = null;
 let riskManager: RiskManager | null = null;
 
-const respondJson = (res: http.ServerResponse, statusCode: number, payload: unknown): void => {
-  const body = JSON.stringify(payload);
-  res.writeHead(statusCode, {
-    'Content-Type': 'application/json',
-    'Content-Length': Buffer.byteLength(body),
-    // WARNING: CORS set to '*' for development. In production, restrict to specific origins.
-    'Access-Control-Allow-Origin': '*',
+/**
+ * Get CORS headers for a request
+ * Returns headers with appropriate Access-Control-Allow-Origin based on config
+ */
+const getCorsHeaders = (req: http.IncomingMessage): Record<string, string> => {
+  const origin = req.headers.origin || '';
+  const allowedOrigins = config.allowedOrigins;
+  
+  // Check if wildcard is configured (only allowed in dev)
+  if (allowedOrigins.includes('*')) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+  }
+  
+  // If no origin header, allow request but don't set CORS origin
+  // This handles same-origin requests and direct server calls
+  if (!origin) {
+    return {
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    };
+  }
+  
+  // Check if the request origin is in the allowed list
+  const isAllowed = allowedOrigins.some(allowed => {
+    // Extract base origin from URL if needed
+    try {
+      const originUrl = new URL(origin);
+      const allowedUrl = new URL(allowed);
+      return originUrl.origin === allowedUrl.origin;
+    } catch {
+      // If URL parsing fails, do exact string match
+      return origin === allowed;
+    }
+  });
+  
+  if (isAllowed) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    };
+  }
+  
+  // Origin not allowed - return restrictive headers (no CORS origin)
+  return {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  });
+  };
+};
+
+const respondJson = (res: http.ServerResponse, statusCode: number, payload: unknown, req?: http.IncomingMessage): void => {
+  const body = JSON.stringify(payload);
+  const headers: Record<string, string | number> = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(body),
+  };
+  
+  // Add CORS headers if request is provided
+  if (req) {
+    Object.assign(headers, getCorsHeaders(req));
+  }
+  
+  res.writeHead(statusCode, headers);
   res.end(body);
 };
 
@@ -55,18 +113,15 @@ export function createServer(): http.Server {
 
     // Handle CORS preflight
     if (method === 'OPTIONS') {
-      res.writeHead(200, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      });
+      const corsHeaders = getCorsHeaders(req);
+      res.writeHead(200, corsHeaders);
       res.end();
       return;
     }
 
     if (method === 'GET' && url === '/health') {
       const health = getHealthStatus();
-      respondJson(res, 200, health);
+      respondJson(res, 200, health, req);
       logger.info('Health check', { path: '/health', status: health.status });
       return;
     }
@@ -83,7 +138,7 @@ export function createServer(): http.Server {
       );
       
       const statusCode = readiness.ready ? 200 : 503;
-      respondJson(res, statusCode, readiness);
+      respondJson(res, statusCode, readiness, req);
       logger.info('Readiness check', { path: '/ready', ready: readiness.ready });
       return;
     }
@@ -110,7 +165,7 @@ export function createServer(): http.Server {
         },
         circuitBreakers: cbMetrics ? [cbMetrics] : [],
       };
-      respondJson(res, 200, metrics);
+      respondJson(res, 200, metrics, req);
       logger.info('Metrics retrieved');
       return;
     }
@@ -126,7 +181,7 @@ export function createServer(): http.Server {
         timestamp: orderbook.timestamp,
         summary: calculateOrderbookSummary(orderbook),
       }));
-      respondJson(res, 200, result);
+      respondJson(res, 200, result, req);
       logger.info('Orderbooks retrieved', { count: result.length });
       return;
     }
@@ -137,7 +192,7 @@ export function createServer(): http.Server {
       const orderbook = marketFeedService.getOrderbook(tokenId);
       
       if (!orderbook) {
-        respondJson(res, 404, { error: 'Orderbook not found', tokenId });
+        respondJson(res, 404, { error: 'Orderbook not found', tokenId }, req);
         return;
       }
 
@@ -149,7 +204,7 @@ export function createServer(): http.Server {
         asks: orderbook.asks,
         timestamp: orderbook.timestamp,
         summary,
-      });
+      }, req);
       logger.info('Orderbook retrieved', { tokenId });
       return;
     }
@@ -161,7 +216,7 @@ export function createServer(): http.Server {
         tokenIds: config.tokenIds,
         cachedOrderbooks: marketFeedService.getAllOrderbooks().size,
       };
-      respondJson(res, 200, status);
+      respondJson(res, 200, status, req);
       logger.info('Market feed status retrieved');
       return;
     }
@@ -182,7 +237,7 @@ export function createServer(): http.Server {
         marketFeedConnected: marketFeedService.isConnected(),
         timestamp: Date.now(),
       };
-      respondJson(res, 200, status);
+      respondJson(res, 200, status, req);
       logger.info('Trading status retrieved');
       return;
     }
@@ -191,12 +246,12 @@ export function createServer(): http.Server {
     if (method === 'GET' && url === '/state') {
       try {
         const state = tradingClient.getState();
-        respondJson(res, 200, state);
+        respondJson(res, 200, state, req);
         logger.info('Trading state retrieved');
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to get state',
-        });
+        }, req);
       }
       return;
     }
@@ -205,12 +260,12 @@ export function createServer(): http.Server {
     if (method === 'GET' && url === '/orders') {
       try {
         const state = tradingClient.getState();
-        respondJson(res, 200, { orders: state.orders });
+        respondJson(res, 200, { orders: state.orders }, req);
         logger.info('Orders retrieved', { count: state.orders.length });
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to get orders',
-        });
+        }, req);
       }
       return;
     }
@@ -219,12 +274,12 @@ export function createServer(): http.Server {
     if (method === 'GET' && url === '/fills') {
       try {
         const state = tradingClient.getState();
-        respondJson(res, 200, { fills: state.fills });
+        respondJson(res, 200, { fills: state.fills }, req);
         logger.info('Fills retrieved', { count: state.fills.length });
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to get fills',
-        });
+        }, req);
       }
       return;
     }
@@ -233,7 +288,7 @@ export function createServer(): http.Server {
     if (method === 'POST' && url === '/kill-switch') {
       // Validate admin token (same as /kill endpoint)
       if (!validateAdminToken(req)) {
-        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' });
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
         logger.warn('Legacy kill-switch endpoint access denied: invalid admin token');
         return;
       }
@@ -250,12 +305,12 @@ export function createServer(): http.Server {
           riskManager.kill();
         }
 
-        respondJson(res, 200, { success: true, message: 'Kill switch activated: all orders cancelled' });
+        respondJson(res, 200, { success: true, message: 'Kill switch activated: all orders cancelled' }, req);
         logger.warn('Kill switch activated via API (legacy endpoint)');
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to activate kill switch',
-        });
+        }, req);
       }
       return;
     }
@@ -264,7 +319,7 @@ export function createServer(): http.Server {
     if (method === 'POST' && url === '/kill') {
       // Validate admin token
       if (!validateAdminToken(req)) {
-        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' });
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
         logger.warn('Kill endpoint access denied: invalid admin token');
         return;
       }
@@ -285,17 +340,17 @@ export function createServer(): http.Server {
           success: true, 
           message: 'Kill switch activated: all orders cancelled, trading disabled',
           riskManager: riskManager ? riskManager.getMetrics() : null,
-        });
+        }, req);
         logger.error('Kill switch activated via /kill endpoint');
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to activate kill switch',
-        });
+        }, req);
       }
       return;
     }
 
-    respondJson(res, 404, { error: 'Not Found' });
+    respondJson(res, 404, { error: 'Not Found' }, req);
   });
 }
 

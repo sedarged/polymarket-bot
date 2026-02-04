@@ -68,6 +68,10 @@ const envSchema = z.object({
   RISK_ERROR_RATE_WINDOW: numberFromEnv(100, z.number().int().positive()),
   // Admin Authentication
   ADMIN_TOKEN: z.string().optional(),
+  // CORS Configuration
+  // Comma-separated list of allowed origins. Default: http://localhost:3000
+  // Use '*' only for development. Production MUST use specific origins.
+  ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });
 
 const configSchema = envSchema.transform((env) => ({
@@ -91,6 +95,7 @@ const configSchema = envSchema.transform((env) => ({
   riskErrorRateThreshold: env.RISK_ERROR_RATE_THRESHOLD,
   riskErrorRateWindow: env.RISK_ERROR_RATE_WINDOW,
   adminToken: env.ADMIN_TOKEN,
+  allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(s => s.length > 0),
 }));
 
 export type Config = z.infer<typeof configSchema>;
@@ -107,7 +112,27 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   if (!parsed.success) {
     throw new Error(formatConfigError(parsed.error));
   }
-  return parsed.data;
+  
+  // CORS Security Check: Fail-fast if wildcard is used in production-like scenarios
+  const config = parsed.data;
+  const hasWildcardCors = config.allowedOrigins.includes('*');
+  const isProduction = env.NODE_ENV === 'production' || config.liveTrading;
+  
+  if (hasWildcardCors && isProduction) {
+    throw new Error(
+      'CRITICAL SECURITY ERROR: Wildcard CORS (*) is not allowed in production or with live trading enabled. ' +
+      'Set ALLOWED_ORIGINS to specific domain(s), e.g., ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com'
+    );
+  }
+  
+  if (hasWildcardCors) {
+    console.warn(
+      '⚠️  WARNING: CORS is configured with wildcard (*). This is ONLY acceptable for local development. ' +
+      'For production, set ALLOWED_ORIGINS to specific domain(s).'
+    );
+  }
+  
+  return config;
 };
 
 export const config = parseConfig();

@@ -221,6 +221,95 @@ chmod +x scripts/validate-env.sh
 - Separate from personal wallet (trading wallet only)
 - Limited funds based on risk tolerance
 
+## Security Configuration
+
+### CORS (Cross-Origin Resource Sharing) Policy
+
+**CRITICAL SECURITY REQUIREMENT:** The bot server has CORS protection to prevent unauthorized browser-based access.
+
+#### Development vs Production
+
+**Development (Local Testing):**
+```bash
+# Allow all origins (wildcard) - ONLY for local development
+ALLOWED_ORIGINS=*
+```
+
+**Production (Live Trading):**
+```bash
+# REQUIRED: Specify exact allowed origins (comma-separated)
+ALLOWED_ORIGINS=https://dashboard.example.com,https://admin.example.com
+
+# Or for single origin:
+ALLOWED_ORIGINS=https://dashboard.example.com
+```
+
+#### Configuration Rules
+
+1. **Wildcard (`*`) is FORBIDDEN in production**
+   - Bot will fail to start if `LIVE_TRADING=true` and `ALLOWED_ORIGINS=*`
+   - Bot will fail to start if `NODE_ENV=production` and `ALLOWED_ORIGINS=*`
+   - This prevents XSS attacks, session hijacking, and unauthorized access
+
+2. **Allowed origins must be exact matches**
+   - Use full URLs with protocol: `https://example.com`
+   - Include ports if non-standard: `http://localhost:3000`
+   - Multiple origins are comma-separated: `https://app1.com,https://app2.com`
+
+3. **Default configuration**
+   - If not specified, defaults to `http://localhost:3000`
+   - Safe for local development
+   - MUST be changed for production deployment
+
+#### Verification
+
+Check your CORS configuration before deployment:
+
+```bash
+# Verify the config is loaded correctly
+node -e "require('dotenv').config(); console.log('ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS)"
+
+# Test with production-like environment
+LIVE_TRADING=true COMPLIANCE_ACCEPTED=true ALLOWED_ORIGINS=* npm run dev
+# Should fail with: "CRITICAL SECURITY ERROR: Wildcard CORS (*) is not allowed in production"
+
+# Test with proper configuration
+LIVE_TRADING=true COMPLIANCE_ACCEPTED=true ALLOWED_ORIGINS=https://dashboard.example.com npm run dev
+# Should start successfully
+```
+
+#### Deployment Checklist
+
+- [ ] Set `ALLOWED_ORIGINS` to specific domain(s) in production `.env`
+- [ ] Remove wildcard `*` from production configuration
+- [ ] Update firewall rules to match allowed origins
+- [ ] Test CORS headers with `curl`:
+  ```bash
+  # Should reflect the origin back
+  curl -H "Origin: https://dashboard.example.com" \
+       -I http://localhost:3000/health
+  
+  # Should NOT have CORS origin header
+  curl -H "Origin: https://malicious.com" \
+       -I http://localhost:3000/health
+  ```
+- [ ] Document all allowed origins in deployment notes
+- [ ] Update load balancer/reverse proxy CORS settings if applicable
+
+#### Troubleshooting CORS Issues
+
+**Issue:** "CRITICAL SECURITY ERROR: Wildcard CORS (*) is not allowed in production"
+- **Cause:** `ALLOWED_ORIGINS=*` with `LIVE_TRADING=true` or `NODE_ENV=production`
+- **Fix:** Set `ALLOWED_ORIGINS` to specific domain(s)
+
+**Issue:** Frontend can't connect to API
+- **Cause:** Frontend origin not in `ALLOWED_ORIGINS`
+- **Fix:** Add frontend domain to `ALLOWED_ORIGINS`, e.g., `ALLOWED_ORIGINS=https://dashboard.example.com`
+
+**Issue:** API works from curl/Postman but not from browser
+- **Cause:** Browser enforces CORS, curl/Postman don't
+- **Fix:** Ensure frontend origin is in `ALLOWED_ORIGINS`
+
 ## Startup
 
 1. **Environment prep**

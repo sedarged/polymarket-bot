@@ -75,3 +75,71 @@ describe('Server', () => {
     expect(body.error).toBe('Not Found');
   });
 });
+
+describe('Server CORS', () => {
+  let server: http.Server;
+  let baseUrl: string;
+
+  beforeAll(async () => {
+    server = createServer();
+    await new Promise<void>((resolve) => {
+      server.listen(0, () => {
+        const address = server.address();
+        if (address && typeof address !== 'string') {
+          baseUrl = `http://127.0.0.1:${address.port}`;
+        }
+        resolve();
+      });
+    });
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  });
+
+  it('includes CORS methods in response', async () => {
+    const response = await fetch(`${baseUrl}/health`);
+    
+    expect(response.status).toBe(200);
+    // When there's no Origin header, we still include CORS methods but not origin
+    expect(response.headers.has('access-control-allow-methods')).toBe(true);
+  });
+
+  it('handles OPTIONS preflight request', async () => {
+    const response = await fetch(`${baseUrl}/health`, {
+      method: 'OPTIONS',
+    });
+    
+    expect(response.status).toBe(200);
+    expect(response.headers.has('access-control-allow-methods')).toBe(true);
+    expect(response.headers.has('access-control-allow-headers')).toBe(true);
+  });
+
+  it('allows requests from configured origin', async () => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: {
+        'Origin': 'http://localhost:3000',
+      },
+    });
+    
+    expect(response.status).toBe(200);
+    const corsOrigin = response.headers.get('access-control-allow-origin');
+    // Should reflect the origin back since it's in allowedOrigins
+    expect(corsOrigin).toBe('http://localhost:3000');
+  });
+
+  it('does not allow requests from non-configured origin', async () => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: {
+        'Origin': 'https://malicious.example.com',
+      },
+    });
+    
+    expect(response.status).toBe(200);
+    const corsOrigin = response.headers.get('access-control-allow-origin');
+    // Should NOT have CORS origin header for disallowed origin
+    expect(corsOrigin).toBeNull();
+  });
+});
