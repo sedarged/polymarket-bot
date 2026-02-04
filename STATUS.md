@@ -27,7 +27,6 @@ To update this status:
 - [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
-- [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
 - [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
@@ -71,6 +70,7 @@ To update this status:
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
+- [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
 - [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
@@ -91,9 +91,8 @@ To update this status:
 - #26 [Updated Template] Code Audit - Security & Reliability Gaps
 - #25 Repository Architecture Mapping
 - #24 Environment Discovery & Command Validation
-- #23 [Updated Template] 🚀 Polymarket Bot - Complete Production Audit & Learning System
 
-*Last updated: 2026-02-04T16:33:15.825Z*
+*Last updated: 2026-02-04T16:58:03.147Z*
 
 <!-- STATUS_SYNC_END -->
 
