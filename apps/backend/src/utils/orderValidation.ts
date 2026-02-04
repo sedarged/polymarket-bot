@@ -87,7 +87,7 @@ const tokenIdString = z
  * Order side enum
  */
 export const OrderSideSchema = z.enum(['BUY', 'SELL'], {
-  errorMap: () => ({ message: 'Side must be either BUY or SELL' }),
+  message: 'Side must be either BUY or SELL',
 });
 
 /**

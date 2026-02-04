@@ -7,7 +7,7 @@ import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
 import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrdersGauge } from '../utils/metrics';
-import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, MarketConstraints, TickSize } from '../utils/orderValidation';
+import { validateOrderWithConstraintsOrThrow, MarketConstraints, TickSize } from '../utils/orderValidation';
 import { ClobClient as ClobRestClient } from './clob';
 
 /**
