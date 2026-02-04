@@ -132,6 +132,12 @@ export class MarketFeedClient extends EventEmitter {
     
     try {
       await resyncPromise;
+    } catch (error) {
+      logger.error('Failed to resync orderbook', {
+        tokenId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     } finally {
       // Clean up the promise after completion (success or failure)
       this.resyncPromises.delete(tokenId);
@@ -139,20 +145,11 @@ export class MarketFeedClient extends EventEmitter {
   }
 
   private async performResync(tokenId: string): Promise<void> {
-    try {
-      logger.info('Resyncing orderbook from REST', { tokenId });
-      const orderbook = await this.clobClient.getOrderbook(tokenId);
-      this.cache.set(tokenId, orderbook);
-      this.emit('snapshot', tokenId, orderbook);
-      logger.info('Orderbook resync complete', { tokenId });
-    } catch (error) {
-      logger.error('Failed to resync orderbook', {
-        tokenId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Re-throw to ensure the promise rejects properly
-      throw error;
-    }
+    logger.info('Resyncing orderbook from REST', { tokenId });
+    const orderbook = await this.clobClient.getOrderbook(tokenId);
+    this.cache.set(tokenId, orderbook);
+    this.emit('snapshot', tokenId, orderbook);
+    logger.info('Orderbook resync complete', { tokenId });
   }
 
   private handleMessage(message: WSMarketMessage): void {

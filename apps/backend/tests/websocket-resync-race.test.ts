@@ -346,11 +346,10 @@ describe('WebSocket Resync Race Condition - Audit Finding A-007', () => {
 
       await Promise.all(resyncAllPromises);
 
-      // Each token should have been synced, but with proper deduplication
-      // In the worst case, each token might be called twice (once per resyncAll)
-      // but ideally should be deduplicated to 1 call each
-      expect(callCounts.get(token1)).toBeLessThanOrEqual(2);
-      expect(callCounts.get(token2)).toBeLessThanOrEqual(2);
+      // With proper deduplication, each token should be called exactly once
+      // even when multiple resyncAll calls are made concurrently
+      expect(callCounts.get(token1)).toBe(1);
+      expect(callCounts.get(token2)).toBe(1);
       
       getOrderbookSpy.mockRestore();
     });
