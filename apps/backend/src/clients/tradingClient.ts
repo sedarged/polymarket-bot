@@ -1,5 +1,6 @@
 import { ClobClient, Side } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
+import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
@@ -15,7 +16,8 @@ import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrders
  * 
  * This client uses the official Polymarket CLOB SDK for order placement and management.
  * It handles L1/L2 authentication automatically via the SDK and provides:
- * - Idempotent order placement using clientOrderId
+ * - Idempotent order placement using UUID v4 clientOrderId (Audit Finding A-006)
+ * - Duplicate order submission prevention
  * - Startup reconciliation of open orders and positions
  * - Kill switch for emergency order cancellation
  * - Order state tracking and management
@@ -36,6 +38,7 @@ import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrders
  * Security: Dual-gate system (LIVE_TRADING + COMPLIANCE_ACCEPTED) ✓
  * Secrets Management: Addresses Audit Finding A-001 ✓
  * Partial Fills: Addresses Audit Gap EE-001 ✓
+ * Idempotency: Addresses Audit Finding A-006 ✓
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
  * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
@@ -76,7 +79,7 @@ export class TradingClient {
     positions: [],
     balances: [],
   };
-  private orderIdCounter = 0;
+  private submittedOrderIds: Set<string> = new Set(); // Track submitted clientOrderIds for idempotency (A-006)
   private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
 
   async initialize(): Promise<void> {
@@ -199,6 +202,8 @@ export class TradingClient {
 
   /**
    * Create a new order with idempotency via clientOrderId
+   * Uses UUID v4 for cryptographic randomness (Audit Finding A-006)
+   * Tracks submitted orders to prevent duplicate submissions
    */
   async createOrder(
     tokenId: string,
@@ -212,14 +217,22 @@ export class TradingClient {
       throw new Error('Trading client not initialized');
     }
 
-    // Generate unique clientOrderId for idempotency
-    // Include timestamp, counter, and process ID for better uniqueness
-    const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
+    // Generate unique clientOrderId using UUID v4 for cryptographic randomness (A-006)
+    const clientOrderId = uuidv4();
+    
+    // Check for duplicate submission (idempotency protection)
+    if (this.submittedOrderIds.has(clientOrderId)) {
+      logger.warn('Duplicate order submission prevented', { clientOrderId });
+      throw new Error(`Duplicate order submission: ${clientOrderId}`);
+    }
     
     const startTime = Date.now();
 
     try {
       logger.info('Creating order', { tokenId, side, price, size, clientOrderId });
+      
+      // Track this order ID to prevent duplicates
+      this.submittedOrderIds.add(clientOrderId);
 
       // Create order via CLOB client
       const response = await this.client.createOrder({
@@ -256,6 +269,9 @@ export class TradingClient {
 
       return order;
     } catch (error) {
+      // Remove from tracking set on failure to allow retry (A-006)
+      this.submittedOrderIds.delete(clientOrderId);
+      
       // Record failure metrics
       ordersTotal.inc({ side, result: 'failure', mode: 'live' });
       
@@ -265,6 +281,7 @@ export class TradingClient {
         side,
         price,
         size,
+        clientOrderId,
       });
       throw error;
     }
