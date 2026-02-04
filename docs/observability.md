@@ -1,0 +1,313 @@
+# Observability & Monitoring
+
+This document describes the observability features of the Polymarket Trading Bot, including metrics collection, monitoring, and alerting.
+
+## Overview
+
+The bot integrates Prometheus for comprehensive metrics collection and provides a Grafana dashboard for visualization. This addresses gap **OB-001** from the gap analysis report.
+
+## Metrics Endpoint
+
+The bot exposes metrics in Prometheus format at:
+
+```
+GET /metrics
+```
+
+This endpoint returns all metrics in Prometheus text exposition format.
+
+### Example Usage
+
+```bash
+curl http://localhost:3000/metrics
+```
+
+## Available Metrics
+
+### Order Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `polymarket_orders_total` | Counter | side, result, mode | Total number of orders placed |
+| `polymarket_order_latency_seconds` | Histogram | side, mode | Order placement latency in seconds |
+| `polymarket_order_fills_total` | Counter | side, mode | Total number of order fills |
+| `polymarket_order_cancellations_total` | Counter | reason, mode | Total number of order cancellations |
+
+**Labels:**
+- `side`: BUY or SELL
+- `result`: success or failure
+- `mode`: live or paper
+- `reason`: user, timeout, kill-switch
+
+### WebSocket Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `polymarket_websocket_state` | Gauge | feed_type | Current WebSocket connection state (0-4) |
+| `polymarket_websocket_reconnects_total` | Counter | feed_type, result | Total reconnection attempts |
+| `polymarket_websocket_messages_total` | Counter | feed_type, message_type | Total messages received |
+| `polymarket_websocket_uptime_seconds` | Gauge | feed_type | Connection uptime in seconds |
+| `polymarket_websocket_errors_total` | Counter | feed_type, error_type | Total WebSocket errors |
+
+**State Values:**
+- 0 = DISCONNECTED
+- 1 = CONNECTING
+- 2 = CONNECTED
+- 3 = RECONNECTING
+- 4 = CLOSED
+
+**Labels:**
+- `feed_type`: market, user, trade
+- `result`: success, failure, attempt
+- `message_type`: book, trade, ack, error
+- `error_type`: connection, protocol, timeout
+
+### Circuit Breaker Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `polymarket_circuit_breaker_state` | Gauge | breaker_name | Circuit breaker state (0-2) |
+| `polymarket_circuit_breaker_trips_total` | Counter | breaker_name | Total number of circuit trips |
+| `polymarket_circuit_breaker_failures_total` | Counter | breaker_name | Total failures recorded |
+| `polymarket_circuit_breaker_successes_total` | Counter | breaker_name | Total successes recorded |
+
+**State Values:**
+- 0 = CLOSED (healthy)
+- 1 = OPEN (tripped)
+- 2 = HALF_OPEN (testing recovery)
+
+### Trading Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `polymarket_open_orders` | Gauge | mode | Current number of open orders |
+| `polymarket_positions` | Gauge | mode | Current number of positions |
+| `polymarket_kill_switch_activations_total` | Counter | reason | Total kill switch activations |
+| `polymarket_kill_switch_state` | Gauge | - | Kill switch state (0=disabled, 1=enabled) |
+
+### Orderbook Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `polymarket_cached_orderbooks` | Gauge | - | Number of cached orderbooks |
+| `polymarket_orderbook_age_seconds` | Histogram | token_id | Age of orderbook data in seconds |
+
+### System Metrics
+
+The bot also exports standard Node.js metrics:
+
+- `process_cpu_user_seconds_total` - User CPU time
+- `process_cpu_system_seconds_total` - System CPU time
+- `process_resident_memory_bytes` - Resident memory size
+- `process_heap_bytes` - Heap size
+- `nodejs_heap_size_used_bytes` - Heap usage
+- `nodejs_heap_size_total_bytes` - Total heap size
+- `nodejs_event_loop_lag_seconds` - Event loop lag
+
+## Prometheus Configuration
+
+Add this scrape config to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'polymarket-bot'
+    static_configs:
+      - targets: ['localhost:3000']
+    scrape_interval: 5s
+    scrape_timeout: 4s
+```
+
+## Grafana Dashboard
+
+A pre-configured Grafana dashboard is available in `grafana/polymarket-dashboard.json`.
+
+### Features
+
+- **Order Placement Rate** - Real-time order rate by side and result
+- **Order Latency** - p95 and p99 latency percentiles
+- **WebSocket State** - Connection status with color coding
+- **Circuit Breaker State** - Health of circuit breakers
+- **Open Orders & Positions** - Current trading activity
+- **Reconnection Rate** - WebSocket stability
+- **Memory Usage** - System resource utilization
+- **Process Uptime** - Bot availability
+
+### Import Instructions
+
+1. Open Grafana UI
+2. Go to **Dashboards** > **Import**
+3. Upload `grafana/polymarket-dashboard.json`
+4. Select your Prometheus datasource
+5. Click **Import**
+
+See `grafana/README.md` for detailed setup instructions.
+
+## Alerting
+
+### Recommended Alerts
+
+Configure these alerts in Prometheus Alertmanager or Grafana:
+
+#### High Order Failure Rate
+```yaml
+- alert: HighOrderFailureRate
+  expr: rate(polymarket_orders_total{result="failure"}[5m]) > 0.1
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High order failure rate detected"
+    description: "Order failure rate is {{ $value }} orders/sec"
+```
+
+#### Circuit Breaker Tripped
+```yaml
+- alert: CircuitBreakerTripped
+  expr: polymarket_circuit_breaker_state == 1
+  for: 1m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Circuit breaker {{ $labels.breaker_name }} is open"
+    description: "Service protection activated, requests are failing fast"
+```
+
+#### WebSocket Disconnected
+```yaml
+- alert: WebSocketDisconnected
+  expr: polymarket_websocket_state{feed_type="market"} != 2
+  for: 2m
+  labels:
+    severity: warning
+  annotations:
+    summary: "WebSocket {{ $labels.feed_type }} is not connected"
+    description: "Current state: {{ $value }}"
+```
+
+#### High Order Latency
+```yaml
+- alert: HighOrderLatency
+  expr: histogram_quantile(0.95, rate(polymarket_order_latency_seconds_bucket[5m])) > 2
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High order placement latency"
+    description: "p95 latency is {{ $value }}s (threshold: 2s)"
+```
+
+#### High Memory Usage
+```yaml
+- alert: HighMemoryUsage
+  expr: process_resident_memory_bytes > 500000000
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High memory usage detected"
+    description: "Memory usage is {{ $value | humanize }}B (threshold: 500MB)"
+```
+
+## Query Examples
+
+### PromQL Queries
+
+**Order success rate (last 5 minutes):**
+```promql
+rate(polymarket_orders_total{result="success"}[5m]) /
+rate(polymarket_orders_total[5m])
+```
+
+**Average order latency:**
+```promql
+rate(polymarket_order_latency_seconds_sum[5m]) /
+rate(polymarket_order_latency_seconds_count[5m])
+```
+
+**WebSocket uptime percentage:**
+```promql
+(polymarket_websocket_uptime_seconds / time()) * 100
+```
+
+**Circuit breaker error rate:**
+```promql
+rate(polymarket_circuit_breaker_failures_total[5m])
+```
+
+## Integration with Logging
+
+Metrics complement but don't replace logging:
+
+- **Metrics** - Track aggregate statistics, trends, and rates (e.g., orders/sec, latency percentiles)
+- **Logs** - Capture individual events, errors, and context (e.g., "Order XYZ failed: insufficient balance")
+
+Both are essential for production observability.
+
+## Performance Considerations
+
+### Metric Collection Overhead
+
+- Metrics collection has minimal overhead (<1% CPU, <10MB memory)
+- Counters and gauges are very lightweight
+- Histograms have slightly higher overhead due to bucketing
+- Default metrics scrape every 5 seconds
+
+### Cardinality
+
+Be mindful of metric cardinality (unique label combinations):
+
+- **Low cardinality** (good): side=BUY/SELL, mode=live/paper
+- **High cardinality** (avoid): order_id, token_id (use sparingly)
+
+High cardinality can cause memory issues in Prometheus. Current metrics are designed with low cardinality.
+
+## Testing
+
+The metrics module has comprehensive unit tests:
+
+```bash
+npm test -- metrics.test.ts
+```
+
+Tests cover:
+- All metric types (counters, gauges, histograms)
+- Label combinations
+- Prometheus format output
+- Metric reset functionality
+
+## Troubleshooting
+
+### Metrics endpoint returns 500
+
+Check logs for errors in metrics collection. The endpoint has error handling and will return JSON error responses.
+
+### Missing metrics in Prometheus
+
+1. Verify Prometheus is scraping: `curl http://localhost:9090/api/v1/targets`
+2. Check metrics endpoint: `curl http://localhost:3000/metrics`
+3. Verify no firewall blocking port 3000
+
+### Stale metrics
+
+Some metrics only appear after certain events:
+- Order metrics require order placement
+- Circuit breaker metrics require failures
+- WebSocket metrics require connection events
+
+## Future Enhancements
+
+Potential improvements tracked in [STATUS.md](../STATUS.md):
+
+- [ ] Business metrics (P&L, fill rate, Sharpe ratio) - OB-004
+- [ ] Performance metrics (latency percentiles beyond p95/p99) - OB-003
+- [ ] Distributed tracing (request IDs across services) - OB-005
+- [ ] Alerting system integration (PagerDuty, Slack) - OB-002
+- [ ] Orderbook staleness detection - OB-007
+
+## References
+
+- [Prometheus Documentation](https://prometheus.io/docs/)
+- [Grafana Documentation](https://grafana.com/docs/)
+- [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
+- [Gap Analysis Report](../REPORTS/GAP_ANALYSIS.md) - OB-001
+- [Grafana Dashboard README](../grafana/README.md)
