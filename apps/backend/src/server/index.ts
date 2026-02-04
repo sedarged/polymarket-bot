@@ -533,22 +533,22 @@ export async function startServer(): Promise<http.Server> {
       // Stop periodic reconciliation and clean up (Gap RE-001)
       if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
         tradingClient.stopPeriodicReconciliation();
-        try {
-          tradingClient.destroy();
-        } catch (error) {
-          logger.error('Failed to destroy trading client during shutdown', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-      
-      // Cancel all orders before shutdown if trading is enabled
-      if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+        
+        // Cancel all orders BEFORE destroying the client
         try {
           await tradingClient.cancelAllOrders();
           logger.info('All orders cancelled');
         } catch (error) {
           logger.error('Failed to cancel orders during shutdown', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        
+        // Now destroy the client after orders are cancelled
+        try {
+          tradingClient.destroy();
+        } catch (error) {
+          logger.error('Failed to destroy trading client during shutdown', {
             error: error instanceof Error ? error.message : String(error),
           });
         }

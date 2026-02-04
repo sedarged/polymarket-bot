@@ -220,9 +220,12 @@ export class WebSocketClient extends EventEmitter {
       return;
     }
 
+    // Store reference to WebSocket before creating promises
+    const ws = this.ws;
+    
     // Create promise to wait for close event
     const closePromise = new Promise<void>((resolve) => {
-      if (!this.ws) {
+      if (!ws) {
         resolve();
         return;
       }
@@ -234,18 +237,22 @@ export class WebSocketClient extends EventEmitter {
       };
 
       // If already closing/closed, resolve immediately
-      if (this.ws.readyState === WebSocket.CLOSING || this.ws.readyState === WebSocket.CLOSED) {
+      if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
         this.ws = null;
         resolve();
         return;
       }
 
       // Listen for close event
-      this.ws.once('close', onClose);
+      ws.once('close', onClose);
       
       // Initiate close
       try {
-        this.ws.close();
+        // Remove all event listeners to prevent memory leaks (A-017)
+        ws.removeAllListeners();
+        // Re-add the close listener we need
+        ws.once('close', onClose);
+        ws.close();
       } catch (error) {
         // If close() throws, still resolve (connection is gone)
         logger.warn('Error closing WebSocket', {
@@ -260,6 +267,8 @@ export class WebSocketClient extends EventEmitter {
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
         logger.warn('WebSocket close timeout, forcing cleanup');
+        // Remove the close listener to prevent it from firing later
+        ws?.removeAllListeners();
         if (this.ws) {
           try {
             this.ws.terminate();

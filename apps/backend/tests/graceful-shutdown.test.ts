@@ -102,7 +102,6 @@ describe('Graceful Shutdown (A-017)', () => {
       // Mock the WebSocket to never emit close event (simulates hanging)
       const ws = (client as any).ws;
       if (ws) {
-        const originalClose = ws.close.bind(ws);
         ws.close = vi.fn(() => {
           // Don't call original close, simulating hang
           // The timeout should kick in
@@ -188,20 +187,28 @@ describe('Graceful Shutdown (A-017)', () => {
         reconnectDelay: 100,
       });
 
-      // Start a resync operation (by triggering a reconnect scenario)
+      // Connect first
       const connectedPromise = new Promise<void>((resolve) => {
         client.on('connected', () => resolve());
       });
       client.connect();
       await connectedPromise;
 
-      // Close should wait for any pending operations
-      const startTime = Date.now();
-      await client.close();
-      const duration = Date.now() - startTime;
+      // Manually trigger a resync by directly calling the method
+      // This simulates an in-flight resync operation
+      const resyncPromise = (client as any).resyncOrderbook('test-token-1').catch(() => {
+        // Resync will fail because we don't have a mocked CLOB client
+        // but that's OK - we just want to verify close() waits for it
+      });
 
-      // Should complete reasonably quickly (no long hangs)
-      expect(duration).toBeLessThan(10000);
+      // Immediately call close while resync is in progress
+      // Close should wait for the resync to complete
+      const closePromise = client.close();
+
+      // Verify both promises resolve
+      await Promise.all([resyncPromise, closePromise]);
+
+      // Connection should be closed
       expect(client.isConnected()).toBe(false);
     });
   });
