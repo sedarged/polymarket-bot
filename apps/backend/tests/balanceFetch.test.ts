@@ -16,6 +16,7 @@ vi.mock('../src/config', () => ({
     clobApiUrl: 'https://clob.polymarket.com',
     chainId: 137,
     adminToken: 'test-token',
+    reconciliationIntervalSeconds: 300, // 5 minutes - used to calculate staleness threshold
   },
 }));
 
@@ -202,14 +203,15 @@ describe('TradingClient - Balance Fetch Error Handling (A-011)', () => {
       mockGetBalanceAllowance.mockResolvedValue({ balance: '1000.00' });
       await client.initialize();
       
-      // Mock Date.now to simulate time passing (61 seconds = stale)
+      // Mock Date.now to simulate time passing
+      // With reconciliationIntervalSeconds=300, staleness threshold is 900 seconds (15 minutes)
       const initTime = Date.now();
       let timeOffset = 0;
       const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => initTime + timeOffset);
       
       try {
-        // Fast-forward time by 61 seconds (past staleness threshold)
-        timeOffset = 61000;
+        // Fast-forward time by 901 seconds (past staleness threshold of 900s)
+        timeOffset = 901000;
 
         // Execute: Try to create order
         await expect(

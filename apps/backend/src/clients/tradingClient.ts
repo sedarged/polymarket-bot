@@ -89,7 +89,14 @@ export class TradingClient {
   private reconciliationInterval: NodeJS.Timeout | null = null; // Periodic reconciliation timer (Gap RE-001)
   private lastReconciliationTime: number = 0; // Track last reconciliation timestamp
   private lastBalanceFetchTime: number = 0; // Track when balances were last successfully fetched (A-011)
-  private readonly BALANCE_STALENESS_THRESHOLD_MS = 60000; // 60 seconds - balances older than this are considered stale
+  // Balance staleness threshold (A-011):
+  // - Must be >= 2-3x reconciliationIntervalSeconds to avoid unnecessary trading blocks
+  // - Defaults to 3x reconciliationIntervalSeconds (in ms) with a hard minimum of 60 seconds
+  //   to preserve the previous lower bound and ensure fresh balances
+  private readonly BALANCE_STALENESS_THRESHOLD_MS = Math.max(
+    60000,
+    (config.reconciliationIntervalSeconds ?? 300) * 1000 * 3
+  );
 
   constructor() {
     this.clobRestClient = new ClobRestClient();
@@ -125,7 +132,7 @@ export class TradingClient {
       });
 
       // Perform startup reconciliation
-      await this.reconcile();
+      await this.reconcile(true);
     } catch (error) {
       logger.error('Failed to initialize trading client', {
         error: error instanceof Error ? error.message : String(error),
@@ -137,8 +144,13 @@ export class TradingClient {
   /**
    * Reconciliation: fetch open orders, balances, and positions
    * Detects and logs discrepancies (Gap RE-001, RE-002, RE-003)
+   * 
+   * @param isInitializing - True during startup reconciliation, false for periodic reconciliation.
+   *                         During initialization, balance fetch failures throw errors to prevent
+   *                         trading with unknown state. During periodic reconciliation, failures
+   *                         are logged but do not throw to allow recovery from transient issues.
    */
-  async reconcile(): Promise<void> {
+  async reconcile(isInitializing: boolean = false): Promise<void> {
     if (!this.client) {
       throw new Error('Trading client not initialized');
     }
@@ -250,8 +262,16 @@ export class TradingClient {
         // Clear balances to ensure stale data isn't used
         this.state.balances = [];
         this.lastBalanceFetchTime = 0;
-        // Re-throw to prevent trading with unknown balances
-        throw new Error(`Balance fetch failed: ${errorMessage}`);
+        
+        // Only throw during initialization to prevent trading with unknown balances.
+        // During periodic reconciliation, log the error but continue to allow recovery
+        // from transient balance API issues. Trading will be blocked based on empty/
+        // stale balances (lastBalanceFetchTime === 0).
+        if (isInitializing) {
+          throw new Error(`Balance fetch failed: ${errorMessage}`);
+        }
+        // Mark reconciliation as degraded but do not re-throw
+        reconciliationSucceeded = false;
       }
 
       // Calculate positions from orders and fills

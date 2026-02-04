@@ -400,7 +400,7 @@ private generateMessageId(message: WSMarketMessage): string {
 
 #### A-011: HIGH - Ignored Balance Fetch Failure ✅ RESOLVED
 **File:** `apps/backend/src/clients/tradingClient.ts:93-108`  
-**Status:** **RESOLVED** in PR #[TBD]
+**Status:** **RESOLVED** in PR #125
 
 **Original Issue:**
 ```typescript
