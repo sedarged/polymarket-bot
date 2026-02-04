@@ -5,7 +5,7 @@ export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
   maxSlippage: number; // Maximum slippage for large orders
   feeRate: number;
-  partialFillRate: number; // Probability of partial fill (0-1), 0 = always full fill, 1 = always partial
+  partialFillRate: number; // Base probability of partial fill (0-1), scaled by liquidity ratio. 0 = always full fill
   minFillRatio: number; // Minimum fill ratio for partial fills (0-1)
   maxFillRatio: number; // Maximum fill ratio for partial fills (0-1)
 }
@@ -320,8 +320,15 @@ export class PaperTradingEngine {
    * Simulates partial fills based on configuration to match realistic CLOB behavior
    * 
    * Partial fills occur based on:
-   * 1. Configured probability (partialFillRate)
+   * 1. Configured base probability (partialFillRate)
    * 2. Available liquidity (larger orders relative to liquidity more likely to be partial)
+   * 
+   * The actual probability is: baseRate + (1 - baseRate) * liquidityRatio
+   * This means:
+   * - With baseRate=0: always full fill (0% chance regardless of liquidity)
+   * - With baseRate=1: always partial fill (100% chance regardless of liquidity)
+   * - With baseRate=0.5 and small order (10% of liquidity): 50% + 50% * 0.1 = 55% chance
+   * - With baseRate=0.5 and large order (100% of liquidity): 50% + 50% * 1.0 = 100% chance
    * 
    * @param requestedSize The size the order wants to fill
    * @param availableLiquidity The available liquidity at the best price
@@ -333,11 +340,26 @@ export class PaperTradingEngine {
       return requestedSize;
     }
 
-    // Determine if this fill should be partial based on:
-    // 1. Configured probability
-    // 2. Liquidity constraints - larger orders relative to liquidity have higher chance of partial fill
+    // If partialFillRate is 1.0, always do partial fills
+    if (this.config.partialFillRate >= 1.0) {
+      // For partial fills, fill a random amount between min and max fill ratio
+      const fillRatio = this.config.minFillRatio + 
+        Math.random() * (this.config.maxFillRatio - this.config.minFillRatio);
+      
+      const fillSize = requestedSize * fillRatio;
+      
+      // Ensure we don't exceed available liquidity
+      if (availableLiquidity > 0) {
+        return Math.min(fillSize, availableLiquidity);
+      }
+      
+      return fillSize;
+    }
+
+    // For values between 0 and 1, scale probability based on liquidity
+    // Larger orders relative to liquidity have higher chance of partial fill
     const liquidityRatio = availableLiquidity > 0 ? Math.min(1, requestedSize / availableLiquidity) : 1;
-    const partialFillProbability = this.config.partialFillRate * (0.5 + 0.5 * liquidityRatio);
+    const partialFillProbability = this.config.partialFillRate + (1 - this.config.partialFillRate) * liquidityRatio;
     
     const shouldPartialFill = Math.random() < partialFillProbability;
     

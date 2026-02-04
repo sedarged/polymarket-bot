@@ -366,6 +366,9 @@ export async function startServer(): Promise<http.Server> {
       slippage: config.paperTradingSlippage,
       maxSlippage: config.paperTradingMaxSlippage,
       feeRate: config.paperTradingFeeRate,
+      partialFillRate: config.paperTradingPartialFillRate,
+      minFillRatio: config.paperTradingMinFillRatio,
+      maxFillRatio: config.paperTradingMaxFillRatio,
     });
 
     logger.info('Paper trading mode enabled');

@@ -61,6 +61,10 @@ const envSchema = z.object({
   PAPER_TRADING_SLIPPAGE: numberFromEnv(0.01, z.number().nonnegative().max(1)),
   PAPER_TRADING_MAX_SLIPPAGE: numberFromEnv(0.05, z.number().nonnegative().max(1)),
   PAPER_TRADING_FEE_RATE: numberFromEnv(0.002, z.number().nonnegative().max(1)),
+  // Partial Fill Configuration
+  PAPER_TRADING_PARTIAL_FILL_RATE: numberFromEnv(0.0, z.number().nonnegative().max(1)),
+  PAPER_TRADING_MIN_FILL_RATIO: numberFromEnv(0.1, z.number().nonnegative().max(1)),
+  PAPER_TRADING_MAX_FILL_RATIO: numberFromEnv(0.9, z.number().nonnegative().max(1)),
   // Risk Management Configuration
   RISK_MAX_EXPOSURE_PER_MARKET: numberFromEnv(1000, z.number().positive()),
   RISK_MAX_OPEN_ORDERS: numberFromEnv(50, z.number().int().positive()),
@@ -97,6 +101,9 @@ const configSchema = envSchema.refine(
   paperTradingSlippage: env.PAPER_TRADING_SLIPPAGE,
   paperTradingMaxSlippage: env.PAPER_TRADING_MAX_SLIPPAGE,
   paperTradingFeeRate: env.PAPER_TRADING_FEE_RATE,
+  paperTradingPartialFillRate: env.PAPER_TRADING_PARTIAL_FILL_RATE,
+  paperTradingMinFillRatio: env.PAPER_TRADING_MIN_FILL_RATIO,
+  paperTradingMaxFillRatio: env.PAPER_TRADING_MAX_FILL_RATIO,
   riskMaxExposurePerMarket: env.RISK_MAX_EXPOSURE_PER_MARKET,
   riskMaxOpenOrders: env.RISK_MAX_OPEN_ORDERS,
   riskMaxDrawdown: env.RISK_MAX_DRAWDOWN,
