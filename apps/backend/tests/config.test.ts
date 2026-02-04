@@ -113,3 +113,32 @@ describe('CORS configuration validation', () => {
     ).toThrow('CRITICAL CONFIGURATION ERROR: ALLOWED_ORIGINS cannot be empty');
   });
 });
+
+describe('Paper trading slippage validation', () => {
+  it('accepts valid slippage config where maxSlippage >= slippage', () => {
+    const parsed = parseConfig({
+      PAPER_TRADING_SLIPPAGE: '0.01',
+      PAPER_TRADING_MAX_SLIPPAGE: '0.05',
+    });
+    expect(parsed.paperTradingSlippage).toBe(0.01);
+    expect(parsed.paperTradingMaxSlippage).toBe(0.05);
+  });
+
+  it('accepts edge case where maxSlippage equals slippage', () => {
+    const parsed = parseConfig({
+      PAPER_TRADING_SLIPPAGE: '0.03',
+      PAPER_TRADING_MAX_SLIPPAGE: '0.03',
+    });
+    expect(parsed.paperTradingSlippage).toBe(0.03);
+    expect(parsed.paperTradingMaxSlippage).toBe(0.03);
+  });
+
+  it('throws error when maxSlippage < slippage', () => {
+    expect(() =>
+      parseConfig({
+        PAPER_TRADING_SLIPPAGE: '0.05',
+        PAPER_TRADING_MAX_SLIPPAGE: '0.01',
+      })
+    ).toThrow('PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE');
+  });
+});

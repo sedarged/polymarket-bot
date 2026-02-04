@@ -364,6 +364,7 @@ export async function startServer(): Promise<http.Server> {
   if (!isLiveTradingEnabled()) {
     paperEngine = new PaperTradingEngine({
       slippage: config.paperTradingSlippage,
+      maxSlippage: config.paperTradingMaxSlippage,
       feeRate: config.paperTradingFeeRate,
     });
 

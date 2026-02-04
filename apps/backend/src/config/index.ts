@@ -59,6 +59,7 @@ const envSchema = z.object({
   CHAIN_ID: numberFromEnv(137, z.number().int().positive()),
   // Paper Trading Configuration
   PAPER_TRADING_SLIPPAGE: numberFromEnv(0.01, z.number().nonnegative().max(1)),
+  PAPER_TRADING_MAX_SLIPPAGE: numberFromEnv(0.05, z.number().nonnegative().max(1)),
   PAPER_TRADING_FEE_RATE: numberFromEnv(0.002, z.number().nonnegative().max(1)),
   // Risk Management Configuration
   RISK_MAX_EXPOSURE_PER_MARKET: numberFromEnv(1000, z.number().positive()),
@@ -74,7 +75,13 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });
 
-const configSchema = envSchema.transform((env) => ({
+const configSchema = envSchema.refine(
+  (env) => env.PAPER_TRADING_MAX_SLIPPAGE >= env.PAPER_TRADING_SLIPPAGE,
+  {
+    message: 'PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE',
+    path: ['PAPER_TRADING_MAX_SLIPPAGE'],
+  }
+).transform((env) => ({
   gammaApiUrl: env.GAMMA_API_URL,
   clobApiUrl: env.CLOB_API_URL,
   wsMarketUrl: env.WS_MARKET_URL,
@@ -88,6 +95,7 @@ const configSchema = envSchema.transform((env) => ({
   privateKey: env.PRIVATE_KEY,
   chainId: env.CHAIN_ID,
   paperTradingSlippage: env.PAPER_TRADING_SLIPPAGE,
+  paperTradingMaxSlippage: env.PAPER_TRADING_MAX_SLIPPAGE,
   paperTradingFeeRate: env.PAPER_TRADING_FEE_RATE,
   riskMaxExposurePerMarket: env.RISK_MAX_EXPOSURE_PER_MARKET,
   riskMaxOpenOrders: env.RISK_MAX_OPEN_ORDERS,
