@@ -441,6 +441,8 @@ curl http://localhost:3000/orderbooks
 
 ## Shutdown (Graceful)
 
+**Audit Finding A-017 Addressed:** The server implements proper graceful shutdown with WebSocket cleanup and resource management.
+
 The server implements graceful shutdown on SIGTERM/SIGINT:
 
 ```bash
@@ -450,18 +452,44 @@ kill -SIGTERM <pid>
 
 **Automatic shutdown sequence:**
 1. Server receives SIGTERM/SIGINT signal
-2. If live trading enabled and client initialized:
-   - Cancels all open orders
-   - Waits for cancellations to complete
-3. Closes WebSocket connections
-4. Stops HTTP server
-5. Logs "Server stopped" and exits
+2. 10-second shutdown timeout is initiated (prevents hanging)
+3. Rate limiter cleanup is stopped
+4. **WebSocket connections are closed gracefully:**
+   - Pending resync operations complete
+   - WebSocket connections close with proper cleanup
+   - Reconnect timers are cleared
+5. Trading client cleanup (if live trading enabled and initialized):
+   - Periodic reconciliation is stopped
+   - All open orders are cancelled
+   - Client resources are destroyed
+6. HTTP server closes all connections
+7. Logs "Server stopped" and exits cleanly
+
+**Shutdown timeout protection:**
+- If shutdown takes longer than 10 seconds, the process forcibly exits
+- Prevents hanging on stuck resources or network issues
+- Ensures the bot can be reliably stopped in production
 
 **Manual shutdown:**
 ```bash
 # Trigger via Ctrl+C in terminal
 # Or send signal:
 kill -SIGTERM $(pgrep -f "npm run dev")
+```
+
+**Testing graceful shutdown:**
+```bash
+# Start the server
+npm run dev &
+PID=$!
+
+# Wait for startup
+sleep 5
+
+# Trigger graceful shutdown
+kill -SIGTERM $PID
+
+# Verify clean shutdown (should see "Server stopped" in logs)
 ```
 
 ## Kill Switch (Emergency)
