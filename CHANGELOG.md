@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/sedarged/polymarket-bot/compare/v1.5.0...v1.6.0) (2026-02-04)
+
+
+### Features
+
+* implement audit trail for order/fill history (PA-002) ([1b91cc9](https://github.com/sedarged/polymarket-bot/commit/1b91cc99ce6221b67915ea7eb36625452dddd446)), closes [#129](https://github.com/sedarged/polymarket-bot/issues/129)
+* implement SQLite audit trail for order/fill history (PA-002) ([21f5c6b](https://github.com/sedarged/polymarket-bot/commit/21f5c6b6e29f78a6f6ba90d8cd583d66d52076dc))
+
+
+### Bug Fixes
+
+* address PR review feedback ([4682fc7](https://github.com/sedarged/polymarket-bot/commit/4682fc73b63698b117a4b77be92606cfdc30c2cc))
+
 ## [1.5.0](https://github.com/sedarged/polymarket-bot/compare/v1.4.0...v1.5.0) (2026-02-04)
 
 
