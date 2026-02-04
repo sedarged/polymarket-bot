@@ -14,14 +14,41 @@ For detailed implementation alignment, see [REPORTS/RESEARCH_REVIEW.md](../REPOR
 
 ## Prerequisites
 
+### Private Key Security
+
+**CRITICAL:** Follow the [Security Guide](./security.md) for private key management.
+
+This addresses **Audit Finding A-001** - Plaintext Private Key Storage.
+
+Choose a security method appropriate for your environment:
+- **Development:** Environment variable (least secure)
+- **Staging:** Encrypted local storage
+- **Production:** AWS Secrets Manager / HashiCorp Vault / Azure Key Vault
+
+See [docs/security.md](./security.md) and [ADR-0005](./adr/0005-secrets-management.md) for detailed setup instructions.
+
 ### Required Environment Variables
 ```bash
 # Trading gates (BOTH required for live trading)
 LIVE_TRADING=true
 COMPLIANCE_ACCEPTED=true
 
-# Wallet credentials
+# Secret Management (Choose one method - see docs/security.md)
+# Method 1 (Development): Direct environment variable
+SECRET_SOURCE=env
 PRIVATE_KEY=0x...your_private_key
+
+# Method 2 (Improved): Encrypted local storage
+SECRET_SOURCE=encrypted
+ENCRYPTION_KEY=your_strong_passphrase
+ENCRYPTED_PRIVATE_KEY=salt:iv:authTag:encryptedData
+
+# Method 3 (Production): AWS/Vault/Azure KMS
+SECRET_SOURCE=aws  # or vault, azure
+AWS_SECRET_NAME=polymarket-bot/private-key
+AWS_REGION=us-east-1
+
+# Wallet configuration
 CHAIN_ID=137  # Polygon Mainnet
 
 # API endpoints (defaults are fine for production)

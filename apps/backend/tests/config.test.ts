@@ -142,3 +142,98 @@ describe('Paper trading slippage validation', () => {
     ).toThrow('PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE');
   });
 });
+
+describe('Private key validation (Audit Finding A-024)', () => {
+  it('accepts valid private key with 0x prefix', () => {
+    const parsed = parseConfig({
+      PRIVATE_KEY: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    });
+    expect(parsed.privateKey).toBe('0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef');
+  });
+
+  it('accepts valid private key without 0x prefix', () => {
+    const parsed = parseConfig({
+      PRIVATE_KEY: '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+    });
+    expect(parsed.privateKey).toBe('1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef');
+  });
+
+  it('accepts uppercase hex characters', () => {
+    const parsed = parseConfig({
+      PRIVATE_KEY: '0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF',
+    });
+    expect(parsed.privateKey).toBe('0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF');
+  });
+
+  it('accepts undefined private key (optional)', () => {
+    const parsed = parseConfig({});
+    expect(parsed.privateKey).toBeUndefined();
+  });
+  
+  it('treats empty string as undefined (optional)', () => {
+    // Empty string is coerced to undefined by zod .optional()
+    const parsed = parseConfig({
+      PRIVATE_KEY: '',
+    });
+    expect(parsed.privateKey).toBeUndefined();
+  });
+
+  it('rejects private key with wrong length', () => {
+    expect(() =>
+      parseConfig({
+        PRIVATE_KEY: '0x1234',
+      })
+    ).toThrow('PRIVATE_KEY must be 64 hexadecimal characters');
+  });
+
+  it('rejects private key with non-hex characters', () => {
+    expect(() =>
+      parseConfig({
+        PRIVATE_KEY: '0xg234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      })
+    ).toThrow('PRIVATE_KEY must be 64 hexadecimal characters');
+  });
+});
+
+describe('Secret source configuration (Audit Finding A-001)', () => {
+  it('defaults to env source', () => {
+    const parsed = parseConfig({});
+    expect(parsed.secretSource).toBe('env');
+  });
+
+  it('accepts encrypted source', () => {
+    const parsed = parseConfig({
+      SECRET_SOURCE: 'encrypted',
+    });
+    expect(parsed.secretSource).toBe('encrypted');
+  });
+
+  it('accepts aws source', () => {
+    const parsed = parseConfig({
+      SECRET_SOURCE: 'aws',
+    });
+    expect(parsed.secretSource).toBe('aws');
+  });
+
+  it('accepts vault source', () => {
+    const parsed = parseConfig({
+      SECRET_SOURCE: 'vault',
+    });
+    expect(parsed.secretSource).toBe('vault');
+  });
+
+  it('accepts azure source', () => {
+    const parsed = parseConfig({
+      SECRET_SOURCE: 'azure',
+    });
+    expect(parsed.secretSource).toBe('azure');
+  });
+
+  it('rejects invalid source', () => {
+    expect(() =>
+      parseConfig({
+        SECRET_SOURCE: 'invalid',
+      })
+    ).toThrow('Invalid configuration');
+  });
+});
