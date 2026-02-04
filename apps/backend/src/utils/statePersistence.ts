@@ -1,11 +1,19 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { z } from 'zod';
 import { logger } from './logger';
 
 /**
  * State persistence utility for storing critical runtime state to disk
  * Used for state that must survive process restarts (e.g., kill switch)
  */
+
+// Zod schema for runtime validation of kill switch state
+const KillSwitchStateSchema = z.object({
+  killed: z.boolean(),
+  timestamp: z.number().finite(),
+  reason: z.string().optional(),
+});
 
 export interface KillSwitchState {
   killed: boolean;
@@ -60,12 +68,49 @@ export async function saveKillSwitchState(state: KillSwitchState): Promise<void>
 export async function loadKillSwitchState(): Promise<KillSwitchState | null> {
   try {
     const data = await fs.readFile(KILL_SWITCH_FILE, 'utf-8');
-    const state = JSON.parse(data) as KillSwitchState;
+    const rawState = JSON.parse(data);
+    
+    // Validate structure with Zod
+    const parseResult = KillSwitchStateSchema.safeParse(rawState);
+    if (!parseResult.success) {
+      logger.error('Kill switch state file has invalid structure', {
+        errors: parseResult.error.errors,
+        file: KILL_SWITCH_FILE,
+      });
+      throw new Error('Invalid kill switch state structure: ' + parseResult.error.message);
+    }
+    
+    const state = parseResult.data;
+    
+    // Validate and calculate age
+    const rawTimestamp = state.timestamp;
+    let age: number;
+    
+    if (typeof rawTimestamp === 'number' && Number.isFinite(rawTimestamp)) {
+      const now = Date.now();
+      const diff = now - rawTimestamp;
+      
+      if (diff < 0) {
+        logger.warn('Kill switch state timestamp is in the future', {
+          timestamp: rawTimestamp,
+          now,
+          diff,
+        });
+        age = 0;
+      } else {
+        age = diff;
+      }
+    } else {
+      logger.warn('Kill switch state has invalid timestamp', {
+        rawTimestamp,
+      });
+      age = 0;
+    }
     
     logger.info('Kill switch state loaded', {
       killed: state.killed,
       timestamp: state.timestamp,
-      age: Date.now() - state.timestamp,
+      age,
     });
     
     return state;

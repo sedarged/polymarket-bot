@@ -23,9 +23,9 @@ We will persist the kill switch state to disk using a file-based approach:
    - `reason?: string` - Optional reason for activation
 3. **Persistence Strategy:**
    - Save state asynchronously when kill switch is activated
-   - Save state asynchronously when kill switch is reset
-   - Load state synchronously during RiskManager initialization
-   - Delete state file when kill switch is reset
+   - Delete state file asynchronously when kill switch is reset
+   - Load state asynchronously via `restoreState()` method called after RiskManager initialization
+   - Validate state structure using Zod schema on load
 
 4. **Startup Behavior:**
    - Load kill switch state from disk before enabling trading
@@ -103,6 +103,8 @@ rm apps/backend/.state/kill-switch.json
 # 3. Restart the server
 npm run dev
 ```
+
+**Note:** The state file is validated using Zod schema on load. If you manually edit the file, ensure it matches the expected structure: `{"killed": boolean, "timestamp": number, "reason": string (optional)}`. Invalid structure will cause the kill switch to activate (fail-closed behavior).
 
 ## Future Considerations
 

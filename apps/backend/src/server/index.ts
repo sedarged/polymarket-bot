@@ -334,7 +334,7 @@ export async function startServer(): Promise<http.Server> {
     logger.error('Failed to restore kill switch state', {
       error: error instanceof Error ? error.message : String(error),
     });
-    logger.warn('WARNING: Kill switch state restoration failed - bot will start with trading ENABLED. Verify system state manually before proceeding.');
+    logger.warn('WARNING: Kill switch state restoration failed - kill switch state UNKNOWN (default is kill switch ACTIVE due to fail-closed behavior). Manually verify state before proceeding.');
   }
   
   // Initialize trading client if live trading is enabled

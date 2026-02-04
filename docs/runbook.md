@@ -404,7 +404,11 @@ curl -X POST http://localhost:3000/kill-switch
 - Format: JSON with `killed`, `timestamp`, and optional `reason` fields
 - The `.state/` directory is automatically created on first use
 - This directory is excluded from git via `.gitignore`
-- If the file doesn't exist or contains `killed: false`, trading will be enabled on startup
+- State file behavior on startup:
+  - If the file doesn't exist, trading is enabled on startup.
+  - If the file exists with `killed: false`, trading is enabled on startup.
+  - If the file exists with `killed: true`, trading remains disabled on startup.
+- **Validation:** State file structure is validated using Zod schema. Invalid structure triggers fail-closed behavior (kill switch active).
 
 ## Incident Response
 ### WebSocket Disconnects

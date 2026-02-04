@@ -18,7 +18,11 @@ describe('State Persistence', () => {
     try {
       await fs.rm(TEST_STATE_DIR, { recursive: true });
     } catch (error) {
-      // Ignore if directory doesn't exist
+      // Log only non-ENOENT errors for debugging
+      const err = error as NodeJS.ErrnoException;
+      if (err.code !== 'ENOENT') {
+        console.debug('Test cleanup beforeEach failed:', err.message);
+      }
     }
   });
 
@@ -26,7 +30,11 @@ describe('State Persistence', () => {
     try {
       await fs.rm(TEST_STATE_DIR, { recursive: true });
     } catch (error) {
-      // Ignore if directory doesn't exist
+      // Log only non-ENOENT errors for debugging
+      const err = error as NodeJS.ErrnoException;
+      if (err.code !== 'ENOENT') {
+        console.debug('Test cleanup afterEach failed:', err.message);
+      }
     }
   });
 
