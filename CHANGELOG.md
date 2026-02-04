@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/sedarged/polymarket-bot/compare/v1.8.0...v1.9.0) (2026-02-04)
+
+
+### Features
+
+* add order parameter input validation (A-015) ([bd8b844](https://github.com/sedarged/polymarket-bot/commit/bd8b844584b14c0fc5184f6ffc31e9d29e89943b))
+
+
+### Bug Fixes
+
+* clarify test names and remove unused import ([0295de2](https://github.com/sedarged/polymarket-bot/commit/0295de23eb41f1f3ac23ee785c68e63f67034df3))
+
 ## [1.8.0](https://github.com/sedarged/polymarket-bot/compare/v1.7.0...v1.8.0) (2026-02-04)
 
 
