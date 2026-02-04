@@ -407,12 +407,23 @@ export async function startServer(): Promise<http.Server> {
   
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {
-    tradingClient.initialize().catch((error) => {
-      logger.error('Failed to initialize trading client', {
-        error: error instanceof Error ? error.message : String(error),
+    tradingClient.initialize()
+      .then(() => {
+        // Start periodic reconciliation after successful initialization (Gap RE-001)
+        if (tradingClient.isInitialized()) {
+          tradingClient.startPeriodicReconciliation();
+          logger.info('Periodic reconciliation started', {
+            intervalSeconds: config.reconciliationIntervalSeconds,
+            gap: 'RE-001',
+          });
+        }
+      })
+      .catch((error) => {
+        logger.error('Failed to initialize trading client', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        logger.warn('Server will continue without trading capabilities');
       });
-      logger.warn('Server will continue without trading capabilities');
-    });
   }
   
   server.listen(config.port, () => {
@@ -423,6 +434,18 @@ export async function startServer(): Promise<http.Server> {
   const shutdown = () => {
     logger.info('Shutting down server...');
     marketFeedService.stop();
+    
+    // Stop periodic reconciliation and clean up (Gap RE-001)
+    if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+      tradingClient.stopPeriodicReconciliation();
+      try {
+        tradingClient.destroy();
+      } catch (error) {
+        logger.error('Failed to destroy trading client during shutdown', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
     
     // Cancel all orders before shutdown if trading is enabled
     if (isLiveTradingEnabled() && tradingClient.isInitialized()) {

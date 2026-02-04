@@ -353,9 +353,104 @@ All changes are backward compatible. Existing code works without modification.
 
 ---
 
+### 4. Periodic Reconciliation ✅
+
+**Files**: 
+- `apps/backend/src/clients/tradingClient.ts`
+- `apps/backend/src/server/index.ts`
+- `apps/backend/src/config/index.ts`
+
+**Features**:
+- Scheduled periodic state reconciliation (default: 5 minutes)
+- Missing/orphan order detection (Gap RE-002)
+- Balance drift detection (Gap RE-003)
+- Position drift detection (Gap RE-003)
+- Configurable interval via `RECONCILIATION_INTERVAL_SECONDS` (60-3600s)
+- Graceful start/stop during server lifecycle
+- Error handling that doesn't stop the periodic timer
+
+**Usage**:
+```typescript
+// Configuration (.env)
+RECONCILIATION_INTERVAL_SECONDS=300  # 5 minutes (default)
+
+// Automatically started on server initialization
+// No manual intervention needed
+
+// The reconciliation:
+// 1. Fetches current state from exchange
+// 2. Compares with local state
+// 3. Logs discrepancies with gap references
+// 4. Updates local state
+```
+
+**What It Detects**:
+```typescript
+// Missing orders (Gap RE-002)
+// Orders in local state but not on exchange
+logger.error('Reconciliation: detected missing orders on exchange', {
+  count: 2,
+  orderIds: ['order-1', 'order-2'],
+  gap: 'RE-002'
+});
+
+// Orphaned orders (Gap RE-002)
+// Orders on exchange but not in local state
+logger.warn('Reconciliation: detected orphaned orders on exchange', {
+  count: 1,
+  orderIds: ['order-3'],
+  gap: 'RE-002'
+});
+
+// Balance drift (Gap RE-003)
+// Significant balance changes (>1% or >$10)
+logger.warn('Reconciliation: detected balance drift', {
+  currency: 'USDC',
+  previous: '1000.00',
+  current: '850.00',
+  drift: '150.00',
+  driftPercent: '15.00%',
+  gap: 'RE-003'
+});
+
+// Position drift (Gap RE-003)
+// Position size changes
+logger.info('Reconciliation: position size changed', {
+  tokenId: '0x...',
+  previousSize: '100',
+  currentSize: '95',
+  drift: '5.0000',
+  gap: 'RE-003'
+});
+```
+
+**Benefits**:
+- **Prevents state drift**: Catches discrepancies before they compound
+- **Detects missed events**: Identifies orders/fills we didn't receive via WebSocket
+- **Operational visibility**: Provides clear logging of state mismatches
+- **Configurable**: Can be tuned based on trading frequency
+- **Non-disruptive**: Runs in background without blocking trading
+- **Automatic recovery**: Resynchronizes state without manual intervention
+
+**Configuration**:
+- Default interval: 300 seconds (5 minutes)
+- Minimum interval: 60 seconds (1 minute)
+- Maximum interval: 3600 seconds (1 hour)
+- Recommended for production: 300-600 seconds
+
+**Addresses Gap Analysis Findings**:
+- **RE-001 (CRITICAL)**: No periodic reconciliation
+- **RE-002 (HIGH)**: No missing order detection
+- **RE-003 (HIGH)**: No drift detection
+
+**Tests**: `apps/backend/tests/periodicReconciliation.test.ts` (12 tests, all passing)
+
+---
+
 ## References
 
 - [Error Taxonomy](../docs/error-taxonomy.md)
 - [Runbook](../docs/runbook.md)
 - [Common Pitfalls](../docs/ai/common-pitfalls.md)
+- [Gap Analysis](../REPORTS/GAP_ANALYSIS.md) - RE-001, RE-002, RE-003
 - Issue #31: [Task] Reliability and SRE Infrastructure Improvements
