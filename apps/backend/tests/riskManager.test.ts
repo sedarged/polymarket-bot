@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RiskManager } from '../src/trading/riskManager';
 import { Order, Position } from '@polymarket/shared';
+import { loadKillSwitchState } from '../src/utils/statePersistence';
 
 describe('RiskManager', () => {
   let riskManager: RiskManager;
@@ -265,11 +266,17 @@ describe('RiskManager', () => {
         errorRateWindow: 10,
       });
 
-      // Activate kill switch
+      // Activate kill switch with reason
       persistentManager.kill('test persistence');
 
       // Wait for async save to complete
       await persistentManager.waitForPersistence();
+
+      // Verify state was saved to disk
+      const savedState = await loadKillSwitchState();
+      expect(savedState).not.toBeNull();
+      expect(savedState!.killed).toBe(true);
+      expect(savedState!.reason).toBe('test persistence');
 
       // Create new risk manager instance and restore state
       const restoredManager = new RiskManager({

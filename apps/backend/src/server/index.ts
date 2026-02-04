@@ -331,10 +331,10 @@ export async function startServer(): Promise<http.Server> {
   try {
     await riskManager.restoreState();
   } catch (error) {
-    logger.error('Failed to restore kill switch state - continuing with default (not killed)', {
+    logger.error('Failed to restore kill switch state', {
       error: error instanceof Error ? error.message : String(error),
     });
-    logger.warn('Kill switch state restoration failed - bot will start in non-killed state');
+    logger.warn('WARNING: Kill switch state restoration failed - bot will start with trading ENABLED. Verify system state manually before proceeding.');
   }
   
   // Initialize trading client if live trading is enabled
