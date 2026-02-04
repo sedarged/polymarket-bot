@@ -46,6 +46,8 @@ export class MarketFeedClient extends EventEmitter {
   private cache: OrderbookCache;
   private clobClient: ClobClient;
   private tokenIds: string[];
+  // Track subscription state (currently set but not read - reserved for future use)
+  // @ts-expect-error - Variable reserved for future use
   private isSubscribed: boolean = false;
   private resyncInProgress: Set<string> = new Set();
 

@@ -25,5 +25,8 @@
     "markets",
     "typescript"
   ],
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "prom-client": "^15.1.3"
+  }
 }

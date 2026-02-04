@@ -8,6 +8,7 @@ import { tradingClient } from '../clients/tradingClient';
 import { isLiveTradingEnabled } from '../utils/liveTrading';
 import { PaperTradingEngine } from '../trading/paperTradingEngine';
 import { RiskManager } from '../trading/riskManager';
+import { getMetrics, getContentType } from '../utils/metrics';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -143,30 +144,27 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Metrics endpoint for monitoring
+    // Metrics endpoint for monitoring (Prometheus format)
     if (method === 'GET' && url === '/metrics') {
-      const cbMetrics = marketFeedService.getCircuitBreakerMetrics();
-      const metrics = {
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        memory: {
-          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
-        },
-        trading: {
-          liveTrading: isLiveTradingEnabled(),
-          initialized: tradingClient.isInitialized(),
-        },
-        marketFeed: {
-          connected: marketFeedService.isConnected(),
-          cachedOrderbooks: marketFeedService.getAllOrderbooks().size,
-          tokenIds: config.tokenIds.length,
-        },
-        circuitBreakers: cbMetrics ? [cbMetrics] : [],
-      };
-      respondJson(res, 200, metrics, req);
-      logger.info('Metrics retrieved');
+      try {
+        const metricsOutput = await getMetrics();
+        const headers: Record<string, string | number> = {
+          'Content-Type': getContentType(),
+          'Content-Length': Buffer.byteLength(metricsOutput),
+        };
+        
+        // Add CORS headers
+        Object.assign(headers, getCorsHeaders(req));
+        
+        res.writeHead(200, headers);
+        res.end(metricsOutput);
+        logger.debug('Prometheus metrics retrieved');
+      } catch (error) {
+        logger.error('Failed to get metrics', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        respondJson(res, 500, { error: 'Failed to get metrics' }, req);
+      }
       return;
     }
 
