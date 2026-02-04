@@ -2,7 +2,8 @@ import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 
 export interface PaperTradingEngineConfig {
-  slippage: number;
+  slippage: number; // Base slippage for small orders
+  maxSlippage: number; // Maximum slippage for large orders
   feeRate: number;
 }
 
@@ -27,6 +28,7 @@ export class PaperTradingEngine {
   constructor(config?: Partial<PaperTradingEngineConfig>, initialBalance = 10000) {
     this.config = {
       slippage: config?.slippage ?? 0.01,
+      maxSlippage: config?.maxSlippage ?? 0.05,
       feeRate: config?.feeRate ?? 0.002,
     };
 
@@ -41,6 +43,7 @@ export class PaperTradingEngine {
 
     logger.info('Paper trading engine initialized', {
       slippage: this.config.slippage,
+      maxSlippage: this.config.maxSlippage,
       feeRate: this.config.feeRate,
       initialBalance,
     });
@@ -96,14 +99,20 @@ export class PaperTradingEngine {
     if (order.side === 'BUY') {
       // Buy order crosses if our price >= best ask
       if (bestAsk !== null && orderPrice >= bestAsk) {
+        // Calculate size-based slippage
+        const availableLiquidity = orderbook.asks.length > 0 ? Number(orderbook.asks[0].size) : 0;
+        const slippage = this.calculateSlippage(remainingSize, availableLiquidity);
         // Fill at best ask + slippage
-        fillPrice = bestAsk * (1 + this.config.slippage);
+        fillPrice = bestAsk * (1 + slippage);
       }
     } else {
       // Sell order crosses if our price <= best bid
       if (bestBid !== null && orderPrice <= bestBid) {
+        // Calculate size-based slippage
+        const availableLiquidity = orderbook.bids.length > 0 ? Number(orderbook.bids[0].size) : 0;
+        const slippage = this.calculateSlippage(remainingSize, availableLiquidity);
         // Fill at best bid - slippage
-        fillPrice = bestBid * (1 - this.config.slippage);
+        fillPrice = bestBid * (1 - slippage);
       }
     }
 
@@ -267,6 +276,33 @@ export class PaperTradingEngine {
    */
   getTotalPnl(orderbooks: Map<string, Orderbook>): number {
     return this.state.realizedPnl + this.getUnrealizedPnl(orderbooks);
+  }
+
+  /**
+   * Calculate slippage based on order size vs available liquidity
+   * Slippage scales from base (for small orders) to max (when order size equals liquidity)
+   * 
+   * Formula: slippage = baseSlippage + (maxSlippage - baseSlippage) * min(1, orderSize / availableLiquidity)
+   * 
+   * Examples:
+   * - Small order (10% of liquidity): ~base slippage
+   * - Medium order (50% of liquidity): ~halfway between base and max
+   * - Large order (100%+ of liquidity): max slippage
+   */
+  private calculateSlippage(orderSize: number, availableLiquidity: number): number {
+    // If no liquidity available, use max slippage (worst case)
+    if (availableLiquidity <= 0) {
+      return this.config.maxSlippage;
+    }
+
+    // Calculate the ratio of order size to available liquidity
+    const sizeRatio = Math.min(1, orderSize / availableLiquidity);
+    
+    // Scale slippage linearly from base to max based on size ratio
+    const slippage = this.config.slippage + 
+      (this.config.maxSlippage - this.config.slippage) * sizeRatio;
+    
+    return slippage;
   }
 
   /**
