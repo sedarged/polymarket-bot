@@ -9,6 +9,7 @@ import { getPrivateKey, loadSecretsConfig } from '../secrets';
 import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrdersGauge } from '../utils/metrics';
 import { validateOrderWithConstraintsOrThrow, MarketConstraints, TickSize } from '../utils/orderValidation';
 import { ClobClient as ClobRestClient } from './clob';
+import { retry } from '../utils/retry';
 
 /**
  * Trading Client for Live Order Placement with Partial Fill Tracking
@@ -87,6 +88,8 @@ export class TradingClient {
   private marketConstraintsCache: Map<string, MarketConstraints> = new Map(); // Cache for market constraints (Issue #75)
   private reconciliationInterval: NodeJS.Timeout | null = null; // Periodic reconciliation timer (Gap RE-001)
   private lastReconciliationTime: number = 0; // Track last reconciliation timestamp
+  private lastBalanceFetchTime: number = 0; // Track when balances were last successfully fetched (A-011)
+  private readonly BALANCE_STALENESS_THRESHOLD_MS = 60000; // 60 seconds - balances older than this are considered stale
 
   constructor() {
     this.clobRestClient = new ClobRestClient();
@@ -203,22 +206,52 @@ export class TradingClient {
         // Don't set reconciliationSucceeded = true on error
       }
       
-      // Fetch balances (if supported)
+      // Fetch balances with retry logic (Audit Finding A-011)
+      // Balance fetch failures are escalated as they represent critical state for trading decisions
       try {
-        // Note: The actual API might differ - this is a placeholder
-        // @ts-ignore - API may not be exposed in types
-        const balancesData = await this.client.getBalanceAllowance?.();
-        if (balancesData) {
-          this.state.balances = [{
-            currency: 'USDC',
-            available: balancesData.balance || '0',
-            total: balancesData.balance || '0',
-          }];
-        }
+        await retry(
+          async () => {
+            // Note: The actual API might differ - this is a placeholder
+            // @ts-ignore - API may not be exposed in types
+            const balancesData = await this.client.getBalanceAllowance?.();
+            
+            if (!balancesData) {
+              throw new Error('Balance API returned no data');
+            }
+            
+            this.state.balances = [{
+              currency: 'USDC',
+              available: balancesData.balance || '0',
+              total: balancesData.balance || '0',
+            }];
+            
+            // Update last successful fetch timestamp
+            this.lastBalanceFetchTime = Date.now();
+            
+            logger.info('Balances fetched successfully', {
+              balance: balancesData.balance,
+              timestamp: this.lastBalanceFetchTime,
+            });
+          },
+          {
+            attempts: 3,
+            delay: 1000,
+            backoffMultiplier: 2,
+            jitter: 0.1,
+            timeout: 5000, // 5 second timeout per attempt
+          }
+        );
       } catch (err) {
-        logger.warn('Could not fetch balances', {
-          error: err instanceof Error ? err.message : String(err),
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        logger.error('Failed to fetch balances after retries - trading will be blocked', {
+          error: errorMessage,
+          attempts: 3,
         });
+        // Clear balances to ensure stale data isn't used
+        this.state.balances = [];
+        this.lastBalanceFetchTime = 0;
+        // Re-throw to prevent trading with unknown balances
+        throw new Error(`Balance fetch failed: ${errorMessage}`);
       }
 
       // Calculate positions from orders and fills
@@ -457,6 +490,38 @@ export class TradingClient {
   }
 
   /**
+   * Validate that balance data is available and not stale (Audit Finding A-011)
+   * 
+   * Ensures we have fresh balance data before allowing trading operations.
+   * Throws error if balances are missing or too old, preventing trading with unknown balance state.
+   * 
+   * @throws Error if balances are unavailable or stale
+   */
+  private validateBalanceAvailability(): void {
+    // Check if we have any balance data
+    if (this.state.balances.length === 0) {
+      throw new Error('Balance data unavailable - trading blocked for safety');
+    }
+
+    // Check if balance data is stale
+    const now = Date.now();
+    const balanceAge = now - this.lastBalanceFetchTime;
+    
+    if (balanceAge > this.BALANCE_STALENESS_THRESHOLD_MS) {
+      throw new Error(
+        `Balance data is stale (${Math.round(balanceAge / 1000)}s old, threshold: ${
+          this.BALANCE_STALENESS_THRESHOLD_MS / 1000
+        }s) - trading blocked for safety`
+      );
+    }
+    
+    logger.debug('Balance validation passed', {
+      balanceAge: Math.round(balanceAge / 1000),
+      threshold: this.BALANCE_STALENESS_THRESHOLD_MS / 1000,
+    });
+  }
+
+  /**
    * Create a new order with idempotency via clientOrderId
    * Uses UUID v4 for cryptographic randomness (Audit Finding A-006)
    * 
@@ -469,6 +534,7 @@ export class TradingClient {
    * - Basic validation (Audit Finding A-015)
    * - Tick size alignment (Issue #75)
    * - Minimum order size (Issue #75)
+   * - Balance availability and staleness (Audit Finding A-011)
    */
   async createOrder(
     tokenId: string,
@@ -482,6 +548,10 @@ export class TradingClient {
     if (!this.client) {
       throw new Error('Trading client not initialized');
     }
+
+    // Validate balance availability before proceeding (Audit Finding A-011)
+    // This ensures we have fresh balance data and prevents trading with unknown balance state
+    this.validateBalanceAvailability();
 
     // Fetch market constraints for validation (Issue #75)
     const constraints = await this.getMarketConstraints(tokenId);
