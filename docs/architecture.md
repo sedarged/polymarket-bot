@@ -516,6 +516,7 @@ type MarketMessage = {
 - Event-driven message handling
 - Integration with OrderbookCache
 - Automatic resync on reconnect
+- **Message deduplication (A-010):** LRU cache prevents duplicate processing
 
 **Usage:**
 ```typescript

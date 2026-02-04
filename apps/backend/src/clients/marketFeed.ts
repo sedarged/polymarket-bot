@@ -8,6 +8,7 @@ import {
   WSMarketMessage,
   WSOrderbookSnapshot,
   WSPriceChange,
+  WSLastTradePrice,
   Orderbook,
 } from '@polymarket/shared';
 
@@ -51,6 +52,9 @@ export class MarketFeedClient extends EventEmitter {
   private isSubscribed: boolean = false;
   // Store active resync promises per token to prevent concurrent resyncs (A-007)
   private resyncPromises: Map<string, Promise<void>> = new Map();
+  // Message deduplication (A-010): Track processed message IDs using LRU-style Set
+  private processedMessageIds: Set<string> = new Set();
+  private readonly MESSAGE_ID_CACHE_SIZE = 10000;
 
   constructor(options: MarketFeedOptions) {
     super();
@@ -154,6 +158,26 @@ export class MarketFeedClient extends EventEmitter {
 
   private handleMessage(message: WSMarketMessage): void {
     try {
+      // A-010: Deduplicate messages using unique ID
+      // Generate a unique message ID based on event type, asset, and timestamp
+      const messageId = this.generateMessageId(message);
+      
+      if (this.processedMessageIds.has(messageId)) {
+        logger.debug('Duplicate message ignored', { messageId, event_type: message.event_type });
+        return;
+      }
+      
+      // Implement LRU behavior: Evict oldest if at capacity before adding new entry
+      if (this.processedMessageIds.size >= this.MESSAGE_ID_CACHE_SIZE) {
+        const firstId = this.processedMessageIds.values().next().value;
+        if (firstId !== undefined) {
+          this.processedMessageIds.delete(firstId);
+        }
+      }
+      
+      // Add to processed set
+      this.processedMessageIds.add(messageId);
+      
       switch (message.event_type) {
         case 'book':
           this.handleSnapshot(message as WSOrderbookSnapshot);
@@ -176,6 +200,35 @@ export class MarketFeedClient extends EventEmitter {
         error: error instanceof Error ? error.message : String(error),
         message,
       });
+    }
+  }
+
+  /**
+   * Generate a unique message ID for deduplication (A-010)
+   * Uses event type, asset ID, timestamp, and relevant data to create unique identifier
+   */
+  private generateMessageId(message: WSMarketMessage): string {
+    const baseId = `${message.event_type}-${message.asset_id}-${message.timestamp}`;
+    
+    // Add specific data based on message type to ensure uniqueness
+    switch (message.event_type) {
+      case 'price_change': {
+        const priceChange = message as WSPriceChange;
+        return `${baseId}-${priceChange.side}-${priceChange.price}-${priceChange.size}`;
+      }
+      case 'last_trade_price': {
+        const lastTrade = message as WSLastTradePrice;
+        return `${baseId}-${lastTrade.price}`;
+      }
+      case 'book': {
+        // For snapshots, include hash of bid/ask data to detect actual changes
+        const snapshot = message as WSOrderbookSnapshot;
+        const bidsHash = snapshot.bids.slice(0, 3).map(b => `${b.price}:${b.size}`).join(',');
+        const asksHash = snapshot.asks.slice(0, 3).map(a => `${a.price}:${a.size}`).join(',');
+        return `${baseId}-${bidsHash}-${asksHash}`;
+      }
+      default:
+        return baseId;
     }
   }
 
