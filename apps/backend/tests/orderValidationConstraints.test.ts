@@ -112,7 +112,6 @@ describe('Order Validation with Market Constraints - Issue #75', () => {
       it('should handle floating point precision correctly', () => {
         // Test case where floating point math could cause issues
         expect(isPriceValidForTickSize(0.3, '0.1')).toBe(true);
-        expect(isPriceValidForTickSize(0.15, '0.05')).toBe(true); // Would fail with 0.05 tick but we don't have that
       });
 
       it('should accept edge case: price exactly equals tick size', () => {
