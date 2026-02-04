@@ -7,7 +7,7 @@ import { initializeDatabase, closeDatabase } from '../utils/database';
  * Audit trail service for storing and querying order/fill history
  */
 export class AuditTrail {
-  private db: Database.Database;
+  protected db: Database.Database;
 
   constructor(dbPath?: string) {
     this.db = initializeDatabase({ path: dbPath });
