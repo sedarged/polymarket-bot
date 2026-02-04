@@ -29,7 +29,7 @@ We have implemented message deduplication in the `MarketFeedClient` using an LRU
 2. **LRU Cache**:
    - Uses a `Set<string>` to track processed message IDs
    - Maximum size: 10,000 messages (configurable via `MESSAGE_ID_CACHE_SIZE`)
-   - When cache exceeds size limit, oldest entries are removed (FIFO behavior mimics LRU)
+   - When cache reaches size limit, oldest entries are removed (FIFO behavior mimics LRU)
    - Cache persists across WebSocket reconnections within the same process
 
 3. **Deduplication Logic**:
