@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0](https://github.com/sedarged/polymarket-bot/compare/v1.13.0...v1.14.0) (2026-02-04)
+
+
+### Features
+
+* Surface balance fetch errors and block trading on failure (A-011) ([ed65c6a](https://github.com/sedarged/polymarket-bot/commit/ed65c6a3d68682d8deef3efd24eccdddcdd1125c))
+
+
+### Bug Fixes
+
+* Add balance fetch mocks to existing tests ([a9f28f6](https://github.com/sedarged/polymarket-bot/commit/a9f28f66bbaad1517747243c50b5871bee03cd9f))
+* Address code review feedback - improve test cleanup and assertions ([72066be](https://github.com/sedarged/polymarket-bot/commit/72066be77bb605b32fce2f820d624743cb4b60e9))
+* Address PR review feedback - improve periodic reconciliation resilience and staleness threshold ([1766766](https://github.com/sedarged/polymarket-bot/commit/1766766f2755145fd096d8f3e6addd7fb3bec877))
+
 ## [1.13.0](https://github.com/sedarged/polymarket-bot/compare/v1.12.0...v1.13.0) (2026-02-04)
 
 
