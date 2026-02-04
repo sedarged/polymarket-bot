@@ -9,6 +9,7 @@ The paper trading engine provides a deterministic simulator for testing trading 
 ### Features
 
 - **Deterministic fills**: Orders are filled based on crossing the best bid/ask prices from the orderbook
+- **Partial fill simulation**: Configurable realistic partial fills to match real CLOB behavior
 - **Size-based slippage**: Simulates realistic market impact that scales with order size relative to available liquidity
 - **Fee tracking**: Tracks trading fees for realistic PnL calculation
 - **Position tracking**: Maintains long/short positions with weighted average cost basis
@@ -23,6 +24,11 @@ Add these environment variables to your `.env` file:
 PAPER_TRADING_SLIPPAGE=0.01      # Base slippage (1%) for small orders
 PAPER_TRADING_MAX_SLIPPAGE=0.05  # Maximum slippage (5%) for large orders
 PAPER_TRADING_FEE_RATE=0.002     # 0.2% fee per trade
+
+# Partial Fill Configuration (for realistic CLOB behavior simulation)
+PAPER_TRADING_PARTIAL_FILL_RATE=0.0    # Probability of partial fill (0-1), 0 = always full fill
+PAPER_TRADING_MIN_FILL_RATIO=0.1       # Minimum fill ratio for partial fills (10%)
+PAPER_TRADING_MAX_FILL_RATIO=0.9       # Maximum fill ratio for partial fills (90%)
 ```
 
 #### Slippage Calculation
@@ -48,6 +54,38 @@ This approach ensures:
 - Orders larger than available liquidity are capped at maximum slippage
 
 **Note**: This addresses audit finding A-020 by making paper trading simulation more realistic, especially for larger orders.
+
+#### Partial Fill Simulation
+
+The paper trading engine supports **realistic partial fill simulation** to better match real CLOB (Central Limit Order Book) behavior:
+
+- **Configurable probability**: Set `PAPER_TRADING_PARTIAL_FILL_RATE` to control how often orders are partially filled
+  - `0.0` (default): Always fill orders completely (backwards compatible)
+  - `0.5`: 50% chance of partial fill vs full fill
+  - `1.0`: Always use partial fills
+  
+- **Fill size ranges**: When partial fill occurs, fill amount is random between min and max fill ratios
+  - Example: With `minFillRatio=0.3` and `maxFillRatio=0.7`, partial fills will be 30-70% of order size
+  
+- **Liquidity-aware**: Larger orders relative to available liquidity have higher chance of partial fill
+  - Small orders (10% of liquidity): Lower chance of partial fill
+  - Large orders (100%+ of liquidity): Higher chance of partial fill
+  
+- **Respects liquidity limits**: Partial fills never exceed available liquidity at best price
+
+**Example Configuration for Realistic Testing**:
+```env
+PAPER_TRADING_PARTIAL_FILL_RATE=0.3    # 30% of fills will be partial
+PAPER_TRADING_MIN_FILL_RATIO=0.2       # At least 20% filled
+PAPER_TRADING_MAX_FILL_RATIO=0.8       # At most 80% filled
+```
+
+**Why This Matters**: 
+- Real CLOB exchanges often fill orders partially due to limited liquidity at each price level
+- Testing with partial fills helps strategies handle realistic order lifecycle (OPEN → partial fill → partial fill → MATCHED)
+- Prevents over-optimization on unrealistic full-fill assumptions
+
+**Note**: This addresses audit finding A-019 by making paper trading simulation more realistic and matching actual CLOB behavior.
 
 ### Usage
 

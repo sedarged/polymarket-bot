@@ -527,21 +527,37 @@ describe('PaperTradingEngine', () => {
         10000
       );
       
-      const order = engine.createOrder('0xtoken123', 'SELL', '0.45', '50');
+      // Run multiple times to test probabilistic behavior
+      let hadPartialFill = false;
       
-      const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+      for (let i = 0; i < 10; i++) {
+        engine.reset(10000);
+        const order = engine.createOrder('0xtoken123', 'SELL', '0.45', '50');
+        
+        const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
+        
+        expect(filled).toBe(true);
+        
+        const fills = engine.getFills();
+        expect(fills).toHaveLength(1);
+        expect(fills[0].side).toBe('SELL');
+        
+        const fillSize = Number(fills[0].size);
+        
+        // Check if this was a partial fill
+        if (fillSize < 50) {
+          hadPartialFill = true;
+          // When partial, should be between 30% and 60% of 50
+          expect(fillSize).toBeGreaterThanOrEqual(15);
+          expect(fillSize).toBeLessThanOrEqual(30);
+        } else {
+          // Full fill is also possible due to probabilistic nature
+          expect(fillSize).toBe(50);
+        }
+      }
       
-      expect(filled).toBe(true);
-      
-      const fills = engine.getFills();
-      expect(fills).toHaveLength(1);
-      expect(fills[0].side).toBe('SELL');
-      
-      const fillSize = Number(fills[0].size);
-      // Should be partial: between 30% and 60% of 50
-      expect(fillSize).toBeGreaterThanOrEqual(15);
-      expect(fillSize).toBeLessThanOrEqual(30);
-      expect(fillSize).toBeLessThan(50);
+      // With high partial fill rate and multiple runs, we should see at least one partial
+      expect(hadPartialFill).toBe(true);
     });
 
     it('should have probabilistic partial fills with moderate partialFillRate', () => {
