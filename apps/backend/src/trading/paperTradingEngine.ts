@@ -1,6 +1,7 @@
 import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
+import { validateOrderParametersOrThrow } from '../utils/orderValidation';
 
 export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
@@ -64,19 +65,29 @@ export class PaperTradingEngine {
 
   /**
    * Create a new order (does not fill it immediately)
+   * Validates order parameters before creation (Audit Finding A-015)
    */
   createOrder(tokenId: string, side: 'BUY' | 'SELL', price: string, size: string): Order {
-    const orderId = `paper-${Date.now()}-${this.orderIdCounter++}`;
-    const order: Order = {
-      orderId,
+    // Validate order parameters (Audit Finding A-015)
+    // This prevents malformed orders from propagating through the system
+    const validated = validateOrderParametersOrThrow({
       tokenId,
       side,
       price,
       size,
+    });
+
+    const orderId = `paper-${Date.now()}-${this.orderIdCounter++}`;
+    const order: Order = {
+      orderId,
+      tokenId: validated.tokenId,
+      side: validated.side,
+      price: validated.price,
+      size: validated.size,
       status: 'OPEN',
       createdAt: Date.now(),
       filledSize: '0',
-      remainingSize: size,
+      remainingSize: validated.size,
     };
 
     this.state.orders.push(order);
@@ -84,10 +95,10 @@ export class PaperTradingEngine {
     // Record to audit trail if enabled
     if (this.auditTrail) {
       this.auditTrail.recordOrder(order);
-      this.auditTrail.recordOrderEvent(orderId, 'CREATED', `Order created: ${side} ${size} @ ${price}`);
+      this.auditTrail.recordOrderEvent(orderId, 'CREATED', `Order created: ${validated.side} ${validated.size} @ ${validated.price}`);
     }
     
-    logger.info('Paper order created', { orderId, tokenId, side, price, size });
+    logger.info('Paper order created', { orderId, tokenId: validated.tokenId, side: validated.side, price: validated.price, size: validated.size });
     return order;
   }
 
