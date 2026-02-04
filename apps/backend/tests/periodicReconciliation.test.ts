@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TradingClient } from '../src/clients/tradingClient';
 import { logger } from '../src/utils/logger';
 
@@ -45,6 +45,8 @@ describe('Periodic Reconciliation (Gap RE-001)', () => {
   });
 
   afterEach(() => {
+    // Ensure any running periodic reconciliation interval is cleaned up
+    client.stopPeriodicReconciliation();
     vi.restoreAllMocks();
     vi.useRealTimers();
   });
@@ -56,6 +58,9 @@ describe('Periodic Reconciliation (Gap RE-001)', () => {
 
       // Verify it started (no error thrown)
       expect(client.getLastReconciliationTime()).toBe(0); // Not run yet
+      
+      // Cleanup to prevent interval leakage
+      client.stopPeriodicReconciliation();
     });
 
     it('should not start if already running', () => {
@@ -64,6 +69,9 @@ describe('Periodic Reconciliation (Gap RE-001)', () => {
 
       // Should log a warning
       expect(logger.warn).toHaveBeenCalledWith('Periodic reconciliation already running');
+
+      // Cleanup to prevent interval leakage
+      client.stopPeriodicReconciliation();
     });
 
     it('should stop periodic reconciliation', () => {

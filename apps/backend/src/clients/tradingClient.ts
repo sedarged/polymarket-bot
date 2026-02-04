@@ -152,6 +152,7 @@ export class TradingClient {
       // Best-effort reconciliation of open orders using any available CLOB client API.
       // Some SDK versions expose `getOrders`, others may expose `getOpenOrders`.
       let remoteOrders: Order[] = [];
+      let reconciliationSucceeded = false;
       try {
         const clientAny = this.client as any;
 
@@ -168,12 +169,28 @@ export class TradingClient {
         }
 
         if (Array.isArray(openOrdersResponse)) {
-          // Cast to Order[] without assuming a specific shape; the shared type
-          // represents our internal view of an order, while the SDK may return
-          // a superset/subset of fields. We rely on downstream code handling
-          // only the fields it actually needs.
+          // Process each order through updateOrderState for proper field mapping and fill detection
           remoteOrders = openOrdersResponse as Order[];
-          this.state.orders = remoteOrders;
+          
+          // Track remote order IDs for comparison
+          const remoteOrderIds = new Set<string>();
+          
+          // Update or add each remote order using updateOrderState
+          for (const clobOrder of openOrdersResponse) {
+            this.updateOrderState(clobOrder);
+            const orderId = clobOrder.id || clobOrder.orderID;
+            if (orderId) {
+              remoteOrderIds.add(orderId);
+            }
+          }
+          
+          // Remove orders from local state that are no longer on the exchange
+          // Keep MATCHED and CANCELLED orders as they represent historical state
+          this.state.orders = this.state.orders.filter(order => 
+            remoteOrderIds.has(order.orderId) || order.status === 'MATCHED' || order.status === 'CANCELLED'
+          );
+          
+          reconciliationSucceeded = true;
         } else if (openOrdersResponse) {
           logger.warn('Unexpected open orders response shape during reconciliation', {
             type: typeof openOrdersResponse,
@@ -183,6 +200,7 @@ export class TradingClient {
         logger.warn('Failed to reconcile open orders from CLOB client', {
           error: err instanceof Error ? err.message : String(err),
         });
+        // Don't set reconciliationSucceeded = true on error
       }
       
       // Fetch balances (if supported)
@@ -207,7 +225,8 @@ export class TradingClient {
       this.recalculatePositions();
 
       // Detect and log discrepancies (Gap RE-002, RE-003)
-      if (previousOrderIds.size > 0 || previousBalances.length > 0) {
+      // Only run if reconciliation succeeded to avoid false positives from API failures
+      if (reconciliationSucceeded) {
         this.detectDiscrepancies(previousOrderIds, remoteOrders, previousBalances, previousPositions);
       }
 
@@ -282,6 +301,14 @@ export class TradingClient {
               gap: 'RE-003',
             });
           }
+        } else {
+          // Balance existed previously but is missing from current state
+          logger.warn('Reconciliation: detected removed balance', {
+            currency: prev.currency,
+            previous: prev.total,
+            current: null,
+            gap: 'RE-003',
+          });
         }
       }
     }
@@ -305,6 +332,13 @@ export class TradingClient {
               gap: 'RE-003',
             });
           }
+        } else {
+          // Position existed previously but is no longer present in current state
+          logger.warn('Reconciliation: position disappeared from current state', {
+            tokenId: prevPos.tokenId,
+            previousSize: prevPos.size,
+            gap: 'RE-003',
+          });
         }
       }
     }
