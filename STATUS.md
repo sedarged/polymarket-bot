@@ -23,7 +23,6 @@ To update this status:
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
-- [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
 - [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
@@ -71,6 +70,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
@@ -97,7 +97,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T13:42:18.577Z*
+*Last updated: 2026-02-04T15:13:28.020Z*
 
 <!-- STATUS_SYNC_END -->
 
