@@ -1,6 +1,6 @@
 {
   "name": "polymarket-bot",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Polymarket read-only starter - fetch markets and orderbooks",
   "private": true,
   "engines": {
