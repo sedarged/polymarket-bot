@@ -1,5 +1,13 @@
 # Order Parameter Validation Implementation
 
+## Important Note on Audit Finding Reference
+
+**This implementation addresses input validation for order parameters**, which was requested in GitHub Issue #131. However, there is a discrepancy: the issue references "Audit Finding A-015", but the actual A-015 in REPORTS/AUDIT.md is about "Cache Staleness" (orderbook cache TTL enforcement), not input validation.
+
+**Input validation is a proactive security measure** that prevents malformed orders from propagating through the system. While not explicitly listed as a separate audit finding, it addresses a critical security gap: lack of input validation at order ingress points.
+
+This should be tracked as a separate security improvement or assigned a new audit finding number for proper tracking.
+
 ## Overview
 
 This document describes the implementation of comprehensive input validation for order parameters, addressing the requirement to prevent malformed orders from propagating through the trading system.
