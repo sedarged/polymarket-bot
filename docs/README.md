@@ -33,6 +33,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Operations
 - [Runbook](./runbook.md) - Operational procedures for running the bot
 - [Observability & Monitoring](./observability.md) - Metrics, dashboards, and alerting
+- [Audit Trail](./audit-trail.md) - Order and fill history tracking for compliance
 - [Error Taxonomy](./error-taxonomy.md) - Error classification and handling strategies
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Paper Trading Guide](./paper-trading.md) - Safe testing without real money
