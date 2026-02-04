@@ -34,7 +34,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 | **A-007** | HIGH | Race Condition | `clients/marketFeed.ts` | Concurrent resync not prevented per token (L94-98) | Multiple REST calls for same token; data inconsistency | Use per-token lock/flag to prevent concurrent resyncs | Open |
 | **A-008** | HIGH | No Rate Limiting | `server/index.ts` | HTTP endpoints have no rate limiting | DoS attacks, API abuse | Add rate limiting middleware (express-rate-limit) | Open |
 | **A-009** | HIGH | Timeout Missing | `retry.ts` | Retry logic has no overall timeout cap | Infinite retries block operations | Add max total duration timeout to retry function | Open |
-| **A-010** | HIGH | Order Deduplication | `clients/websocket.ts`, `clients/marketFeed.ts` | No message deduplication on WebSocket reconnect | Duplicate order book updates, incorrect state | Add message sequence numbers and dedup logic | Open |
+| **A-010** | HIGH | Order Deduplication | `clients/websocket.ts`, `clients/marketFeed.ts` | No message deduplication on WebSocket reconnect | Duplicate order book updates, incorrect state | Add message sequence numbers and dedup logic | **RESOLVED** |
 | **A-011** | HIGH | Balance Reconciliation | `clients/tradingClient.ts` | Balance fetch silently fails with warning (L104-108) | Trading continues without balance validation | Throw error or retry balance fetch; don't ignore failure | Open |
 | **A-012** | MEDIUM | Error Swallowing | `server/index.ts` | Trading client init failure only logs warning (L286-291) | Server runs without trading capability; silent failure | Fail startup or enter degraded mode with clear status | Open |
 | **A-013** | MEDIUM | Undefined Order ID | `clients/tradingClient.ts` | Order mapping allows missing orderID (L281-284) | Orders tracked with empty IDs; can't cancel/reconcile | Require orderId; reject orders without valid ID | Open |
@@ -332,7 +332,7 @@ export async function retry<T>(
 
 ---
 
-#### A-010: HIGH - No WebSocket Message Deduplication
+#### A-010: HIGH - No WebSocket Message Deduplication ✅ RESOLVED
 **File:** `apps/backend/src/clients/websocket.ts`, `apps/backend/src/clients/marketFeed.ts`  
 **Evidence:** No sequence numbers or message IDs tracked
 
@@ -342,24 +342,26 @@ export async function retry<T>(
 - Phantom fills or orders
 - Data integrity issues
 
-**Fix:**
+**Resolution (2026-02-04):**
+Implemented message deduplication using LRU cache approach in `MarketFeedClient`:
+
 ```typescript
 // In marketFeed.ts
 private processedMessageIds = new Set<string>();
 private readonly MESSAGE_ID_CACHE_SIZE = 10000;
 
 private handleMessage(message: WSMarketMessage): void {
-  // Add message ID if available
-  const messageId = message.id || `${message.event_type}-${message.asset_id}-${message.timestamp}`;
+  // Generate unique message ID based on event data
+  const messageId = this.generateMessageId(message);
   
   if (this.processedMessageIds.has(messageId)) {
     logger.debug('Duplicate message ignored', { messageId });
-    return;
+    return; // Skip duplicate
   }
   
   this.processedMessageIds.add(messageId);
   
-  // Limit cache size (LRU-like)
+  // Implement LRU behavior
   if (this.processedMessageIds.size > this.MESSAGE_ID_CACHE_SIZE) {
     const firstId = this.processedMessageIds.values().next().value;
     this.processedMessageIds.delete(firstId);
@@ -367,9 +369,32 @@ private handleMessage(message: WSMarketMessage): void {
   
   // Process message...
 }
+
+private generateMessageId(message: WSMarketMessage): string {
+  // Unique ID includes event type, asset ID, timestamp, and data
+  // See ADR-0008 for full specification
+}
 ```
 
-**Recommendation Priority:** P1 - Critical for data integrity
+**Changes:**
+- ✅ Message deduplication implemented with LRU cache (10,000 message capacity)
+- ✅ Comprehensive tests added (`tests/websocket-deduplication.test.ts`)
+- ✅ ADR-0008 documents design decisions
+- ✅ Architecture documentation updated
+
+**Testing:**
+- ✅ Duplicate message rejection (11 test cases)
+- ✅ Reconnect scenarios with message replay
+- ✅ Rapid message replay (catchup)
+- ✅ LRU cache eviction behavior
+- ✅ Edge cases (concurrent duplicates, identical timestamps)
+
+**References:**
+- Implementation: `apps/backend/src/clients/marketFeed.ts`
+- Tests: `apps/backend/tests/websocket-deduplication.test.ts`
+- ADR: `docs/adr/0008-websocket-message-deduplication.md`
+
+**Recommendation Priority:** P1 - Critical for data integrity ✅ **COMPLETED**
 
 ---
 
