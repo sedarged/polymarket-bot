@@ -555,4 +555,294 @@ describe('Partial Fill Tracking (EE-001)', () => {
       expect(updatedOrder!.filledSize).toBe('0');
     });
   });
+
+  describe('Idempotency and Deduplication', () => {
+    it('should ignore duplicate fills with same fillId', () => {
+      const order = {
+        orderId: 'test-order-dup',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'OPEN' as const,
+        createdAt: Date.now(),
+        filledSize: '0',
+        remainingSize: '100',
+      };
+      
+      client._addTestOrder(order);
+
+      // First fill with fillId
+      client.handleFill({
+        orderId: 'test-order-dup',
+        fillId: 'fill-123',
+        price: '0.50',
+        size: '30',
+        timestamp: Date.now(),
+      });
+
+      const state1 = client.getState();
+      expect(state1.orders[0].filledSize).toBe('30');
+      expect(state1.fills).toHaveLength(1);
+
+      // Duplicate fill with same fillId (should be ignored)
+      client.handleFill({
+        orderId: 'test-order-dup',
+        fillId: 'fill-123',
+        price: '0.50',
+        size: '30',
+        timestamp: Date.now(),
+      });
+
+      const state2 = client.getState();
+      expect(state2.orders[0].filledSize).toBe('30'); // Still 30, not 60
+      expect(state2.fills).toHaveLength(1); // Still only 1 fill
+    });
+
+    it('should process fills without fillId (no deduplication)', () => {
+      const order = {
+        orderId: 'test-order-nodup',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'OPEN' as const,
+        createdAt: Date.now(),
+        filledSize: '0',
+        remainingSize: '100',
+      };
+      
+      client._addTestOrder(order);
+
+      // Fills without fillId
+      client.handleFill({
+        orderId: 'test-order-nodup',
+        price: '0.50',
+        size: '30',
+        timestamp: Date.now(),
+      });
+
+      client.handleFill({
+        orderId: 'test-order-nodup',
+        price: '0.50',
+        size: '20',
+        timestamp: Date.now(),
+      });
+
+      const state = client.getState();
+      expect(state.orders[0].filledSize).toBe('50'); // Both fills processed
+      expect(state.fills).toHaveLength(2);
+    });
+  });
+
+  describe('Overfill Protection', () => {
+    it('should cap fill size to remaining size', () => {
+      const order = {
+        orderId: 'test-overfill',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'OPEN' as const,
+        createdAt: Date.now(),
+        filledSize: '0',
+        remainingSize: '100',
+      };
+      
+      client._addTestOrder(order);
+
+      // Try to fill more than order size
+      client.handleFill({
+        orderId: 'test-overfill',
+        price: '0.50',
+        size: '150', // Exceeds order size
+        timestamp: Date.now(),
+      });
+
+      const state = client.getState();
+      expect(state.orders[0].filledSize).toBe('100'); // Capped at order size
+      expect(state.orders[0].remainingSize).toBe('0');
+      expect(state.orders[0].status).toBe('MATCHED');
+    });
+
+    it('should handle partial fill then overfill attempt', () => {
+      const order = {
+        orderId: 'test-overfill-2',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'OPEN' as const,
+        createdAt: Date.now(),
+        filledSize: '0',
+        remainingSize: '100',
+      };
+      
+      client._addTestOrder(order);
+
+      // First fill
+      client.handleFill({
+        orderId: 'test-overfill-2',
+        price: '0.50',
+        size: '60',
+        timestamp: Date.now(),
+      });
+
+      expect(client.getState().orders[0].filledSize).toBe('60');
+
+      // Second fill exceeds remaining
+      client.handleFill({
+        orderId: 'test-overfill-2',
+        price: '0.50',
+        size: '80', // Only 40 remaining
+        timestamp: Date.now(),
+      });
+
+      const state = client.getState();
+      expect(state.orders[0].filledSize).toBe('100'); // Capped
+      expect(state.orders[0].remainingSize).toBe('0');
+      expect(state.orders[0].status).toBe('MATCHED');
+    });
+  });
+
+  describe('Cancelled Order Handling', () => {
+    it('should preserve CANCELLED status when receiving fills', () => {
+      const order = {
+        orderId: 'test-cancelled-fill',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'CANCELLED' as const,
+        createdAt: Date.now(),
+        filledSize: '30',
+        remainingSize: '70',
+      };
+      
+      client._addTestOrder(order);
+
+      // Late fill arrives after cancellation
+      client.handleFill({
+        orderId: 'test-cancelled-fill',
+        price: '0.50',
+        size: '20',
+        timestamp: Date.now(),
+      });
+
+      const state = client.getState();
+      expect(state.orders[0].status).toBe('CANCELLED'); // Still cancelled
+      expect(state.orders[0].filledSize).toBe('50'); // But filled size updated
+      expect(state.orders[0].remainingSize).toBe('50');
+    });
+
+    it('should include cancelled orders with fills in position calculation', () => {
+      const cancelledOrder = {
+        orderId: 'cancelled-with-fills',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'CANCELLED' as const,
+        createdAt: Date.now(),
+        filledSize: '40',
+        remainingSize: '60',
+      };
+      
+      client._addTestOrder(cancelledOrder);
+
+      // Fill to update positions
+      client.handleFill({
+        orderId: 'cancelled-with-fills',
+        price: '0.50',
+        size: '0', // Trigger position recalc without adding more
+        timestamp: Date.now(),
+      });
+
+      const positions = client.getState().positions;
+      expect(positions).toHaveLength(1);
+      expect(positions[0].size).toBe('40'); // Cancelled order's filled amount
+    });
+  });
+
+  describe('Reconciliation Edge Cases', () => {
+    it('should sync CANCELLED status after missed fill', () => {
+      const order = {
+        orderId: 'test-cancel-sync',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'OPEN' as const,
+        createdAt: Date.now(),
+        filledSize: '30',
+        remainingSize: '70',
+      };
+      
+      client._addTestOrder(order);
+
+      // CLOB reports more fills AND cancelled
+      const clobOrder = {
+        id: 'test-cancel-sync',
+        asset_id: '0xtoken123',
+        side: 'BUY',
+        price: 0.50,
+        originalSize: 100,
+        sizeMatched: 50,
+        status: 'CANCELLED',
+        created_at: Date.now(),
+      };
+
+      client.updateOrderState(clobOrder);
+
+      const state = client.getState();
+      expect(state.orders[0].status).toBe('CANCELLED'); // Synced
+      expect(state.orders[0].filledSize).toBe('50'); // Updated via missed fill
+    });
+
+    it('should recalculate positions on reconciliation adjustments', () => {
+      const order = {
+        orderId: 'test-recon-pos',
+        tokenId: '0xtoken123',
+        side: 'BUY' as const,
+        price: '0.50',
+        size: '100',
+        status: 'PARTIALLY_FILLED' as const,
+        createdAt: Date.now(),
+        filledSize: '50',
+        remainingSize: '50',
+      };
+      
+      client._addTestOrder(order);
+
+      // Trigger position calculation
+      client.handleFill({
+        orderId: 'test-recon-pos',
+        price: '0.50',
+        size: '0',
+        timestamp: Date.now(),
+      });
+
+      let positions = client.getState().positions;
+      expect(positions).toHaveLength(1);
+      expect(positions[0].size).toBe('50');
+
+      // CLOB reports different filled size (anomaly)
+      const clobOrder = {
+        id: 'test-recon-pos',
+        asset_id: '0xtoken123',
+        side: 'BUY',
+        price: 0.50,
+        originalSize: 100,
+        sizeMatched: 40, // Decreased
+        status: 'LIVE',
+        created_at: Date.now(),
+      };
+
+      client.updateOrderState(clobOrder);
+
+      positions = client.getState().positions;
+      expect(positions).toHaveLength(1);
+      expect(positions[0].size).toBe('40'); // Position updated
+    });
+  });
 });

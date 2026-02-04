@@ -76,6 +76,7 @@ export class TradingClient {
     balances: [],
   };
   private orderIdCounter = 0;
+  private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
 
   async initialize(): Promise<void> {
     // Verify trading is enabled
@@ -342,8 +343,22 @@ export class TradingClient {
     }
 
     const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
-    const filledSize = Number(clobOrder.sizeMatched || 0);
-    const remainingSize = originalSize - filledSize;
+    let filledSize = Number(clobOrder.sizeMatched || 0);
+    
+    // Clamp filledSize to valid range [0, originalSize]
+    if (isNaN(filledSize) || filledSize < 0) {
+      logger.warn('Invalid filledSize, clamping to 0', { order: clobOrder, filledSize });
+      filledSize = 0;
+    } else if (filledSize > originalSize && originalSize > 0) {
+      logger.warn('FilledSize exceeds originalSize, clamping', { 
+        order: clobOrder, 
+        filledSize, 
+        originalSize 
+      });
+      filledSize = originalSize;
+    }
+    
+    const remainingSize = Math.max(0, originalSize - filledSize);
 
     // Determine status based on fill amount
     let status: Order['status'] = 'OPEN';
@@ -378,7 +393,7 @@ export class TradingClient {
    * handling partial fills. It processes orders in chronological order and:
    * 
    * - Uses filledSize for position calculation (not order size)
-   * - Handles both MATCHED and PARTIALLY_FILLED orders
+   * - Handles MATCHED, PARTIALLY_FILLED, and CANCELLED orders with fills
    * - Calculates weighted average cost basis
    * - Supports position additions, reductions, and flips
    * - Filters out zero positions
@@ -387,6 +402,7 @@ export class TradingClient {
    * - Partial fills: Uses only the filled portion
    * - Multi-step fills: Accumulates fills across multiple events
    * - Mixed orders: Buy/sell operations on same token
+   * - Cancelled orders: Includes filled portion of cancelled orders
    * 
    * Called automatically after every fill event to ensure positions
    * are always accurate.
@@ -398,12 +414,12 @@ export class TradingClient {
     // Group orders by token ID and track net position and cost basis
     const positionMap = new Map<string, { netSize: number; avgPrice: number }>();
 
-    // Process only matched orders with non-zero filled size, in chronological order
-    const matchedOrders = this.state.orders
-      .filter((order) => (order.status === 'MATCHED' || order.status === 'PARTIALLY_FILLED') && Number(order.filledSize || 0) !== 0)
+    // Process orders with non-zero filled size (including cancelled), in chronological order
+    const ordersWithFills = this.state.orders
+      .filter((order) => Number(order.filledSize || 0) !== 0)
       .sort((a, b) => a.createdAt - b.createdAt);
 
-    for (const order of matchedOrders) {
+    for (const order of ordersWithFills) {
       const filledSize = Number(order.filledSize || 0);
       if (filledSize === 0) continue;
 
@@ -503,6 +519,9 @@ export class TradingClient {
    * Each fill is recorded in the fills array for audit purposes.
    * Positions are recalculated after each fill to ensure accuracy.
    * 
+   * Includes idempotency: duplicate fillIds are ignored to prevent
+   * double-counting fills from WS replay/reconnect scenarios.
+   * 
    * @param fillEvent Fill event details
    * @param fillEvent.orderId Order ID that was filled
    * @param fillEvent.fillId Optional unique fill identifier
@@ -524,6 +543,12 @@ export class TradingClient {
   }): void {
     const { orderId, fillId, price, size, fee, timestamp = Date.now() } = fillEvent;
     
+    // Deduplicate fills by fillId to prevent double-counting
+    if (fillId && this.processedFillIds.has(fillId)) {
+      logger.info('Ignoring duplicate fill', { orderId, fillId });
+      return;
+    }
+    
     // Find the order
     const order = this.state.orders.find(o => o.orderId === orderId);
     if (!order) {
@@ -534,18 +559,34 @@ export class TradingClient {
     // Calculate new filled size
     const currentFilledSize = Number(order.filledSize || 0);
     const fillSize = Number(size);
-    const newFilledSize = currentFilledSize + fillSize;
     const originalSize = Number(order.size);
+    
+    // Cap fill to remaining size to prevent overfills
+    const remainingSize = originalSize - currentFilledSize;
+    const cappedFillSize = Math.min(fillSize, remainingSize);
+    
+    if (cappedFillSize < fillSize) {
+      logger.warn('Fill size exceeds remaining, capping', {
+        orderId,
+        fillSize,
+        remainingSize,
+        cappedFillSize,
+      });
+    }
+    
+    const newFilledSize = currentFilledSize + cappedFillSize;
 
-    // Update order state
+    // Update order quantities
     order.filledSize = String(newFilledSize);
-    order.remainingSize = String(originalSize - newFilledSize);
+    order.remainingSize = String(Math.max(0, originalSize - newFilledSize));
 
-    // Update order status based on fill amount
-    if (newFilledSize >= originalSize) {
-      order.status = 'MATCHED';
-    } else if (newFilledSize > 0) {
-      order.status = 'PARTIALLY_FILLED';
+    // Update order status based on fill amount, but preserve CANCELLED status
+    if (order.status !== 'CANCELLED') {
+      if (newFilledSize >= originalSize) {
+        order.status = 'MATCHED';
+      } else if (newFilledSize > 0) {
+        order.status = 'PARTIALLY_FILLED';
+      }
     }
 
     // Record the fill
@@ -555,11 +596,16 @@ export class TradingClient {
       tokenId: order.tokenId,
       side: order.side,
       price,
-      size,
+      size: String(cappedFillSize),
       fee,
       timestamp,
     };
     this.state.fills.push(fill);
+    
+    // Track fillId for deduplication
+    if (fillId) {
+      this.processedFillIds.add(fillId);
+    }
 
     // Recalculate positions
     this.recalculatePositions();
@@ -636,6 +682,11 @@ export class TradingClient {
         currentFilledSize,
         missedFillSize,
       });
+      
+      // Sync terminal status from CLOB after handling missed fills
+      if (clobOrder.status === 'CANCELLED') {
+        existingOrder.status = 'CANCELLED';
+      }
     } else {
       // Just update the order state without creating a fill
       existingOrder.filledSize = String(currentFilledSize);
@@ -648,6 +699,11 @@ export class TradingClient {
         existingOrder.status = 'MATCHED';
       } else if (currentFilledSize > 0) {
         existingOrder.status = 'PARTIALLY_FILLED';
+      }
+      
+      // If reconciliation adjusted filled size, recalculate positions
+      if (currentFilledSize !== previousFilledSize) {
+        this.recalculatePositions();
       }
     }
   }

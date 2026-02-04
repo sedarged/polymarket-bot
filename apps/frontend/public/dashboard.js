@@ -224,8 +224,8 @@ async function updateState() {
   try {
     const stateData = await fetchData('/state');
     
-    // Update summary cards
-    const openOrders = stateData.orders.filter(o => o.status === 'OPEN').length;
+    // Update summary cards (count open and partially filled orders as "open")
+    const openOrders = stateData.orders.filter(o => o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED').length;
     document.getElementById('openOrders').textContent = openOrders;
     document.getElementById('activePositions').textContent = stateData.positions.length;
     
@@ -239,9 +239,9 @@ async function updateState() {
     }, 0);
     document.getElementById('unrealizedPnL').textContent = formatCurrency(unrealizedPnl);
     
-    // Update tables
+    // Update tables (show open and partially filled orders)
     updatePositionsTable(stateData.positions);
-    updateOrdersTable(stateData.orders.filter(o => o.status === 'OPEN'));
+    updateOrdersTable(stateData.orders.filter(o => o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'));
     updateFillsTable(stateData.fills);
     
   } catch (error) {
