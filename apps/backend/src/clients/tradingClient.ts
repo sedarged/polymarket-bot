@@ -7,7 +7,7 @@ import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
 
 /**
- * Trading Client for Live Order Placement
+ * Trading Client for Live Order Placement with Partial Fill Tracking
  * 
  * Official Documentation: https://docs.polymarket.com/developers/CLOB/orders/create-order
  * SDK: @polymarket/clob-client v5.2.1
@@ -18,16 +18,30 @@ import { getPrivateKey, loadSecretsConfig } from '../secrets';
  * - Startup reconciliation of open orders and positions
  * - Kill switch for emergency order cancellation
  * - Order state tracking and management
+ * - **Comprehensive partial fill tracking (EE-001)**
+ * - **Missed fill detection during reconciliation**
+ * - **Accurate position calculation with partial fills**
+ * 
+ * Partial Fill Support:
+ * - Tracks order state: OPEN → PARTIALLY_FILLED → MATCHED
+ * - Records all fills with size, price, and fee
+ * - Calculates positions from actual filled amounts
+ * - Handles multi-step fills (multiple partials per order)
+ * - Detects and recovers missed fills during reconciliation
  * 
  * Implementation Review: See REPORTS/RESEARCH_REVIEW.md Section 2.4
  * Authentication: Fully aligned with official L1/L2 flow via SDK ✓
  * Chain ID: 137 (Polygon Mainnet) ✓
  * Security: Dual-gate system (LIVE_TRADING + COMPLIANCE_ACCEPTED) ✓
  * Secrets Management: Addresses Audit Finding A-001 ✓
+ * Partial Fills: Addresses Audit Gap EE-001 ✓
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
  * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
  * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/GAP_ANALYSIS.md} - EE-001
+ * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
+ * @see {@link ../../../../docs/order-state-machine.md}
  */
 export interface TradingState {
   orders: Order[];
@@ -359,7 +373,26 @@ export class TradingClient {
 
   /**
    * Recalculate positions from orders and fills
-   * Properly tracks cost basis through a sequence of buys and sells
+   * 
+   * This method calculates positions from actual filled amounts, properly
+   * handling partial fills. It processes orders in chronological order and:
+   * 
+   * - Uses filledSize for position calculation (not order size)
+   * - Handles both MATCHED and PARTIALLY_FILLED orders
+   * - Calculates weighted average cost basis
+   * - Supports position additions, reductions, and flips
+   * - Filters out zero positions
+   * 
+   * Position calculation now correctly handles:
+   * - Partial fills: Uses only the filled portion
+   * - Multi-step fills: Accumulates fills across multiple events
+   * - Mixed orders: Buy/sell operations on same token
+   * 
+   * Called automatically after every fill event to ensure positions
+   * are always accurate.
+   * 
+   * @private
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
    */
   private recalculatePositions(): void {
     // Group orders by token ID and track net position and cost basis
@@ -458,7 +491,28 @@ export class TradingClient {
 
   /**
    * Handle a fill event (from WebSocket or polling)
-   * Updates order state and records the fill
+   * 
+   * This method implements the core partial fill tracking logic (EE-001).
+   * It processes fill events and updates order state appropriately:
+   * 
+   * - OPEN → PARTIALLY_FILLED (first partial fill)
+   * - PARTIALLY_FILLED → PARTIALLY_FILLED (more partial fills)
+   * - PARTIALLY_FILLED → MATCHED (final fill)
+   * - OPEN → MATCHED (single full fill)
+   * 
+   * Each fill is recorded in the fills array for audit purposes.
+   * Positions are recalculated after each fill to ensure accuracy.
+   * 
+   * @param fillEvent Fill event details
+   * @param fillEvent.orderId Order ID that was filled
+   * @param fillEvent.fillId Optional unique fill identifier
+   * @param fillEvent.price Fill execution price
+   * @param fillEvent.size Amount filled in this event
+   * @param fillEvent.fee Optional fee for this fill
+   * @param fillEvent.timestamp Optional fill timestamp
+   * 
+   * @see {@link ../../../../docs/order-state-machine.md}
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
    */
   handleFill(fillEvent: {
     orderId: string;
@@ -522,7 +576,24 @@ export class TradingClient {
 
   /**
    * Update order state from CLOB order data
-   * Used during reconciliation and polling
+   * 
+   * This method is used during reconciliation (startup or periodic) to sync
+   * local order state with the CLOB. It implements missed fill detection:
+   * 
+   * - If CLOB reports more filled size than local state, a fill was missed
+   * - Creates a synthetic fill event for the missed amount
+   * - Logs a warning for investigation
+   * - Updates order status based on CLOB data
+   * 
+   * This ensures the bot can recover from:
+   * - Missed WebSocket events
+   * - Fills that occurred while bot was offline
+   * - State drift due to any reason
+   * 
+   * @param clobOrder Order data from CLOB API
+   * 
+   * @see {@link ../../../../docs/order-state-machine.md}
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
    */
   updateOrderState(clobOrder: ClobOrder): void {
     const orderId = clobOrder.id || clobOrder.orderID;
