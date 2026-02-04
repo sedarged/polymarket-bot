@@ -124,6 +124,32 @@ const envSchema = z.object({
   // Reconciliation Configuration (Gap RE-001)
   // Interval in seconds for periodic reconciliation (default: 300 seconds = 5 minutes)
   RECONCILIATION_INTERVAL_SECONDS: numberFromEnv(300, z.number().int().positive().min(60).max(3600)),
+  // Rate Limiting Configuration (Audit Finding A-008)
+  // RATE_LIMIT_MAX_REQUESTS:
+  //   - Purpose: Maximum number of requests allowed per IP per time window.
+  //   - Default: 100 requests.
+  //   - Valid range: 1–10,000 (values outside this range will be rejected at startup).
+  //   - Example: RATE_LIMIT_MAX_REQUESTS=500 to allow up to 500 requests per IP during each window.
+  //   - Security: Lower values provide stronger protection against abuse/DoS but may impact
+  //               legitimate high-throughput clients. Tune based on expected traffic patterns.
+  RATE_LIMIT_MAX_REQUESTS: numberFromEnv(100, z.number().int().positive().min(1).max(10000)),
+  // RATE_LIMIT_WINDOW_MS:
+  //   - Purpose: Duration of the rate limiting window, in milliseconds.
+  //   - Default: 60000 ms (1 minute).
+  //   - Valid range: 1,000–3,600,000 ms (1 second to 1 hour).
+  //   - Example: RATE_LIMIT_WINDOW_MS=300000 to use a 5-minute (300,000 ms) window.
+  //   - Security: Shorter windows react faster to bursts, longer windows smooth out traffic
+  //               but may allow short spikes. Choose a value that balances user experience
+  //               with protection against automated abuse.
+  RATE_LIMIT_WINDOW_MS: numberFromEnv(60000, z.number().int().positive().min(1000).max(3600000)),
+  // RATE_LIMIT_TRUST_PROXY:
+  //   - Purpose: Whether to trust X-Forwarded-For and X-Real-IP headers for rate limiting.
+  //   - Default: false (do not trust proxy headers).
+  //   - Security: ONLY enable this when the application is behind a trusted reverse proxy
+  //               (nginx, load balancer, etc.). If enabled without a trusted proxy, clients
+  //               can spoof their IP address to bypass rate limiting by setting custom headers.
+  //   - Example: RATE_LIMIT_TRUST_PROXY=true when deployed behind nginx or AWS ALB.
+  RATE_LIMIT_TRUST_PROXY: booleanFromEnv.default(false),
 });
 
 const configSchema = envSchema.refine(
@@ -169,6 +195,9 @@ const configSchema = envSchema.refine(
   adminToken: env.ADMIN_TOKEN,
   allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(s => s.length > 0),
   reconciliationIntervalSeconds: env.RECONCILIATION_INTERVAL_SECONDS,
+  rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
+  rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
+  rateLimitTrustProxy: env.RATE_LIMIT_TRUST_PROXY,
 }));
 
 export type Config = z.infer<typeof configSchema>;
