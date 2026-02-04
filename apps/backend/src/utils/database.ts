@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { logger } from './logger';
 
 export interface DatabaseConfig {
@@ -12,6 +13,14 @@ export interface DatabaseConfig {
  */
 export function initializeDatabase(config: DatabaseConfig = {}): Database.Database {
   const dbPath = config.path || path.join(process.cwd(), 'data', 'audit.db');
+  
+  // Ensure parent directory exists
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    logger.info('Created database directory', { dir });
+  }
+  
   const db = new Database(dbPath, { readonly: config.readonly ?? false });
 
   logger.info('Initializing audit trail database', { path: dbPath });

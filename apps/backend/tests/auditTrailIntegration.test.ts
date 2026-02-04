@@ -85,7 +85,7 @@ describe('Paper Trading Engine with Audit Trail', () => {
   it('should record multiple orders and track statistics', () => {
     // Create multiple orders
     const order1 = engine.createOrder('0xtoken1', 'BUY', '0.55', '10');
-    const order2 = engine.createOrder('0xtoken1', 'SELL', '0.45', '5');
+    engine.createOrder('0xtoken1', 'SELL', '0.45', '5');
     const order3 = engine.createOrder('0xtoken2', 'BUY', '0.60', '15');
 
     const orderbook1: Orderbook = {
@@ -132,7 +132,7 @@ describe('Paper Trading Engine with Audit Trail', () => {
 
   it('should query order history by time range', () => {
     const order1 = engine.createOrder('0xtoken1', 'BUY', '0.55', '10');
-    const order2 = engine.createOrder('0xtoken1', 'SELL', '0.45', '5');
+    engine.createOrder('0xtoken1', 'SELL', '0.45', '5');
 
     // Query all orders
     const allOrders = auditTrail.getOrders();

@@ -9,7 +9,6 @@ export interface PaperTradingEngineConfig {
   partialFillRate: number; // Base probability of partial fill (0-1), scaled by liquidity ratio. 0 = always full fill
   minFillRatio: number; // Minimum fill ratio for partial fills (0-1)
   maxFillRatio: number; // Maximum fill ratio for partial fills (0-1)
-  auditTrail?: AuditTrail; // Optional audit trail for recording all activity
 }
 
 export interface EngineState {
@@ -31,7 +30,7 @@ export class PaperTradingEngine {
   private orderIdCounter = 0;
   private auditTrail?: AuditTrail;
 
-  constructor(config?: Partial<PaperTradingEngineConfig>, initialBalance = 10000) {
+  constructor(config?: Partial<PaperTradingEngineConfig> & { auditTrail?: AuditTrail }, initialBalance = 10000) {
     this.config = {
       slippage: config?.slippage ?? 0.01,
       maxSlippage: config?.maxSlippage ?? 0.05,
@@ -39,7 +38,6 @@ export class PaperTradingEngine {
       partialFillRate: config?.partialFillRate ?? 0.0, // Default: always full fill (backwards compatible)
       minFillRatio: config?.minFillRatio ?? 0.1, // Fill at least 10% of order
       maxFillRatio: config?.maxFillRatio ?? 0.9, // Fill at most 90% of order for partial fills
-      auditTrail: config?.auditTrail,
     };
 
     this.auditTrail = config?.auditTrail;
