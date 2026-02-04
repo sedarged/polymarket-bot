@@ -24,7 +24,6 @@ To update this status:
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
 - [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
-- [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
@@ -69,6 +68,7 @@ To update this status:
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
+- [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
 - [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
@@ -84,12 +84,8 @@ To update this status:
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
 - [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
 - [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
-- [P1] #30 [Task] Production Dashboard UI/UX Upgrade
-- [P1] #29 [Task] Learning System Design and Implementation
-- [P1] #28 [Task] Production-Grade Trading Bot Gap Analysis
-- [P1] #27 [Task] Polymarket CLOB/Gamma API Documentation Alignment
 
-*Last updated: 2026-02-04T18:56:15.206Z*
+*Last updated: 2026-02-04T19:17:21.318Z*
 
 <!-- STATUS_SYNC_END -->
 
