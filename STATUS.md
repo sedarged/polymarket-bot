@@ -33,7 +33,6 @@ To update this status:
 - [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
-- [P1] #113 [Security] Secure storage of private key (.env) - Audit Finding A-001
 - [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
 - [P1] #109 [Logging] Mask sensitive data in logs - Audit Finding A-022
 - [P1] #108 [Backend] Add jitter to backoff calculation - Audit Finding A-023
@@ -45,7 +44,6 @@ To update this status:
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
 - [P1] #97 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #95 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
-- [P1] #93 [Security] Add admin authentication for sensitive endpoints - Audit Finding A-004
 - [P1] #85 [Backend] Implement event store for learning system - Learning System
 - [P1] #84 [Backend] Add feature/signal catalog - Learning System
 - [P1] #83 [Backend] Create offline evaluation framework - Learning System
@@ -79,6 +77,7 @@ To update this status:
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
 - [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
+- [P1] #93 [Security] Add admin authentication for sensitive endpoints - Audit Finding A-004
 - [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
@@ -98,7 +97,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T12:13:29.444Z*
+*Last updated: 2026-02-04T12:39:40.701Z*
 
 <!-- STATUS_SYNC_END -->
 
