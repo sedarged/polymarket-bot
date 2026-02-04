@@ -48,6 +48,20 @@ vi.mock('../src/utils/metrics', () => ({
   },
 }));
 
+// Mock the ClobClient REST client for market metadata
+vi.mock('../src/clients/clob', () => ({
+  ClobClient: class MockClobRestClient {
+    getMarketMetadata = vi.fn().mockResolvedValue({
+      tickSize: '0.01',
+      minOrderSize: '1',
+    });
+    getOrderbook = vi.fn();
+    getCircuitBreakerMetrics = vi.fn();
+    resetCircuitBreaker = vi.fn();
+    destroy = vi.fn();
+  },
+}));
+
 // Mock the ClobClient - use a factory to create fresh instances
 vi.mock('@polymarket/clob-client', () => ({
   ClobClient: class MockClobClient {

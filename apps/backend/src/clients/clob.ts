@@ -105,6 +105,60 @@ export class ClobClient {
   }
 
   /**
+   * Get market metadata including tick size and minimum order size
+   * 
+   * This method fetches the orderbook summary which contains both tick size
+   * and minimum order size information required for order validation (Issue #75).
+   * 
+   * @param tokenId - The token/asset ID
+   * @returns Market metadata with tick size and min order size
+   * 
+   * @see {@link https://docs.polymarket.com/developers/CLOB/clients/methods-public}
+   */
+  async getMarketMetadata(tokenId: string): Promise<{ tickSize: string; minOrderSize: string }> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching market metadata', { tokenId });
+        
+        const response = await this.client.get<{
+          tick_size: string;
+          min_order_size: string;
+        }>(`/tick-size`, {
+          params: {
+            token_id: tokenId,
+          },
+        });
+
+        logger.info('Retrieved market metadata', { 
+          tokenId, 
+          tickSize: response.data.tick_size,
+          minOrderSize: response.data.min_order_size 
+        });
+        
+        return {
+          tickSize: response.data.tick_size,
+          minOrderSize: response.data.min_order_size,
+        };
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          // Don't retry permanent errors (4xx except 429)
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          // Retry transient, rate limit, timeout, and network errors
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
    * Clean up resources.
    */
   destroy(): void {
