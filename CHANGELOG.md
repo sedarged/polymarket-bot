@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0](https://github.com/sedarged/polymarket-bot/compare/v1.7.0...v1.8.0) (2026-02-04)
+
+
+### Features
+
+* implement UUID-based order idempotency (A-006) ([2a74f94](https://github.com/sedarged/polymarket-bot/commit/2a74f94f58fed336ec175749015df0dea73f7077))
+
+
+### Bug Fixes
+
+* address PR review feedback for idempotency (A-006) ([a5c79f3](https://github.com/sedarged/polymarket-bot/commit/a5c79f333a1353e81302a0806baaeec1c635e91b))
+
 ## [1.7.0](https://github.com/sedarged/polymarket-bot/compare/v1.6.0...v1.7.0) (2026-02-04)
 
 
