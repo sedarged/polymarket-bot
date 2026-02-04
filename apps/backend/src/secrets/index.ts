@@ -95,7 +95,7 @@ export const normalizePrivateKey = (key: string): string => {
  * 
  * @param privateKey - The private key to encrypt
  * @param passphrase - The passphrase for encryption
- * @returns Base64-encoded encrypted data (format: iv:authTag:encryptedData)
+ * @returns Base64-encoded encrypted data (format: salt:iv:authTag:encryptedData)
  */
 export const encryptPrivateKey = (privateKey: string, passphrase: string): string => {
   // Derive a 32-byte key from the passphrase using PBKDF2
