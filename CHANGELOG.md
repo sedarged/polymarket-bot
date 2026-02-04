@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/sedarged/polymarket-bot/compare/v1.6.0...v1.7.0) (2026-02-04)
+
+
+### Features
+
+* add admin authentication for sensitive endpoints (A-004) ([08bac68](https://github.com/sedarged/polymarket-bot/commit/08bac6859db0d0a128f63fc3dec5415f60b22fa8))
+
+
+### Bug Fixes
+
+* require ADMIN_TOKEN for both production and live trading modes ([91794c0](https://github.com/sedarged/polymarket-bot/commit/91794c027b13f3f352108a87992e727f4b7b7f2f))
+
 ## [1.6.0](https://github.com/sedarged/polymarket-bot/compare/v1.5.0...v1.6.0) (2026-02-04)
 
 
