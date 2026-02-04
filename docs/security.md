@@ -27,9 +27,9 @@ The trading bot requires secure configuration for two critical areas:
 ### ⚠️ Critical Security Warnings
 
 **API Security:**
-- ADMIN_TOKEN is **REQUIRED** for production and live trading
-- Without it, sensitive endpoints are accessible to anyone who can reach your server
-- This includes kill switch, order management, and trading status endpoints
+- `ADMIN_TOKEN` is **REQUIRED** for production and live trading to access admin endpoints
+- If `ADMIN_TOKEN` is **unset**, sensitive admin endpoints return HTTP 401 and are effectively disabled (fail‑closed)
+- If `ADMIN_TOKEN` is set but weak/guessable or shared, anyone who obtains it can use kill switch, order management, and trading status endpoints
 
 **Private Key Security:**
 - **NEVER commit your private key or .env file to source control**
@@ -101,7 +101,11 @@ curl -H "Authorization: YOUR_ADMIN_TOKEN" http://localhost:3000/status
 ```bash
 # This will FAIL in production
 NODE_ENV=production npm run dev
-# Error: ADMIN_TOKEN is required for production or live trading mode
+# Error: CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for production mode...
+
+# This will FAIL with live trading
+LIVE_TRADING=true npm run dev
+# Error: CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for live trading mode...
 
 # This will SUCCEED
 ADMIN_TOKEN=your_secure_token npm run dev

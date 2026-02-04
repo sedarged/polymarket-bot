@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import { createServer } from '../src/server';
 
@@ -52,8 +52,7 @@ describe('Authentication - Audit Finding A-004', () => {
 
     it('allows access to /ready without auth', async () => {
       const response = await fetch(`${baseUrl}/ready`);
-      expect(response.status).toBeGreaterThanOrEqual(200);
-      expect(response.status).toBeLessThan(600);
+      expect([200, 503]).toContain(response.status);
     });
 
     it('allows access to /metrics without auth', async () => {

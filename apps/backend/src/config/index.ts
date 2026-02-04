@@ -215,8 +215,8 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   
   // Admin Token Security Check (Audit Finding A-004): Fail-fast if missing in production OR live trading
   // This prevents unauthorized access to sensitive endpoints (kill switch, order management, config changes)
-  // Live trading mode ALWAYS requires admin authentication, regardless of NODE_ENV
-  const requiresAdminToken = isProduction || config.liveTrading;
+  // Note: isProduction already includes liveTrading check (line 198)
+  const requiresAdminToken = isProduction;
   
   if (requiresAdminToken && (!config.adminToken || config.adminToken.trim() === '')) {
     const mode = config.liveTrading ? 'live trading' : 'production';
