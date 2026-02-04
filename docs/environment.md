@@ -326,8 +326,37 @@ RISK_MAX_DRAWDOWN=0.20              # Max drawdown (20%)
 RISK_ERROR_RATE_THRESHOLD=0.10      # Error rate threshold (10%)
 RISK_ERROR_RATE_WINDOW=100          # Error rate window (orders)
 
+# Rate Limiting (Audit Finding A-008)
+RATE_LIMIT_MAX_REQUESTS=100         # Max requests per IP per window
+RATE_LIMIT_WINDOW_MS=60000          # Rate limit window (ms, 1 minute)
+RATE_LIMIT_TRUST_PROXY=false        # Trust X-Forwarded-For headers (only behind trusted proxy)
+
 # Admin Authentication
 ADMIN_TOKEN=change_me_to_a_strong_random_admin_token
+```
+
+### Rate Limiting Details
+
+The rate limiting configuration protects against DoS attacks and API abuse:
+
+- **RATE_LIMIT_MAX_REQUESTS**: Maximum number of requests allowed per IP address within the time window. Lower values provide stronger protection but may impact legitimate high-throughput clients. Range: 1-10,000.
+
+- **RATE_LIMIT_WINDOW_MS**: Duration of the rate limiting window in milliseconds. Shorter windows react faster to bursts, longer windows smooth out traffic. Range: 1,000-3,600,000 ms (1 second to 1 hour).
+
+- **RATE_LIMIT_TRUST_PROXY**: Controls whether to trust `X-Forwarded-For` and `X-Real-IP` headers from reverse proxies. **SECURITY WARNING**: Only enable this when the application is deployed behind a trusted reverse proxy (nginx, AWS ALB, CloudFlare, etc.). If enabled without a trusted proxy, clients can spoof their IP address to bypass rate limiting by setting custom headers. Default: `false`.
+
+Example configurations:
+```env
+# Strict rate limiting (for high-security deployments)
+RATE_LIMIT_MAX_REQUESTS=50
+RATE_LIMIT_WINDOW_MS=60000
+
+# Relaxed rate limiting (for development/testing)
+RATE_LIMIT_MAX_REQUESTS=1000
+RATE_LIMIT_WINDOW_MS=60000
+
+# Behind nginx reverse proxy
+RATE_LIMIT_TRUST_PROXY=true
 ```
 
 ### Security Notes

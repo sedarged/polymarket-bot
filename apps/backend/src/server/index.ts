@@ -19,6 +19,13 @@ let riskManager: RiskManager | null = null;
 let rateLimiter: RateLimiter | null = null;
 
 /**
+ * Get the current rate limiter instance (for testing)
+ */
+export function getRateLimiter(): RateLimiter | null {
+  return rateLimiter;
+}
+
+/**
  * Get CORS headers for a request
  * Returns headers with appropriate Access-Control-Allow-Origin based on config
  */
@@ -127,24 +134,30 @@ const requireAdminAuth = (req: http.IncomingMessage, res: http.ServerResponse, e
 /**
  * Extract client IP address from request
  * Handles proxy headers (X-Forwarded-For, X-Real-IP) for accurate rate limiting
+ * 
+ * SECURITY: Only trusts proxy headers when RATE_LIMIT_TRUST_PROXY is enabled.
+ * If proxy headers are trusted without a real proxy, clients can spoof IPs to bypass rate limiting.
  */
 const getClientIp = (req: http.IncomingMessage): string => {
-  // Check X-Forwarded-For header (proxy/load balancer)
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    // X-Forwarded-For can be a comma-separated list: "client, proxy1, proxy2"
-    // The first IP is the original client
-    const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-    return ips.split(',')[0].trim();
+  // Only trust proxy headers if explicitly configured
+  if (config.rateLimitTrustProxy) {
+    // Check X-Forwarded-For header (proxy/load balancer)
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      // X-Forwarded-For can be a comma-separated list: "client, proxy1, proxy2"
+      // The first IP is the original client
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+      return ips.split(',')[0].trim();
+    }
+
+    // Check X-Real-IP header (nginx proxy)
+    const realIp = req.headers['x-real-ip'];
+    if (realIp && !Array.isArray(realIp)) {
+      return realIp.trim();
+    }
   }
 
-  // Check X-Real-IP header (nginx proxy)
-  const realIp = req.headers['x-real-ip'];
-  if (realIp && !Array.isArray(realIp)) {
-    return realIp.trim();
-  }
-
-  // Fall back to socket remote address
+  // Fall back to socket remote address (always used when proxy headers not trusted)
   return req.socket.remoteAddress || 'unknown';
 };
 

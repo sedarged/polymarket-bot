@@ -100,4 +100,12 @@ export class RateLimiter {
   stop(): void {
     clearInterval(this.cleanupInterval);
   }
+
+  /**
+   * Reset all rate limit tracking
+   * Useful for testing or when recreating the server
+   */
+  reset(): void {
+    this.clients.clear();
+  }
 }

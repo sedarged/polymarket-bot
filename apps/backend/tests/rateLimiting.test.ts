@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
-import { createServer } from '../src/server';
+import { createServer, getRateLimiter } from '../src/server';
 
 describe('Server Rate Limiting (A-008)', () => {
   let server: http.Server;
@@ -22,6 +22,13 @@ describe('Server Rate Limiting (A-008)', () => {
   });
 
   afterAll(async () => {
+    // Clean up rate limiter to prevent resource leaks
+    const rateLimiter = getRateLimiter();
+    if (rateLimiter) {
+      rateLimiter.stop();
+      rateLimiter.reset();
+    }
+    
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
@@ -168,6 +175,12 @@ describe('Server Rate Limiting - IP Tracking', () => {
   let baseUrl: string;
 
   beforeAll(async () => {
+    // Reset rate limiter from previous test suite to avoid interference
+    const existingRateLimiter = getRateLimiter();
+    if (existingRateLimiter) {
+      existingRateLimiter.reset();
+    }
+    
     server = createServer();
     await new Promise<void>((resolve) => {
       server.listen(0, () => {
@@ -181,65 +194,55 @@ describe('Server Rate Limiting - IP Tracking', () => {
   });
 
   afterAll(async () => {
+    // Clean up rate limiter to prevent resource leaks
+    const rateLimiter = getRateLimiter();
+    if (rateLimiter) {
+      rateLimiter.stop();
+      rateLimiter.reset();
+    }
+    
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
   });
 
-  it('respects X-Forwarded-For header', async () => {
+  it('does not trust X-Forwarded-For header by default', async () => {
     const endpoint = `${baseUrl}/health`;
     
-    // Requests with X-Forwarded-For should be tracked separately
-    // Use unique IP that hasn't been used yet to avoid interference with other tests
-    const uniqueIp = `10.99.99.${Math.floor(Math.random() * 255)}`;
+    // With RATE_LIMIT_TRUST_PROXY=false (default), X-Forwarded-For headers are ignored
+    // All requests from the same client (test runner) count toward the same limit
+    // regardless of X-Forwarded-For header value
     
-    // Make 100 requests from this IP
+    // Make 100 requests with different X-Forwarded-For headers
     const requests = [];
     for (let i = 0; i < 100; i++) {
       requests.push(
         fetch(endpoint, {
-          headers: { 'X-Forwarded-For': uniqueIp },
+          headers: { 'X-Forwarded-For': `10.99.${i}.1` },
         })
       );
     }
     await Promise.all(requests);
     
-    // Next request from same IP should be rate limited
+    // Next request should be rate limited because all requests came from same socket IP
+    // (X-Forwarded-For was ignored since RATE_LIMIT_TRUST_PROXY=false)
     const response = await fetch(endpoint, {
-      headers: { 'X-Forwarded-For': uniqueIp },
+      headers: { 'X-Forwarded-For': '10.99.200.1' },
     });
     expect(response.status).toBe(429);
-    
-    // Request from different IP should succeed
-    const differentIp = `10.99.88.${Math.floor(Math.random() * 255)}`;
-    const response2 = await fetch(endpoint, {
-      headers: { 'X-Forwarded-For': differentIp },
-    });
-    expect(response2.status).toBe(200);
   });
 
-  it('handles X-Forwarded-For with multiple IPs', async () => {
+  it('X-Forwarded-For header ignored when trust proxy disabled', async () => {
     const endpoint = `${baseUrl}/health`;
     
-    // X-Forwarded-For can have multiple IPs (client, proxy1, proxy2)
-    // Should use the first IP (original client)
-    const uniqueIp = `10.77.77.${Math.floor(Math.random() * 255)}`;
+    // X-Forwarded-For headers should be ignored when RATE_LIMIT_TRUST_PROXY=false
+    // This test verifies that different X-Forwarded-For values don't bypass rate limiting
     
-    // Make 100 requests with same first IP
-    const requests = [];
-    for (let i = 0; i < 100; i++) {
-      requests.push(
-        fetch(endpoint, {
-          headers: { 'X-Forwarded-For': `${uniqueIp}, 10.0.0.100, 10.0.0.200` },
-        })
-      );
-    }
-    await Promise.all(requests);
-    
-    // Next request should be rate limited (same first IP)
-    const response = await fetch(endpoint, {
-      headers: { 'X-Forwarded-For': `${uniqueIp}, 192.168.1.1` },
+    // Setting different X-Forwarded-For values should not reset the rate limit
+    // because the actual socket IP is what's being tracked
+    const response1 = await fetch(endpoint, {
+      headers: { 'X-Forwarded-For': '10.0.0.3, 10.0.0.100, 10.0.0.200' },
     });
-    expect(response.status).toBe(429);
+    expect(response1.status).toBe(429); // Still rate limited from previous test
   });
 });
