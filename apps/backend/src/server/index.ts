@@ -107,6 +107,19 @@ const validateAdminToken = (req: http.IncomingMessage): boolean => {
   return token === config.adminToken;
 };
 
+/**
+ * Require admin authentication for an endpoint
+ * Returns true if authenticated, false if not (and sends 401 response)
+ */
+const requireAdminAuth = (req: http.IncomingMessage, res: http.ServerResponse, endpointName: string): boolean => {
+  if (!validateAdminToken(req)) {
+    respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
+    logger.warn(`${endpointName} endpoint access denied: invalid admin token`);
+    return false;
+  }
+  return true;
+};
+
 export function createServer(): http.Server {
   return http.createServer(async (req, res) => {
     const method = req.method ?? 'GET';
@@ -220,14 +233,16 @@ export function createServer(): http.Server {
     }
 
     // ============================================================================
-    // Trading Endpoints
-    // WARNING: These endpoints lack authentication and should be protected in
-    // production deployments. Consider adding API key validation, session tokens,
-    // or other authentication mechanisms before exposing to untrusted networks.
+    // Trading Endpoints - Audit Finding A-004
+    // SECURED: All sensitive endpoints require admin authentication to prevent
+    // unauthorized access to trading information, order management, and bot control.
+    // Access requires valid ADMIN_TOKEN in Authorization header.
     // ============================================================================
 
-    // Trading status
+    // Trading status - requires authentication (exposes wallet, trading mode)
     if (method === 'GET' && url === '/status') {
+      if (!requireAdminAuth(req, res, 'Status')) return;
+
       const status = {
         liveTrading: isLiveTradingEnabled(),
         tradingClientInitialized: tradingClient.isInitialized(),
@@ -240,8 +255,10 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Trading state (orders, positions, balances)
+    // Trading state (orders, positions, balances) - requires authentication
     if (method === 'GET' && url === '/state') {
+      if (!requireAdminAuth(req, res, 'State')) return;
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, state, req);
@@ -254,8 +271,10 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Get orders
+    // Get orders - requires authentication
     if (method === 'GET' && url === '/orders') {
+      if (!requireAdminAuth(req, res, 'Orders')) return;
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, { orders: state.orders }, req);
@@ -268,8 +287,10 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Get fills
+    // Get fills - requires authentication
     if (method === 'GET' && url === '/fills') {
+      if (!requireAdminAuth(req, res, 'Fills')) return;
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, { fills: state.fills }, req);
@@ -284,12 +305,7 @@ export function createServer(): http.Server {
 
     // Kill switch - cancel all orders (legacy endpoint, requires auth)
     if (method === 'POST' && url === '/kill-switch') {
-      // Validate admin token (same as /kill endpoint)
-      if (!validateAdminToken(req)) {
-        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
-        logger.warn('Legacy kill-switch endpoint access denied: invalid admin token');
-        return;
-      }
+      if (!requireAdminAuth(req, res, 'Legacy kill-switch')) return;
 
       try {
         // Cancel orders in both live and paper trading
@@ -315,12 +331,7 @@ export function createServer(): http.Server {
 
     // Kill endpoint with admin token auth (as per requirements)
     if (method === 'POST' && url === '/kill') {
-      // Validate admin token
-      if (!validateAdminToken(req)) {
-        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
-        logger.warn('Kill endpoint access denied: invalid admin token');
-        return;
-      }
+      if (!requireAdminAuth(req, res, 'Kill')) return;
 
       try {
         // Cancel orders in both live and paper trading
