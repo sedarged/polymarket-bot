@@ -25,7 +25,6 @@ To update this status:
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 - [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
-- [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
 ## Next — P1 (High Priority)
@@ -84,6 +83,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
 - [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
 - [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
@@ -100,7 +100,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T02:17:57.531Z*
+*Last updated: 2026-02-04T03:03:42.466Z*
 
 <!-- STATUS_SYNC_END -->
 
