@@ -26,6 +26,7 @@ export class RiskManager {
   private config: RiskManagerConfig;
   private operations: { timestamp: number; isError: boolean }[] = [];
   private killed = false;
+  private pendingPersistence: Promise<void> | null = null;
 
   constructor(config?: Partial<RiskManagerConfig>) {
     this.config = {
@@ -218,7 +219,7 @@ export class RiskManager {
     logger.error('Kill switch activated', { reason });
     
     // Persist state to disk (async, but don't wait - best effort)
-    saveKillSwitchState({
+    this.pendingPersistence = saveKillSwitchState({
       killed: true,
       timestamp: Date.now(),
       reason,
@@ -245,11 +246,22 @@ export class RiskManager {
     logger.info('Risk manager reset');
     
     // Clear persisted state (async, but don't wait - best effort)
-    clearKillSwitchState().catch((error) => {
+    this.pendingPersistence = clearKillSwitchState().catch((error) => {
       logger.error('Failed to clear kill switch state', {
         error: error instanceof Error ? error.message : String(error),
       });
     });
+  }
+
+  /**
+   * Wait for any pending persistence operations to complete
+   * Useful for testing to avoid race conditions
+   */
+  async waitForPersistence(): Promise<void> {
+    if (this.pendingPersistence) {
+      await this.pendingPersistence;
+      this.pendingPersistence = null;
+    }
   }
 
   /**

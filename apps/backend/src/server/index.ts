@@ -328,9 +328,10 @@ export function startServer(): http.Server {
   // Restore kill switch state from disk before enabling trading
   // CRITICAL: This must happen before any trading logic is enabled
   riskManager.restoreState().catch((error) => {
-    logger.error('Failed to restore kill switch state', {
+    logger.error('Failed to restore kill switch state - continuing with default (not killed)', {
       error: error instanceof Error ? error.message : String(error),
     });
+    logger.warn('Kill switch state restoration failed - bot will start in non-killed state');
   });
   
   // Initialize trading client if live trading is enabled

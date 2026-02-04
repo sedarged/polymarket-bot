@@ -395,9 +395,9 @@ curl -X POST http://localhost:3000/kill-switch
 4. Reconcile state: `curl http://localhost:3000/state`
 5. Fix issue before resuming trading
 6. To resume trading after restart:
-   - Either: Delete state file: `rm apps/backend/.state/kill-switch.json`
-   - Or: Implement a reset endpoint (not currently available)
-   - Then restart the server
+   - Delete state file: `rm apps/backend/.state/kill-switch.json`
+   - Restart the server
+   - Trading will resume (unless kill switch is activated again)
 
 **Kill Switch State File:**
 - Location: `apps/backend/.state/kill-switch.json`

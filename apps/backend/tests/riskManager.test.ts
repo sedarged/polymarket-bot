@@ -269,7 +269,7 @@ describe('RiskManager', () => {
       persistentManager.kill('test persistence');
 
       // Wait for async save to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await persistentManager.waitForPersistence();
 
       // Create new risk manager instance and restore state
       const restoredManager = new RiskManager({
@@ -289,7 +289,7 @@ describe('RiskManager', () => {
 
       // Clean up
       restoredManager.reset();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await restoredManager.waitForPersistence();
     });
 
     it('should handle missing state file gracefully', async () => {
@@ -303,7 +303,7 @@ describe('RiskManager', () => {
 
       // Clear any existing state first
       manager.reset();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await manager.waitForPersistence();
 
       // Restore state should not throw
       await expect(manager.restoreState()).resolves.not.toThrow();
