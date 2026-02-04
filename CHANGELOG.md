@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0](https://github.com/sedarged/polymarket-bot/compare/v1.12.0...v1.13.0) (2026-02-04)
+
+
+### Features
+
+* implement WebSocket message deduplication (A-010) ([68e9aa3](https://github.com/sedarged/polymarket-bot/commit/68e9aa34a4221964535b0713715677fc419155ba)), closes [#124](https://github.com/sedarged/polymarket-bot/issues/124)
+
+
+### Bug Fixes
+
+* address code review feedback for WebSocket deduplication ([519616a](https://github.com/sedarged/polymarket-bot/commit/519616a4095fec3ec4e5684cff58453f3802b45d))
+* address PR review feedback ([b83374b](https://github.com/sedarged/polymarket-bot/commit/b83374b069c1c282bbb0d80ed955c8a7414f2d1f))
+* TypeScript strict mode compliance for deduplication ([3d634b0](https://github.com/sedarged/polymarket-bot/commit/3d634b0496d065bcf5c220e03949ce067fbc6cc4))
+
 ## [1.12.0](https://github.com/sedarged/polymarket-bot/compare/v1.11.0...v1.12.0) (2026-02-04)
 
 
