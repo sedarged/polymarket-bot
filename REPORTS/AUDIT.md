@@ -35,7 +35,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 | **A-008** | HIGH | No Rate Limiting | `server/index.ts` | HTTP endpoints have no rate limiting | DoS attacks, API abuse | Add rate limiting middleware (express-rate-limit) | Open |
 | **A-009** | HIGH | Timeout Missing | `retry.ts` | Retry logic has no overall timeout cap | Infinite retries block operations | Add max total duration timeout to retry function | Open |
 | **A-010** | HIGH | Order Deduplication | `clients/websocket.ts`, `clients/marketFeed.ts` | No message deduplication on WebSocket reconnect | Duplicate order book updates, incorrect state | Add message sequence numbers and dedup logic | **RESOLVED** |
-| **A-011** | HIGH | Balance Reconciliation | `clients/tradingClient.ts` | Balance fetch silently fails with warning (L104-108) | Trading continues without balance validation | Throw error or retry balance fetch; don't ignore failure | Open |
+| **A-011** | HIGH | Balance Reconciliation | `clients/tradingClient.ts` | Balance fetch silently fails with warning (L104-108) | Trading continues without balance validation | Throw error or retry balance fetch; don't ignore failure | **RESOLVED** |
 | **A-012** | MEDIUM | Error Swallowing | `server/index.ts` | Trading client init failure only logs warning (L286-291) | Server runs without trading capability; silent failure | Fail startup or enter degraded mode with clear status | Open |
 | **A-013** | MEDIUM | Undefined Order ID | `clients/tradingClient.ts` | Order mapping allows missing orderID (L281-284) | Orders tracked with empty IDs; can't cancel/reconcile | Require orderId; reject orders without valid ID | Open |
 | **A-014** | MEDIUM | Position Calculation | `clients/tradingClient.ts` | Position recalc only uses MATCHED status (L314) | Partially filled orders ignored in position calculation | Include OPEN orders with filledSize > 0 | Open |
@@ -398,9 +398,11 @@ private generateMessageId(message: WSMarketMessage): string {
 
 ---
 
-#### A-011: HIGH - Ignored Balance Fetch Failure
+#### A-011: HIGH - Ignored Balance Fetch Failure ✅ RESOLVED
 **File:** `apps/backend/src/clients/tradingClient.ts:93-108`  
-**Evidence:**
+**Status:** **RESOLVED** in PR #[TBD]
+
+**Original Issue:**
 ```typescript
 try {
   // @ts-ignore - API may not be exposed in types
@@ -420,31 +422,32 @@ try {
 - No validation of buying power
 - Partial startup state
 
-**Fix:**
-```typescript
-// Make balance fetch critical for live trading
-if (isLiveTradingEnabled()) {
-  try {
-    const balancesData = await this.client.getBalanceAllowance();
-    if (!balancesData) {
-      throw new Error('Balance fetch returned null');
-    }
-    this.state.balances = [{
-      currency: 'USDC',
-      available: balancesData.balance || '0',
-      total: balancesData.balance || '0',
-    }];
-  } catch (err) {
-    logger.error('CRITICAL: Could not fetch balances', { 
-      error: err instanceof Error ? err.message : String(err) 
-    });
-    throw new Error('Reconciliation failed: unable to fetch balances');
-  }
-} else {
-  // Paper trading - balance fetch is optional
-  logger.info('Paper trading mode: balance fetch skipped');
-}
-```
+**Resolution Implemented:**
+1. **Retry logic with exponential backoff:**
+   - 3 retry attempts
+   - Base delay: 1 second with 2x multiplier
+   - 10% jitter to prevent thundering herd
+   - 5 second timeout per attempt
+
+2. **Balance staleness tracking:**
+   - `lastBalanceFetchTime` timestamp tracking
+   - 60 second staleness threshold
+   - Clear error messages for stale data
+
+3. **Trading gate on balance availability:**
+   - `validateBalanceAvailability()` method checks balance freshness before order placement
+   - Blocks orders when balance data is missing or stale
+   - Provides clear error messages
+
+4. **Error escalation:**
+   - Balance fetch failures now throw errors after retries
+   - Balances cleared on fetch failure to prevent stale data usage
+   - Comprehensive error logging with retry context
+
+**Test Coverage:**
+- 10 comprehensive tests in `balanceFetch.test.ts`
+- Tests cover: failures, retries, staleness, order blocking, error logging
+- All tests passing ✓
 
 **Recommendation Priority:** P1 - Important for live trading safety
 
