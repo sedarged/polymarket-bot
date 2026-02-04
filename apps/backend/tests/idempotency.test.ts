@@ -72,6 +72,8 @@ vi.mock('@polymarket/clob-client', () => ({
     cancelOrder = vi.fn();
     cancelOrders = vi.fn();
     getOpenOrders = vi.fn().mockResolvedValue([]);
+    getBalanceAllowance = vi.fn().mockResolvedValue({ balance: '1000.00' }); // A-011: Mock balance fetch
+    getOrders = vi.fn().mockResolvedValue([]); // Mock orders fetch for reconciliation
   },
   Side: {
     BUY: 'BUY',
