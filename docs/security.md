@@ -1,22 +1,139 @@
-# Security Guide - Private Key Management
+# Security Guide
 
-This guide explains how to securely manage your wallet private key for the Polymarket trading bot.
+This guide explains how to securely configure and operate the Polymarket trading bot.
 
-**Addresses:** Audit Finding A-001 (CRITICAL) - Plaintext Private Key Storage
+**Addresses:** 
+- Audit Finding A-001 (CRITICAL) - Plaintext Private Key Storage
+- Audit Finding A-004 (HIGH) - Optional Admin Authentication
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Security Levels](#security-levels)
-3. [Setup Methods](#setup-methods)
-4. [Encryption Tool](#encryption-tool)
-5. [Production Setup](#production-setup)
-6. [Security Best Practices](#security-best-practices)
-7. [Troubleshooting](#troubleshooting)
+2. [API Authentication](#api-authentication)
+3. [Private Key Management](#private-key-management)
+4. [Security Levels](#security-levels)
+5. [Setup Methods](#setup-methods)
+6. [Encryption Tool](#encryption-tool)
+7. [Production Setup](#production-setup)
+8. [Security Best Practices](#security-best-practices)
+9. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The trading bot requires your wallet private key to sign transactions. This guide provides multiple methods for storing this sensitive credential, ranging from basic (for development) to enterprise-grade (for production).
+The trading bot requires secure configuration for two critical areas:
+1. **API Authentication** - Protects administrative endpoints from unauthorized access
+2. **Private Key Management** - Secures your wallet credentials used to sign transactions
+
+### ⚠️ Critical Security Warnings
+
+**API Security:**
+- ADMIN_TOKEN is **REQUIRED** for production and live trading
+- Without it, sensitive endpoints are accessible to anyone who can reach your server
+- This includes kill switch, order management, and trading status endpoints
+
+**Private Key Security:**
+- **NEVER commit your private key or .env file to source control**
+- Your private key controls real funds - if compromised, all trading funds can be stolen
+- No recovery is possible if your key is compromised
+
+## API Authentication
+
+**Addresses:** Audit Finding A-004 (HIGH) - Optional Admin Authentication
+
+### Overview
+
+All sensitive API endpoints require authentication using an admin token. This prevents unauthorized access to critical bot operations.
+
+### Protected Endpoints
+
+The following endpoints require a valid `ADMIN_TOKEN` in the `Authorization` header:
+
+- `GET /status` - Trading status, wallet address, connection state
+- `GET /state` - Orders, positions, balances
+- `GET /orders` - Order information
+- `GET /fills` - Fill history
+- `POST /kill` - Emergency kill switch activation
+- `POST /kill-switch` - Legacy kill switch endpoint
+
+### Public Endpoints
+
+These endpoints do NOT require authentication:
+
+- `GET /health` - Health check
+- `GET /ready` - Readiness probe
+- `GET /metrics` - Prometheus metrics
+- `GET /orderbooks` - Market orderbook data
+- `GET /orderbook/:tokenId` - Specific orderbook
+- `GET /feed/status` - Market feed status
+
+### Setup
+
+#### 1. Generate a Secure Token
+
+```bash
+# Generate a cryptographically secure random token
+openssl rand -hex 32
+
+# Example output: 5f8e3c2b1a9d7e4f6c8b2a5d3e7f9c1b4a6d8e2f5c7b9a3d1e4f6c8b2a5d3e7f
+```
+
+#### 2. Configure Environment
+
+```bash
+# .env
+ADMIN_TOKEN=5f8e3c2b1a9d7e4f6c8b2a5d3e7f9c1b4a6d8e2f5c7b9a3d1e4f6c8b2a5d3e7f
+```
+
+#### 3. Use in API Requests
+
+```bash
+# Using Bearer token format (recommended)
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" http://localhost:3000/status
+
+# Using plain token (also supported)
+curl -H "Authorization: YOUR_ADMIN_TOKEN" http://localhost:3000/status
+```
+
+### Production Requirements
+
+**CRITICAL:** The server will **fail to start** in production or live trading mode without a valid `ADMIN_TOKEN`.
+
+```bash
+# This will FAIL in production
+NODE_ENV=production npm run dev
+# Error: ADMIN_TOKEN is required for production or live trading mode
+
+# This will SUCCEED
+ADMIN_TOKEN=your_secure_token npm run dev
+```
+
+The bot enforces this requirement to prevent accidental deployment without authentication.
+
+### Security Best Practices
+
+1. **Never hardcode tokens** - Always use environment variables
+2. **Use strong tokens** - Minimum 32 bytes of random data (64 hex characters)
+3. **Rotate regularly** - Change tokens periodically and after any suspected compromise
+4. **Limit exposure** - Only share tokens with authorized personnel
+5. **Use HTTPS** - Always use TLS/SSL in production to protect tokens in transit
+6. **Monitor access** - Review logs for unauthorized access attempts (401 responses)
+
+### Testing Authentication
+
+```bash
+# Start server with token
+ADMIN_TOKEN=test-token npm run dev
+
+# Test without auth (should fail with 401)
+curl http://localhost:3000/status
+
+# Test with auth (should succeed)
+curl -H "Authorization: Bearer test-token" http://localhost:3000/status
+```
+
+## Private Key Management
+
+This section explains how to securely manage your wallet private key for the Polymarket trading bot.
 
 ### ⚠️ Critical Security Warning
 

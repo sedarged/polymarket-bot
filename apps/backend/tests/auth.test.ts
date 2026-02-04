@@ -302,6 +302,21 @@ describe('Authentication - Token requirement in production', () => {
       ...process.env,
       NODE_ENV: 'production',
       ADMIN_TOKEN: '',
+      LIVE_TRADING: 'false',
+    };
+
+    expect(() => parseConfig(envWithoutToken)).toThrow(/ADMIN_TOKEN is required/);
+  });
+
+  it('should fail config parsing when ADMIN_TOKEN is missing with live trading', async () => {
+    const { parseConfig } = await import('../src/config/index.js');
+    
+    const envWithoutToken = {
+      ...process.env,
+      NODE_ENV: 'development', // Not production, but live trading is enabled
+      ADMIN_TOKEN: '',
+      LIVE_TRADING: 'true',
+      COMPLIANCE_ACCEPTED: 'true',
     };
 
     expect(() => parseConfig(envWithoutToken)).toThrow(/ADMIN_TOKEN is required/);
@@ -327,9 +342,25 @@ describe('Authentication - Token requirement in production', () => {
       ...process.env,
       NODE_ENV: 'production',
       ADMIN_TOKEN: 'test-token-12345',
+      LIVE_TRADING: 'false',
     };
 
     const config = parseConfig(envWithToken);
     expect(config.adminToken).toBe('test-token-12345');
+  });
+
+  it('should succeed config parsing when ADMIN_TOKEN is provided with live trading', async () => {
+    const { parseConfig } = await import('../src/config/index.js');
+    
+    const envWithToken = {
+      ...process.env,
+      NODE_ENV: 'development',
+      ADMIN_TOKEN: 'test-token-67890',
+      LIVE_TRADING: 'true',
+      COMPLIANCE_ACCEPTED: 'true',
+    };
+
+    const config = parseConfig(envWithToken);
+    expect(config.adminToken).toBe('test-token-67890');
   });
 });

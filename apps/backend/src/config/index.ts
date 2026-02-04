@@ -213,13 +213,15 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     );
   }
   
-  // Admin Token Security Check (Audit Finding A-004): Fail-fast if missing in production
+  // Admin Token Security Check (Audit Finding A-004): Fail-fast if missing in production OR live trading
   // This prevents unauthorized access to sensitive endpoints (kill switch, order management, config changes)
-  const requiresAdminToken = isProduction;
+  // Live trading mode ALWAYS requires admin authentication, regardless of NODE_ENV
+  const requiresAdminToken = isProduction || config.liveTrading;
   
   if (requiresAdminToken && (!config.adminToken || config.adminToken.trim() === '')) {
+    const mode = config.liveTrading ? 'live trading' : 'production';
     throw new Error(
-      'CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for production or live trading mode. ' +
+      `CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for ${mode} mode. ` +
       'Sensitive endpoints (kill switch, order management, config changes) require authentication. ' +
       'Generate a secure token: openssl rand -hex 32'
     );
