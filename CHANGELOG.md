@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/sedarged/polymarket-bot/compare/v1.9.0...v1.10.0) (2026-02-04)
+
+
+### Features
+
+* add tick size and minimum order size validation (Issue [#75](https://github.com/sedarged/polymarket-bot/issues/75)) ([cca8dcc](https://github.com/sedarged/polymarket-bot/commit/cca8dcca274fb59db28c1b5c34d99980b4393994))
+* enforce tick size and minimum order size validation ([bba9039](https://github.com/sedarged/polymarket-bot/commit/bba9039a744f412f2c08a31fc60b28a41d4c4522))
+
+
+### Bug Fixes
+
+* address code review feedback - add validation, cleanup, and tests ([3bb4361](https://github.com/sedarged/polymarket-bot/commit/3bb436180131fb04d2253929c62ec6fdcf91383a))
+* remove invalid tick size test case per code review ([f3e16cd](https://github.com/sedarged/polymarket-bot/commit/f3e16cdc28e38017eda2f5672c745c4f0e28fe1e))
+* resolve TypeScript build errors in order validation ([e482f02](https://github.com/sedarged/polymarket-bot/commit/e482f0274b8937dcd2cabfe8e34a4c56498a3220))
+
 ## [1.9.0](https://github.com/sedarged/polymarket-bot/compare/v1.8.0...v1.9.0) (2026-02-04)
 
 
