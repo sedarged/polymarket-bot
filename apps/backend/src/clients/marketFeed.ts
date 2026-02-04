@@ -8,6 +8,7 @@ import {
   WSMarketMessage,
   WSOrderbookSnapshot,
   WSPriceChange,
+  WSLastTradePrice,
   Orderbook,
 } from '@polymarket/shared';
 
@@ -169,7 +170,9 @@ export class MarketFeedClient extends EventEmitter {
       // Implement LRU behavior: Evict oldest if at capacity before adding new entry
       if (this.processedMessageIds.size >= this.MESSAGE_ID_CACHE_SIZE) {
         const firstId = this.processedMessageIds.values().next().value;
-        this.processedMessageIds.delete(firstId);
+        if (firstId !== undefined) {
+          this.processedMessageIds.delete(firstId);
+        }
       }
       
       // Add to processed set
