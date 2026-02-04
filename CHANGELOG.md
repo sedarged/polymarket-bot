@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/sedarged/polymarket-bot/compare/v1.1.0...v1.2.0) (2026-02-04)
+
+
+### Features
+
+* implement persistent kill switch state (A-002) ([63c4566](https://github.com/sedarged/polymarket-bot/commit/63c4566695ac0c286b7874bdb2d08662b4bfc138))
+
+
+### Bug Fixes
+
+* address code review feedback ([d14bc76](https://github.com/sedarged/polymarket-bot/commit/d14bc76dd4fe1f5bd522ae8565f252b92fbf9501))
+* address code review feedback - fail-closed behavior and validation ([009bd92](https://github.com/sedarged/polymarket-bot/commit/009bd92872c6d522a8d7fd09d3ea3846baf2060e))
+* address final code review feedback ([c058e3b](https://github.com/sedarged/polymarket-bot/commit/c058e3b46a7e083a6a66f3bd57db979d85fb9828))
+* ensure kill switch state restoration completes before trading ([e2df92f](https://github.com/sedarged/polymarket-bot/commit/e2df92fd844b31d15eb410e9bed27b4cfbd26838))
+
 ## [1.1.0](https://github.com/sedarged/polymarket-bot/compare/v1.0.1...v1.1.0) (2026-02-01)
 
 
