@@ -114,7 +114,8 @@ const envSchema = z.object({
   RISK_MAX_DRAWDOWN: numberFromEnv(0.20, z.number().positive().max(1)),
   RISK_ERROR_RATE_THRESHOLD: numberFromEnv(0.10, z.number().nonnegative().max(1)),
   RISK_ERROR_RATE_WINDOW: numberFromEnv(100, z.number().int().positive()),
-  // Admin Authentication
+  // Admin Authentication (Audit Finding A-004)
+  // ADMIN_TOKEN is required for production and live trading modes
   ADMIN_TOKEN: z.string().optional(),
   // CORS Configuration
   // Comma-separated list of allowed origins. Default: http://localhost:3000
@@ -209,6 +210,26 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     console.warn(
       '⚠️  WARNING: CORS is configured with wildcard (*). This is ONLY acceptable for local development. ' +
       'For production, set ALLOWED_ORIGINS to specific domain(s).'
+    );
+  }
+  
+  // Admin Token Security Check (Audit Finding A-004): Fail-fast if missing in production
+  // This prevents unauthorized access to sensitive endpoints (kill switch, order management, config changes)
+  const requiresAdminToken = isProduction;
+  
+  if (requiresAdminToken && (!config.adminToken || config.adminToken.trim() === '')) {
+    throw new Error(
+      'CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for production or live trading mode. ' +
+      'Sensitive endpoints (kill switch, order management, config changes) require authentication. ' +
+      'Generate a secure token: openssl rand -hex 32'
+    );
+  }
+  
+  if (!config.adminToken || config.adminToken.trim() === '') {
+    console.warn(
+      '⚠️  WARNING: ADMIN_TOKEN is not set. Admin endpoints will be disabled. ' +
+      'This is only acceptable for local development/testing. ' +
+      'For any sensitive operations, set ADMIN_TOKEN to a secure random value.'
     );
   }
   

@@ -85,6 +85,7 @@ describe('CORS configuration validation', () => {
       ALLOWED_ORIGINS: 'https://app.example.com',
       LIVE_TRADING: 'true',
       COMPLIANCE_ACCEPTED: 'true',
+      ADMIN_TOKEN: 'test-admin-token-for-live-trading', // Required for live trading (A-004)
     });
     expect(parsed.allowedOrigins).toEqual(['https://app.example.com']);
   });

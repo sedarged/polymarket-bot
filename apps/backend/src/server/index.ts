@@ -220,14 +220,20 @@ export function createServer(): http.Server {
     }
 
     // ============================================================================
-    // Trading Endpoints
-    // WARNING: These endpoints lack authentication and should be protected in
-    // production deployments. Consider adding API key validation, session tokens,
-    // or other authentication mechanisms before exposing to untrusted networks.
+    // Trading Endpoints - Audit Finding A-004
+    // SECURED: All sensitive endpoints require admin authentication to prevent
+    // unauthorized access to trading information, order management, and bot control.
+    // Access requires valid ADMIN_TOKEN in Authorization header.
     // ============================================================================
 
-    // Trading status
+    // Trading status - requires authentication (exposes wallet, trading mode)
     if (method === 'GET' && url === '/status') {
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
+        logger.warn('Status endpoint access denied: invalid admin token');
+        return;
+      }
+
       const status = {
         liveTrading: isLiveTradingEnabled(),
         tradingClientInitialized: tradingClient.isInitialized(),
@@ -240,8 +246,14 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Trading state (orders, positions, balances)
+    // Trading state (orders, positions, balances) - requires authentication
     if (method === 'GET' && url === '/state') {
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
+        logger.warn('State endpoint access denied: invalid admin token');
+        return;
+      }
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, state, req);
@@ -254,8 +266,14 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Get orders
+    // Get orders - requires authentication
     if (method === 'GET' && url === '/orders') {
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
+        logger.warn('Orders endpoint access denied: invalid admin token');
+        return;
+      }
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, { orders: state.orders }, req);
@@ -268,8 +286,14 @@ export function createServer(): http.Server {
       return;
     }
 
-    // Get fills
+    // Get fills - requires authentication
     if (method === 'GET' && url === '/fills') {
+      if (!validateAdminToken(req)) {
+        respondJson(res, 401, { error: 'Unauthorized: invalid or missing admin token' }, req);
+        logger.warn('Fills endpoint access denied: invalid admin token');
+        return;
+      }
+
       try {
         const state = tradingClient.getState();
         respondJson(res, 200, { fills: state.fills }, req);
