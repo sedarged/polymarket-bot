@@ -1,5 +1,6 @@
 import { Order, Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
+import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '../utils/statePersistence';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -25,6 +26,7 @@ export class RiskManager {
   private config: RiskManagerConfig;
   private operations: { timestamp: number; isError: boolean }[] = [];
   private killed = false;
+  private pendingPersistenceOps: Promise<void>[] = [];
 
   constructor(config?: Partial<RiskManagerConfig>) {
     this.config = {
@@ -42,6 +44,47 @@ export class RiskManager {
       errorRateThreshold: this.config.errorRateThreshold,
       errorRateWindow: this.config.errorRateWindow,
     });
+  }
+
+  /**
+   * Restore kill switch state from persistent storage
+   * Should be called during startup before enabling trading
+   * FAIL-CLOSED: On unexpected errors, activates kill switch for safety
+   */
+  async restoreState(): Promise<void> {
+    try {
+      const state = await loadKillSwitchState();
+      
+      if (state && state.killed) {
+        this.killed = true;
+        logger.warn('Kill switch state restored from disk - trading disabled', {
+          timestamp: state.timestamp,
+          age: Date.now() - state.timestamp,
+          reason: state.reason,
+        });
+      } else {
+        logger.info('No active kill switch state found - trading enabled');
+      }
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      
+      // Missing state file is treated as "no prior kill condition"
+      if (err && err.code === 'ENOENT') {
+        logger.info('No kill switch state file found - assuming no prior kill condition');
+        return;
+      }
+      
+      // Fail closed on unexpected restoration errors: force kill switch active
+      this.killed = true;
+      logger.error('CRITICAL: Failed to restore kill switch state - kill switch forced ACTIVE', {
+        error: error instanceof Error ? error.message : String(error),
+        code: err && err.code,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      logger.warn(
+        'Kill switch is ACTIVE due to state restoration failure - trading disabled until manual operator reset'
+      );
+    }
   }
 
   /**
@@ -184,9 +227,22 @@ export class RiskManager {
   /**
    * Activate kill switch - no new orders allowed
    */
-  kill(): void {
+  kill(reason?: string): void {
     this.killed = true;
-    logger.error('Kill switch activated');
+    logger.error('Kill switch activated', { reason });
+    
+    // Persist state to disk (async, but don't wait - best effort)
+    const persistOp = saveKillSwitchState({
+      killed: true,
+      timestamp: Date.now(),
+      reason,
+    }).catch((error) => {
+      logger.error('Failed to persist kill switch state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+    
+    this.pendingPersistenceOps.push(persistOp);
   }
 
   /**
@@ -203,6 +259,27 @@ export class RiskManager {
     this.killed = false;
     this.operations = [];
     logger.info('Risk manager reset');
+    
+    // Clear persisted state (async, but don't wait - best effort)
+    const persistOp = clearKillSwitchState().catch((error) => {
+      logger.error('Failed to clear kill switch state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      logger.warn('Failed to clear kill switch state; kill switch may remain active on next restart. Manual cleanup of persisted kill switch state may be required.');
+    });
+    
+    this.pendingPersistenceOps.push(persistOp);
+  }
+
+  /**
+   * Wait for any pending persistence operations to complete
+   * Useful for testing to avoid race conditions
+   */
+  async waitForPersistence(): Promise<void> {
+    if (this.pendingPersistenceOps.length > 0) {
+      await Promise.all(this.pendingPersistenceOps);
+      this.pendingPersistenceOps = [];
+    }
   }
 
   /**

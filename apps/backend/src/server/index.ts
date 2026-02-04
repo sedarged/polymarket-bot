@@ -299,7 +299,7 @@ export function createServer(): http.Server {
   });
 }
 
-export function startServer(): http.Server {
+export async function startServer(): Promise<http.Server> {
   const server = createServer();
   
   // Start market feed service
@@ -324,6 +324,18 @@ export function startServer(): http.Server {
     errorRateWindow: config.riskErrorRateWindow,
   });
   logger.info('Risk manager initialized');
+  
+  // Restore kill switch state from disk before enabling trading
+  // CRITICAL: This must happen before any trading logic is enabled
+  // This is awaited to ensure state is loaded before proceeding
+  try {
+    await riskManager.restoreState();
+  } catch (error) {
+    logger.error('Failed to restore kill switch state', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    logger.warn('WARNING: Kill switch state restoration failed - kill switch state UNKNOWN (default is kill switch ACTIVE due to fail-closed behavior). Manually verify state before proceeding.');
+  }
   
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {

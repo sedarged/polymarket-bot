@@ -347,7 +347,7 @@ kill -SIGTERM $(pgrep -f "npm run dev")
 
 ## Kill Switch (Emergency)
 
-Immediately cancel all open orders without shutting down the server.
+Immediately cancel all open orders and disable trading. **The kill switch state is persisted to disk and will remain active across process restarts.**
 
 ### Via Dashboard
 1. Open dashboard at http://localhost:8080
@@ -356,17 +356,29 @@ Immediately cancel all open orders without shutting down the server.
 4. Confirm action in popup
 5. All open orders will be cancelled immediately
 
-### Via API
+### Via API (Authenticated)
 ```bash
-curl -X POST http://localhost:3000/kill-switch
+# Requires ADMIN_TOKEN to be set in environment
+curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" http://localhost:3000/kill
 ```
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "All orders cancelled"
+  "message": "Kill switch activated: all orders cancelled, trading disabled",
+  "riskManager": {
+    "killed": true,
+    "recentErrors": 0,
+    "circuitBreakerTripped": false
+  }
 }
+```
+
+### Via API (Legacy - Unauthenticated)
+```bash
+# Deprecated: Use authenticated /kill endpoint instead
+curl -X POST http://localhost:3000/kill-switch
 ```
 
 **When to use:**
@@ -377,11 +389,26 @@ curl -X POST http://localhost:3000/kill-switch
 - Risk limit breach
 
 **Post kill-switch:**
-1. Review logs for root cause
-2. Check final positions in dashboard
-3. Reconcile state: `curl http://localhost:3000/state`
-4. Fix issue before resuming trading
-5. Restart server if necessary
+1. **IMPORTANT:** Kill switch state is persistent - it will remain active even after process restart
+2. Review logs for root cause: `grep -i "kill" logs/app.log`
+3. Check final positions in dashboard
+4. Reconcile state: `curl http://localhost:3000/state`
+5. Fix issue before resuming trading
+6. To resume trading after kill switch:
+   - Delete state file: `rm apps/backend/.state/kill-switch.json`
+   - Restart the server
+   - **Note:** Deleting the state file will disable the kill switch on restart, allowing trading to resume (unless another issue triggers the kill switch again)
+
+**Kill Switch State File:**
+- Location: `apps/backend/.state/kill-switch.json`
+- Format: JSON with `killed`, `timestamp`, and optional `reason` fields
+- The `.state/` directory is automatically created on first use
+- This directory is excluded from git via `.gitignore`
+- State file behavior on startup:
+  - If the file doesn't exist, trading is enabled on startup.
+  - If the file exists with `killed: false`, trading is enabled on startup.
+  - If the file exists with `killed: true`, trading remains disabled on startup.
+- **Validation:** State file structure is validated using Zod schema. Invalid structure triggers fail-closed behavior (kill switch active).
 
 ## Incident Response
 ### WebSocket Disconnects
@@ -724,9 +751,12 @@ curl http://localhost:3000/state | jq '{
    # Check trading status
    curl http://localhost:3000/status
    
-   # Note: Kill switch status is not exposed via API
-   # It requires manual inspection of RiskManager state
-   # To resume, restart the server (kill switch resets on restart)
+   # Kill switch state is persisted to disk
+   # To resume trading:
+   # 1. Fix the issue that triggered the kill switch
+   # 2. Remove the state file: rm apps/backend/.state/kill-switch.json
+   # 3. Restart the server
+   # WARNING: Kill switch will remain active across restarts until manually cleared
    ```
 
 2. **Risk limits breached:**
