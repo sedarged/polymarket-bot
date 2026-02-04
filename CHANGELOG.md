@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0](https://github.com/sedarged/polymarket-bot/compare/v1.14.0...v1.15.0) (2026-02-04)
+
+
+### Features
+
+* implement persistence layer for trading state (Gap PA-001) ([5923855](https://github.com/sedarged/polymarket-bot/commit/5923855fe3f50e80e182e7d6f422587b40ddceb1))
+
 ## [1.14.0](https://github.com/sedarged/polymarket-bot/compare/v1.13.0...v1.14.0) (2026-02-04)
 
 
