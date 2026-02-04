@@ -225,8 +225,20 @@ export class TradingClient {
     // Fetch from API
     try {
       const metadata = await this.clobRestClient.getMarketMetadata(tokenId);
+      const tickSize = metadata.tickSize;
+
+      // Runtime validation to ensure tick size matches expected values
+      const allowedTickSizes: TickSize[] = ['0.1', '0.01', '0.001', '0.0001'];
+      if (typeof tickSize !== 'string' || !allowedTickSizes.includes(tickSize as TickSize)) {
+        logger.error('Received invalid tick size from market metadata', {
+          tokenId,
+          tickSize,
+        });
+        throw new Error(`Invalid tick size from market metadata for ${tokenId}: ${String(tickSize)}`);
+      }
+
       const constraints: MarketConstraints = {
-        tickSize: metadata.tickSize as TickSize,
+        tickSize: tickSize as TickSize,
         minOrderSize: metadata.minOrderSize,
       };
       
@@ -241,6 +253,12 @@ export class TradingClient {
       
       return constraints;
     } catch (error) {
+      // If it's already our validation error, re-throw it
+      if (error instanceof Error && error.message.includes('Invalid tick size from market metadata')) {
+        throw error;
+      }
+      
+      // Otherwise, log and wrap with context
       logger.error('Failed to fetch market constraints', {
         tokenId,
         error: error instanceof Error ? error.message : String(error),
@@ -467,6 +485,29 @@ export class TradingClient {
    */
   isInitialized(): boolean {
     return this.client !== null && this.wallet !== null;
+  }
+
+  /**
+   * Clear the market constraints cache
+   * Call this if market parameters are known to have changed
+   */
+  clearMarketConstraintsCache(tokenId?: string): void {
+    if (tokenId) {
+      this.marketConstraintsCache.delete(tokenId);
+      logger.info('Cleared market constraints cache for token', { tokenId });
+    } else {
+      this.marketConstraintsCache.clear();
+      logger.info('Cleared all market constraints cache');
+    }
+  }
+
+  /**
+   * Clean up resources (CLOB REST client)
+   * Call this when shutting down the trading client
+   */
+  destroy(): void {
+    this.clobRestClient.destroy();
+    logger.info('Trading client resources cleaned up');
   }
 
   /**
