@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0](https://github.com/sedarged/polymarket-bot/compare/v1.10.0...v1.11.0) (2026-02-04)
+
+
+### Features
+
+* implement periodic reconciliation (Gap RE-001) ([4a20354](https://github.com/sedarged/polymarket-bot/commit/4a203546616c58de5f8e546ca681dbd21bad04e1))
+* implement periodic state reconciliation (Gap RE-001) ([04a5efa](https://github.com/sedarged/polymarket-bot/commit/04a5efad54f60603899eed327641e9970c141f56))
+
+
+### Bug Fixes
+
+* address code review feedback for periodic reconciliation ([d67e358](https://github.com/sedarged/polymarket-bot/commit/d67e3584631c7d6a6ab7d592a97aec9409b03e1a))
+
 ## [1.10.0](https://github.com/sedarged/polymarket-bot/compare/v1.9.0...v1.10.0) (2026-02-04)
 
 
