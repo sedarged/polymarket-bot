@@ -42,6 +42,23 @@ const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) => {
   }, numberSchema).default(defaultValue);
 };
 
+/**
+ * Helper function to preprocess optional string values from environment variables.
+ * Converts empty strings and null values to undefined, allowing Zod's .optional() to work correctly.
+ * 
+ * @param schema - The Zod schema to apply after preprocessing
+ * @returns A preprocessed Zod schema that treats empty strings as undefined
+ */
+const optionalStringFromEnv = <T extends z.ZodTypeAny>(schema: T) => {
+  return z.preprocess((value) => {
+    // Convert empty string or null to undefined
+    if (value === '' || value === null) {
+      return undefined;
+    }
+    return value;
+  }, schema);
+};
+
 const envSchema = z.object({
   GAMMA_API_URL: z.string().url().default('https://gamma-api.polymarket.com'),
   CLOB_API_URL: z.string().url().default('https://clob.polymarket.com'),
@@ -56,14 +73,7 @@ const envSchema = z.object({
   // Trading credentials (optional - only required for live trading)
   // Private key must be 64 hex characters (optionally prefixed with 0x)
   // Addresses Audit Finding A-024: Private key format validation
-  PRIVATE_KEY: z.preprocess(
-    (value) => {
-      // Convert empty string to undefined
-      if (value === '' || value === null) {
-        return undefined;
-      }
-      return value;
-    },
+  PRIVATE_KEY: optionalStringFromEnv(
     z.string().optional().refine(
       (key) => !key || validatePrivateKey(key),
       {

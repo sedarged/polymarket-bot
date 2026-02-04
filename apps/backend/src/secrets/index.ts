@@ -160,17 +160,23 @@ export const decryptPrivateKey = (encryptedData: string, passphrase: string): st
 /**
  * Retrieves private key from AWS Secrets Manager
  * 
+ * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
+ * 
  * @param secretName - Name of the secret in AWS Secrets Manager
  * @param region - AWS region (defaults to us-east-1)
  * @returns The private key
  */
 export const getPrivateKeyFromAWS = async (
-  _secretName: string,
-  _region: string = 'us-east-1'
+  secretName: string,
+  region: string = 'us-east-1'
 ): Promise<string> => {
   // This is a placeholder for AWS Secrets Manager integration
   // In production, this would use the AWS SDK:
   // import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+  
+  // Prevent unused variable warnings in stub
+  void secretName;
+  void region;
   
   throw new Error(
     'AWS Secrets Manager integration not implemented. ' +
@@ -188,18 +194,25 @@ export const getPrivateKeyFromAWS = async (
 /**
  * Retrieves private key from HashiCorp Vault
  * 
+ * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
+ * 
  * @param vaultAddr - Vault server address
  * @param vaultToken - Vault authentication token
  * @param vaultPath - Path to the secret (e.g., 'secret/data/polymarket')
  * @returns The private key
  */
 export const getPrivateKeyFromVault = async (
-  _vaultAddr: string,
-  _vaultToken: string,
-  _vaultPath: string
+  vaultAddr: string,
+  vaultToken: string,
+  vaultPath: string
 ): Promise<string> => {
   // This is a placeholder for HashiCorp Vault integration
   // In production, this would use the Vault API or node-vault client
+  
+  // Prevent unused variable warnings in stub
+  void vaultAddr;
+  void vaultToken;
+  void vaultPath;
   
   throw new Error(
     'HashiCorp Vault integration not implemented. ' +
@@ -216,18 +229,24 @@ export const getPrivateKeyFromVault = async (
 /**
  * Retrieves private key from Azure Key Vault
  * 
+ * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
+ * 
  * @param keyVaultName - Name of the Azure Key Vault
  * @param secretName - Name of the secret
  * @returns The private key
  */
 export const getPrivateKeyFromAzure = async (
-  _keyVaultName: string,
-  _secretName: string
+  keyVaultName: string,
+  secretName: string
 ): Promise<string> => {
   // This is a placeholder for Azure Key Vault integration
   // In production, this would use the Azure SDK:
   // import { SecretClient } from "@azure/keyvault-secrets";
   // import { DefaultAzureCredential } from "@azure/identity";
+  
+  // Prevent unused variable warnings in stub
+  void keyVaultName;
+  void secretName;
   
   throw new Error(
     'Azure Key Vault integration not implemented. ' +
