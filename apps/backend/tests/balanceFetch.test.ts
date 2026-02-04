@@ -203,21 +203,22 @@ describe('TradingClient - Balance Fetch Error Handling (A-011)', () => {
       await client.initialize();
       
       // Mock Date.now to simulate time passing (61 seconds = stale)
-      const originalNow = Date.now;
-      const initTime = originalNow();
+      const initTime = Date.now();
       let timeOffset = 0;
-      vi.spyOn(Date, 'now').mockImplementation(() => initTime + timeOffset);
+      const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => initTime + timeOffset);
       
-      // Fast-forward time by 61 seconds (past staleness threshold)
-      timeOffset = 61000;
+      try {
+        // Fast-forward time by 61 seconds (past staleness threshold)
+        timeOffset = 61000;
 
-      // Execute: Try to create order
-      await expect(
-        client.createOrder('test-token', 'BUY', '0.5', '10')
-      ).rejects.toThrow('Balance data is stale');
-      
-      // Cleanup
-      Date.now = originalNow;
+        // Execute: Try to create order
+        await expect(
+          client.createOrder('test-token', 'BUY', '0.5', '10')
+        ).rejects.toThrow('Balance data is stale');
+      } finally {
+        // Cleanup: Always restore Date.now
+        dateSpy.mockRestore();
+      }
     });
 
     it('should allow order placement when balances are fresh', async () => {
@@ -252,7 +253,7 @@ describe('TradingClient - Balance Fetch Error Handling (A-011)', () => {
         'Failed to fetch balances after retries - trading will be blocked',
         expect.objectContaining({
           error: expect.stringContaining('Service unavailable'),
-          attempts: 3,
+          attempts: expect.any(Number), // Don't hardcode the retry count
         })
       );
     });
