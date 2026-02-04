@@ -85,6 +85,8 @@ export class TradingClient {
   private submittedOrderIds: Set<string> = new Set(); // Track submitted clientOrderIds for idempotency (A-006)
   private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
   private marketConstraintsCache: Map<string, MarketConstraints> = new Map(); // Cache for market constraints (Issue #75)
+  private reconciliationInterval: NodeJS.Timeout | null = null; // Periodic reconciliation timer (Gap RE-001)
+  private lastReconciliationTime: number = 0; // Track last reconciliation timestamp
 
   constructor() {
     this.clobRestClient = new ClobRestClient();
@@ -130,7 +132,8 @@ export class TradingClient {
   }
 
   /**
-   * Startup reconciliation: fetch open orders, balances, and positions
+   * Reconciliation: fetch open orders, balances, and positions
+   * Detects and logs discrepancies (Gap RE-001, RE-002, RE-003)
    */
   async reconcile(): Promise<void> {
     if (!this.client) {
@@ -138,10 +141,17 @@ export class TradingClient {
     }
 
     try {
+      const startTime = Date.now();
       logger.info('Starting reconciliation');
+
+      // Store current state for drift detection
+      const previousOrderIds = new Set(this.state.orders.map(o => o.orderId));
+      const previousBalances = [...this.state.balances];
+      const previousPositions = [...this.state.positions];
 
       // Best-effort reconciliation of open orders using any available CLOB client API.
       // Some SDK versions expose `getOrders`, others may expose `getOpenOrders`.
+      let remoteOrders: Order[] = [];
       try {
         const clientAny = this.client as any;
 
@@ -162,7 +172,8 @@ export class TradingClient {
           // represents our internal view of an order, while the SDK may return
           // a superset/subset of fields. We rely on downstream code handling
           // only the fields it actually needs.
-          this.state.orders = openOrdersResponse as Order[];
+          remoteOrders = openOrdersResponse as Order[];
+          this.state.orders = remoteOrders;
         } else if (openOrdersResponse) {
           logger.warn('Unexpected open orders response shape during reconciliation', {
             type: typeof openOrdersResponse,
@@ -195,10 +206,19 @@ export class TradingClient {
       // Calculate positions from orders and fills
       this.recalculatePositions();
 
+      // Detect and log discrepancies (Gap RE-002, RE-003)
+      if (previousOrderIds.size > 0 || previousBalances.length > 0) {
+        this.detectDiscrepancies(previousOrderIds, remoteOrders, previousBalances, previousPositions);
+      }
+
+      this.lastReconciliationTime = Date.now();
+      const duration = this.lastReconciliationTime - startTime;
+
       logger.info('Reconciliation complete', {
         orders: this.state.orders.length,
         positions: this.state.positions.length,
         balances: this.state.balances.length,
+        durationMs: duration,
       });
     } catch (error) {
       logger.error('Reconciliation failed', {
@@ -206,6 +226,141 @@ export class TradingClient {
       });
       throw error;
     }
+  }
+
+  /**
+   * Detect and log discrepancies between local and remote state (Gap RE-002, RE-003)
+   */
+  private detectDiscrepancies(
+    previousOrderIds: Set<string>,
+    remoteOrders: Order[],
+    previousBalances: Balance[],
+    previousPositions: Position[]
+  ): void {
+    // Detect missing/orphan orders (Gap RE-002)
+    const remoteOrderIds = new Set(remoteOrders.map(o => o.orderId));
+    
+    // Orders we thought we had but are missing on the exchange
+    const missingOrders = Array.from(previousOrderIds).filter(id => !remoteOrderIds.has(id));
+    if (missingOrders.length > 0) {
+      logger.error('Reconciliation: detected missing orders on exchange', {
+        count: missingOrders.length,
+        orderIds: missingOrders,
+        gap: 'RE-002',
+      });
+    }
+
+    // Orders on exchange we didn't know about (orphaned orders)
+    const orphanedOrders = Array.from(remoteOrderIds).filter(id => !previousOrderIds.has(id));
+    if (orphanedOrders.length > 0) {
+      logger.warn('Reconciliation: detected orphaned orders on exchange', {
+        count: orphanedOrders.length,
+        orderIds: orphanedOrders,
+        gap: 'RE-002',
+      });
+    }
+
+    // Detect balance drift (Gap RE-003)
+    if (previousBalances.length > 0 && this.state.balances.length > 0) {
+      for (let i = 0; i < previousBalances.length; i++) {
+        const prev = previousBalances[i];
+        const curr = this.state.balances.find(b => b.currency === prev.currency);
+        if (curr) {
+          const prevTotal = parseFloat(prev.total);
+          const currTotal = parseFloat(curr.total);
+          const drift = Math.abs(currTotal - prevTotal);
+          const driftPercent = prevTotal > 0 ? (drift / prevTotal) * 100 : 0;
+
+          // Log significant drift (>1% or >$10)
+          if (driftPercent > 1 || drift > 10) {
+            logger.warn('Reconciliation: detected balance drift', {
+              currency: prev.currency,
+              previous: prev.total,
+              current: curr.total,
+              drift: drift.toFixed(2),
+              driftPercent: driftPercent.toFixed(2) + '%',
+              gap: 'RE-003',
+            });
+          }
+        }
+      }
+    }
+
+    // Detect position drift (Gap RE-003)
+    if (previousPositions.length > 0) {
+      for (const prevPos of previousPositions) {
+        const currPos = this.state.positions.find(p => p.tokenId === prevPos.tokenId);
+        if (currPos) {
+          const prevSize = parseFloat(prevPos.size);
+          const currSize = parseFloat(currPos.size);
+          const drift = Math.abs(currSize - prevSize);
+
+          // Log any position size changes
+          if (drift > 0.01) { // More than 0.01 difference
+            logger.info('Reconciliation: position size changed', {
+              tokenId: prevPos.tokenId,
+              previousSize: prevPos.size,
+              currentSize: currPos.size,
+              drift: drift.toFixed(4),
+              gap: 'RE-003',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Start periodic reconciliation (Gap RE-001)
+   * Runs reconciliation at the configured interval
+   * @param intervalSeconds - Override the default interval from config
+   */
+  startPeriodicReconciliation(intervalSeconds?: number): void {
+    if (this.reconciliationInterval) {
+      logger.warn('Periodic reconciliation already running');
+      return;
+    }
+
+    const interval = intervalSeconds || config.reconciliationIntervalSeconds;
+    const intervalMs = interval * 1000;
+
+    logger.info('Starting periodic reconciliation', {
+      intervalSeconds: interval,
+      gap: 'RE-001',
+    });
+
+    this.reconciliationInterval = setInterval(async () => {
+      try {
+        await this.reconcile();
+      } catch (error) {
+        logger.error('Periodic reconciliation failed', {
+          error: error instanceof Error ? error.message : String(error),
+          gap: 'RE-001',
+        });
+        // Don't throw - keep the interval running
+      }
+    }, intervalMs);
+
+    // Ensure the interval doesn't keep Node.js alive if nothing else is running
+    this.reconciliationInterval.unref();
+  }
+
+  /**
+   * Stop periodic reconciliation (Gap RE-001)
+   */
+  stopPeriodicReconciliation(): void {
+    if (this.reconciliationInterval) {
+      clearInterval(this.reconciliationInterval);
+      this.reconciliationInterval = null;
+      logger.info('Stopped periodic reconciliation', { gap: 'RE-001' });
+    }
+  }
+
+  /**
+   * Get the last reconciliation timestamp
+   */
+  getLastReconciliationTime(): number {
+    return this.lastReconciliationTime;
   }
 
   /**

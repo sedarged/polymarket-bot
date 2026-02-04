@@ -412,6 +412,15 @@ export async function startServer(): Promise<http.Server> {
         error: error instanceof Error ? error.message : String(error),
       });
       logger.warn('Server will continue without trading capabilities');
+    }).then(() => {
+      // Start periodic reconciliation after successful initialization (Gap RE-001)
+      if (tradingClient.isInitialized()) {
+        tradingClient.startPeriodicReconciliation();
+        logger.info('Periodic reconciliation started', {
+          intervalSeconds: config.reconciliationIntervalSeconds,
+          gap: 'RE-001',
+        });
+      }
     });
   }
   
@@ -423,6 +432,11 @@ export async function startServer(): Promise<http.Server> {
   const shutdown = () => {
     logger.info('Shutting down server...');
     marketFeedService.stop();
+    
+    // Stop periodic reconciliation (Gap RE-001)
+    if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+      tradingClient.stopPeriodicReconciliation();
+    }
     
     // Cancel all orders before shutdown if trading is enabled
     if (isLiveTradingEnabled() && tradingClient.isInitialized()) {

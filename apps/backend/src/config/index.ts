@@ -121,6 +121,9 @@ const envSchema = z.object({
   // Comma-separated list of allowed origins. Default: http://localhost:3000
   // Use '*' only for development. Production MUST use specific origins.
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
+  // Reconciliation Configuration (Gap RE-001)
+  // Interval in seconds for periodic reconciliation (default: 300 seconds = 5 minutes)
+  RECONCILIATION_INTERVAL_SECONDS: numberFromEnv(300, z.number().int().positive().min(60).max(3600)),
 });
 
 const configSchema = envSchema.refine(
@@ -165,6 +168,7 @@ const configSchema = envSchema.refine(
   riskErrorRateWindow: env.RISK_ERROR_RATE_WINDOW,
   adminToken: env.ADMIN_TOKEN,
   allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(s => s.length > 0),
+  reconciliationIntervalSeconds: env.RECONCILIATION_INTERVAL_SECONDS,
 }));
 
 export type Config = z.infer<typeof configSchema>;
