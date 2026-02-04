@@ -23,7 +23,6 @@ To update this status:
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
-- [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
@@ -68,6 +67,7 @@ To update this status:
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
+- [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
 - [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
 - [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
@@ -81,11 +81,8 @@ To update this status:
 - [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
-- [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
-- [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
-- [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
 
-*Last updated: 2026-02-04T19:17:21.318Z*
+*Last updated: 2026-02-04T21:58:49.993Z*
 
 <!-- STATUS_SYNC_END -->
 
