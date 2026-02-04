@@ -5,6 +5,9 @@ export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
   maxSlippage: number; // Maximum slippage for large orders
   feeRate: number;
+  partialFillRate: number; // Base probability of partial fill (0-1), scaled by liquidity ratio. 0 = always full fill
+  minFillRatio: number; // Minimum fill ratio for partial fills (0-1)
+  maxFillRatio: number; // Maximum fill ratio for partial fills (0-1)
 }
 
 export interface EngineState {
@@ -30,6 +33,9 @@ export class PaperTradingEngine {
       slippage: config?.slippage ?? 0.01,
       maxSlippage: config?.maxSlippage ?? 0.05,
       feeRate: config?.feeRate ?? 0.002,
+      partialFillRate: config?.partialFillRate ?? 0.0, // Default: always full fill (backwards compatible)
+      minFillRatio: config?.minFillRatio ?? 0.1, // Fill at least 10% of order
+      maxFillRatio: config?.maxFillRatio ?? 0.9, // Fill at most 90% of order for partial fills
     };
 
     this.state = {
@@ -45,6 +51,9 @@ export class PaperTradingEngine {
       slippage: this.config.slippage,
       maxSlippage: this.config.maxSlippage,
       feeRate: this.config.feeRate,
+      partialFillRate: this.config.partialFillRate,
+      minFillRatio: this.config.minFillRatio,
+      maxFillRatio: this.config.maxFillRatio,
       initialBalance,
     });
   }
@@ -94,13 +103,14 @@ export class PaperTradingEngine {
     }
 
     let fillPrice: number | null = null;
+    let availableLiquidity = 0;
 
     // Determine if order can be filled
     if (order.side === 'BUY') {
       // Buy order crosses if our price >= best ask
       if (bestAsk !== null && orderPrice >= bestAsk) {
         // Calculate size-based slippage
-        const availableLiquidity = orderbook.asks.length > 0 ? Number(orderbook.asks[0].size) : 0;
+        availableLiquidity = orderbook.asks.length > 0 ? Number(orderbook.asks[0].size) : 0;
         const slippage = this.calculateSlippage(remainingSize, availableLiquidity);
         // Fill at best ask + slippage
         fillPrice = bestAsk * (1 + slippage);
@@ -109,7 +119,7 @@ export class PaperTradingEngine {
       // Sell order crosses if our price <= best bid
       if (bestBid !== null && orderPrice <= bestBid) {
         // Calculate size-based slippage
-        const availableLiquidity = orderbook.bids.length > 0 ? Number(orderbook.bids[0].size) : 0;
+        availableLiquidity = orderbook.bids.length > 0 ? Number(orderbook.bids[0].size) : 0;
         const slippage = this.calculateSlippage(remainingSize, availableLiquidity);
         // Fill at best bid - slippage
         fillPrice = bestBid * (1 - slippage);
@@ -120,8 +130,8 @@ export class PaperTradingEngine {
       return false;
     }
 
-    // Determine fill size (for simplicity, fill the entire remaining order)
-    const fillSize = remainingSize;
+    // Determine fill size with configurable partial fill simulation
+    const fillSize = this.calculateFillSize(remainingSize, availableLiquidity);
     const fillValue = fillSize * fillPrice;
     const fee = fillValue * this.config.feeRate;
 
@@ -303,6 +313,73 @@ export class PaperTradingEngine {
       (this.config.maxSlippage - this.config.slippage) * sizeRatio;
     
     return slippage;
+  }
+
+  /**
+   * Calculate the actual fill size for an order
+   * Simulates partial fills based on configuration to match realistic CLOB behavior
+   * 
+   * Partial fills occur based on:
+   * 1. Configured base probability (partialFillRate)
+   * 2. Available liquidity (larger orders relative to liquidity more likely to be partial)
+   * 
+   * The actual probability is: baseRate + (1 - baseRate) * liquidityRatio
+   * This means:
+   * - With baseRate=0: always full fill (0% chance regardless of liquidity)
+   * - With baseRate=1: always partial fill (100% chance regardless of liquidity)
+   * - With baseRate=0.5 and small order (10% of liquidity): 50% + 50% * 0.1 = 55% chance
+   * - With baseRate=0.5 and large order (100% of liquidity): 50% + 50% * 1.0 = 100% chance
+   * 
+   * @param requestedSize The size the order wants to fill
+   * @param availableLiquidity The available liquidity at the best price
+   * @returns The actual fill size
+   */
+  private calculateFillSize(requestedSize: number, availableLiquidity: number): number {
+    // If partial fill simulation is disabled (partialFillRate = 0), always fill completely
+    if (this.config.partialFillRate === 0) {
+      return requestedSize;
+    }
+
+    // If partialFillRate is 1.0, always do partial fills
+    if (this.config.partialFillRate >= 1.0) {
+      // For partial fills, fill a random amount between min and max fill ratio
+      const fillRatio = this.config.minFillRatio + 
+        Math.random() * (this.config.maxFillRatio - this.config.minFillRatio);
+      
+      const fillSize = requestedSize * fillRatio;
+      
+      // Ensure we don't exceed available liquidity
+      if (availableLiquidity > 0) {
+        return Math.min(fillSize, availableLiquidity);
+      }
+      
+      return fillSize;
+    }
+
+    // For values between 0 and 1, scale probability based on liquidity
+    // Larger orders relative to liquidity have higher chance of partial fill
+    const liquidityRatio = availableLiquidity > 0 ? Math.min(1, requestedSize / availableLiquidity) : 1;
+    const partialFillProbability = this.config.partialFillRate + (1 - this.config.partialFillRate) * liquidityRatio;
+    
+    const shouldPartialFill = Math.random() < partialFillProbability;
+    
+    if (!shouldPartialFill) {
+      // Full fill
+      return requestedSize;
+    }
+
+    // For partial fills, fill a random amount between min and max fill ratio
+    const fillRatio = this.config.minFillRatio + 
+      Math.random() * (this.config.maxFillRatio - this.config.minFillRatio);
+    
+    const fillSize = requestedSize * fillRatio;
+    
+    // Ensure we don't exceed available liquidity
+    if (availableLiquidity > 0) {
+      return Math.min(fillSize, availableLiquidity);
+    }
+    
+    return fillSize;
   }
 
   /**
