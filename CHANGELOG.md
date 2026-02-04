@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/sedarged/polymarket-bot/compare/v1.3.0...v1.4.0) (2026-02-04)
+
+
+### Features
+
+* implement partial fill simulation for paper trading (A-019) ([30e3b19](https://github.com/sedarged/polymarket-bot/commit/30e3b196ed1816cde746d05dc0bc40c288fef392))
+* implement partial fill simulation for paper trading (A-019) ([b20ecf9](https://github.com/sedarged/polymarket-bot/commit/b20ecf9d8c9dd6fc1f2da4e15261ea0142d7697a))
+
+
+### Bug Fixes
+
+* address review comments on partial fill implementation ([1376d7f](https://github.com/sedarged/polymarket-bot/commit/1376d7f942a9ad936dca69a7b9dc8f194aa8138d))
+
 ## [1.3.0](https://github.com/sedarged/polymarket-bot/compare/v1.2.1...v1.3.0) (2026-02-04)
 
 
