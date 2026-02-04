@@ -604,7 +604,7 @@ export class OrderbookCache {
 
 #### A-006: HIGH - Weak Client Order ID Generation ✅ **FIXED**
 **File:** `apps/backend/src/clients/tradingClient.ts:221`  
-**Status:** Fixed in commit 2a74f94
+**Status:** Fixed and verified
 
 **Original Issue:**
 ```typescript

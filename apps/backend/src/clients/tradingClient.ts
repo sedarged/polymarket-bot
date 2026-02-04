@@ -203,13 +203,18 @@ export class TradingClient {
   /**
    * Create a new order with idempotency via clientOrderId
    * Uses UUID v4 for cryptographic randomness (Audit Finding A-006)
-   * Tracks submitted orders to prevent duplicate submissions
+   * 
+   * For true idempotency, callers can provide a stable clientOrderId that will be
+   * reused on retry. If not provided, a new UUID v4 will be generated.
+   * 
+   * Tracks in-flight order IDs to prevent duplicate submissions within the same process.
    */
   async createOrder(
     tokenId: string,
     side: 'BUY' | 'SELL',
     price: string,
-    size: string
+    size: string,
+    clientOrderId?: string
   ): Promise<Order> {
     assertLiveTradingEnabled();
 
@@ -218,21 +223,22 @@ export class TradingClient {
     }
 
     // Generate unique clientOrderId using UUID v4 for cryptographic randomness (A-006)
-    const clientOrderId = uuidv4();
+    // Or use provided clientOrderId for true idempotency across retries
+    const orderId = clientOrderId || uuidv4();
     
-    // Check for duplicate submission (idempotency protection)
-    if (this.submittedOrderIds.has(clientOrderId)) {
-      logger.warn('Duplicate order submission prevented', { clientOrderId });
-      throw new Error(`Duplicate order submission: ${clientOrderId}`);
+    // Check for duplicate submission (prevents concurrent requests with same ID)
+    if (this.submittedOrderIds.has(orderId)) {
+      logger.warn('Duplicate order submission prevented', { clientOrderId: orderId });
+      throw new Error(`Duplicate order submission: ${orderId}`);
     }
     
     const startTime = Date.now();
 
+    // Track this order ID to prevent duplicates (in-flight only)
+    this.submittedOrderIds.add(orderId);
+
     try {
-      logger.info('Creating order', { tokenId, side, price, size, clientOrderId });
-      
-      // Track this order ID to prevent duplicates
-      this.submittedOrderIds.add(clientOrderId);
+      logger.info('Creating order', { tokenId, side, price, size, clientOrderId: orderId });
 
       // Create order via CLOB client
       const response = await this.client.createOrder({
@@ -241,12 +247,12 @@ export class TradingClient {
         price: Number(price),
         size: Number(size),
         // @ts-ignore - clientOrderId might not be in types
-        clientOrderId,
+        clientOrderId: orderId,
       });
 
       const order: Order = {
-        orderId: String(response.orderID || clientOrderId),
-        clientOrderId,
+        orderId: String(response.orderID || orderId),
+        clientOrderId: orderId,
         tokenId,
         side,
         price,
@@ -265,13 +271,10 @@ export class TradingClient {
       ordersTotal.inc({ side, result: 'success', mode: 'live' });
       openOrdersGauge.inc({ mode: 'live' });
 
-      logger.info('Order created', { orderId: order.orderId, clientOrderId });
+      logger.info('Order created', { orderId: order.orderId, clientOrderId: orderId });
 
       return order;
     } catch (error) {
-      // Remove from tracking set on failure to allow retry (A-006)
-      this.submittedOrderIds.delete(clientOrderId);
-      
       // Record failure metrics
       ordersTotal.inc({ side, result: 'failure', mode: 'live' });
       
@@ -281,9 +284,13 @@ export class TradingClient {
         side,
         price,
         size,
-        clientOrderId,
+        clientOrderId: orderId,
       });
       throw error;
+    } finally {
+      // Always remove from tracking set after request completes (success or failure)
+      // This allows retry with same ID and prevents unbounded growth (A-006)
+      this.submittedOrderIds.delete(orderId);
     }
   }
 
