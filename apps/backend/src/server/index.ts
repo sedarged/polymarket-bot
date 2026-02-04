@@ -41,7 +41,7 @@ const getCorsHeaders = (req: http.IncomingMessage): Record<string, string> => {
   
   // Check if the request origin is in the allowed list
   const isAllowed = allowedOrigins.some(allowed => {
-    // Extract base origin from URL if needed
+    // Normalize both URLs and compare their origins
     try {
       const originUrl = new URL(origin);
       const allowedUrl = new URL(allowed);

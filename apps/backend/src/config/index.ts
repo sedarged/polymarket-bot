@@ -126,6 +126,8 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   }
   
   if (hasWildcardCors) {
+    // Note: Using console.warn instead of logger here to avoid circular dependencies
+    // since config is imported very early in the application lifecycle
     console.warn(
       '⚠️  WARNING: CORS is configured with wildcard (*). This is ONLY acceptable for local development. ' +
       'For production, set ALLOWED_ORIGINS to specific domain(s).'
