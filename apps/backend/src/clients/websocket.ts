@@ -90,12 +90,14 @@ export class WebSocketClient extends EventEmitter {
 
     this.ws.on('open', () => {
       this.updateStateMetrics(WebSocketState.CONNECTED);
+      
+      // Record successful reconnection if this was a reconnect attempt
+      const wasReconnecting = this.reconnectAttempts > 0;
       this.reconnectAttempts = 0;
       this.currentReconnectDelay = this.reconnectDelay;
       logger.info('WebSocket connected', { url: this.url });
       
-      // Record successful reconnection if this was a reconnect attempt
-      if (this.reconnectAttempts > 0) {
+      if (wasReconnecting) {
         websocketReconnects.inc({ feed_type: this.feedType, result: 'success' });
       }
       

@@ -82,7 +82,7 @@ export const websocketState = new promClient.Gauge({
 export const websocketReconnects = new promClient.Counter({
   name: 'polymarket_websocket_reconnects_total',
   help: 'Total number of WebSocket reconnection attempts',
-  labelNames: ['feed_type', 'result'], // result: success/failure
+  labelNames: ['feed_type', 'result'], // result: attempt/success
   registers: [register],
 });
 
@@ -175,36 +175,6 @@ export const openOrders = new promClient.Gauge({
   registers: [register],
 });
 
-/**
- * Gauge for current positions
- */
-export const positions = new promClient.Gauge({
-  name: 'polymarket_positions',
-  help: 'Current number of positions',
-  labelNames: ['mode'], // mode: live/paper
-  registers: [register],
-});
-
-/**
- * Counter for kill switch activations
- */
-export const killSwitchActivations = new promClient.Counter({
-  name: 'polymarket_kill_switch_activations_total',
-  help: 'Total number of kill switch activations',
-  labelNames: ['reason'], // reason: manual/auto/error
-  registers: [register],
-});
-
-/**
- * Gauge for kill switch state
- * 0 = disabled, 1 = enabled
- */
-export const killSwitchState = new promClient.Gauge({
-  name: 'polymarket_kill_switch_state',
-  help: 'Kill switch state (0=disabled, 1=enabled)',
-  registers: [register],
-});
-
 // ============================================================================
 // Orderbook Metrics
 // ============================================================================
@@ -215,17 +185,6 @@ export const killSwitchState = new promClient.Gauge({
 export const cachedOrderbooks = new promClient.Gauge({
   name: 'polymarket_cached_orderbooks',
   help: 'Number of cached orderbooks',
-  registers: [register],
-});
-
-/**
- * Histogram for orderbook age
- */
-export const orderbookAge = new promClient.Histogram({
-  name: 'polymarket_orderbook_age_seconds',
-  help: 'Age of orderbook data in seconds',
-  labelNames: ['token_id'],
-  buckets: [1, 5, 10, 30, 60, 300], // 1s to 5min
   registers: [register],
 });
 

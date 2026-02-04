@@ -91,7 +91,7 @@
         "gridPos": { "x": 6, "y": 8, "w": 6, "h": 4 },
         "targets": [
           {
-            "expr": "polymarket_circuit_breaker_state",
+            "expr": "max(polymarket_circuit_breaker_state)",
             "refId": "A"
           }
         ],
@@ -125,7 +125,7 @@
         "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
         "targets": [
           {
-            "expr": "polymarket_open_orders",
+            "expr": "sum(polymarket_open_orders)",
             "refId": "A"
           }
         ],

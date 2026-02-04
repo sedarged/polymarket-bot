@@ -15,11 +15,7 @@ import {
   circuitBreakerFailures,
   circuitBreakerSuccesses,
   openOrders,
-  positions,
-  killSwitchActivations,
-  killSwitchState,
   cachedOrderbooks,
-  orderbookAge,
   getMetrics,
   getContentType,
   resetMetrics,
@@ -51,11 +47,7 @@ describe('Metrics Module', () => {
       expect(circuitBreakerFailures).toBeDefined();
       expect(circuitBreakerSuccesses).toBeDefined();
       expect(openOrders).toBeDefined();
-      expect(positions).toBeDefined();
-      expect(killSwitchActivations).toBeDefined();
-      expect(killSwitchState).toBeDefined();
       expect(cachedOrderbooks).toBeDefined();
-      expect(orderbookAge).toBeDefined();
     });
 
     it('should return Prometheus content type', () => {
@@ -207,31 +199,6 @@ describe('Metrics Module', () => {
       const metrics = await getMetrics();
       expect(metrics).toContain('polymarket_open_orders');
     });
-
-    it('should set positions gauge', async () => {
-      positions.set({ mode: 'paper' }, 3);
-      
-      const metrics = await getMetrics();
-      expect(metrics).toContain('polymarket_positions');
-      expect(metrics).toContain('mode="paper"');
-    });
-
-    it('should increment kill switch activations', async () => {
-      killSwitchActivations.inc({ reason: 'manual' });
-      killSwitchActivations.inc({ reason: 'auto' });
-      
-      const metrics = await getMetrics();
-      expect(metrics).toContain('polymarket_kill_switch_activations_total');
-      expect(metrics).toContain('reason="manual"');
-      expect(metrics).toContain('reason="auto"');
-    });
-
-    it('should set kill switch state', async () => {
-      killSwitchState.set({}, 1); // enabled
-      
-      const metrics = await getMetrics();
-      expect(metrics).toContain('polymarket_kill_switch_state');
-    });
   });
 
   describe('Orderbook Metrics', () => {
@@ -240,15 +207,6 @@ describe('Metrics Module', () => {
       
       const metrics = await getMetrics();
       expect(metrics).toContain('polymarket_cached_orderbooks');
-    });
-
-    it('should record orderbook age histogram', async () => {
-      orderbookAge.observe({ token_id: '12345' }, 5.2);
-      orderbookAge.observe({ token_id: '12345' }, 10.8);
-      
-      const metrics = await getMetrics();
-      expect(metrics).toContain('polymarket_orderbook_age_seconds');
-      expect(metrics).toContain('token_id="12345"');
     });
   });
 

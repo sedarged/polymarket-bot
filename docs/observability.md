@@ -58,7 +58,7 @@ curl http://localhost:3000/metrics
 
 **Labels:**
 - `feed_type`: market, user, trade
-- `result`: success, failure, attempt
+- `result`: attempt, success
 - `message_type`: book, trade, ack, error
 - `error_type`: connection, protocol, timeout
 
@@ -81,16 +81,12 @@ curl http://localhost:3000/metrics
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
 | `polymarket_open_orders` | Gauge | mode | Current number of open orders |
-| `polymarket_positions` | Gauge | mode | Current number of positions |
-| `polymarket_kill_switch_activations_total` | Counter | reason | Total kill switch activations |
-| `polymarket_kill_switch_state` | Gauge | - | Kill switch state (0=disabled, 1=enabled) |
 
 ### Orderbook Metrics
 
 | Metric | Type | Labels | Description |
 |--------|------|--------|-------------|
 | `polymarket_cached_orderbooks` | Gauge | - | Number of cached orderbooks |
-| `polymarket_orderbook_age_seconds` | Histogram | token_id | Age of orderbook data in seconds |
 
 ### System Metrics
 
@@ -127,7 +123,7 @@ A pre-configured Grafana dashboard is available in `grafana/polymarket-dashboard
 - **Order Latency** - p95 and p99 latency percentiles
 - **WebSocket State** - Connection status with color coding
 - **Circuit Breaker State** - Health of circuit breakers
-- **Open Orders & Positions** - Current trading activity
+- **Open Orders** - Current trading activity
 - **Reconnection Rate** - WebSocket stability
 - **Memory Usage** - System resource utilization
 - **Process Uptime** - Bot availability
@@ -222,11 +218,6 @@ rate(polymarket_orders_total[5m])
 ```promql
 rate(polymarket_order_latency_seconds_sum[5m]) /
 rate(polymarket_order_latency_seconds_count[5m])
-```
-
-**WebSocket uptime percentage:**
-```promql
-(polymarket_websocket_uptime_seconds / time()) * 100
 ```
 
 **Circuit breaker error rate:**

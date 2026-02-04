@@ -129,10 +129,39 @@ export class TradingClient {
     try {
       logger.info('Starting reconciliation');
 
-      // TODO: Implement reconciliation with actual API when available
-      // The CLOB client doesn't expose a getOrders() method in v5.2.1
-      // For now, we'll just log a warning
-      logger.warn('Reconciliation not yet implemented - awaiting API support');
+      // Best-effort reconciliation of open orders using any available CLOB client API.
+      // Some SDK versions expose `getOrders`, others may expose `getOpenOrders`.
+      try {
+        const clientAny = this.client as any;
+
+        let openOrdersResponse: unknown = null;
+
+        if (typeof clientAny.getOrders === 'function') {
+          // Prefer generic getOrders API when available
+          openOrdersResponse = await clientAny.getOrders({ status: 'OPEN' });
+        } else if (typeof clientAny.getOpenOrders === 'function') {
+          // Fallback: some clients may provide a dedicated open orders method
+          openOrdersResponse = await clientAny.getOpenOrders();
+        } else {
+          logger.warn('CLOB client does not expose an orders API for reconciliation');
+        }
+
+        if (Array.isArray(openOrdersResponse)) {
+          // Cast to Order[] without assuming a specific shape; the shared type
+          // represents our internal view of an order, while the SDK may return
+          // a superset/subset of fields. We rely on downstream code handling
+          // only the fields it actually needs.
+          this.state.orders = openOrdersResponse as Order[];
+        } else if (openOrdersResponse) {
+          logger.warn('Unexpected open orders response shape during reconciliation', {
+            type: typeof openOrdersResponse,
+          });
+        }
+      } catch (err) {
+        logger.warn('Failed to reconcile open orders from CLOB client', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
       
       // Fetch balances (if supported)
       try {
