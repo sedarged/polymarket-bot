@@ -249,7 +249,6 @@ describe('PaperTradingEngine', () => {
     it('should apply base slippage for small orders', () => {
       // Order size is 10, available liquidity is 100 (10% ratio)
       const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
-      const initialBalance = engine.getBalance();
       
       const filled = engine.tryFillOrder(order.orderId, mockOrderbook);
       
@@ -258,8 +257,8 @@ describe('PaperTradingEngine', () => {
       const fills = engine.getFills();
       expect(fills).toHaveLength(1);
       
-      // Should use approximately base slippage (1%)
-      // Expected price = 0.51 * (1 + 0.01 * (10/100)) = 0.51 * 1.001
+      // Should use base slippage (1%) plus a small fraction of the range up to max slippage (5%)
+      // Expected slippage = 0.01 + (0.05 - 0.01) * 0.1 = 0.014 (1.4%), so expected price = 0.51 * (1 + 0.014) = 0.51 * 1.014
       const expectedPrice = 0.51 * (1 + 0.01 + (0.05 - 0.01) * (10 / 100));
       const actualPrice = Number(fills[0].price);
       expect(actualPrice).toBeCloseTo(expectedPrice, 4);
@@ -336,11 +335,13 @@ describe('PaperTradingEngine', () => {
     });
 
     it('should apply max slippage when no liquidity is available', () => {
-      // Create an orderbook with no bids (to test sell order with no liquidity)
-      const emptyBidsOrderbook: Orderbook = {
+      // Create an orderbook with zero liquidity at best bid
+      const zeroLiquidityOrderbook: Orderbook = {
         market: 'test-market',
         asset_id: '0xtoken123',
-        bids: [], // No bids
+        bids: [
+          { price: '0.50', size: '0' }, // Zero liquidity
+        ],
         asks: [
           { price: '0.51', size: '100' },
         ],
@@ -349,10 +350,17 @@ describe('PaperTradingEngine', () => {
 
       const order = engine.createOrder('0xtoken123', 'SELL', '0.45', '50');
       
-      const filled = engine.tryFillOrder(order.orderId, emptyBidsOrderbook);
+      const filled = engine.tryFillOrder(order.orderId, zeroLiquidityOrderbook);
       
-      // Should not fill because no best bid is available
-      expect(filled).toBe(false);
+      expect(filled).toBe(true);
+      
+      const fills = engine.getFills();
+      expect(fills).toHaveLength(1);
+      
+      // Should use max slippage (5%) when liquidity is 0
+      const expectedPrice = 0.50 * (1 - 0.05);
+      const actualPrice = Number(fills[0].price);
+      expect(actualPrice).toBeCloseTo(expectedPrice, 4);
     });
 
     it('should use custom slippage config', () => {

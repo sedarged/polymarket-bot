@@ -75,7 +75,13 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
 });
 
-const configSchema = envSchema.transform((env) => ({
+const configSchema = envSchema.refine(
+  (env) => env.PAPER_TRADING_MAX_SLIPPAGE >= env.PAPER_TRADING_SLIPPAGE,
+  {
+    message: 'PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE',
+    path: ['PAPER_TRADING_MAX_SLIPPAGE'],
+  }
+).transform((env) => ({
   gammaApiUrl: env.GAMMA_API_URL,
   clobApiUrl: env.CLOB_API_URL,
   wsMarketUrl: env.WS_MARKET_URL,
