@@ -1,7 +1,7 @@
 import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
-import { validateOrderParametersOrThrow } from '../utils/orderValidation';
+import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, MarketConstraints } from '../utils/orderValidation';
 
 export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
@@ -24,6 +24,8 @@ export interface EngineState {
 /**
  * Paper Trading Engine with deterministic fills based on crossing best bid/ask
  * Tracks positions, realized/unrealized PnL, and fees
+ * 
+ * Enhanced with tick size and minimum order size validation support (Issue #75)
  */
 export class PaperTradingEngine {
   private config: PaperTradingEngineConfig;
@@ -65,17 +67,29 @@ export class PaperTradingEngine {
 
   /**
    * Create a new order (does not fill it immediately)
-   * Validates order parameters before creation (Audit Finding A-015)
+   * Validates order parameters before creation including:
+   * - Basic validation (Audit Finding A-015)
+   * - Tick size alignment (Issue #75) - optional, only when constraints provided
+   * - Minimum order size (Issue #75) - optional, only when constraints provided
+   * 
+   * @param tokenId - The token/asset ID
+   * @param side - Order side (BUY or SELL)
+   * @param price - Order price
+   * @param size - Order size
+   * @param constraints - Optional market constraints for enhanced validation
    */
-  createOrder(tokenId: string, side: 'BUY' | 'SELL', price: string, size: string): Order {
-    // Validate order parameters (Audit Finding A-015)
-    // This prevents malformed orders from propagating through the system
-    const validated = validateOrderParametersOrThrow({
-      tokenId,
-      side,
-      price,
-      size,
-    });
+  createOrder(
+    tokenId: string, 
+    side: 'BUY' | 'SELL', 
+    price: string, 
+    size: string,
+    constraints?: MarketConstraints
+  ): Order {
+    // Validate order parameters with market constraints if provided (Issue #75)
+    // Otherwise just do basic validation (Audit Finding A-015)
+    const validated = constraints
+      ? validateOrderWithConstraintsOrThrow({ tokenId, side, price, size }, constraints)
+      : validateOrderParametersOrThrow({ tokenId, side, price, size });
 
     const orderId = `paper-${Date.now()}-${this.orderIdCounter++}`;
     const order: Order = {

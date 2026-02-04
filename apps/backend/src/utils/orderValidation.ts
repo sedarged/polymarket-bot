@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Order Parameter Validation - Audit Finding A-015
+ * Order Parameter Validation - Audit Finding A-015 & Issue #75
  * 
  * This module provides comprehensive input validation for order parameters
  * to prevent malformed orders from propagating through the system.
@@ -11,6 +11,8 @@ import { z } from 'zod';
  * - size: Must be a positive decimal string
  * - price: Must be a positive decimal string between 0 and 1 (probability)
  * - tokenId/market: Must be a non-empty string with valid format
+ * - tick size: Price must align with market's tick size (Issue #75)
+ * - minimum order size: Size must meet market's minimum (Issue #75)
  * 
  * All order ingress points (TradingClient, PaperTradingEngine) must use
  * these validation schemas before creating orders.
@@ -18,6 +20,20 @@ import { z } from 'zod';
  * @see {@link ../../../../REPORTS/AUDIT.md} - Finding A-015
  * @see {@link ../../../../docs/small-pr-plan.md} - PR-004: Type Safety & Validation
  */
+
+/**
+ * Valid tick sizes for Polymarket markets
+ * Tick size is the minimum price increment allowed for orders
+ */
+export type TickSize = '0.1' | '0.01' | '0.001' | '0.0001';
+
+/**
+ * Market constraints for order validation
+ */
+export interface MarketConstraints {
+  tickSize: TickSize;
+  minOrderSize: string; // Minimum order size in token units
+}
 
 /**
  * Validates a decimal string is a positive number
@@ -165,6 +181,150 @@ export function validateOrderParametersOrThrow(
   params: unknown
 ): OrderParameters {
   const result = validateOrderParameters(params);
+  
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+  
+  return result.data!;
+}
+
+/**
+ * Validates that a price aligns with the market's tick size
+ * 
+ * Tick size is the minimum price increment. All order prices must be
+ * exact multiples of the tick size, or the exchange will reject the order.
+ * 
+ * @param price - The order price as a number
+ * @param tickSize - The market's tick size (e.g., "0.01")
+ * @returns true if price is valid, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * isPriceValidForTickSize(0.55, "0.01") // true
+ * isPriceValidForTickSize(0.555, "0.01") // false
+ * isPriceValidForTickSize(0.555, "0.001") // true
+ * ```
+ */
+export function isPriceValidForTickSize(price: number, tickSize: TickSize): boolean {
+  const tickSizeNum = Number(tickSize);
+  
+  // Price must be >= tick size
+  if (price < tickSizeNum) {
+    return false;
+  }
+  
+  // Price must be a multiple of tick size (within floating point precision)
+  // We check if (price / tickSize) is close to an integer
+  const ratio = price / tickSizeNum;
+  const roundedRatio = Math.round(ratio);
+  const epsilon = 1e-10; // Tolerance for floating point errors
+  
+  return Math.abs(ratio - roundedRatio) < epsilon;
+}
+
+/**
+ * Validates that an order size meets the market's minimum order size
+ * 
+ * @param size - The order size as a string
+ * @param minOrderSize - The market's minimum order size as a string
+ * @returns true if size is valid, false otherwise
+ * 
+ * @example
+ * ```typescript
+ * isSizeValidForMinimum("10", "1") // true
+ * isSizeValidForMinimum("0.5", "1") // false
+ * ```
+ */
+export function isSizeValidForMinimum(size: string, minOrderSize: string): boolean {
+  const sizeNum = Number(size);
+  const minSizeNum = Number(minOrderSize);
+  
+  if (isNaN(sizeNum) || isNaN(minSizeNum)) {
+    return false;
+  }
+  
+  return sizeNum >= minSizeNum;
+}
+
+/**
+ * Validates order parameters with market constraints (tick size and min order size)
+ * This is the enhanced validation that should be used when market metadata is available.
+ * 
+ * @param params - Raw order parameters to validate
+ * @param constraints - Market constraints (tick size, min order size)
+ * @returns ValidationResult with success flag and either data or error message
+ * 
+ * @example
+ * ```typescript
+ * const result = validateOrderWithConstraints(
+ *   { tokenId: '0xabc', side: 'BUY', price: '0.55', size: '10' },
+ *   { tickSize: '0.01', minOrderSize: '1' }
+ * );
+ * 
+ * if (!result.success) {
+ *   throw new Error(result.error);
+ * }
+ * ```
+ */
+export function validateOrderWithConstraints(
+  params: unknown,
+  constraints: MarketConstraints
+): ValidationResult {
+  // First validate basic parameters
+  const basicValidation = validateOrderParameters(params);
+  if (!basicValidation.success) {
+    return basicValidation;
+  }
+  
+  const validated = basicValidation.data!;
+  const price = Number(validated.price);
+  
+  // Validate tick size
+  if (!isPriceValidForTickSize(price, constraints.tickSize)) {
+    return {
+      success: false,
+      error: `Invalid order parameters: price must align with tick size ${constraints.tickSize}. ` +
+             `Price ${validated.price} is not a valid multiple of ${constraints.tickSize}.`,
+    };
+  }
+  
+  // Validate minimum order size
+  if (!isSizeValidForMinimum(validated.size, constraints.minOrderSize)) {
+    return {
+      success: false,
+      error: `Invalid order parameters: size must be at least ${constraints.minOrderSize}. ` +
+             `Order size ${validated.size} is below the minimum.`,
+    };
+  }
+  
+  return {
+    success: true,
+    data: validated,
+  };
+}
+
+/**
+ * Validates order parameters with market constraints and throws on error
+ * 
+ * @param params - Raw order parameters to validate
+ * @param constraints - Market constraints (tick size, min order size)
+ * @returns Validated and typed order parameters
+ * @throws Error if validation fails
+ * 
+ * @example
+ * ```typescript
+ * const validated = validateOrderWithConstraintsOrThrow(
+ *   { tokenId: '0xabc', side: 'BUY', price: '0.55', size: '10' },
+ *   { tickSize: '0.01', minOrderSize: '1' }
+ * );
+ * ```
+ */
+export function validateOrderWithConstraintsOrThrow(
+  params: unknown,
+  constraints: MarketConstraints
+): OrderParameters {
+  const result = validateOrderWithConstraints(params, constraints);
   
   if (!result.success) {
     throw new Error(result.error);

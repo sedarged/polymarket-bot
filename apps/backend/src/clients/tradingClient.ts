@@ -7,7 +7,8 @@ import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
 import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrdersGauge } from '../utils/metrics';
-import { validateOrderParametersOrThrow } from '../utils/orderValidation';
+import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, MarketConstraints, TickSize } from '../utils/orderValidation';
+import { ClobClient as ClobRestClient } from './clob';
 
 /**
  * Trading Client for Live Order Placement with Partial Fill Tracking
@@ -74,6 +75,7 @@ interface ClobOrder {
 export class TradingClient {
   private client: ClobClient | null = null;
   private wallet: ethers.Wallet | null = null;
+  private clobRestClient: ClobRestClient;
   private state: TradingState = {
     orders: [],
     fills: [],
@@ -82,6 +84,11 @@ export class TradingClient {
   };
   private submittedOrderIds: Set<string> = new Set(); // Track submitted clientOrderIds for idempotency (A-006)
   private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
+  private marketConstraintsCache: Map<string, MarketConstraints> = new Map(); // Cache for market constraints (Issue #75)
+
+  constructor() {
+    this.clobRestClient = new ClobRestClient();
+  }
 
   async initialize(): Promise<void> {
     // Verify trading is enabled
@@ -202,6 +209,47 @@ export class TradingClient {
   }
 
   /**
+   * Get market constraints (tick size and minimum order size) for a token
+   * Results are cached to avoid repeated API calls
+   * 
+   * @param tokenId - The token/asset ID
+   * @returns Market constraints with tick size and min order size
+   */
+  private async getMarketConstraints(tokenId: string): Promise<MarketConstraints> {
+    // Check cache first
+    const cached = this.marketConstraintsCache.get(tokenId);
+    if (cached) {
+      return cached;
+    }
+
+    // Fetch from API
+    try {
+      const metadata = await this.clobRestClient.getMarketMetadata(tokenId);
+      const constraints: MarketConstraints = {
+        tickSize: metadata.tickSize as TickSize,
+        minOrderSize: metadata.minOrderSize,
+      };
+      
+      // Cache the result
+      this.marketConstraintsCache.set(tokenId, constraints);
+      
+      logger.info('Fetched and cached market constraints', {
+        tokenId,
+        tickSize: constraints.tickSize,
+        minOrderSize: constraints.minOrderSize,
+      });
+      
+      return constraints;
+    } catch (error) {
+      logger.error('Failed to fetch market constraints', {
+        tokenId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error(`Cannot validate order: failed to fetch market constraints for ${tokenId}`);
+    }
+  }
+
+  /**
    * Create a new order with idempotency via clientOrderId
    * Uses UUID v4 for cryptographic randomness (Audit Finding A-006)
    * 
@@ -210,7 +258,10 @@ export class TradingClient {
    * 
    * Tracks in-flight order IDs to prevent duplicate submissions within the same process.
    * 
-   * Validates all order parameters before submission (Audit Finding A-015)
+   * Validates all order parameters before submission including:
+   * - Basic validation (Audit Finding A-015)
+   * - Tick size alignment (Issue #75)
+   * - Minimum order size (Issue #75)
    */
   async createOrder(
     tokenId: string,
@@ -225,15 +276,21 @@ export class TradingClient {
       throw new Error('Trading client not initialized');
     }
 
-    // Validate order parameters (Audit Finding A-015)
+    // Fetch market constraints for validation (Issue #75)
+    const constraints = await this.getMarketConstraints(tokenId);
+
+    // Validate order parameters with market constraints (Audit Finding A-015 + Issue #75)
     // This prevents malformed orders from propagating to the exchange
-    const validated = validateOrderParametersOrThrow({
-      tokenId,
-      side,
-      price,
-      size,
-      clientOrderId,
-    });
+    const validated = validateOrderWithConstraintsOrThrow(
+      {
+        tokenId,
+        side,
+        price,
+        size,
+        clientOrderId,
+      },
+      constraints
+    );
 
     // Generate unique clientOrderId using UUID v4 for cryptographic randomness (A-006)
     // Or use provided clientOrderId for true idempotency across retries
