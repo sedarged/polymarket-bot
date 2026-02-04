@@ -49,7 +49,8 @@ export class MarketFeedClient extends EventEmitter {
   // Track subscription state (currently set but not read - reserved for future use)
   // @ts-expect-error - Variable reserved for future use
   private isSubscribed: boolean = false;
-  private resyncInProgress: Set<string> = new Set();
+  // Store active resync promises per token to prevent concurrent resyncs (A-007)
+  private resyncPromises: Map<string, Promise<void>> = new Map();
 
   constructor(options: MarketFeedOptions) {
     super();
@@ -117,27 +118,38 @@ export class MarketFeedClient extends EventEmitter {
   }
 
   private async resyncOrderbook(tokenId: string): Promise<void> {
-    if (this.resyncInProgress.has(tokenId)) {
-      logger.debug('Resync already in progress', { tokenId });
-      return;
+    // Check if resync is already in progress for this token
+    const existingPromise = this.resyncPromises.get(tokenId);
+    if (existingPromise) {
+      logger.debug('Resync already in progress, waiting for completion', { tokenId });
+      // Wait for the existing resync to complete instead of early returning
+      return existingPromise;
     }
 
-    this.resyncInProgress.add(tokenId);
+    // Create a new resync promise and store it
+    const resyncPromise = this.performResync(tokenId);
+    this.resyncPromises.set(tokenId, resyncPromise);
     
     try {
-      logger.info('Resyncing orderbook from REST', { tokenId });
-      const orderbook = await this.clobClient.getOrderbook(tokenId);
-      this.cache.set(tokenId, orderbook);
-      this.emit('snapshot', tokenId, orderbook);
-      logger.info('Orderbook resync complete', { tokenId });
+      await resyncPromise;
     } catch (error) {
       logger.error('Failed to resync orderbook', {
         tokenId,
         error: error instanceof Error ? error.message : String(error),
       });
+      throw error;
     } finally {
-      this.resyncInProgress.delete(tokenId);
+      // Clean up the promise after completion (success or failure)
+      this.resyncPromises.delete(tokenId);
     }
+  }
+
+  private async performResync(tokenId: string): Promise<void> {
+    logger.info('Resyncing orderbook from REST', { tokenId });
+    const orderbook = await this.clobClient.getOrderbook(tokenId);
+    this.cache.set(tokenId, orderbook);
+    this.emit('snapshot', tokenId, orderbook);
+    logger.info('Orderbook resync complete', { tokenId });
   }
 
   private handleMessage(message: WSMarketMessage): void {

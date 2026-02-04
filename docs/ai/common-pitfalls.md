@@ -92,11 +92,43 @@ const rateLimitedFetch = limiter.wrap(fetch);
 **Solution**:
 - Implement automatic reconnection with exponential backoff
 - Add jitter to prevent thundering herd
-- Resync state after reconnection
+- Resync state after reconnection using proper synchronization (see A-007)
 - Maintain heartbeat/ping-pong
 - Log all connection state changes
 
+**⚠️ CRITICAL**: When resyncing state after reconnect, prevent race conditions by using promise-based locking. Do NOT use simple boolean/Set flags that allow concurrent operations to race through checks.
+
 ```typescript
+// ❌ BAD: Race condition during resync
+private resyncInProgress: Set<string> = new Set();
+
+async resyncOrderbook(tokenId: string) {
+  if (this.resyncInProgress.has(tokenId)) {
+    return; // Multiple calls can race past this check!
+  }
+  this.resyncInProgress.add(tokenId);
+  // ... fetch data
+}
+
+// ✅ GOOD: Promise-based locking prevents race conditions (Audit Finding A-007)
+private resyncPromises: Map<string, Promise<void>> = new Map();
+
+async resyncOrderbook(tokenId: string) {
+  const existingPromise = this.resyncPromises.get(tokenId);
+  if (existingPromise) {
+    return existingPromise; // Wait for existing resync
+  }
+  
+  const resyncPromise = this.performResync(tokenId);
+  this.resyncPromises.set(tokenId, resyncPromise);
+  
+  try {
+    await resyncPromise;
+  } finally {
+    this.resyncPromises.delete(tokenId);
+  }
+}
+
 // ✅ GOOD: Reconnection with backoff
 class WebSocketManager {
   private reconnectAttempts = 0;
