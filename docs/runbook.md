@@ -60,6 +60,9 @@ WS_MARKET_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
 TOKEN_IDS=comma,separated,token,ids
 PORT=3000
 LOG_LEVEL=info
+
+# Reconciliation (Gap RE-001)
+RECONCILIATION_INTERVAL_SECONDS=300  # 5 minutes (default)
 ```
 
 ### Environment Validation Script
@@ -758,6 +761,31 @@ curl http://localhost:3000/feed/status
 - **Circuit stays open > 5min**: Escalate to Sev-1, manual intervention required
 - **Circuit flapping** (open/close cycles): Investigate intermittent issues, adjust thresholds
 
+**Reconciliation Monitoring (Gap RE-001, RE-002, RE-003)**:
+- **Missing orders detected**: Investigate why local state diverged from exchange
+  - Check for missed WebSocket messages
+  - Review order cancellation logic
+  - Verify no manual interventions bypassed the bot
+- **Orphaned orders detected**: Review and manually cancel if necessary
+  - May indicate orders placed outside the bot
+  - Could be from previous bot instances
+- **Balance drift > 10%**: High priority investigation
+  - Verify no unauthorized transactions
+  - Check for missed trade executions
+  - Review audit trail for discrepancies
+- **Position drift > 5%**: Review position reconciliation
+  - Check for partial fill handling issues
+  - Verify fill event processing
+  - Compare with exchange position
+
+**Reconciliation Alert Thresholds**:
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| Missing Orders | 1-2 orders | > 3 orders | Review order flow, check WebSocket |
+| Balance Drift | > 5% | > 10% | Investigate transactions, verify fills |
+| Position Drift | > 2% | > 5% | Check fill processing, review orders |
+| Reconciliation Failures | 2 failures | 5 consecutive | Restart client, check API status |
+
 ### Log Monitoring
 
 **Critical logs to watch:**
@@ -769,9 +797,25 @@ npm run dev | grep -E "(ERROR|WARN|kill|circuit|reconciliation)"
 # - "ERROR" - Any error log
 # - "WebSocket disconnected" - Connection issues
 # - "Reconciliation failed" - State mismatch
+# - "Reconciliation: detected missing orders" - Gap RE-002
+# - "Reconciliation: detected orphaned orders" - Gap RE-002
+# - "Reconciliation: detected balance drift" - Gap RE-003
 # - "Kill switch activated" - Emergency stop
 # - "Circuit breaker triggered" - Risk limit breach
 # - "Order rejected" - Risk check failure
+
+# Reconciliation-specific log queries:
+# Missing orders (critical)
+npm run dev | grep "missing orders on exchange"
+
+# Balance drift warnings
+npm run dev | grep "balance drift"
+
+# Position changes
+npm run dev | grep "position size changed"
+
+# Reconciliation failures
+npm run dev | grep "Periodic reconciliation failed"
 ```
 
 **Log aggregation setup:**
