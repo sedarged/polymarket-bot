@@ -315,7 +315,8 @@ RETRY_ATTEMPTS=3                    # Number of retry attempts
 RETRY_DELAY=1000                    # Initial retry delay (ms)
 
 # Paper Trading
-PAPER_TRADING_SLIPPAGE=0.01         # Simulated slippage (1%)
+PAPER_TRADING_SLIPPAGE=0.01         # Base slippage (1%) for small orders
+PAPER_TRADING_MAX_SLIPPAGE=0.05     # Maximum slippage (5%) for large orders
 PAPER_TRADING_FEE_RATE=0.002        # Simulated fee rate (0.2%)
 
 # Risk Management

@@ -9,7 +9,7 @@ The paper trading engine provides a deterministic simulator for testing trading 
 ### Features
 
 - **Deterministic fills**: Orders are filled based on crossing the best bid/ask prices from the orderbook
-- **Configurable slippage**: Simulates market impact on fills
+- **Size-based slippage**: Simulates realistic market impact that scales with order size relative to available liquidity
 - **Fee tracking**: Tracks trading fees for realistic PnL calculation
 - **Position tracking**: Maintains long/short positions with weighted average cost basis
 - **PnL calculation**: Tracks both realized and unrealized PnL
@@ -20,9 +20,34 @@ Add these environment variables to your `.env` file:
 
 ```env
 # Paper Trading Configuration
-PAPER_TRADING_SLIPPAGE=0.01      # 1% slippage on fills
+PAPER_TRADING_SLIPPAGE=0.01      # Base slippage (1%) for small orders
+PAPER_TRADING_MAX_SLIPPAGE=0.05  # Maximum slippage (5%) for large orders
 PAPER_TRADING_FEE_RATE=0.002     # 0.2% fee per trade
 ```
+
+#### Slippage Calculation
+
+The paper trading engine uses a **size-based slippage model** to simulate realistic market impact:
+
+- **Small orders** (< 10% of available liquidity): Apply approximately base slippage
+- **Medium orders** (50% of available liquidity): Apply slippage halfway between base and max
+- **Large orders** (100%+ of available liquidity): Apply maximum slippage
+
+**Formula**: `slippage = baseSlippage + (maxSlippage - baseSlippage) × min(1, orderSize / availableLiquidity)`
+
+**Example**:
+- Base slippage: 1% (0.01)
+- Max slippage: 5% (0.05)
+- Order size: 50 tokens
+- Available liquidity at best price: 100 tokens
+- Calculated slippage: 0.01 + (0.05 - 0.01) × 0.5 = **3%**
+
+This approach ensures:
+- Small orders experience minimal slippage (realistic for liquid markets)
+- Large orders relative to liquidity experience higher slippage (realistic market impact)
+- Orders larger than available liquidity are capped at maximum slippage
+
+**Note**: This addresses audit finding A-020 by making paper trading simulation more realistic, especially for larger orders.
 
 ### Usage
 
