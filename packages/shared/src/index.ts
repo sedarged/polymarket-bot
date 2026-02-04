@@ -86,9 +86,10 @@ export interface Order {
   side: 'BUY' | 'SELL';
   price: string;
   size: string;
-  status: 'OPEN' | 'MATCHED' | 'CANCELLED';
+  status: 'OPEN' | 'PARTIALLY_FILLED' | 'MATCHED' | 'CANCELLED';
   createdAt: number;
   filledSize?: string;
+  remainingSize?: string;
 }
 
 export interface Fill {
@@ -99,7 +100,36 @@ export interface Fill {
   size: string;
   timestamp: number;
   fee?: string;
+  fillId?: string;
 }
+
+// WebSocket user channel message types for order updates and fills
+export interface WSUserOrder {
+  event_type: 'order';
+  order_id: string;
+  client_order_id?: string;
+  asset_id: string;
+  side: 'BUY' | 'SELL';
+  price: string;
+  original_size: string;
+  size_matched: string;
+  status: string;
+  created_at: number;
+}
+
+export interface WSUserFill {
+  event_type: 'fill';
+  fill_id: string;
+  order_id: string;
+  asset_id: string;
+  side: 'BUY' | 'SELL';
+  price: string;
+  size: string;
+  fee: string;
+  timestamp: number;
+}
+
+export type WSUserMessage = WSUserOrder | WSUserFill;
 
 export interface Position {
   tokenId: string;

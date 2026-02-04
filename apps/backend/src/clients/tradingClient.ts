@@ -193,6 +193,7 @@ export class TradingClient {
         status: 'OPEN',
         createdAt: Date.now(),
         filledSize: '0',
+        remainingSize: size,
       };
 
       this.state.orders.push(order);
@@ -255,7 +256,9 @@ export class TradingClient {
 
     logger.warn('Cancelling all orders (kill switch activated)');
 
-    const openOrders = this.state.orders.filter(o => o.status === 'OPEN');
+    const openOrders = this.state.orders.filter(o => 
+      o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+    );
 
     // Cancel orders in parallel for better performance
     const cancellationPromises = openOrders.map(order =>
@@ -316,16 +319,33 @@ export class TradingClient {
       logger.warn('CLOB order missing token ID', { order: clobOrder });
     }
 
+    const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
+    const filledSize = Number(clobOrder.sizeMatched || 0);
+    const remainingSize = originalSize - filledSize;
+
+    // Determine status based on fill amount
+    let status: Order['status'] = 'OPEN';
+    if (clobOrder.status === 'CANCELLED') {
+      status = 'CANCELLED';
+    } else if (filledSize >= originalSize && filledSize > 0) {
+      status = 'MATCHED';
+    } else if (filledSize > 0) {
+      status = 'PARTIALLY_FILLED';
+    } else if (clobOrder.status === 'LIVE') {
+      status = 'OPEN';
+    }
+
     return {
       orderId: orderId || '',
       clientOrderId: clobOrder.clientOrderId,
       tokenId: tokenId || '',
       side: clobOrder.side === 'BUY' ? 'BUY' : 'SELL',
       price: String(clobOrder.price),
-      size: String(clobOrder.size || clobOrder.originalSize || 0),
-      status: clobOrder.status === 'LIVE' ? 'OPEN' : clobOrder.status === 'MATCHED' ? 'MATCHED' : 'CANCELLED',
+      size: String(originalSize),
+      status,
       createdAt: clobOrder.created_at || Date.now(),
-      filledSize: String(clobOrder.sizeMatched || 0),
+      filledSize: String(filledSize),
+      remainingSize: String(remainingSize),
     };
   }
 
@@ -339,7 +359,7 @@ export class TradingClient {
 
     // Process only matched orders with non-zero filled size, in chronological order
     const matchedOrders = this.state.orders
-      .filter((order) => order.status === 'MATCHED' && Number(order.filledSize || 0) !== 0)
+      .filter((order) => (order.status === 'MATCHED' || order.status === 'PARTIALLY_FILLED') && Number(order.filledSize || 0) !== 0)
       .sort((a, b) => a.createdAt - b.createdAt);
 
     for (const order of matchedOrders) {
@@ -426,6 +446,131 @@ export class TradingClient {
         };
       })
       .filter((p): p is Position => p !== null);
+  }
+
+  /**
+   * Handle a fill event (from WebSocket or polling)
+   * Updates order state and records the fill
+   */
+  handleFill(fillEvent: {
+    orderId: string;
+    fillId?: string;
+    price: string;
+    size: string;
+    fee?: string;
+    timestamp?: number;
+  }): void {
+    const { orderId, fillId, price, size, fee, timestamp = Date.now() } = fillEvent;
+    
+    // Find the order
+    const order = this.state.orders.find(o => o.orderId === orderId);
+    if (!order) {
+      logger.warn('Received fill for unknown order', { orderId, fillId });
+      return;
+    }
+
+    // Calculate new filled size
+    const currentFilledSize = Number(order.filledSize || 0);
+    const fillSize = Number(size);
+    const newFilledSize = currentFilledSize + fillSize;
+    const originalSize = Number(order.size);
+
+    // Update order state
+    order.filledSize = String(newFilledSize);
+    order.remainingSize = String(originalSize - newFilledSize);
+
+    // Update order status based on fill amount
+    if (newFilledSize >= originalSize) {
+      order.status = 'MATCHED';
+    } else if (newFilledSize > 0) {
+      order.status = 'PARTIALLY_FILLED';
+    }
+
+    // Record the fill
+    const fill: Fill = {
+      orderId,
+      fillId,
+      tokenId: order.tokenId,
+      side: order.side,
+      price,
+      size,
+      fee,
+      timestamp,
+    };
+    this.state.fills.push(fill);
+
+    // Recalculate positions
+    this.recalculatePositions();
+
+    logger.info('Fill processed', {
+      orderId,
+      fillId,
+      fillSize,
+      newFilledSize,
+      remainingSize: order.remainingSize,
+      status: order.status,
+    });
+  }
+
+  /**
+   * Update order state from CLOB order data
+   * Used during reconciliation and polling
+   */
+  updateOrderState(clobOrder: ClobOrder): void {
+    const orderId = clobOrder.id || clobOrder.orderID;
+    if (!orderId) {
+      logger.warn('Cannot update order, missing ID', { order: clobOrder });
+      return;
+    }
+
+    // Find existing order
+    const existingOrder = this.state.orders.find(o => o.orderId === orderId);
+    
+    if (!existingOrder) {
+      // New order we didn't know about (e.g., from another session)
+      const newOrder = this.mapOrder(clobOrder);
+      this.state.orders.push(newOrder);
+      logger.info('Discovered new order during reconciliation', { orderId });
+      return;
+    }
+
+    // Calculate previous and current filled sizes
+    const previousFilledSize = Number(existingOrder.filledSize || 0);
+    const currentFilledSize = Number(clobOrder.sizeMatched || 0);
+    const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
+
+    // If filled size increased, we may have missed fill events
+    if (currentFilledSize > previousFilledSize) {
+      const missedFillSize = currentFilledSize - previousFilledSize;
+      
+      // Create a synthetic fill event for the missed fill
+      this.handleFill({
+        orderId,
+        price: String(clobOrder.price),
+        size: String(missedFillSize),
+        timestamp: Date.now(),
+      });
+
+      logger.warn('Detected missed fill during reconciliation', {
+        orderId,
+        previousFilledSize,
+        currentFilledSize,
+        missedFillSize,
+      });
+    } else {
+      // Just update the order state without creating a fill
+      existingOrder.filledSize = String(currentFilledSize);
+      existingOrder.remainingSize = String(originalSize - currentFilledSize);
+      
+      // Update status
+      if (clobOrder.status === 'CANCELLED') {
+        existingOrder.status = 'CANCELLED';
+      } else if (currentFilledSize >= originalSize && currentFilledSize > 0) {
+        existingOrder.status = 'MATCHED';
+      } else if (currentFilledSize > 0) {
+        existingOrder.status = 'PARTIALLY_FILLED';
+      }
+    }
   }
 }
 

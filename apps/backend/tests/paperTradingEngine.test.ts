@@ -434,8 +434,9 @@ describe('PaperTradingEngine', () => {
       expect(fillSize).toBeLessThan(50); // Not full fill
       
       const orders = engine.getOrders();
-      expect(orders[0].status).toBe('OPEN'); // Still open since partially filled
+      expect(orders[0].status).toBe('PARTIALLY_FILLED'); // Status updated to partially filled
       expect(Number(orders[0].filledSize)).toBe(fillSize);
+      expect(Number(orders[0].remainingSize)).toBe(50 - fillSize);
     });
 
     it('should allow multiple partial fills until order is complete', () => {
@@ -463,8 +464,9 @@ describe('PaperTradingEngine', () => {
       expect(firstFillSize).toBeLessThanOrEqual(40); // At most 40% of 100
       
       const orders1 = engine.getOrders();
-      expect(orders1[0].status).toBe('OPEN'); // Still open
+      expect(orders1[0].status).toBe('PARTIALLY_FILLED'); // Status updated to partially filled
       expect(Number(orders1[0].filledSize)).toBe(firstFillSize);
+      expect(Number(orders1[0].remainingSize)).toBe(100 - firstFillSize);
       
       // Second fill
       const filled2 = engine.tryFillOrder(order.orderId, mockOrderbook);
@@ -478,11 +480,11 @@ describe('PaperTradingEngine', () => {
       
       expect(Number(orders1[0].filledSize)).toBe(totalFilled);
       
-      // Status depends on whether we've hit 100% - could be OPEN or MATCHED
+      // Status depends on whether we've hit 100% - could be PARTIALLY_FILLED or MATCHED
       if (totalFilled >= 100) {
         expect(orders1[0].status).toBe('MATCHED');
       } else {
-        expect(orders1[0].status).toBe('OPEN');
+        expect(orders1[0].status).toBe('PARTIALLY_FILLED');
       }
     });
 
