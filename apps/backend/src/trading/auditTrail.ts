@@ -115,7 +115,7 @@ export class AuditTrail {
   }): Order[] {
     try {
       let query = 'SELECT * FROM orders WHERE 1=1';
-      const params: any[] = [];
+      const params: (string | number)[] = [];
 
       if (filters?.tokenId) {
         query += ' AND token_id = ?';
@@ -179,7 +179,7 @@ export class AuditTrail {
   }): Fill[] {
     try {
       let query = 'SELECT * FROM fills WHERE 1=1';
-      const params: any[] = [];
+      const params: (string | number)[] = [];
 
       if (filters?.orderId) {
         query += ' AND order_id = ?';
@@ -276,7 +276,7 @@ export class AuditTrail {
   } {
     try {
       let whereClause = '1=1';
-      const params: any[] = [];
+      const params: (string | number)[] = [];
 
       if (filters?.tokenId) {
         whereClause += ' AND token_id = ?';
@@ -311,7 +311,7 @@ export class AuditTrail {
 
       // Total fills and volume
       let fillWhereClause = '1=1';
-      const fillParams: any[] = [];
+      const fillParams: (string | number)[] = [];
 
       if (filters?.tokenId) {
         fillWhereClause += ' AND token_id = ?';
