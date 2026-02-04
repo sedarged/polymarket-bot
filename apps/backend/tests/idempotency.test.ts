@@ -142,7 +142,7 @@ describe('Order Idempotency (A-006)', () => {
 
     it('should prevent concurrent duplicate submissions with same clientOrderId', async () => {
       // Test concurrent idempotency: submit two requests with the same ID simultaneously
-      const stableClientOrderId = 'concurrent-order-' + Date.now();
+      const stableClientOrderId = 'concurrent-order-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
       
       // Submit two orders concurrently with the same clientOrderId
       // One should succeed, one should be rejected as duplicate
@@ -165,7 +165,7 @@ describe('Order Idempotency (A-006)', () => {
     
     it('should allow retry with same clientOrderId after failure', async () => {
       const mockClient = (client as any).client;
-      const stableClientOrderId = 'retry-order-' + Date.now();
+      const stableClientOrderId = 'retry-order-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
       
       // Mock first call to fail
       mockClient.createOrder.mockRejectedValueOnce(new Error('Network error'));
