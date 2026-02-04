@@ -19,14 +19,10 @@ To update this status:
 ## Next — P0 (Critical)
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
-- [P0] #121 [Observability] Set up basic alerting (Slack/email) - Gap OB-002
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
-- [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
-- [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
 ## Next — P1 (High Priority)
-- [P1] #135 [Backend] Implement circuit breaker auto-reset and metrics tracking (Audit Finding A-018)
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
@@ -81,9 +77,11 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
 - [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
+- [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 - [P1] #33 [Task] Documentation and Runbook Setup for Production-Ready Bot
 - [P1] #32 [Task] Small PR Implementation Plan for Polymarket Bot
 - [P2] #31 [Task] Reliability and SRE Infrastructure Improvements
@@ -100,7 +98,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T05:00:23.179Z*
+*Last updated: 2026-02-04T06:12:46.307Z*
 
 <!-- STATUS_SYNC_END -->
 
