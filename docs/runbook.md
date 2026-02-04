@@ -394,16 +394,17 @@ curl -X POST http://localhost:3000/kill-switch
 3. Check final positions in dashboard
 4. Reconcile state: `curl http://localhost:3000/state`
 5. Fix issue before resuming trading
-6. To resume trading after restart:
+6. To resume trading after kill switch:
    - Delete state file: `rm apps/backend/.state/kill-switch.json`
    - Restart the server
-   - Trading will resume (unless kill switch is activated again)
+   - **Note:** Deleting the state file will disable the kill switch on restart, allowing trading to resume (unless another issue triggers the kill switch again)
 
 **Kill Switch State File:**
 - Location: `apps/backend/.state/kill-switch.json`
 - Format: JSON with `killed`, `timestamp`, and optional `reason` fields
 - The `.state/` directory is automatically created on first use
 - This directory is excluded from git via `.gitignore`
+- If the file doesn't exist or contains `killed: false`, trading will be enabled on startup
 
 ## Incident Response
 ### WebSocket Disconnects
