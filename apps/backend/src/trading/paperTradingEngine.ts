@@ -72,6 +72,7 @@ export class PaperTradingEngine {
       status: 'OPEN',
       createdAt: Date.now(),
       filledSize: '0',
+      remainingSize: size,
     };
 
     this.state.orders.push(order);
@@ -84,7 +85,10 @@ export class PaperTradingEngine {
    * Returns true if the order was filled (fully or partially)
    */
   tryFillOrder(orderId: string, orderbook: Orderbook): boolean {
-    const order = this.state.orders.find(o => o.orderId === orderId && o.status === 'OPEN');
+    const order = this.state.orders.find(o => 
+      o.orderId === orderId && 
+      (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED')
+    );
     if (!order) {
       return false;
     }
@@ -164,8 +168,13 @@ export class PaperTradingEngine {
     // Update order
     const newFilledSize = alreadyFilled + fillSize;
     order.filledSize = String(newFilledSize);
+    order.remainingSize = String(orderSize - newFilledSize);
+    
+    // Update status based on fill amount
     if (newFilledSize >= orderSize) {
       order.status = 'MATCHED';
+    } else if (newFilledSize > 0) {
+      order.status = 'PARTIALLY_FILLED';
     }
 
     // Update balance
@@ -193,7 +202,10 @@ export class PaperTradingEngine {
    * Cancel an order
    */
   cancelOrder(orderId: string): boolean {
-    const order = this.state.orders.find(o => o.orderId === orderId && o.status === 'OPEN');
+    const order = this.state.orders.find(o => 
+      o.orderId === orderId && 
+      (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED')
+    );
     if (!order) {
       return false;
     }
@@ -207,7 +219,9 @@ export class PaperTradingEngine {
    * Cancel all open orders
    */
   cancelAllOrders(): void {
-    const openOrders = this.state.orders.filter(o => o.status === 'OPEN');
+    const openOrders = this.state.orders.filter(o => 
+      o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+    );
     for (const order of openOrders) {
       order.status = 'CANCELLED';
     }

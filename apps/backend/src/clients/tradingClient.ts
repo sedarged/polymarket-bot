@@ -7,7 +7,7 @@ import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
 
 /**
- * Trading Client for Live Order Placement
+ * Trading Client for Live Order Placement with Partial Fill Tracking
  * 
  * Official Documentation: https://docs.polymarket.com/developers/CLOB/orders/create-order
  * SDK: @polymarket/clob-client v5.2.1
@@ -18,16 +18,30 @@ import { getPrivateKey, loadSecretsConfig } from '../secrets';
  * - Startup reconciliation of open orders and positions
  * - Kill switch for emergency order cancellation
  * - Order state tracking and management
+ * - **Comprehensive partial fill tracking (EE-001)**
+ * - **Missed fill detection during reconciliation**
+ * - **Accurate position calculation with partial fills**
+ * 
+ * Partial Fill Support:
+ * - Tracks order state: OPEN → PARTIALLY_FILLED → MATCHED
+ * - Records all fills with size, price, and fee
+ * - Calculates positions from actual filled amounts
+ * - Handles multi-step fills (multiple partials per order)
+ * - Detects and recovers missed fills during reconciliation
  * 
  * Implementation Review: See REPORTS/RESEARCH_REVIEW.md Section 2.4
  * Authentication: Fully aligned with official L1/L2 flow via SDK ✓
  * Chain ID: 137 (Polygon Mainnet) ✓
  * Security: Dual-gate system (LIVE_TRADING + COMPLIANCE_ACCEPTED) ✓
  * Secrets Management: Addresses Audit Finding A-001 ✓
+ * Partial Fills: Addresses Audit Gap EE-001 ✓
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
  * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
  * @see {@link ../../../../REPORTS/RESEARCH_REVIEW.md}
+ * @see {@link ../../../../REPORTS/GAP_ANALYSIS.md} - EE-001
+ * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
+ * @see {@link ../../../../docs/order-state-machine.md}
  */
 export interface TradingState {
   orders: Order[];
@@ -62,6 +76,7 @@ export class TradingClient {
     balances: [],
   };
   private orderIdCounter = 0;
+  private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
 
   async initialize(): Promise<void> {
     // Verify trading is enabled
@@ -193,6 +208,7 @@ export class TradingClient {
         status: 'OPEN',
         createdAt: Date.now(),
         filledSize: '0',
+        remainingSize: size,
       };
 
       this.state.orders.push(order);
@@ -255,7 +271,9 @@ export class TradingClient {
 
     logger.warn('Cancelling all orders (kill switch activated)');
 
-    const openOrders = this.state.orders.filter(o => o.status === 'OPEN');
+    const openOrders = this.state.orders.filter(o => 
+      o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+    );
 
     // Cancel orders in parallel for better performance
     const cancellationPromises = openOrders.map(order =>
@@ -302,6 +320,14 @@ export class TradingClient {
   }
 
   /**
+   * Add order to internal state (for testing only)
+   * @internal
+   */
+  _addTestOrder(order: Order): void {
+    this.state.orders.push(order);
+  }
+
+  /**
    * Map CLOB order to our Order type
    */
   private mapOrder(clobOrder: ClobOrder): Order {
@@ -316,33 +342,84 @@ export class TradingClient {
       logger.warn('CLOB order missing token ID', { order: clobOrder });
     }
 
+    const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
+    let filledSize = Number(clobOrder.sizeMatched || 0);
+    
+    // Clamp filledSize to valid range [0, originalSize]
+    if (isNaN(filledSize) || filledSize < 0) {
+      logger.warn('Invalid filledSize, clamping to 0', { order: clobOrder, filledSize });
+      filledSize = 0;
+    } else if (filledSize > originalSize && originalSize > 0) {
+      logger.warn('FilledSize exceeds originalSize, clamping', { 
+        order: clobOrder, 
+        filledSize, 
+        originalSize 
+      });
+      filledSize = originalSize;
+    }
+    
+    const remainingSize = Math.max(0, originalSize - filledSize);
+
+    // Determine status based on fill amount
+    let status: Order['status'] = 'OPEN';
+    if (clobOrder.status === 'CANCELLED') {
+      status = 'CANCELLED';
+    } else if (filledSize >= originalSize && filledSize > 0) {
+      status = 'MATCHED';
+    } else if (filledSize > 0) {
+      status = 'PARTIALLY_FILLED';
+    } else if (clobOrder.status === 'LIVE') {
+      status = 'OPEN';
+    }
+
     return {
       orderId: orderId || '',
       clientOrderId: clobOrder.clientOrderId,
       tokenId: tokenId || '',
       side: clobOrder.side === 'BUY' ? 'BUY' : 'SELL',
       price: String(clobOrder.price),
-      size: String(clobOrder.size || clobOrder.originalSize || 0),
-      status: clobOrder.status === 'LIVE' ? 'OPEN' : clobOrder.status === 'MATCHED' ? 'MATCHED' : 'CANCELLED',
+      size: String(originalSize),
+      status,
       createdAt: clobOrder.created_at || Date.now(),
-      filledSize: String(clobOrder.sizeMatched || 0),
+      filledSize: String(filledSize),
+      remainingSize: String(remainingSize),
     };
   }
 
   /**
    * Recalculate positions from orders and fills
-   * Properly tracks cost basis through a sequence of buys and sells
+   * 
+   * This method calculates positions from actual filled amounts, properly
+   * handling partial fills. It processes orders in chronological order and:
+   * 
+   * - Uses filledSize for position calculation (not order size)
+   * - Handles MATCHED, PARTIALLY_FILLED, and CANCELLED orders with fills
+   * - Calculates weighted average cost basis
+   * - Supports position additions, reductions, and flips
+   * - Filters out zero positions
+   * 
+   * Position calculation now correctly handles:
+   * - Partial fills: Uses only the filled portion
+   * - Multi-step fills: Accumulates fills across multiple events
+   * - Mixed orders: Buy/sell operations on same token
+   * - Cancelled orders: Includes filled portion of cancelled orders
+   * 
+   * Called automatically after every fill event to ensure positions
+   * are always accurate.
+   * 
+   * @private
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
    */
   private recalculatePositions(): void {
     // Group orders by token ID and track net position and cost basis
     const positionMap = new Map<string, { netSize: number; avgPrice: number }>();
 
-    // Process only matched orders with non-zero filled size, in chronological order
-    const matchedOrders = this.state.orders
-      .filter((order) => order.status === 'MATCHED' && Number(order.filledSize || 0) !== 0)
+    // Process orders with non-zero filled size (including cancelled), in chronological order
+    const ordersWithFills = this.state.orders
+      .filter((order) => Number(order.filledSize || 0) !== 0)
       .sort((a, b) => a.createdAt - b.createdAt);
 
-    for (const order of matchedOrders) {
+    for (const order of ordersWithFills) {
       const filledSize = Number(order.filledSize || 0);
       if (filledSize === 0) continue;
 
@@ -426,6 +503,209 @@ export class TradingClient {
         };
       })
       .filter((p): p is Position => p !== null);
+  }
+
+  /**
+   * Handle a fill event (from WebSocket or polling)
+   * 
+   * This method implements the core partial fill tracking logic (EE-001).
+   * It processes fill events and updates order state appropriately:
+   * 
+   * - OPEN → PARTIALLY_FILLED (first partial fill)
+   * - PARTIALLY_FILLED → PARTIALLY_FILLED (more partial fills)
+   * - PARTIALLY_FILLED → MATCHED (final fill)
+   * - OPEN → MATCHED (single full fill)
+   * 
+   * Each fill is recorded in the fills array for audit purposes.
+   * Positions are recalculated after each fill to ensure accuracy.
+   * 
+   * Includes idempotency: duplicate fillIds are ignored to prevent
+   * double-counting fills from WS replay/reconnect scenarios.
+   * 
+   * @param fillEvent Fill event details
+   * @param fillEvent.orderId Order ID that was filled
+   * @param fillEvent.fillId Optional unique fill identifier
+   * @param fillEvent.price Fill execution price
+   * @param fillEvent.size Amount filled in this event
+   * @param fillEvent.fee Optional fee for this fill
+   * @param fillEvent.timestamp Optional fill timestamp
+   * 
+   * @see {@link ../../../../docs/order-state-machine.md}
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
+   */
+  handleFill(fillEvent: {
+    orderId: string;
+    fillId?: string;
+    price: string;
+    size: string;
+    fee?: string;
+    timestamp?: number;
+  }): void {
+    const { orderId, fillId, price, size, fee, timestamp = Date.now() } = fillEvent;
+    
+    // Deduplicate fills by fillId to prevent double-counting
+    if (fillId && this.processedFillIds.has(fillId)) {
+      logger.info('Ignoring duplicate fill', { orderId, fillId });
+      return;
+    }
+    
+    // Find the order
+    const order = this.state.orders.find(o => o.orderId === orderId);
+    if (!order) {
+      logger.warn('Received fill for unknown order', { orderId, fillId });
+      return;
+    }
+
+    // Calculate new filled size
+    const currentFilledSize = Number(order.filledSize || 0);
+    const fillSize = Number(size);
+    const originalSize = Number(order.size);
+    
+    // Cap fill to remaining size to prevent overfills
+    const remainingSize = originalSize - currentFilledSize;
+    const cappedFillSize = Math.min(fillSize, remainingSize);
+    
+    if (cappedFillSize < fillSize) {
+      logger.warn('Fill size exceeds remaining, capping', {
+        orderId,
+        fillSize,
+        remainingSize,
+        cappedFillSize,
+      });
+    }
+    
+    const newFilledSize = currentFilledSize + cappedFillSize;
+
+    // Update order quantities
+    order.filledSize = String(newFilledSize);
+    order.remainingSize = String(Math.max(0, originalSize - newFilledSize));
+
+    // Update order status based on fill amount, but preserve CANCELLED status
+    if (order.status !== 'CANCELLED') {
+      if (newFilledSize >= originalSize) {
+        order.status = 'MATCHED';
+      } else if (newFilledSize > 0) {
+        order.status = 'PARTIALLY_FILLED';
+      }
+    }
+
+    // Record the fill
+    const fill: Fill = {
+      orderId,
+      fillId,
+      tokenId: order.tokenId,
+      side: order.side,
+      price,
+      size: String(cappedFillSize),
+      fee,
+      timestamp,
+    };
+    this.state.fills.push(fill);
+    
+    // Track fillId for deduplication
+    if (fillId) {
+      this.processedFillIds.add(fillId);
+    }
+
+    // Recalculate positions
+    this.recalculatePositions();
+
+    logger.info('Fill processed', {
+      orderId,
+      fillId,
+      fillSize,
+      newFilledSize,
+      remainingSize: order.remainingSize,
+      status: order.status,
+    });
+  }
+
+  /**
+   * Update order state from CLOB order data
+   * 
+   * This method is used during reconciliation (startup or periodic) to sync
+   * local order state with the CLOB. It implements missed fill detection:
+   * 
+   * - If CLOB reports more filled size than local state, a fill was missed
+   * - Creates a synthetic fill event for the missed amount
+   * - Logs a warning for investigation
+   * - Updates order status based on CLOB data
+   * 
+   * This ensures the bot can recover from:
+   * - Missed WebSocket events
+   * - Fills that occurred while bot was offline
+   * - State drift due to any reason
+   * 
+   * @param clobOrder Order data from CLOB API
+   * 
+   * @see {@link ../../../../docs/order-state-machine.md}
+   * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
+   */
+  updateOrderState(clobOrder: ClobOrder): void {
+    const orderId = clobOrder.id || clobOrder.orderID;
+    if (!orderId) {
+      logger.warn('Cannot update order, missing ID', { order: clobOrder });
+      return;
+    }
+
+    // Find existing order
+    const existingOrder = this.state.orders.find(o => o.orderId === orderId);
+    
+    if (!existingOrder) {
+      // New order we didn't know about (e.g., from another session)
+      const newOrder = this.mapOrder(clobOrder);
+      this.state.orders.push(newOrder);
+      logger.info('Discovered new order during reconciliation', { orderId });
+      return;
+    }
+
+    // Calculate previous and current filled sizes
+    const previousFilledSize = Number(existingOrder.filledSize || 0);
+    const currentFilledSize = Number(clobOrder.sizeMatched || 0);
+    const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
+
+    // If filled size increased, we may have missed fill events
+    if (currentFilledSize > previousFilledSize) {
+      const missedFillSize = currentFilledSize - previousFilledSize;
+      
+      // Create a synthetic fill event for the missed fill
+      this.handleFill({
+        orderId,
+        price: String(clobOrder.price),
+        size: String(missedFillSize),
+        timestamp: Date.now(),
+      });
+
+      logger.warn('Detected missed fill during reconciliation', {
+        orderId,
+        previousFilledSize,
+        currentFilledSize,
+        missedFillSize,
+      });
+      
+      // Sync terminal status from CLOB after handling missed fills
+      if (clobOrder.status === 'CANCELLED') {
+        existingOrder.status = 'CANCELLED';
+      }
+    } else {
+      // Just update the order state without creating a fill
+      existingOrder.filledSize = String(currentFilledSize);
+      existingOrder.remainingSize = String(originalSize - currentFilledSize);
+      
+      // Update status
+      if (clobOrder.status === 'CANCELLED') {
+        existingOrder.status = 'CANCELLED';
+      } else if (currentFilledSize >= originalSize && currentFilledSize > 0) {
+        existingOrder.status = 'MATCHED';
+      } else if (currentFilledSize > 0) {
+        existingOrder.status = 'PARTIALLY_FILLED';
+      }
+      
+      // If reconciliation adjusted filled size, recalculate positions
+      if (currentFilledSize !== previousFilledSize) {
+        this.recalculatePositions();
+      }
+    }
   }
 }
 

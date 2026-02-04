@@ -113,8 +113,8 @@ export class RiskManager {
       };
     }
 
-    // Check max open orders
-    const openOrders = orders.filter(o => o.status === 'OPEN');
+    // Check max open orders (including partially filled orders)
+    const openOrders = orders.filter(o => o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED');
     if (openOrders.length >= this.config.maxOpenOrders) {
       return {
         allowed: false,
