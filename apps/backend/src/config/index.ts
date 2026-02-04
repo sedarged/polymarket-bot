@@ -115,6 +115,16 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   
   // CORS Security Check: Fail-fast if wildcard is used in production-like scenarios
   const config = parsed.data;
+  
+  // Validate that ALLOWED_ORIGINS is not empty
+  if (config.allowedOrigins.length === 0) {
+    throw new Error(
+      'CRITICAL CONFIGURATION ERROR: ALLOWED_ORIGINS cannot be empty. ' +
+      'Set at least one allowed origin, e.g., ALLOWED_ORIGINS=http://localhost:3000 ' +
+      'or ALLOWED_ORIGINS=* for development only.'
+    );
+  }
+  
   const hasWildcardCors = config.allowedOrigins.includes('*');
   const isProduction = env.NODE_ENV === 'production' || config.liveTrading;
   

@@ -88,4 +88,28 @@ describe('CORS configuration validation', () => {
     });
     expect(parsed.allowedOrigins).toEqual(['https://app.example.com']);
   });
+
+  it('throws error when ALLOWED_ORIGINS is empty string', () => {
+    expect(() =>
+      parseConfig({
+        ALLOWED_ORIGINS: '',
+      })
+    ).toThrow('CRITICAL CONFIGURATION ERROR: ALLOWED_ORIGINS cannot be empty');
+  });
+
+  it('throws error when ALLOWED_ORIGINS is only commas', () => {
+    expect(() =>
+      parseConfig({
+        ALLOWED_ORIGINS: ',,,',
+      })
+    ).toThrow('CRITICAL CONFIGURATION ERROR: ALLOWED_ORIGINS cannot be empty');
+  });
+
+  it('throws error when ALLOWED_ORIGINS contains only whitespace', () => {
+    expect(() =>
+      parseConfig({
+        ALLOWED_ORIGINS: '  ,  ,  ',
+      })
+    ).toThrow('CRITICAL CONFIGURATION ERROR: ALLOWED_ORIGINS cannot be empty');
+  });
 });

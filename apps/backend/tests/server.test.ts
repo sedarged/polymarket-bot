@@ -128,6 +128,8 @@ describe('Server CORS', () => {
     const corsOrigin = response.headers.get('access-control-allow-origin');
     // Should reflect the origin back since it's in allowedOrigins
     expect(corsOrigin).toBe('http://localhost:3000');
+    // Should include credentials header for allowed origins
+    expect(response.headers.get('access-control-allow-credentials')).toBe('true');
   });
 
   it('does not allow requests from non-configured origin', async () => {
