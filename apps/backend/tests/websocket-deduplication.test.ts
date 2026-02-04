@@ -416,7 +416,7 @@ describe('WebSocket Message Deduplication - A-010', () => {
       expect(updateCount).toBe(2);
     });
 
-    it('should not deduplicate last_trade_price messages with same price but different intent', async () => {
+    it('should deduplicate last_trade_price messages with identical data', async () => {
       const lastTrade1 = {
         event_type: 'last_trade_price' as const,
         asset_id: mockTokenId,
