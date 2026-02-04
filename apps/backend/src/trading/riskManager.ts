@@ -1,5 +1,6 @@
 import { Order, Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
+import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '../utils/statePersistence';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -42,6 +43,34 @@ export class RiskManager {
       errorRateThreshold: this.config.errorRateThreshold,
       errorRateWindow: this.config.errorRateWindow,
     });
+  }
+
+  /**
+   * Restore kill switch state from persistent storage
+   * Should be called during startup before enabling trading
+   */
+  async restoreState(): Promise<void> {
+    try {
+      const state = await loadKillSwitchState();
+      
+      if (state && state.killed) {
+        this.killed = true;
+        logger.warn('Kill switch state restored from disk - trading disabled', {
+          timestamp: state.timestamp,
+          age: Date.now() - state.timestamp,
+          reason: state.reason,
+        });
+      } else {
+        logger.info('No active kill switch state found - trading enabled');
+      }
+    } catch (error) {
+      logger.error('Failed to restore kill switch state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw - fail open with warning
+      // This prevents startup failure due to storage issues
+      logger.warn('Continuing without kill switch state restoration');
+    }
   }
 
   /**
@@ -184,9 +213,20 @@ export class RiskManager {
   /**
    * Activate kill switch - no new orders allowed
    */
-  kill(): void {
+  kill(reason?: string): void {
     this.killed = true;
-    logger.error('Kill switch activated');
+    logger.error('Kill switch activated', { reason });
+    
+    // Persist state to disk (async, but don't wait - best effort)
+    saveKillSwitchState({
+      killed: true,
+      timestamp: Date.now(),
+      reason,
+    }).catch((error) => {
+      logger.error('Failed to persist kill switch state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   /**
@@ -203,6 +243,13 @@ export class RiskManager {
     this.killed = false;
     this.operations = [];
     logger.info('Risk manager reset');
+    
+    // Clear persisted state (async, but don't wait - best effort)
+    clearKillSwitchState().catch((error) => {
+      logger.error('Failed to clear kill switch state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   /**

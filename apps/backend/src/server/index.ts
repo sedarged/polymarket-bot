@@ -325,6 +325,14 @@ export function startServer(): http.Server {
   });
   logger.info('Risk manager initialized');
   
+  // Restore kill switch state from disk before enabling trading
+  // CRITICAL: This must happen before any trading logic is enabled
+  riskManager.restoreState().catch((error) => {
+    logger.error('Failed to restore kill switch state', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+  
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {
     tradingClient.initialize().catch((error) => {

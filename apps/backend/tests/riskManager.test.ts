@@ -254,4 +254,62 @@ describe('RiskManager', () => {
       expect(metrics.recentErrors).toBe(0);
     });
   });
+
+  describe('persistence', () => {
+    it('should restore kill switch state from disk', async () => {
+      const persistentManager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+      });
+
+      // Activate kill switch
+      persistentManager.kill('test persistence');
+
+      // Wait for async save to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Create new risk manager instance and restore state
+      const restoredManager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+      });
+
+      await restoredManager.restoreState();
+
+      // Verify kill switch was restored
+      expect(restoredManager.isKilled()).toBe(true);
+      const metrics = restoredManager.getMetrics();
+      expect(metrics.killed).toBe(true);
+
+      // Clean up
+      restoredManager.reset();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+
+    it('should handle missing state file gracefully', async () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+      });
+
+      // Clear any existing state first
+      manager.reset();
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Restore state should not throw
+      await expect(manager.restoreState()).resolves.not.toThrow();
+
+      // Should not be killed
+      expect(manager.isKilled()).toBe(false);
+    });
+  });
 });
