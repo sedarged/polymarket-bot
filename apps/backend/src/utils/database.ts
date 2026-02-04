@@ -107,6 +107,27 @@ export function initializeDatabase(config: DatabaseConfig = {}): Database.Databa
     CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON order_events(order_id)
   `);
 
+  // Create positions table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS positions (
+      token_id TEXT PRIMARY KEY,
+      size TEXT NOT NULL,
+      average_price TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+
+  // Create balances table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS balances (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      balance TEXT NOT NULL,
+      initial_balance TEXT NOT NULL,
+      realized_pnl TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `);
+
   logger.info('Audit trail database initialized successfully');
 
   return db;
