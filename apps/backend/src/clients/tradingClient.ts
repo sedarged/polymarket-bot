@@ -305,6 +305,14 @@ export class TradingClient {
   }
 
   /**
+   * Add order to internal state (for testing only)
+   * @internal
+   */
+  _addTestOrder(order: Order): void {
+    this.state.orders.push(order);
+  }
+
+  /**
    * Map CLOB order to our Order type
    */
   private mapOrder(clobOrder: ClobOrder): Order {
