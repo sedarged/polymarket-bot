@@ -30,7 +30,6 @@ To update this status:
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
 - [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
-- [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
 - [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
@@ -75,6 +74,7 @@ To update this status:
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
+- [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
 - [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
 - [P1] #93 [Security] Add admin authentication for sensitive endpoints - Audit Finding A-004
@@ -97,7 +97,7 @@ To update this status:
 - #14 WebSocket market feed + orderbook cache with resync
 - #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T12:39:40.701Z*
+*Last updated: 2026-02-04T13:42:18.577Z*
 
 <!-- STATUS_SYNC_END -->
 
