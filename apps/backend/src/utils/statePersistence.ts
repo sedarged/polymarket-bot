@@ -74,7 +74,7 @@ export async function loadKillSwitchState(): Promise<KillSwitchState | null> {
     const parseResult = KillSwitchStateSchema.safeParse(rawState);
     if (!parseResult.success) {
       logger.error('Kill switch state file has invalid structure', {
-        errors: parseResult.error.errors,
+        errors: parseResult.error.issues,
         file: KILL_SWITCH_FILE,
       });
       throw new Error('Invalid kill switch state structure: ' + parseResult.error.message);

@@ -1,5 +1,11 @@
 import { EventEmitter } from 'events';
 import { logger } from './logger';
+import { 
+  circuitBreakerState, 
+  circuitBreakerTrips, 
+  circuitBreakerFailures, 
+  circuitBreakerSuccesses,
+} from './metrics';
 
 export enum CircuitState {
   CLOSED = 'closed',
@@ -115,6 +121,9 @@ export class CircuitBreaker extends EventEmitter {
     this.consecutiveSuccesses++;
     this.consecutiveFailures = 0;
     this.lastSuccessTime = Date.now();
+    
+    // Record success metric
+    circuitBreakerSuccesses.inc({ breaker_name: this.name });
 
     if (this.state === CircuitState.HALF_OPEN) {
       if (this.consecutiveSuccesses >= this.successThreshold) {
@@ -137,6 +146,9 @@ export class CircuitBreaker extends EventEmitter {
     this.consecutiveFailures++;
     this.consecutiveSuccesses = 0;
     this.lastFailureTime = Date.now();
+    
+    // Record failure metric
+    circuitBreakerFailures.inc({ breaker_name: this.name });
 
     logger.warn('Circuit breaker request failed', {
       name: this.name,
@@ -163,6 +175,10 @@ export class CircuitBreaker extends EventEmitter {
     const previousState = this.state;
     this.state = CircuitState.OPEN;
     this.nextAttemptTime = Date.now() + this.resetTimeout;
+    
+    // Update metrics
+    circuitBreakerState.set({ breaker_name: this.name }, 1); // OPEN = 1
+    circuitBreakerTrips.inc({ breaker_name: this.name });
 
     logger.error('Circuit breaker opened', {
       name: this.name,
@@ -191,6 +207,9 @@ export class CircuitBreaker extends EventEmitter {
     const previousState = this.state;
     this.state = CircuitState.HALF_OPEN;
     this.consecutiveSuccesses = 0;
+    
+    // Update metrics
+    circuitBreakerState.set({ breaker_name: this.name }, 2); // HALF_OPEN = 2
 
     logger.info('Circuit breaker half-open', {
       name: this.name,
@@ -211,6 +230,9 @@ export class CircuitBreaker extends EventEmitter {
     this.failureCount = 0;
     this.consecutiveFailures = 0;
     this.consecutiveSuccesses = 0;
+    
+    // Update metrics
+    circuitBreakerState.set({ breaker_name: this.name }, 0); // CLOSED = 0
 
     logger.info('Circuit breaker closed', {
       name: this.name,

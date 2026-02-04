@@ -48,23 +48,21 @@ describe('Server', () => {
     expect(body.checks.tradingClient).toBeDefined();
   });
 
-  it('returns metrics payload', async () => {
+  it('returns metrics in Prometheus format', async () => {
     const response = await fetch(`${baseUrl}/metrics`);
-    const body = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(typeof body.timestamp).toBe('string');
-    expect(typeof body.uptime).toBe('number');
-    expect(body.memory).toBeDefined();
-    expect(typeof body.memory.heapUsed).toBe('number');
-    expect(typeof body.memory.heapTotal).toBe('number');
-    expect(typeof body.memory.rss).toBe('number');
-    expect(body.trading).toBeDefined();
-    expect(typeof body.trading.liveTrading).toBe('boolean');
-    expect(typeof body.trading.initialized).toBe('boolean');
-    expect(body.marketFeed).toBeDefined();
-    expect(typeof body.marketFeed.connected).toBe('boolean');
-    expect(Array.isArray(body.circuitBreakers)).toBe(true);
+    expect(response.headers.get('content-type')).toContain('text/plain');
+    
+    // Check for Prometheus format markers
+    expect(body).toContain('# HELP');
+    expect(body).toContain('# TYPE');
+    
+    // Check for some expected metrics
+    expect(body).toContain('process_cpu_user_seconds_total');
+    expect(body).toContain('process_resident_memory_bytes');
+    expect(body).toContain('nodejs_heap_size_used_bytes');
   });
 
   it('returns not found for unknown routes', async () => {

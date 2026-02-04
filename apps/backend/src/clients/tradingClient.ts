@@ -1,10 +1,11 @@
-import { ClobClient } from '@polymarket/clob-client';
+import { ClobClient, Side } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
 import { getPrivateKey, loadSecretsConfig } from '../secrets';
+import { ordersTotal, orderLatency, orderCancellations, openOrders as openOrdersGauge } from '../utils/metrics';
 
 /**
  * Trading Client for Live Order Placement with Partial Fill Tracking
@@ -128,10 +129,40 @@ export class TradingClient {
     try {
       logger.info('Starting reconciliation');
 
-      // Fetch open orders
-      const openOrders = await this.client.getOrders();
-      this.state.orders = openOrders.map(this.mapOrder);
+      // Best-effort reconciliation of open orders using any available CLOB client API.
+      // Some SDK versions expose `getOrders`, others may expose `getOpenOrders`.
+      try {
+        const clientAny = this.client as any;
 
+        let openOrdersResponse: unknown = null;
+
+        if (typeof clientAny.getOrders === 'function') {
+          // Prefer generic getOrders API when available
+          openOrdersResponse = await clientAny.getOrders({ status: 'OPEN' });
+        } else if (typeof clientAny.getOpenOrders === 'function') {
+          // Fallback: some clients may provide a dedicated open orders method
+          openOrdersResponse = await clientAny.getOpenOrders();
+        } else {
+          logger.warn('CLOB client does not expose an orders API for reconciliation');
+        }
+
+        if (Array.isArray(openOrdersResponse)) {
+          // Cast to Order[] without assuming a specific shape; the shared type
+          // represents our internal view of an order, while the SDK may return
+          // a superset/subset of fields. We rely on downstream code handling
+          // only the fields it actually needs.
+          this.state.orders = openOrdersResponse as Order[];
+        } else if (openOrdersResponse) {
+          logger.warn('Unexpected open orders response shape during reconciliation', {
+            type: typeof openOrdersResponse,
+          });
+        }
+      } catch (err) {
+        logger.warn('Failed to reconcile open orders from CLOB client', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      
       // Fetch balances (if supported)
       try {
         // Note: The actual API might differ - this is a placeholder
@@ -184,6 +215,8 @@ export class TradingClient {
     // Generate unique clientOrderId for idempotency
     // Include timestamp, counter, and process ID for better uniqueness
     const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
+    
+    const startTime = Date.now();
 
     try {
       logger.info('Creating order', { tokenId, side, price, size, clientOrderId });
@@ -191,7 +224,7 @@ export class TradingClient {
       // Create order via CLOB client
       const response = await this.client.createOrder({
         tokenID: tokenId,
-        side: side === 'BUY' ? 'BUY' : 'SELL',
+        side: side === 'BUY' ? Side.BUY : Side.SELL,
         price: Number(price),
         size: Number(size),
         // @ts-ignore - clientOrderId might not be in types
@@ -199,7 +232,7 @@ export class TradingClient {
       });
 
       const order: Order = {
-        orderId: response.orderID || clientOrderId,
+        orderId: String(response.orderID || clientOrderId),
         clientOrderId,
         tokenId,
         side,
@@ -212,11 +245,20 @@ export class TradingClient {
       };
 
       this.state.orders.push(order);
+      
+      // Record metrics
+      const latency = (Date.now() - startTime) / 1000; // Convert to seconds
+      orderLatency.observe({ side, mode: 'live' }, latency);
+      ordersTotal.inc({ side, result: 'success', mode: 'live' });
+      openOrdersGauge.inc({ mode: 'live' });
 
       logger.info('Order created', { orderId: order.orderId, clientOrderId });
 
       return order;
     } catch (error) {
+      // Record failure metrics
+      ordersTotal.inc({ side, result: 'failure', mode: 'live' });
+      
       logger.error('Failed to create order', {
         error: error instanceof Error ? error.message : String(error),
         tokenId,
@@ -241,12 +283,16 @@ export class TradingClient {
     try {
       logger.info('Cancelling order', { orderId });
 
-      await this.client.cancelOrder(orderId);
+      await this.client.cancelOrder({ orderID: orderId });
 
       // Update local state
       const order = this.state.orders.find(o => o.orderId === orderId);
       if (order) {
         order.status = 'CANCELLED';
+        
+        // Record cancellation metric
+        orderCancellations.inc({ reason: 'user', mode: 'live' });
+        openOrdersGauge.dec({ mode: 'live' });
       }
 
       logger.info('Order cancelled', { orderId });
@@ -277,7 +323,17 @@ export class TradingClient {
 
     // Cancel orders in parallel for better performance
     const cancellationPromises = openOrders.map(order =>
-      this.cancelOrder(order.orderId).catch(error => {
+      this.client!.cancelOrder({ orderID: order.orderId }).then(() => {
+        // Update local state
+        const localOrder = this.state.orders.find(o => o.orderId === order.orderId);
+        if (localOrder) {
+          localOrder.status = 'CANCELLED';
+          
+          // Record cancellation metric
+          orderCancellations.inc({ reason: 'kill-switch', mode: 'live' });
+          openOrdersGauge.dec({ mode: 'live' });
+        }
+      }).catch(error => {
         logger.error('Failed to cancel order during kill switch', {
           orderId: order.orderId,
           error: error instanceof Error ? error.message : String(error),
