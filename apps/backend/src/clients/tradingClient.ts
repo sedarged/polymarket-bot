@@ -4,6 +4,7 @@ import { config } from '../config';
 import { logger } from '../utils/logger';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
 import { Order, Fill, Position, Balance } from '@polymarket/shared';
+import { getPrivateKey, loadSecretsConfig } from '../secrets';
 
 /**
  * Trading Client for Live Order Placement
@@ -22,6 +23,7 @@ import { Order, Fill, Position, Balance } from '@polymarket/shared';
  * Authentication: Fully aligned with official L1/L2 flow via SDK ✓
  * Chain ID: 137 (Polygon Mainnet) ✓
  * Security: Dual-gate system (LIVE_TRADING + COMPLIANCE_ACCEPTED) ✓
+ * Secrets Management: Addresses Audit Finding A-001 ✓
  * 
  * @see {@link https://docs.polymarket.com/developers/CLOB/authentication}
  * @see {@link https://docs.polymarket.com/developers/CLOB/orders/create-order}
@@ -65,14 +67,18 @@ export class TradingClient {
     // Verify trading is enabled
     assertLiveTradingEnabled();
 
-    // Verify private key is provided
-    if (!config.privateKey) {
-      throw new Error('PRIVATE_KEY is required for live trading');
-    }
-
     try {
+      // Load private key using secure secrets management (Audit Finding A-001)
+      const secretsConfig = loadSecretsConfig();
+      const { key: privateKey, source } = await getPrivateKey(secretsConfig);
+      
+      logger.info('Private key loaded securely', {
+        source,
+        // Don't log the key itself
+      });
+      
       // Create wallet
-      this.wallet = new ethers.Wallet(config.privateKey);
+      this.wallet = new ethers.Wallet(privateKey);
       
       // Initialize CLOB client
       this.client = new ClobClient(

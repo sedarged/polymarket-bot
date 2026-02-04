@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { validatePrivateKey } from '../secrets';
 
 dotenv.config();
 
@@ -41,6 +42,23 @@ const numberFromEnv = (defaultValue: number, schema: z.ZodNumber) => {
   }, numberSchema).default(defaultValue);
 };
 
+/**
+ * Helper function to preprocess optional string values from environment variables.
+ * Converts empty strings and null values to undefined, allowing Zod's .optional() to work correctly.
+ * 
+ * @param schema - The Zod schema to apply after preprocessing
+ * @returns A preprocessed Zod schema that treats empty strings as undefined
+ */
+const optionalStringFromEnv = <T extends z.ZodTypeAny>(schema: T) => {
+  return z.preprocess((value) => {
+    // Convert empty string or null to undefined
+    if (value === '' || value === null) {
+      return undefined;
+    }
+    return value;
+  }, schema);
+};
+
 const envSchema = z.object({
   GAMMA_API_URL: z.string().url().default('https://gamma-api.polymarket.com'),
   CLOB_API_URL: z.string().url().default('https://clob.polymarket.com'),
@@ -53,7 +71,32 @@ const envSchema = z.object({
   COMPLIANCE_ACCEPTED: booleanFromEnv.default(false),
   PORT: numberFromEnv(3000, z.number().int().positive()),
   // Trading credentials (optional - only required for live trading)
-  PRIVATE_KEY: z.string().optional(),
+  // Private key must be 64 hex characters (optionally prefixed with 0x)
+  // Addresses Audit Finding A-024: Private key format validation
+  PRIVATE_KEY: optionalStringFromEnv(
+    z.string().optional().refine(
+      (key) => !key || validatePrivateKey(key),
+      {
+        message: 'PRIVATE_KEY must be 64 hexadecimal characters (optionally prefixed with 0x)',
+      }
+    )
+  ),
+  // Secret Management Configuration (Audit Finding A-001)
+  // SECRET_SOURCE: 'env' (default), 'encrypted', 'aws', 'vault', 'azure'
+  SECRET_SOURCE: z.enum(['env', 'encrypted', 'aws', 'vault', 'azure']).default('env'),
+  // For encrypted source
+  ENCRYPTION_KEY: z.string().optional(),
+  ENCRYPTED_PRIVATE_KEY: z.string().optional(),
+  // For AWS source
+  AWS_SECRET_NAME: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  // For Vault source
+  VAULT_ADDR: z.string().optional(),
+  VAULT_TOKEN: z.string().optional(),
+  VAULT_PATH: z.string().optional(),
+  // For Azure source
+  AZURE_KEY_VAULT_NAME: z.string().optional(),
+  AZURE_SECRET_NAME: z.string().optional(),
   // Chain ID: 137 = Polygon Mainnet, 80002 = Polygon Amoy Testnet
   // WARNING: Only Polygon Mainnet (137) is officially supported for live trading
   CHAIN_ID: numberFromEnv(137, z.number().int().positive()),
@@ -97,6 +140,16 @@ const configSchema = envSchema.refine(
   complianceAccepted: env.COMPLIANCE_ACCEPTED,
   port: env.PORT,
   privateKey: env.PRIVATE_KEY,
+  secretSource: env.SECRET_SOURCE,
+  encryptionKey: env.ENCRYPTION_KEY,
+  encryptedPrivateKey: env.ENCRYPTED_PRIVATE_KEY,
+  awsSecretName: env.AWS_SECRET_NAME,
+  awsRegion: env.AWS_REGION,
+  vaultAddr: env.VAULT_ADDR,
+  vaultToken: env.VAULT_TOKEN,
+  vaultPath: env.VAULT_PATH,
+  azureKeyVaultName: env.AZURE_KEY_VAULT_NAME,
+  azureSecretName: env.AZURE_SECRET_NAME,
   chainId: env.CHAIN_ID,
   paperTradingSlippage: env.PAPER_TRADING_SLIPPAGE,
   paperTradingMaxSlippage: env.PAPER_TRADING_MAX_SLIPPAGE,
