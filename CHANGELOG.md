@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/sedarged/polymarket-bot/compare/v1.4.0...v1.5.0) (2026-02-04)
+
+
+### Features
+
+* integrate Prometheus metrics (OB-001) ([a0f86c0](https://github.com/sedarged/polymarket-bot/commit/a0f86c0f1c1d0fef47b0789ee4fde9a4bbd22688))
+* integrate Prometheus metrics for production observability (OB-001) ([994bc98](https://github.com/sedarged/polymarket-bot/commit/994bc9854bffae5b2fb257effb9006327ed17452))
+
+
+### Bug Fixes
+
+* address PR review comments on metrics implementation ([64203a6](https://github.com/sedarged/polymarket-bot/commit/64203a6f79cdf44625ee49d88b3c957e4cbbb1ce))
+
 ## [1.4.0](https://github.com/sedarged/polymarket-bot/compare/v1.3.0...v1.4.0) (2026-02-04)
 
 
