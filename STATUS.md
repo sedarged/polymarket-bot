@@ -48,7 +48,6 @@ To update this status:
 - [P1] #82 [Backend] Implement bandit allocation logic - Learning System
 - [P1] #81 [Backend] Add promotion criteria and governance - Learning System
 - [P1] #76 [Documentation] Add troubleshooting guides to docs
-- [P1] #75 [Trading Logic] Enforce tick size and minimum order size for all orders
 
 ## Next — P2 (Normal Priority)
 - [P2] #130 [Trading Logic] Update position calculation logic - Audit Finding A-014
@@ -78,6 +77,7 @@ To update this status:
 - [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
 - [P1] #93 [Security] Add admin authentication for sensitive endpoints - Audit Finding A-004
+- [P1] #75 [Trading Logic] Enforce tick size and minimum order size for all orders
 - [P0] #74 [Security] Restrict CORS configuration (no wildcard) - Audit Finding A-003
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
@@ -93,11 +93,8 @@ To update this status:
 - #24 Environment Discovery & Command Validation
 - #23 [Updated Template] 🚀 Polymarket Bot - Complete Production Audit & Learning System
 - #16 Live trading integration + reconciliation + minimal dashboard
-- #15 Paper trading engine, RiskManager, circuit breakers, kill switch
-- #14 WebSocket market feed + orderbook cache with resync
-- #13 Baseline config, env gating, and project hygiene
 
-*Last updated: 2026-02-04T15:13:28.020Z*
+*Last updated: 2026-02-04T15:56:40.160Z*
 
 <!-- STATUS_SYNC_END -->
 
