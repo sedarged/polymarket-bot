@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0](https://github.com/sedarged/polymarket-bot/compare/v1.11.0...v1.12.0) (2026-02-04)
+
+
+### Features
+
+* implement API rate limiting - Audit Finding A-008 ([1a198aa](https://github.com/sedarged/polymarket-bot/commit/1a198aac379105cfb80d02c1d0b9cdc4efebfa13))
+* implement API rate limiting (A-008) ([5b1833a](https://github.com/sedarged/polymarket-bot/commit/5b1833aca61ca602af8f55d72bb435587659b750))
+
+
+### Bug Fixes
+
+* address PR review feedback on rate limiting ([2bbeb7a](https://github.com/sedarged/polymarket-bot/commit/2bbeb7a60a24faa536043fe9b78e9746939fdd6b))
+
 ## [1.11.0](https://github.com/sedarged/polymarket-bot/compare/v1.10.0...v1.11.0) (2026-02-04)
 
 
