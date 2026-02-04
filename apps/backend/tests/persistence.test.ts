@@ -55,7 +55,7 @@ describe('Persistence Layer - Gap PA-001', () => {
         remainingSize: '10',
       };
 
-      persistenceService.saveOrder(order);
+      persistenceService.recordOrder(order);
 
       const orders = persistenceService.getOrders();
       expect(orders).toHaveLength(1);
@@ -81,7 +81,7 @@ describe('Persistence Layer - Gap PA-001', () => {
         remainingSize: '10',
       };
 
-      persistenceService.saveOrder(order);
+      persistenceService.recordOrder(order);
 
       // Now create the fill
       const fill = {
@@ -94,7 +94,7 @@ describe('Persistence Layer - Gap PA-001', () => {
         fee: '0.01',
       };
 
-      persistenceService.saveFill(fill);
+      persistenceService.recordFill(fill);
 
       const fills = persistenceService.getFills();
       expect(fills).toHaveLength(1);
@@ -150,9 +150,24 @@ describe('Persistence Layer - Gap PA-001', () => {
       expect(balance).toBeNull();
     });
 
+    it('should enforce foreign key constraints', () => {
+      // Attempting to insert a fill without a corresponding order should fail
+      expect(() => {
+        persistenceService.recordFill({
+          orderId: 'non-existent-order',
+          tokenId: '0xtoken123',
+          side: 'BUY',
+          price: '0.51',
+          size: '10',
+          timestamp: Date.now(),
+          fee: '0.01',
+        });
+      }).toThrow(/FOREIGN KEY constraint failed/);
+    });
+
     it('should clear all state', () => {
       // Add some data
-      persistenceService.saveOrder({
+      persistenceService.recordOrder({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
         side: 'BUY',

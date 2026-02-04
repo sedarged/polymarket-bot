@@ -144,7 +144,7 @@ async function demo() {
     persistence.close();
     console.log('Database connection closed.\n');
     console.log(`Demo database location: ${dbPath}`);
-    console.log('You can inspect it with: sqlite3 ${dbPath}\n');
+    console.log(`You can inspect it with: sqlite3 ${dbPath}\n`);
   }
 }
 

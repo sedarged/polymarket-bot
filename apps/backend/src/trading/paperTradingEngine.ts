@@ -73,8 +73,8 @@ export class PaperTradingEngine {
           initialBalance,
           realizedPnl: 0,
         };
-        // Persist initial state
-        this.persistState();
+        // Persist initial balance state
+        this.persistenceService.saveBalance(initialBalance, initialBalance, 0);
       }
     } else {
       // No persistence service, use in-memory state
@@ -144,12 +144,10 @@ export class PaperTradingEngine {
     
     // Persist order to database if persistence enabled
     if (this.persistenceService) {
-      this.persistenceService.saveOrder(order);
+      this.persistenceService.recordOrder(order);
       this.persistenceService.recordOrderEvent(orderId, 'CREATED', `Order created: ${validated.side} ${validated.size} @ ${validated.price}`);
-    }
-    
-    // Record to audit trail if enabled (legacy support)
-    if (this.auditTrail) {
+    } else if (this.auditTrail) {
+      // Only use audit trail if persistence service is not available (legacy support)
       this.auditTrail.recordOrder(order);
       this.auditTrail.recordOrderEvent(orderId, 'CREATED', `Order created: ${validated.side} ${validated.size} @ ${validated.price}`);
     }
@@ -257,17 +255,15 @@ export class PaperTradingEngine {
 
     // Persist to database if persistence enabled
     if (this.persistenceService) {
-      this.persistenceService.saveFill(fill);
-      this.persistenceService.saveOrder(order); // Update order status
+      this.persistenceService.recordFill(fill);
+      this.persistenceService.recordOrder(order); // Update order status
       this.persistenceService.recordOrderEvent(
         orderId, 
         order.status, 
         `Filled ${fillSize} @ ${fillPrice} (fee: ${fee})`
       );
-    }
-
-    // Record to audit trail if enabled (legacy support)
-    if (this.auditTrail) {
+    } else if (this.auditTrail) {
+      // Only use audit trail if persistence service is not available (legacy support)
       this.auditTrail.recordFill(fill);
       this.auditTrail.recordOrder(order); // Update order status
       this.auditTrail.recordOrderEvent(
@@ -319,12 +315,10 @@ export class PaperTradingEngine {
     
     // Persist to database if persistence enabled
     if (this.persistenceService) {
-      this.persistenceService.saveOrder(order);
+      this.persistenceService.recordOrder(order);
       this.persistenceService.recordOrderEvent(orderId, 'CANCELLED', 'Order cancelled manually');
-    }
-    
-    // Record to audit trail if enabled (legacy support)
-    if (this.auditTrail) {
+    } else if (this.auditTrail) {
+      // Only use audit trail if persistence service is not available (legacy support)
       this.auditTrail.recordOrder(order);
       this.auditTrail.recordOrderEvent(orderId, 'CANCELLED', 'Order cancelled manually');
     }
@@ -345,12 +339,10 @@ export class PaperTradingEngine {
       
       // Persist to database if persistence enabled
       if (this.persistenceService) {
-        this.persistenceService.saveOrder(order);
+        this.persistenceService.recordOrder(order);
         this.persistenceService.recordOrderEvent(order.orderId, 'CANCELLED', 'Order cancelled (cancel all)');
-      }
-      
-      // Record to audit trail if enabled (legacy support)
-      if (this.auditTrail) {
+      } else if (this.auditTrail) {
+        // Only use audit trail if persistence service is not available (legacy support)
         this.auditTrail.recordOrder(order);
         this.auditTrail.recordOrderEvent(order.orderId, 'CANCELLED', 'Order cancelled (cancel all)');
       }
@@ -684,10 +676,11 @@ export class PaperTradingEngine {
       realizedPnl: 0,
     };
     
-    // Clear persisted state if persistence enabled
+    // Clear persisted state if persistence enabled and persist fresh balance
     if (this.persistenceService) {
       this.persistenceService.clearAllState();
-      this.persistState();
+      // Only persist the fresh balance state, not empty orders/fills
+      this.persistenceService.saveBalance(balance, balance, 0);
     }
     
     logger.info('Paper trading engine reset', { initialBalance: balance });
@@ -712,6 +705,20 @@ export class PaperTradingEngine {
 
       // Load orders
       const orders = this.persistenceService.getOrders();
+      
+      // Restore orderIdCounter from existing orders to avoid ID collisions
+      // Paper order IDs have format: paper-{timestamp}-{counter}
+      let maxCounter = 0;
+      for (const order of orders) {
+        const match = order.orderId.match(/^paper-\d+-(\d+)$/);
+        if (match) {
+          const counter = parseInt(match[1], 10);
+          if (counter > maxCounter) {
+            maxCounter = counter;
+          }
+        }
+      }
+      this.orderIdCounter = maxCounter + 1;
       
       // Load fills
       const fills = this.persistenceService.getFills();
@@ -744,46 +751,6 @@ export class PaperTradingEngine {
         error: error instanceof Error ? error.message : String(error),
       });
       return null;
-    }
-  }
-
-  /**
-   * Persist current state to database
-   */
-  private persistState(): void {
-    if (!this.persistenceService) {
-      return;
-    }
-
-    try {
-      // Persist balance
-      this.persistenceService.saveBalance(
-        this.state.balance,
-        this.state.initialBalance,
-        this.state.realizedPnl
-      );
-
-      // Persist all orders
-      for (const order of this.state.orders) {
-        this.persistenceService.saveOrder(order);
-      }
-
-      // Persist all fills
-      for (const fill of this.state.fills) {
-        this.persistenceService.saveFill(fill);
-      }
-
-      // Persist all positions
-      for (const position of this.state.positions.values()) {
-        this.persistenceService.savePosition(position);
-      }
-
-      logger.debug('State persisted to database');
-    } catch (error) {
-      logger.error('Failed to persist state to database', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
     }
   }
 }
