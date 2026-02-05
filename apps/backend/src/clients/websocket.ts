@@ -174,6 +174,14 @@ export class WebSocketClient extends EventEmitter {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
+      
+      // A-016: Check shouldReconnect before attempting reconnect
+      // This prevents reconnect if close() was called after timer fired
+      if (!this.shouldReconnect || this.state === WebSocketState.CLOSED) {
+        logger.debug('Reconnect cancelled, client is closed');
+        return;
+      }
+      
       this.currentReconnectDelay = Math.min(
         this.currentReconnectDelay * this.reconnectBackoffMultiplier,
         this.maxReconnectDelay
