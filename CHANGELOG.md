@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0](https://github.com/sedarged/polymarket-bot/compare/v1.17.4...v1.18.0) (2026-02-05)
+
+
+### Features
+
+* implement sensitive data masking in logs (A-022) ([7831ef9](https://github.com/sedarged/polymarket-bot/commit/7831ef9955a74ec250972159f67b73eabfdd50b5))
+
+
+### Bug Fixes
+
+* add clarifying comments and improve documentation based on review feedback ([0c9bcba](https://github.com/sedarged/polymarket-bot/commit/0c9bcba306838d5f1518517e53d726944335a836))
+
 ## [1.17.4](https://github.com/sedarged/polymarket-bot/compare/v1.17.3...v1.17.4) (2026-02-05)
 
 
