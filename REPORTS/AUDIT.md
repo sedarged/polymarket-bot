@@ -14,10 +14,11 @@ This audit identified **27 findings** across 15 source files covering security, 
 **Critical Issues (3):** Require immediate attention before live trading  
 **High Priority (7 open, 1 fixed):** Significant security/reliability risks  
 **Medium Priority (10):** Important improvements for production  
-**Low Priority (6):** Nice-to-have enhancements
+**Low Priority (5 open, 1 resolved):** Nice-to-have enhancements
 
 **Recent Fixes:**
 - ✅ **A-006 (HIGH):** Missing idempotency - Fixed with UUID v4 client order IDs
+- ✅ **A-026 (LOW):** Dead Code - All @ts-ignore and @ts-expect-error comments removed from production code
 
 ---
 
@@ -50,7 +51,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 | **A-023** | LOW | No Backoff Jitter | `retry.ts` | Retry backoff has no jitter (L33) | Thundering herd on service recovery | Add random jitter to retry delays | Open |
 | **A-024** | LOW | Missing Validation | `config/index.ts` | No validation that PRIVATE_KEY is valid hex (L56) | Invalid keys cause runtime errors | Add regex validation for private key format | Open |
 | **A-025** | LOW | Test Coverage | All components | No tests for critical paths (kill switch, reconciliation, websocket reconnect) | Bugs in production; hard to refactor | Add comprehensive test suite | Open |
-| **A-026** | LOW | Dead Code | `clients/tradingClient.ts` | `@ts-ignore` comments indicate API uncertainty (L95, L154) | Technical debt; fragile code | Confirm API contracts; remove type ignores | Open |
+| **A-026** | LOW | Dead Code | `clients/tradingClient.ts` | `@ts-ignore` comments indicate API uncertainty (L95, L154) | Technical debt; fragile code | Confirm API contracts; remove type ignores | **RESOLVED** |
 | **A-027** | LOW | Missing Metrics | All components | No metrics/monitoring instrumentation | Can't observe system health in production | Add Prometheus/StatsD metrics | Open |
 
 ---
@@ -1139,28 +1140,27 @@ PRIVATE_KEY: z.string()
 
 ---
 
-#### A-026: LOW - @ts-ignore Technical Debt
-**Files:** `apps/backend/src/clients/tradingClient.ts:95, 154`  
+#### A-026: LOW - @ts-ignore Technical Debt - **RESOLVED**
+**Files:** `apps/backend/src/clients/marketFeed.ts:51` (previously also in tradingClient.ts)  
 **Evidence:**
 ```typescript
-// @ts-ignore - API may not be exposed in types
-const balancesData = await this.client.getBalanceAllowance?.();
-// @ts-ignore - clientOrderId might not be in types
-clientOrderId,
+// Previous issue in tradingClient.ts has been resolved in earlier commits
+// Last remaining: @ts-expect-error in marketFeed.ts for isSubscribed variable
 ```
 
-**Impact:**
-- Type safety bypassed
-- Fragile code
-- Hard to maintain
-- No IDE support
+**Resolution:**
+- All `@ts-ignore` comments previously identified in tradingClient.ts have been addressed
+- Removed `@ts-expect-error` from marketFeed.ts isSubscribed variable (it was incorrectly marked as unused)
+- The isSubscribed variable is actually used throughout the class for tracking subscription state
+- **Status:** No @ts-ignore or @ts-expect-error comments remain in production code (apps/backend/src/)
+- Test files retain @ts-expect-error for testing invalid inputs, which is acceptable practice
 
-**Fix:**
-1. Contribute type definitions to `@polymarket/clob-client`
-2. Create local type augmentation file
-3. Use runtime type guards
+**Impact (Mitigated):**
+- ✅ Type safety restored
+- ✅ Code maintainability improved
+- ✅ IDE support fully functional
 
-**Recommendation Priority:** P3 - Technical debt cleanup
+**Recommendation Priority:** ~~P3 - Technical debt cleanup~~ → **RESOLVED**
 
 ---
 
