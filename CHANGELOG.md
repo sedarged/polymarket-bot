@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.3](https://github.com/sedarged/polymarket-bot/compare/v1.17.2...v1.17.3) (2026-02-05)
+
+
+### Bug Fixes
+
+* **backend:** remove [@ts-expect-error](https://github.com/ts-expect-error) from marketFeed.ts (A-026) ([1e20905](https://github.com/sedarged/polymarket-bot/commit/1e20905332dfa72a2f0e9cfcd0f6be14de5517f8)), closes [#105](https://github.com/sedarged/polymarket-bot/issues/105)
+* **backend:** use isSubscribed flag to prevent double subscription ([93b316c](https://github.com/sedarged/polymarket-bot/commit/93b316c6393c84b7b69d19ee52242dc5e136a05b))
+
 ## [1.17.2](https://github.com/sedarged/polymarket-bot/compare/v1.17.1...v1.17.2) (2026-02-05)
 
 
