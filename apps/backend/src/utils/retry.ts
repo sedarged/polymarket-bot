@@ -10,7 +10,21 @@ export interface RetryOptions {
   maxDelay?: number;
   /** Timeout for each attempt in milliseconds. If not set, no timeout is applied. */
   timeout?: number;
-  /** Overall timeout for all retry attempts combined in milliseconds. Default: 300000 (5 minutes). Addresses Audit Finding A-009 */
+  /**
+   * Overall timeout for all retry attempts combined in milliseconds.
+   *
+   * Audit Finding A-009 originally recommended a parameter named `maxDuration`
+   * with a 30-second default to bound total retry duration. For this trading
+   * system we intentionally use `totalTimeout` with a more generous default of
+   * 300000ms (5 minutes) to accommodate slower external APIs and avoid
+   * prematurely failing long-running but legitimate operations (e.g. order book
+   * syncs or large market fetches).
+   *
+   * This is a deliberate, documented deviation from A-009: we preserve the
+   * requirement to cap overall retry duration while adjusting the parameter
+   * name and default to better match our operational needs. See the audit
+   * report notes for A-009 for further discussion.
+   */
   totalTimeout?: number;
   /** Function to determine if an error is retryable. Default: all errors are retryable. */
   isRetryable?: (error: Error) => boolean;
