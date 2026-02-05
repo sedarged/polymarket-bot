@@ -1,4 +1,4 @@
-import { ClobClient, Side } from '@polymarket/clob-client';
+import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
@@ -50,11 +50,31 @@ import { retry } from '../utils/retry';
  * @see {@link ../../../../docs/adr/0006-partial-fill-tracking.md}
  * @see {@link ../../../../docs/order-state-machine.md}
  */
+/**
+ * Trading State Interface
+ */
 export interface TradingState {
   orders: Order[];
   fills: Fill[];
   positions: Position[];
   balances: Balance[];
+}
+
+/**
+ * Extended UserOrder interface to include clientOrderId for idempotency.
+ * The official SDK doesn't include clientOrderId in types, but accepts it
+ * as an extension point for order tracking (Audit Finding A-006).
+ */
+interface UserOrderWithClientId {
+  tokenID: string;
+  side: Side;
+  price: number;
+  size: number;
+  clientOrderId: string; // UUID v4 for idempotency
+  feeRateBps?: number;
+  nonce?: number;
+  expiration?: number;
+  taker?: string;
 }
 
 // Interface for CLOB order responses to replace 'any'
@@ -169,35 +189,36 @@ export class TradingClient {
       let remoteOrders: Order[] = [];
       let reconciliationSucceeded = false;
       try {
-        const clientAny = this.client as any;
+        // Type-safe check for available API methods using type guards
+        // Some SDK versions expose getOrders (v5.2+), others expose getOpenOrders
+        let openOrdersResponse: OpenOrdersResponse | null = null;
 
-        let openOrdersResponse: unknown = null;
-
-        if (typeof clientAny.getOrders === 'function') {
-          // Prefer generic getOrders API when available
-          openOrdersResponse = await clientAny.getOrders({ status: 'OPEN' });
-        } else if (typeof clientAny.getOpenOrders === 'function') {
-          // Fallback: some clients may provide a dedicated open orders method
-          openOrdersResponse = await clientAny.getOpenOrders();
+        // Check if getOpenOrders method exists (proper type guard)
+        if ('getOpenOrders' in this.client && typeof this.client.getOpenOrders === 'function') {
+          // Use getOpenOrders API - returns OpenOrdersResponse (array of OpenOrder objects)
+          openOrdersResponse = await this.client.getOpenOrders();
         } else {
-          logger.warn('CLOB client does not expose an orders API for reconciliation');
+          logger.warn('CLOB client does not expose getOpenOrders API for reconciliation');
         }
 
-        if (Array.isArray(openOrdersResponse)) {
-          // Process each order through updateOrderState for proper field mapping and fill detection
-          remoteOrders = openOrdersResponse as Order[];
-          
+        if (openOrdersResponse && Array.isArray(openOrdersResponse)) {
           // Track remote order IDs for comparison
           const remoteOrderIds = new Set<string>();
           
-          // Update or add each remote order using updateOrderState
+          // Process each order through updateOrderState for proper field mapping and fill detection
+          // updateOrderState handles the mapping from OpenOrder/ClobOrder to our Order type
           for (const clobOrder of openOrdersResponse) {
             this.updateOrderState(clobOrder);
-            const orderId = clobOrder.id || clobOrder.orderID;
+            const orderId = clobOrder.id || (clobOrder as any).orderID;
             if (orderId) {
               remoteOrderIds.add(orderId);
             }
           }
+          
+          // Get the remoteOrders from our state after updating
+          remoteOrders = this.state.orders.filter(order => 
+            remoteOrderIds.has(order.orderId)
+          );
           
           // Remove orders from local state that are no longer on the exchange
           // Keep MATCHED and CANCELLED orders as they represent historical state
@@ -223,11 +244,15 @@ export class TradingClient {
       try {
         await retry(
           async () => {
-            // Note: The actual API might differ - this is a placeholder
-            // @ts-ignore - API may not be exposed in types
-            const balancesData = await this.client.getBalanceAllowance?.();
+            // Use proper type from SDK - getBalanceAllowance is available in @polymarket/clob-client v5.2+
+            // Check if client and method exist using type guards
+            if (!this.client || !('getBalanceAllowance' in this.client) || typeof this.client.getBalanceAllowance !== 'function') {
+              throw new Error('getBalanceAllowance method not available in CLOB client');
+            }
             
-            if (!balancesData) {
+            const balancesData: BalanceAllowanceResponse = await this.client.getBalanceAllowance();
+            
+            if (!balancesData || !balancesData.balance) {
               throw new Error('Balance API returned no data');
             }
             
@@ -608,15 +633,17 @@ export class TradingClient {
     try {
       logger.info('Creating order', { tokenId: validated.tokenId, side: validated.side, price: validated.price, size: validated.size, clientOrderId: orderId });
 
-      // Create order via CLOB client using validated parameters
-      const response = await this.client.createOrder({
+      // Create order via CLOB client using validated parameters with clientOrderId for idempotency
+      const orderParams: UserOrderWithClientId = {
         tokenID: validated.tokenId,
         side: validated.side === 'BUY' ? Side.BUY : Side.SELL,
         price: Number(validated.price),
         size: Number(validated.size),
-        // @ts-ignore - clientOrderId might not be in types
-        clientOrderId: orderId,
-      });
+        clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
+      };
+      
+      // Cast to UserOrder since SDK accepts clientOrderId as extension
+      const response = await this.client.createOrder(orderParams as any);
 
       const order: Order = {
         orderId: String(response.orderID || orderId),
