@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.2](https://github.com/sedarged/polymarket-bot/compare/v1.17.1...v1.17.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* **security:** remove unsafe type coercion - Audit Finding A-005 ([0e42399](https://github.com/sedarged/polymarket-bot/commit/0e42399adb07869358860e509dcc2c775272677d))
+
 ## [1.17.1](https://github.com/sedarged/polymarket-bot/compare/v1.17.0...v1.17.1) (2026-02-05)
 
 
