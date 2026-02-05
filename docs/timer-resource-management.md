@@ -12,12 +12,13 @@ This document describes the timer resource management strategy implemented to pr
 - **Purpose:** Schedules reconnection attempts with exponential backoff
 - **Created in:** `scheduleReconnect()` method
 - **Cleared in:** 
-  - `close()` method (line 214)
-  - Timer callback after firing (line 176)
-  - `transitionToClosed()` in CircuitBreaker (not applicable here)
+  - `close()` method (line 222)
+  - Timer callback after firing (`reconnectTimer = null` at line 176, guard at lines 178–183)
+
+> Note: The CircuitBreaker `transitionToClosed()` method manages its own internal timers and does not clear `WebSocketClient.reconnectTimer`.
 
 **Fix Applied:**
-Added guard in timer callback to prevent reconnection if `close()` was called after timer fired:
+Added guard in timer callback to prevent reconnection if `close()` was called after the reconnect timer fired but before the callback completed:
 ```typescript
 if (!this.shouldReconnect || this.state === WebSocketState.CLOSED) {
   logger.debug('Reconnect cancelled, client is closed');

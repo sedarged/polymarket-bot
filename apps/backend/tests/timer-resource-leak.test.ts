@@ -11,7 +11,7 @@
  * don't cause resource exhaustion in long-running processes.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocketClient, WebSocketState } from '../src/clients/websocket';
 import { MarketFeedClient } from '../src/clients/marketFeed';
 import { RateLimiter } from '../src/utils/rateLimiter';
@@ -372,6 +372,11 @@ describe('Timer Resource Leak Detection (A-016)', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Cleanup in random order
+      for (let i = services.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [services[i], services[j]] = [services[j], services[i]];
+      }
+      
       for (const ws of services) {
         await ws.close();
       }
