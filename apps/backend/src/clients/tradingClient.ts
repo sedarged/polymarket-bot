@@ -1,4 +1,4 @@
-import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse } from '@polymarket/clob-client';
+import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse, UserOrder } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
@@ -65,16 +65,8 @@ export interface TradingState {
  * The official SDK doesn't include clientOrderId in types, but accepts it
  * as an extension point for order tracking (Audit Finding A-006).
  */
-interface UserOrderWithClientId {
-  tokenID: string;
-  side: Side;
-  price: number;
-  size: number;
+interface UserOrderWithClientId extends UserOrder {
   clientOrderId: string; // UUID v4 for idempotency
-  feeRateBps?: number;
-  nonce?: number;
-  expiration?: number;
-  taker?: string;
 }
 
 // Interface for CLOB order responses to replace 'any'
@@ -209,9 +201,10 @@ export class TradingClient {
           // updateOrderState handles the mapping from OpenOrder/ClobOrder to our Order type
           for (const clobOrder of openOrdersResponse) {
             this.updateOrderState(clobOrder);
-            // Different SDK versions use 'id' or 'orderID' - check both
-            // This cast is safe as we're just accessing a fallback property
-            const orderId = clobOrder.id || (clobOrder as any).orderID;
+            // Different SDK versions use 'id' or 'orderID' - cast to ClobOrder union type
+            // which explicitly includes both properties for version compatibility
+            const clobOrderTyped = clobOrder as ClobOrder;
+            const orderId = clobOrderTyped.id || clobOrderTyped.orderID;
             if (orderId) {
               remoteOrderIds.add(orderId);
             }
@@ -644,9 +637,10 @@ export class TradingClient {
         clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
       };
       
-      // Cast to UserOrder since SDK accepts clientOrderId as an undocumented extension point
+      // Cast through unknown to UserOrder - SDK accepts clientOrderId as undocumented extension
       // This is necessary for idempotency (Audit Finding A-006) and is supported by the API
-      const response = await this.client.createOrder(orderParams as any);
+      // The intermediate unknown cast makes the type boundary explicit for safety
+      const response = await this.client.createOrder(orderParams as unknown as UserOrder);
 
       const order: Order = {
         orderId: String(response.orderID || orderId),
