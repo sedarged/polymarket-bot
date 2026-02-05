@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PaperTradingEngine } from '../src/trading/paperTradingEngine';
 import { Orderbook } from '@polymarket/shared';
+import { validate as isUUID, version as uuidVersion } from 'uuid';
 
 describe('PaperTradingEngine', () => {
   let engine: PaperTradingEngine;
@@ -625,6 +626,87 @@ describe('PaperTradingEngine', () => {
       
       const fills = engine.getFills();
       expect(fills.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('Order ID generation (A-021)', () => {
+    it('should use UUID v4 for order IDs', () => {
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      
+      // Extract UUID from paper- prefix
+      const uuidPart = order.orderId.replace(/^paper-/, '');
+      
+      // Verify it's a valid UUID v4
+      expect(isUUID(uuidPart)).toBe(true);
+      expect(uuidVersion(uuidPart)).toBe(4);
+    });
+
+    it('should generate unique order IDs', () => {
+      const order1 = engine.createOrder('0xtoken1', 'BUY', '0.5', '10');
+      const order2 = engine.createOrder('0xtoken2', 'BUY', '0.5', '10');
+      const order3 = engine.createOrder('0xtoken3', 'BUY', '0.5', '10');
+      
+      // All order IDs should be unique
+      expect(order1.orderId).not.toBe(order2.orderId);
+      expect(order2.orderId).not.toBe(order3.orderId);
+      expect(order1.orderId).not.toBe(order3.orderId);
+      
+      // All should be valid UUID v4 format
+      [order1, order2, order3].forEach(order => {
+        const uuidPart = order.orderId.replace(/^paper-/, '');
+        expect(isUUID(uuidPart)).toBe(true);
+        expect(uuidVersion(uuidPart)).toBe(4);
+      });
+    });
+
+    it('should not use timestamp-based or counter-based IDs', () => {
+      const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      
+      // Old format was: paper-{timestamp}-{counter}
+      // Verify it doesn't match old format
+      expect(order.orderId).not.toMatch(/^paper-\d+-\d+$/);
+      
+      // Verify it uses UUID format: paper-{uuid}
+      expect(order.orderId).toMatch(/^paper-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    it('should not have integer overflow risk', () => {
+      // Create many orders to verify no counter overflow issues
+      // With UUID v4, we can create unlimited orders without collision risk
+      const orders = [];
+      for (let i = 0; i < 1000; i++) {
+        orders.push(engine.createOrder('0xtoken' + i, 'BUY', '0.5', '10'));
+      }
+      
+      // All order IDs should be unique
+      const uniqueIds = new Set(orders.map(o => o.orderId));
+      expect(uniqueIds.size).toBe(1000);
+      
+      // All should be valid UUID v4
+      orders.forEach(order => {
+        const uuidPart = order.orderId.replace(/^paper-/, '');
+        expect(isUUID(uuidPart)).toBe(true);
+        expect(uuidVersion(uuidPart)).toBe(4);
+      });
+    });
+
+    it('should use cryptographically random UUIDs', () => {
+      // Create multiple orders simultaneously and verify randomness
+      const orders = [];
+      for (let i = 0; i < 100; i++) {
+        orders.push(engine.createOrder('0xtoken' + i, 'BUY', '0.5', '10'));
+      }
+      
+      // All IDs should be unique (no predictable pattern)
+      const uniqueIds = new Set(orders.map(o => o.orderId));
+      expect(uniqueIds.size).toBe(100);
+      
+      // Check that IDs don't follow a sequential pattern
+      const uuids = orders.map(o => o.orderId.replace(/^paper-/, ''));
+      // Sort and verify they're not sequential
+      const sorted = [...uuids].sort();
+      // In a truly random distribution, sorted UUIDs won't match original order
+      expect(sorted).not.toEqual(uuids);
     });
   });
 });

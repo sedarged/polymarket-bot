@@ -1,4 +1,5 @@
 import { Order, Fill, Position, Orderbook } from '@polymarket/shared';
+import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
 import { PersistenceService } from './persistenceService';
@@ -33,7 +34,6 @@ export interface EngineState {
 export class PaperTradingEngine {
   private config: PaperTradingEngineConfig;
   private state: EngineState;
-  private orderIdCounter = 0;
   private auditTrail?: AuditTrail;
   private persistenceService?: PersistenceService;
 
@@ -127,7 +127,8 @@ export class PaperTradingEngine {
       ? validateOrderWithConstraintsOrThrow({ tokenId, side, price, size }, constraints)
       : validateOrderParametersOrThrow({ tokenId, side, price, size });
 
-    const orderId = `paper-${Date.now()}-${this.orderIdCounter++}`;
+    // Use UUID v4 for overflow-safe order IDs (Audit Finding A-021)
+    const orderId = `paper-${uuidv4()}`;
     const order: Order = {
       orderId,
       tokenId: validated.tokenId,
@@ -705,20 +706,6 @@ export class PaperTradingEngine {
 
       // Load orders
       const orders = this.persistenceService.getOrders();
-      
-      // Restore orderIdCounter from existing orders to avoid ID collisions
-      // Paper order IDs have format: paper-{timestamp}-{counter}
-      let maxCounter = 0;
-      for (const order of orders) {
-        const match = order.orderId.match(/^paper-\d+-(\d+)$/);
-        if (match) {
-          const counter = parseInt(match[1], 10);
-          if (counter > maxCounter) {
-            maxCounter = counter;
-          }
-        }
-      }
-      this.orderIdCounter = maxCounter + 1;
       
       // Load fills
       const fills = this.persistenceService.getFills();
