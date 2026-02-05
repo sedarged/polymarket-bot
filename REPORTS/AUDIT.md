@@ -18,6 +18,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 
 **Recent Fixes:**
 - ✅ **A-006 (HIGH):** Missing idempotency - Fixed with UUID v4 client order IDs
+- ✅ **A-021 (MEDIUM):** Integer overflow risk - Fixed by using UUID v4 for paper trading engine order IDs
 - ✅ **A-026 (LOW):** Dead Code - All @ts-ignore and @ts-expect-error comments removed from production code
 
 ---
@@ -46,7 +47,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 | **A-018** | MEDIUM | No Circuit Breaker Reset | `trading/riskManager.ts` | Circuit breaker has no auto-reset after recovery (L157-182) | Manual intervention required; no self-healing | Add time-based circuit breaker reset | Open |
 | **A-019** | MEDIUM | Partial Fill Handling | `trading/paperTradingEngine.ts` | Partial fills always fill remaining completely (L115) | Unrealistic paper trading simulation | Support configurable partial fill amounts | Open |
 | **A-020** | MEDIUM | Slippage Calculation | `trading/paperTradingEngine.ts` | Slippage applied uniformly regardless of size (L99, L105) | Unrealistic for large orders | Scale slippage with order size vs available liquidity | Fixed |
-| **A-021** | MEDIUM | Integer Overflow | `clients/tradingClient.ts` | orderIdCounter can overflow (L40, L143) | Duplicate IDs after 2^53 orders | Use BigInt or reset counter with timestamp boundary | Open |
+| **A-021** | MEDIUM | Integer Overflow | `clients/tradingClient.ts`, `trading/paperTradingEngine.ts` | orderIdCounter can overflow (L40, L143) | Duplicate IDs after 2^53 orders | Use UUID v4 for all order IDs (consistent with A-006) | **RESOLVED** |
 | **A-022** | LOW | Logging Exposure | `clients/tradingClient.ts` | Wallet address logged at startup (L62-65) | Privacy leak in shared logs | Mask or truncate address in logs | Open |
 | **A-023** | LOW | No Backoff Jitter | `retry.ts` | Retry backoff has no jitter (L33) | Thundering herd on service recovery | Add random jitter to retry delays | Open |
 | **A-024** | LOW | Missing Validation | `config/index.ts` | No validation that PRIVATE_KEY is valid hex (L56) | Invalid keys cause runtime errors | Add regex validation for private key format | Open |
@@ -956,13 +957,17 @@ isCircuitBreakerTripped(): boolean {
 
 ---
 
-#### A-021: MEDIUM - Integer Overflow Risk
-**File:** `apps/backend/src/clients/tradingClient.ts:40, 143`  
+#### A-021: MEDIUM - Integer Overflow Risk ✅ **RESOLVED**
+**File:** `apps/backend/src/clients/tradingClient.ts:40, 143` (resolved), `apps/backend/src/trading/paperTradingEngine.ts:36, 130` (resolved)  
 **Evidence:**
 ```typescript
+// OLD (tradingClient.ts) - FIXED in PR #117 (A-006)
 private orderIdCounter = 0;
-// ...
 const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
+
+// OLD (paperTradingEngine.ts) - FIXED in this PR
+private orderIdCounter = 0;
+const orderId = `paper-${Date.now()}-${this.orderIdCounter++}`;
 ```
 
 **Impact:**
@@ -971,23 +976,26 @@ const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter+
 - Order tracking corruption
 - Low probability but catastrophic
 
-**Fix:**
-```typescript
-private orderIdCounter = 0n; // Use BigInt
-private readonly MAX_COUNTER = 1_000_000_000n;
+**Resolution:**
+Both `tradingClient.ts` and `paperTradingEngine.ts` now use UUID v4 for order ID generation:
 
-async createOrder(...): Promise<Order> {
-  // Reset counter periodically to prevent overflow
-  if (this.orderIdCounter >= this.MAX_COUNTER) {
-    this.orderIdCounter = 0n;
-  }
-  
-  const clientOrderId = `order-${Date.now()}-${process.pid}-${this.orderIdCounter++}`;
-  // ... or better: use UUID as recommended in A-006
-}
+```typescript
+// NEW (tradingClient.ts) - Fixed in PR #117
+import { v4 as uuidv4 } from 'uuid';
+const orderId = uuidv4(); // UUID v4 for cryptographic randomness
+
+// NEW (paperTradingEngine.ts) - Fixed in this PR
+import { v4 as uuidv4 } from 'uuid';
+const orderId = `paper-${uuidv4()}`;
 ```
 
-**Recommendation Priority:** P3 - Low probability but good hygiene
+**Testing:**
+- Added comprehensive tests in `tests/idempotency.test.ts` for live trading client
+- Added comprehensive tests in `tests/paperTradingEngine.test.ts` for paper trading engine
+- Verified UUID v4 generation and uniqueness
+- Tested 1000+ order creation without collisions
+
+**Recommendation Priority:** ✅ Resolved - No overflow risk with UUID v4
 
 ---
 
