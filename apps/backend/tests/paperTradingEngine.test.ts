@@ -701,12 +701,18 @@ describe('PaperTradingEngine', () => {
       const uniqueIds = new Set(orders.map(o => o.orderId));
       expect(uniqueIds.size).toBe(100);
       
-      // Check that IDs don't follow a sequential pattern
+      // Verify UUIDs are valid v4 format with proper randomness indicators
       const uuids = orders.map(o => o.orderId.replace(/^paper-/, ''));
-      // Sort and verify they're not sequential
-      const sorted = [...uuids].sort();
-      // In a truly random distribution, sorted UUIDs won't match original order
-      expect(sorted).not.toEqual(uuids);
+      uuids.forEach(uuid => {
+        expect(isUUID(uuid)).toBe(true);
+        expect(uuidVersion(uuid)).toBe(4);
+        
+        // UUID v4 has specific format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+        // where y is one of [8,9,a,b] for proper randomness
+        const parts = uuid.split('-');
+        expect(parts[2][0]).toBe('4'); // Version 4
+        expect(['8', '9', 'a', 'b']).toContain(parts[3][0]); // Valid variant bits
+      });
     });
   });
 });
