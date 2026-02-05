@@ -20,7 +20,6 @@ To update this status:
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
-- [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
 - [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
@@ -68,6 +67,7 @@ To update this status:
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
 - [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
+- [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
 - [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
@@ -82,7 +82,7 @@ To update this status:
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
-*Last updated: 2026-02-05T14:01:15.406Z*
+*Last updated: 2026-02-05T15:13:30.145Z*
 
 <!-- STATUS_SYNC_END -->
 
