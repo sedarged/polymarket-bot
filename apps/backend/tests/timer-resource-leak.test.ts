@@ -82,7 +82,7 @@ describe('Timer Resource Leak Detection (A-016)', () => {
     it('should not reconnect after close() even if timer fires', async () => {
       const client = new WebSocketClient({
         url: `ws://localhost:${port}`,
-        reconnectDelay: 50, // Short delay for testing
+        reconnectDelay: 200, // Longer delay to ensure close happens first
       });
 
       let reconnectAttempts = 0;
@@ -103,14 +103,17 @@ describe('Timer Resource Leak Detection (A-016)', () => {
       // Close server to trigger reconnect scheduling
       server.clients.forEach((ws) => ws.close());
       
-      // Wait for reconnect to be scheduled
+      // Wait a bit for close event to be handled
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // Now close the client before reconnect fires
+      // Verify reconnect is scheduled
+      expect(client.getState()).toBe(WebSocketState.RECONNECTING);
+
+      // Now close the client BEFORE reconnect timer fires (timer is 200ms)
       await client.close();
 
       // Wait longer than reconnect delay
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Should still have only connected once (no reconnect after close)
       expect(reconnectAttempts).toBe(1);
