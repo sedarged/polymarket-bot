@@ -20,7 +20,6 @@ To update this status:
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
-- [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
@@ -63,6 +62,7 @@ To update this status:
 ## Recently Closed (Last 14 Days)
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
+- [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
@@ -82,7 +82,7 @@ To update this status:
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
-*Last updated: 2026-02-05T12:33:56.737Z*
+*Last updated: 2026-02-05T14:01:15.406Z*
 
 <!-- STATUS_SYNC_END -->
 
