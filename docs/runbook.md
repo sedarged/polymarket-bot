@@ -855,6 +855,108 @@ npm run dev 2>&1 | tee -a logs/bot-$(date +%Y%m%d).log
 0 0 * * * find logs/ -name "bot-*.log" -mtime +30 -delete
 ```
 
+## Logging and Privacy (A-022)
+
+### Sensitive Data Protection
+
+**Addresses Audit Finding A-022:** The logging system automatically masks sensitive data to prevent privacy leaks.
+
+**Automatically Masked Fields:**
+The logger automatically masks these field names in all log metadata:
+- `address` - Wallet addresses
+- `privateKey` / `private_key` - Private keys
+- `secret` - Secret values
+- `apiKey` / `api_key` - API keys
+- `token` - Authentication tokens
+- `password` - Passwords
+- Any field containing `key` in the name
+
+**Masking Format:**
+Long strings (>10 characters) are masked showing only the first 6 and last 4 characters:
+- Full: `0x1234567890abcdef1234567890abcdef12345678`
+- Masked: `0x1234...5678`
+
+Short strings (≤10 characters) are fully masked as `***`.
+
+### Log Level Configuration
+
+Configure the log level via the `LOG_LEVEL` environment variable:
+
+```bash
+# Development - verbose output
+LOG_LEVEL=debug
+
+# Production - standard output (default)
+LOG_LEVEL=info
+
+# Production - minimal output
+LOG_LEVEL=warn
+
+# Emergency - errors only
+LOG_LEVEL=error
+```
+
+**Log Levels:**
+- `error` - Critical errors only
+- `warn` - Warnings and errors
+- `info` - Standard operational logs (default)
+- `debug` - Detailed diagnostic logs
+
+### Structured Logging
+
+All logs are output as JSON for easy parsing and analysis:
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:45.123Z",
+  "level": "INFO",
+  "message": "Trading client initialized",
+  "address": "0x1234...5678",
+  "chainId": 137
+}
+```
+
+### Log Analysis Examples
+
+**Search for masked addresses:**
+```bash
+# Grep logs for wallet addresses (will show masked versions only)
+grep "address" logs/app.log | jq '.address'
+```
+
+**Verify no plaintext sensitive data:**
+```bash
+# This should NOT find any full Ethereum addresses (42 chars)
+grep -E '0x[a-fA-F0-9]{40}' logs/app.log
+
+# Verify only masked addresses appear (10 chars: "0x1234...5678")
+grep -oE '0x[a-fA-F0-9]{4}\.\.\.[a-fA-F0-9]{4}' logs/app.log
+```
+
+**Extract logs by level:**
+```bash
+# Get all error logs
+grep '"level":"ERROR"' logs/app.log | jq .
+
+# Get all warning logs
+grep '"level":"WARN"' logs/app.log | jq .
+```
+
+### Privacy Compliance
+
+**Log Retention:**
+- Development: 7 days
+- Staging: 30 days
+- Production: 90 days (regulatory compliance)
+
+**Log Storage:**
+- Ensure logs are stored securely with appropriate access controls
+- Do not share logs publicly or with untrusted parties
+- Redact even masked data when sharing logs externally
+
+**Audit Trail:**
+For order and fill history, use the dedicated audit trail (see Gap PA-002) rather than logs.
+
 ## Troubleshooting Guide
 
 ### Issue: Bot won't start
