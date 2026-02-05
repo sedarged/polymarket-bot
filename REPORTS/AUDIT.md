@@ -51,7 +51,7 @@ This audit identified **27 findings** across 15 source files covering security, 
 | **A-023** | LOW | No Backoff Jitter | `retry.ts` | Retry backoff has no jitter (L33) | Thundering herd on service recovery | Add random jitter to retry delays | Open |
 | **A-024** | LOW | Missing Validation | `config/index.ts` | No validation that PRIVATE_KEY is valid hex (L56) | Invalid keys cause runtime errors | Add regex validation for private key format | Open |
 | **A-025** | LOW | Test Coverage | All components | No tests for critical paths (kill switch, reconciliation, websocket reconnect) | Bugs in production; hard to refactor | Add comprehensive test suite | Open |
-| **A-026** | LOW | Dead Code | `clients/tradingClient.ts` | `@ts-ignore` comments indicate API uncertainty (L95, L154) | Technical debt; fragile code | Confirm API contracts; remove type ignores | **RESOLVED** |
+| **A-026** | LOW | Dead Code | `clients/marketFeed.ts` | `@ts-expect-error` on unused `isSubscribed` variable at L51, now used as idempotent subscription guard | Technical debt; fragile code | Confirm API contracts; remove type ignores | **RESOLVED** |
 | **A-027** | LOW | Missing Metrics | All components | No metrics/monitoring instrumentation | Can't observe system health in production | Add Prometheus/StatsD metrics | Open |
 
 ---
@@ -1151,7 +1151,7 @@ PRIVATE_KEY: z.string()
 **Resolution:**
 - All `@ts-ignore` comments previously identified in tradingClient.ts have been addressed
 - Removed `@ts-expect-error` from marketFeed.ts isSubscribed variable (it was incorrectly marked as unused)
-- The isSubscribed variable is actually used throughout the class for tracking subscription state
+- The isSubscribed variable was previously write-only; this fix now properly utilizes it by adding an idempotency guard to prevent duplicate subscriptions
 - **Status:** No @ts-ignore or @ts-expect-error comments remain in production code (apps/backend/src/)
 - Test files retain @ts-expect-error for testing invalid inputs, which is acceptable practice
 
