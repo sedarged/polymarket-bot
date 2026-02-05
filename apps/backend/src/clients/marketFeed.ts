@@ -99,6 +99,12 @@ export class MarketFeedClient extends EventEmitter {
       return;
     }
 
+    // Prevent double subscription
+    if (this.isSubscribed) {
+      logger.debug('Already subscribed to market feed, skipping');
+      return;
+    }
+
     const subscription: WSMarketSubscription = {
       type: 'market',
       assets_ids: this.tokenIds,
