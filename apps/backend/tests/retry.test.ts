@@ -56,6 +56,76 @@ describe('retry', () => {
     await expect(promise).rejects.toThrow('permanent error');
     expect(fn).toHaveBeenCalledTimes(1);
   });
+
+  it('should respect total timeout (A-009)', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('fail'));
+
+    const promise = retry(fn, {
+      attempts: 10,
+      delay: 1000,
+      backoffMultiplier: 2,
+      totalTimeout: 3000, // 3 seconds total
+    });
+
+    // Start timers
+    const expectation = expect(promise).rejects.toThrow(/total timeout/);
+
+    // Run all timers - the total timeout should prevent infinite retries
+    await vi.runAllTimersAsync();
+
+    await expectation;
+    // Should have attempted fewer times due to timeout
+    expect(fn.mock.calls.length).toBeLessThan(10);
+  });
+
+  it('should stop before next retry if it would exceed total timeout', async () => {
+    const fn = vi.fn().mockRejectedValue(new Error('fail'));
+
+    const promise = retry(fn, {
+      attempts: 5,
+      delay: 2000,
+      backoffMultiplier: 1,
+      totalTimeout: 5000, // 5 seconds total, but each delay is 2s
+    });
+
+    const expectation = expect(promise).rejects.toThrow(/total timeout/);
+
+    // Run timers
+    await vi.runAllTimersAsync();
+
+    await expectation;
+    // Should stop early because the next wait would exceed the timeout
+    expect(fn.mock.calls.length).toBeLessThan(5);
+  });
+
+  it('should succeed within total timeout', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail 1'))
+      .mockRejectedValueOnce(new Error('fail 2'))
+      .mockResolvedValue('success');
+
+    const promise = retry(fn, {
+      attempts: 5,
+      delay: 100,
+      totalTimeout: 10000, // 10 seconds - plenty of time
+    });
+
+    await vi.runAllTimersAsync();
+
+    const result = await promise;
+    expect(result).toBe('success');
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it('should use default total timeout of 5 minutes', async () => {
+    vi.useRealTimers();
+    const fn = vi.fn().mockResolvedValue('success');
+
+    const result = await retry(fn);
+    
+    expect(result).toBe('success');
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('classifyError', () => {

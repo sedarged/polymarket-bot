@@ -77,6 +77,7 @@ export class ClobClient {
         jitter: 0.1,
         maxDelay: 30000,
         timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
         isRetryable: (error: Error) => {
           const errorType = classifyError(error);
           // Don't retry permanent errors (4xx except 429)
@@ -145,6 +146,7 @@ export class ClobClient {
         jitter: 0.1,
         maxDelay: 30000,
         timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
         isRetryable: (error: Error) => {
           const errorType = classifyError(error);
           // Don't retry permanent errors (4xx except 429)

@@ -15,7 +15,8 @@ This implementation brings the Polymarket bot to production-grade reliability st
 **Features Added**:
 - **Jitter** (10% default): Prevents thundering herd when multiple instances retry simultaneously
 - **Max delay cap** (30s default): Limits exponential backoff to reasonable timeframes
-- **Timeout support**: Each retry attempt can have a timeout
+- **Per-attempt timeout**: Each retry attempt can have a timeout
+- **Total timeout** (5 minutes default): Overall timeout cap for all retry attempts combined (Audit Finding A-009)
 - **Error classification**: Automatic categorization into 5 types (transient, permanent, rate_limit, timeout, network)
 - **Conditional retry**: `isRetryable` callback to skip non-retryable errors
 - **Backward compatible**: All existing retry calls continue to work
@@ -29,9 +30,10 @@ await retry(apiCall, {
   attempts: 3,
   delay: 1000,
   backoffMultiplier: 2,
-  jitter: 0.1,        // NEW: 10% jitter
-  maxDelay: 30000,    // NEW: cap at 30s
-  timeout: 10000,     // NEW: 10s per attempt
+  jitter: 0.1,        // 10% jitter
+  maxDelay: 30000,    // cap at 30s
+  timeout: 10000,     // 10s per attempt
+  totalTimeout: 300000, // NEW: 5 minutes total (A-009)
   isRetryable: (err) => classifyError(err) !== ErrorType.PERMANENT
 });
 ```
@@ -39,6 +41,7 @@ await retry(apiCall, {
 **Benefits**:
 - Reduces load spikes on recovering services (jitter)
 - Prevents indefinite waits (max delay)
+- Prevents unbounded retry duration (total timeout - A-009)
 - Fails fast on permanent errors (error classification)
 - Handles slow responses gracefully (timeout)
 

@@ -47,6 +47,7 @@ export class GammaClient {
     }, {
       attempts: config.retryAttempts,
       delay: config.retryDelay,
+      totalTimeout: config.retryTotalTimeout,
     });
   }
 
@@ -67,6 +68,7 @@ export class GammaClient {
     }, {
       attempts: config.retryAttempts,
       delay: config.retryDelay,
+      totalTimeout: config.retryTotalTimeout,
     });
   }
 }
