@@ -35,6 +35,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Observability & Monitoring](./observability.md) - Metrics, dashboards, and alerting
 - [Audit Trail](./audit-trail.md) - Order and fill history tracking for compliance
 - [Persistence Layer](./persistence.md) - Database-backed state for production reliability
+- [Timer Resource Management](./timer-resource-management.md) - Timer lifecycle and memory leak prevention (A-016)
 - [Error Taxonomy](./error-taxonomy.md) - Error classification and handling strategies
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Paper Trading Guide](./paper-trading.md) - Safe testing without real money
