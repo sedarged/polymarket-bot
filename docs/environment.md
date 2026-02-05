@@ -313,6 +313,7 @@ PORT=3000                           # HTTP server port
 # Retry Configuration
 RETRY_ATTEMPTS=3                    # Number of retry attempts
 RETRY_DELAY=1000                    # Initial retry delay (ms)
+RETRY_TOTAL_TIMEOUT=300000          # Total timeout for all retries (ms, default: 5 minutes) - A-009
 
 # Paper Trading
 PAPER_TRADING_SLIPPAGE=0.01         # Base slippage (1%) for small orders
