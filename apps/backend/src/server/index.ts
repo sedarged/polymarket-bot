@@ -469,6 +469,9 @@ export async function startServer(): Promise<http.Server> {
     maxDrawdown: config.riskMaxDrawdown,
     errorRateThreshold: config.riskErrorRateThreshold,
     errorRateWindow: config.riskErrorRateWindow,
+    circuitBreakerFailureThreshold: config.circuitBreakerFailureThreshold,
+    circuitBreakerResetTimeoutMs: config.circuitBreakerResetTimeoutMs,
+    circuitBreakerSuccessThreshold: config.circuitBreakerSuccessThreshold,
   });
   logger.info('Risk manager initialized');
   

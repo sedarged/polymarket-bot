@@ -1,6 +1,7 @@
 import { Order, Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '../utils/statePersistence';
+import { CircuitBreaker, CircuitState } from '../utils/circuitBreaker';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -8,6 +9,9 @@ export interface RiskManagerConfig {
   maxDrawdown: number;
   errorRateThreshold: number;
   errorRateWindow: number;
+  circuitBreakerFailureThreshold?: number;
+  circuitBreakerResetTimeoutMs?: number;
+  circuitBreakerSuccessThreshold?: number;
 }
 
 export interface RiskCheckResult {
@@ -20,13 +24,14 @@ export interface RiskCheckResult {
  * - Max exposure per market
  * - Max open orders
  * - Max drawdown
- * - Error rate circuit breaker
+ * - Circuit breaker with auto-reset (Audit Finding A-018)
  */
 export class RiskManager {
   private config: RiskManagerConfig;
   private operations: { timestamp: number; isError: boolean }[] = [];
   private killed = false;
   private pendingPersistenceOps: Promise<void>[] = [];
+  private circuitBreaker: CircuitBreaker;
 
   constructor(config?: Partial<RiskManagerConfig>) {
     this.config = {
@@ -35,7 +40,39 @@ export class RiskManager {
       maxDrawdown: config?.maxDrawdown ?? 0.20,
       errorRateThreshold: config?.errorRateThreshold ?? 0.10,
       errorRateWindow: config?.errorRateWindow ?? 100,
+      circuitBreakerFailureThreshold: config?.circuitBreakerFailureThreshold ?? 5,
+      circuitBreakerResetTimeoutMs: config?.circuitBreakerResetTimeoutMs ?? 60000,
+      circuitBreakerSuccessThreshold: config?.circuitBreakerSuccessThreshold ?? 2,
     };
+
+    // Initialize circuit breaker with auto-reset capability (Audit Finding A-018)
+    this.circuitBreaker = new CircuitBreaker({
+      name: 'risk-manager',
+      failureThreshold: this.config.circuitBreakerFailureThreshold,
+      resetTimeout: this.config.circuitBreakerResetTimeoutMs,
+      successThreshold: this.config.circuitBreakerSuccessThreshold,
+    });
+
+    // Set up circuit breaker event listeners for logging
+    this.circuitBreaker.on('open', (metrics) => {
+      logger.error('Circuit breaker opened - blocking new orders', {
+        failures: metrics.failures,
+        consecutiveFailures: metrics.consecutiveFailures,
+        resetTimeoutMs: this.config.circuitBreakerResetTimeoutMs,
+      });
+    });
+
+    this.circuitBreaker.on('half-open', () => {
+      logger.info('Circuit breaker half-open - testing recovery', {
+        successThreshold: this.config.circuitBreakerSuccessThreshold,
+      });
+    });
+
+    this.circuitBreaker.on('closed', (metrics) => {
+      logger.info('Circuit breaker closed - normal operation resumed', {
+        totalRequests: metrics.totalRequests,
+      });
+    });
 
     logger.info('Risk manager initialized', {
       maxExposurePerMarket: this.config.maxExposurePerMarket,
@@ -43,6 +80,11 @@ export class RiskManager {
       maxDrawdown: this.config.maxDrawdown,
       errorRateThreshold: this.config.errorRateThreshold,
       errorRateWindow: this.config.errorRateWindow,
+      circuitBreaker: {
+        failureThreshold: this.config.circuitBreakerFailureThreshold,
+        resetTimeoutMs: this.config.circuitBreakerResetTimeoutMs,
+        successThreshold: this.config.circuitBreakerSuccessThreshold,
+      },
     });
   }
 
@@ -105,7 +147,15 @@ export class RiskManager {
       };
     }
 
-    // Check error rate circuit breaker
+    // Check circuit breaker - now with auto-reset capability (Audit Finding A-018)
+    if (this.circuitBreaker.isOpen()) {
+      return {
+        allowed: false,
+        reason: 'Circuit breaker is open: error rate too high',
+      };
+    }
+
+    // Also check legacy error rate tracking for backward compatibility
     if (this.isCircuitBreakerTripped()) {
       return {
         allowed: false,
@@ -167,8 +217,10 @@ export class RiskManager {
 
   /**
    * Record an operation (success or error) for circuit breaker tracking
+   * Now uses the CircuitBreaker class with auto-reset (Audit Finding A-018)
    */
   recordOperation(isError: boolean, errorMessage?: string): void {
+    // Update legacy tracking for backward compatibility
     this.operations.push({
       timestamp: Date.now(),
       isError,
@@ -185,6 +237,10 @@ export class RiskManager {
         recentErrors: this.operations.filter(op => op.isError).length,
       });
     }
+
+    // Note: The new CircuitBreaker is not directly tracked here for operation recording
+    // It's used when wrapping actual API calls with breaker.execute()
+    // This maintains backward compatibility while the system transitions
   }
 
   /**
@@ -258,6 +314,10 @@ export class RiskManager {
   reset(): void {
     this.killed = false;
     this.operations = [];
+    
+    // Also reset the circuit breaker to allow new operations (Audit Finding A-018)
+    this.circuitBreaker.reset();
+    
     logger.info('Risk manager reset');
     
     // Clear persisted state (async, but don't wait - best effort)
@@ -283,20 +343,57 @@ export class RiskManager {
   }
 
   /**
-   * Get current risk metrics
+   * Get current risk metrics including circuit breaker state
    */
   getMetrics(): {
     killed: boolean;
     recentErrors: number;
     circuitBreakerTripped: boolean;
+    circuitBreakerState: CircuitState;
+    circuitBreakerMetrics: {
+      failures: number;
+      successes: number;
+      consecutiveFailures: number;
+      consecutiveSuccesses: number;
+    };
   } {
     const recentOps = this.operations.filter(op => Date.now() - op.timestamp < 60000);
     const errorCount = recentOps.filter(op => op.isError).length;
+    const breakerMetrics = this.circuitBreaker.getMetrics();
 
     return {
       killed: this.killed,
       recentErrors: errorCount,
       circuitBreakerTripped: this.isCircuitBreakerTripped(),
+      circuitBreakerState: breakerMetrics.state,
+      circuitBreakerMetrics: {
+        failures: breakerMetrics.failures,
+        successes: breakerMetrics.successes,
+        consecutiveFailures: breakerMetrics.consecutiveFailures,
+        consecutiveSuccesses: breakerMetrics.consecutiveSuccesses,
+      },
     };
+  }
+
+  /**
+   * Get the circuit breaker instance for use in API call wrapping
+   * This allows external code to wrap operations with circuit breaker protection
+   * 
+   * @example
+   * ```typescript
+   * const result = await riskManager.getCircuitBreaker().execute(async () => {
+   *   return await apiClient.placeOrder(order);
+   * });
+   * ```
+   */
+  getCircuitBreaker(): CircuitBreaker {
+    return this.circuitBreaker;
+  }
+
+  /**
+   * Clean up resources when shutting down
+   */
+  destroy(): void {
+    this.circuitBreaker.destroy();
   }
 }

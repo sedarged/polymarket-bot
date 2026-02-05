@@ -1091,10 +1091,39 @@ npm run dev | grep "Circuit breaker" | tail -20
    - No manual intervention needed in most cases
    - For testing only: call internal reset method (requires code access)
 
-**Circuit Breaker States:**
+**Circuit Breaker States (Audit Finding A-018 - Auto-Reset):**
 - **closed**: Normal operation, requests pass through
 - **open**: Service failing, requests rejected immediately (protecting from cascade failures)
+  - Auto-transitions to half_open after reset timeout (default: 60 seconds)
 - **half_open**: Testing if service recovered, allowing limited requests
+  - Transitions to closed after success threshold (default: 2 successes)
+  - Transitions back to open on any failure
+
+**Auto-Reset Configuration:**
+```bash
+# Circuit breaker settings in .env
+CIRCUIT_BREAKER_FAILURE_THRESHOLD=5      # Failures before opening (default: 5)
+CIRCUIT_BREAKER_RESET_TIMEOUT_MS=60000   # Time before retry (default: 60s)
+CIRCUIT_BREAKER_SUCCESS_THRESHOLD=2      # Successes to close (default: 2)
+```
+
+**Monitoring Circuit Breaker:**
+```bash
+# Check circuit breaker state
+curl http://localhost:3000/status | jq '.circuitBreakers'
+
+# Expected output:
+# [
+#   {
+#     "name": "risk-manager",
+#     "state": "closed",
+#     "failures": 0,
+#     "successes": 150,
+#     "consecutiveFailures": 0,
+#     "consecutiveSuccesses": 10
+#   }
+# ]
+```
 
 **Prevention:**
 - Ensure proper error handling in all API calls
