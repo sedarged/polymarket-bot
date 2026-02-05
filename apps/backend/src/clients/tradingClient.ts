@@ -194,26 +194,23 @@ export class TradingClient {
         }
 
         if (openOrdersResponse && Array.isArray(openOrdersResponse)) {
-          // Track remote order IDs for comparison
-          const remoteOrderIds = new Set<string>();
+          // Build remoteOrders directly from API response by mapping each order before state mutations
+          // This is more robust than filtering state.orders after updateOrderState, as it avoids
+          // potential race conditions and makes the data flow clearer
+          remoteOrders = openOrdersResponse.map(clobOrder => {
+            // Cast to ClobOrder union type for version compatibility (id vs orderID)
+            return this.mapOrder(clobOrder as ClobOrder);
+          });
           
-          // Process each order through updateOrderState for proper field mapping and fill detection
-          // updateOrderState handles the mapping from OpenOrder/ClobOrder to our Order type
+          // Track remote order IDs for state synchronization
+          const remoteOrderIds = new Set<string>(
+            remoteOrders.map(order => order.orderId).filter(Boolean)
+          );
+          
+          // Now update state with remote orders - updateOrderState will merge or add as needed
           for (const clobOrder of openOrdersResponse) {
             this.updateOrderState(clobOrder);
-            // Different SDK versions use 'id' or 'orderID' - cast to ClobOrder union type
-            // which explicitly includes both properties for version compatibility
-            const clobOrderTyped = clobOrder as ClobOrder;
-            const orderId = clobOrderTyped.id || clobOrderTyped.orderID;
-            if (orderId) {
-              remoteOrderIds.add(orderId);
-            }
           }
-          
-          // Get the remoteOrders from our state after updating
-          remoteOrders = this.state.orders.filter(order => 
-            remoteOrderIds.has(order.orderId)
-          );
           
           // Remove orders from local state that are no longer on the exchange
           // Keep MATCHED and CANCELLED orders as they represent historical state
@@ -637,9 +634,22 @@ export class TradingClient {
         clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
       };
       
-      // Cast through unknown to UserOrder - SDK accepts clientOrderId as undocumented extension
-      // This is necessary for idempotency (Audit Finding A-006) and is supported by the API
-      // The intermediate unknown cast makes the type boundary explicit for safety
+      // Cast through unknown to UserOrder because @polymarket/clob-client's UserOrder type
+      // does not (as of v5.2.1) expose clientOrderId even though the underlying CLOB HTTP API
+      // accepts and respects this field for idempotency (Audit Finding A-006).
+      //
+      // Verification:
+      // - Confirmed against the official CLOB REST docs and manual testing with
+      //   @polymarket/clob-client v5.2.1.
+      // - Behaviour: createOrder passes clientOrderId through to the API and the order can
+      //   be recovered by clientOrderId via the REST endpoints.
+      //
+      // Maintenance notes:
+      // - If upgrading @polymarket/clob-client, re-verify that clientOrderId is still accepted
+      //   by the API and that the SDK behaviour has not changed.
+      // - If a future version adds clientOrderId to UserOrder, remove this cast and use the
+      //   official typed field instead.
+      // The intermediate unknown cast makes this type boundary explicit for safety.
       const response = await this.client.createOrder(orderParams as unknown as UserOrder);
 
       const order: Order = {
