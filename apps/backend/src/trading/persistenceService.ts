@@ -1,6 +1,7 @@
 import { Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
+import { PositionRow, BalanceRow } from '../types/database';
 
 /**
  * Persistence service for managing all trading state in the database
@@ -48,7 +49,7 @@ export class PersistenceService extends AuditTrail {
   getPositions(): Position[] {
     try {
       const stmt = this.db.prepare('SELECT * FROM positions');
-      const rows = stmt.all() as any[];
+      const rows = stmt.all() as PositionRow[];
 
       return rows.map(row => ({
         tokenId: row.token_id,
@@ -113,7 +114,7 @@ export class PersistenceService extends AuditTrail {
   getBalance(): { balance: number; initialBalance: number; realizedPnl: number } | null {
     try {
       const stmt = this.db.prepare('SELECT * FROM balances WHERE id = 1');
-      const row = stmt.get() as any;
+      const row = stmt.get() as BalanceRow | undefined;
 
       if (!row) {
         return null;

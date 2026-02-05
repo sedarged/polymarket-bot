@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { Order, Fill } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { initializeDatabase, closeDatabase } from '../utils/database';
+import { OrderRow, FillRow, OrderEventRow, StatCountResult, StatusCountResult, FillStatsResult } from '../types/database';
 
 /**
  * Audit trail service for storing and querying order/fill history
@@ -145,11 +146,11 @@ export class AuditTrail {
       }
 
       const stmt = this.db.prepare(query);
-      const rows = stmt.all(...params) as any[];
+      const rows = stmt.all(...params) as OrderRow[];
 
       return rows.map(row => ({
         orderId: row.id,
-        clientOrderId: row.client_order_id,
+        clientOrderId: row.client_order_id ?? undefined, // Convert null to undefined for Order type
         tokenId: row.token_id,
         side: row.side as 'BUY' | 'SELL',
         price: row.price,
@@ -209,7 +210,7 @@ export class AuditTrail {
       }
 
       const stmt = this.db.prepare(query);
-      const rows = stmt.all(...params) as any[];
+      const rows = stmt.all(...params) as FillRow[];
 
       return rows.map(row => ({
         orderId: row.order_id,
@@ -218,7 +219,7 @@ export class AuditTrail {
         price: row.price,
         size: row.size,
         timestamp: row.timestamp,
-        fee: row.fee,
+        fee: row.fee ?? undefined, // Convert null to undefined for Fill type
         fillId: String(row.id),
       }));
     } catch (error) {
@@ -245,7 +246,7 @@ export class AuditTrail {
         ORDER BY timestamp ASC
       `);
 
-      const rows = stmt.all(orderId) as any[];
+      const rows = stmt.all(orderId) as OrderEventRow[];
 
       return rows.map(row => ({
         eventType: row.event_type,
@@ -297,13 +298,13 @@ export class AuditTrail {
       const totalOrdersStmt = this.db.prepare(
         `SELECT COUNT(*) as count FROM orders WHERE ${whereClause}`
       );
-      const totalOrders = (totalOrdersStmt.get(...params) as any).count;
+      const totalOrders = (totalOrdersStmt.get(...params) as StatCountResult).count;
 
       // Orders by status
       const ordersByStatusStmt = this.db.prepare(
         `SELECT status, COUNT(*) as count FROM orders WHERE ${whereClause} GROUP BY status`
       );
-      const statusRows = ordersByStatusStmt.all(...params) as any[];
+      const statusRows = ordersByStatusStmt.all(...params) as StatusCountResult[];
       const ordersByStatus: Record<string, number> = {};
       for (const row of statusRows) {
         ordersByStatus[row.status] = row.count;
@@ -335,7 +336,7 @@ export class AuditTrail {
          FROM fills 
          WHERE ${fillWhereClause}`
       );
-      const fillStats = fillStatsStmt.get(...fillParams) as any;
+      const fillStats = fillStatsStmt.get(...fillParams) as FillStatsResult;
 
       return {
         totalOrders,
