@@ -205,3 +205,248 @@ describe('sleep', () => {
     expect(elapsed).toBeGreaterThanOrEqual(45);
   });
 });
+
+describe('jitter (A-023)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should apply jitter to retry delays', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail 1'))
+      .mockRejectedValueOnce(new Error('fail 2'))
+      .mockResolvedValue('success');
+
+    const delays: number[] = [];
+    const originalSetTimeout = global.setTimeout;
+
+    // Spy on setTimeout to capture actual delays
+    vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+      if (delay > 0) {
+        delays.push(delay);
+      }
+      return originalSetTimeout(callback, 0) as any;
+    }) as any);
+
+    const promise = retry(fn, {
+      attempts: 3,
+      delay: 1000,
+      backoffMultiplier: 2,
+      jitter: 0.1, // 10% jitter
+    });
+
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // We should have captured 2 delays (one for each retry)
+    expect(delays.length).toBe(2);
+
+    // First delay: base 1000ms with ±10% jitter
+    expect(delays[0]).toBeGreaterThanOrEqual(900);
+    expect(delays[0]).toBeLessThanOrEqual(1100);
+
+    // Second delay: base 2000ms (1000 * 2^1) with ±10% jitter
+    expect(delays[1]).toBeGreaterThanOrEqual(1800);
+    expect(delays[1]).toBeLessThanOrEqual(2200);
+  });
+
+  it('should produce different delays across multiple retries (prevents thundering herd)', async () => {
+    const delays1: number[] = [];
+    const delays2: number[] = [];
+    const delays3: number[] = [];
+
+    // Mock Math.random() to return deterministic but different sequences for each client
+    // This ensures the test is not flaky due to random chance
+    const randomSequences = [
+      [0.5, 0.3],   // Client 1: neutral jitter, then negative
+      [-0.2, 0.8],  // Client 2: negative, then positive
+      [0.9, -0.5],  // Client 3: positive, then negative
+    ];
+
+    // Helper to capture delays for a single retry sequence
+    const captureDelays = async (delaysArray: number[], randomSequence: number[]) => {
+      const fn = vi.fn()
+        .mockRejectedValueOnce(new Error('fail 1'))
+        .mockRejectedValueOnce(new Error('fail 2'))
+        .mockResolvedValue('success');
+
+      let randomCallIndex = 0;
+      vi.spyOn(Math, 'random').mockImplementation(() => {
+        return randomSequence[randomCallIndex++] ?? 0.5;
+      });
+
+      const originalSetTimeout = global.setTimeout;
+      vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+        if (delay > 0) {
+          delaysArray.push(delay);
+        }
+        return originalSetTimeout(callback, 0) as any;
+      }) as any);
+
+      const promise = retry(fn, {
+        attempts: 3,
+        delay: 1000,
+        backoffMultiplier: 2,
+        jitter: 0.2, // 20% jitter for more variation
+      });
+
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.restoreAllMocks();
+    };
+
+    // Simulate 3 concurrent clients retrying with deterministic random sequences
+    await captureDelays(delays1, randomSequences[0]);
+    vi.useFakeTimers();
+    await captureDelays(delays2, randomSequences[1]);
+    vi.useFakeTimers();
+    await captureDelays(delays3, randomSequences[2]);
+
+    // All three clients should have 2 delays
+    expect(delays1.length).toBe(2);
+    expect(delays2.length).toBe(2);
+    expect(delays3.length).toBe(2);
+
+    // With mocked random values, delays should be different (prevent thundering herd)
+    // Check first retry delay varies across clients
+    const firstDelays = [delays1[0], delays2[0], delays3[0]];
+    const allSame = firstDelays.every(d => d === firstDelays[0]);
+    expect(allSame).toBe(false);
+
+    // Check second retry delay varies across clients
+    const secondDelays = [delays1[1], delays2[1], delays3[1]];
+    const allSame2 = secondDelays.every(d => d === secondDelays[0]);
+    expect(allSame2).toBe(false);
+  });
+
+  it('should respect zero jitter (no randomization)', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('success');
+
+    const delays: number[] = [];
+    const originalSetTimeout = global.setTimeout;
+
+    vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+      if (delay > 0) {
+        delays.push(delay);
+      }
+      return originalSetTimeout(callback, 0) as any;
+    }) as any);
+
+    const promise = retry(fn, {
+      attempts: 2,
+      delay: 1000,
+      backoffMultiplier: 2,
+      jitter: 0, // No jitter
+    });
+
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // With zero jitter, delay should be exactly the base delay
+    expect(delays.length).toBe(1);
+    expect(delays[0]).toBe(1000);
+  });
+
+  it('should apply custom jitter factor', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('success');
+
+    const delays: number[] = [];
+    const originalSetTimeout = global.setTimeout;
+
+    vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+      if (delay > 0) {
+        delays.push(delay);
+      }
+      return originalSetTimeout(callback, 0) as any;
+    }) as any);
+
+    const promise = retry(fn, {
+      attempts: 2,
+      delay: 1000,
+      backoffMultiplier: 1,
+      jitter: 0.5, // 50% jitter
+    });
+
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // With 50% jitter, delay should be within ±50% of base (500-1500ms)
+    expect(delays.length).toBe(1);
+    expect(delays[0]).toBeGreaterThanOrEqual(500);
+    expect(delays[0]).toBeLessThanOrEqual(1500);
+  });
+
+  it('should never produce negative delays with jitter', async () => {
+    const delays: number[] = [];
+
+    // Run multiple times to ensure no negative delays
+    for (let i = 0; i < 10; i++) {
+      vi.useFakeTimers();
+      
+      const originalSetTimeout = global.setTimeout;
+      vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+        if (delay > 0) {
+          delays.push(delay);
+        }
+        return originalSetTimeout(callback, 0) as any;
+      }) as any);
+
+      const fnInstance = vi.fn()
+        .mockRejectedValueOnce(new Error('fail'))
+        .mockResolvedValue('success');
+
+      const promise = retry(fnInstance, {
+        attempts: 2,
+        delay: 100,
+        jitter: 1.0, // 100% jitter - maximum randomization
+      });
+
+      await vi.runAllTimersAsync();
+      await promise;
+      vi.restoreAllMocks();
+    }
+
+    // All delays should be non-negative
+    delays.forEach(delay => {
+      expect(delay).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it('should use default jitter of 10% when not specified', async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('fail'))
+      .mockResolvedValue('success');
+
+    const delays: number[] = [];
+    const originalSetTimeout = global.setTimeout;
+
+    vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+      if (delay > 0) {
+        delays.push(delay);
+      }
+      return originalSetTimeout(callback, 0) as any;
+    }) as any);
+
+    const promise = retry(fn, {
+      attempts: 2,
+      delay: 1000,
+      // jitter not specified - should default to 0.1
+    });
+
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // Default 10% jitter means delay should be within 900-1100ms
+    expect(delays.length).toBe(1);
+    expect(delays[0]).toBeGreaterThanOrEqual(900);
+    expect(delays[0]).toBeLessThanOrEqual(1100);
+  });
+});

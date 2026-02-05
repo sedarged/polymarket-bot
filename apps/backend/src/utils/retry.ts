@@ -78,6 +78,7 @@ export function classifyError(error: Error): ErrorType {
  * Retry a function with exponential backoff, jitter, and timeout support.
  * 
  * Addresses Audit Finding A-009: Adds overall timeout cap to prevent unbounded retry duration.
+ * Addresses Audit Finding A-023: Includes jitter to prevent thundering herd effects.
  * 
  * @param fn - The function to retry
  * @param options - Retry configuration options
@@ -153,6 +154,9 @@ export async function retry<T>(
         const baseDelay = delay * Math.pow(backoffMultiplier, attempt - 1);
         
         // Apply jitter: random value between -jitter and +jitter
+        // Addresses Audit Finding A-023: Prevents thundering herd effect by adding
+        // random variation to retry delays. This ensures multiple clients don't all
+        // retry simultaneously after a service failure.
         const jitterAmount = baseDelay * jitter * (Math.random() * 2 - 1);
         const delayWithJitter = Math.max(0, baseDelay + jitterAmount);
         
