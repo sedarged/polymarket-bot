@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0](https://github.com/sedarged/polymarket-bot/compare/v1.16.1...v1.17.0) (2026-02-05)
+
+
+### Features
+
+* integrate circuit breaker auto-reset in RiskManager (A-018) ([9670541](https://github.com/sedarged/polymarket-bot/commit/9670541f982d9c60737c77b97a263dbaff742eb2))
+* integrate circuit breaker auto-reset into RiskManager (A-018) ([35e1cb3](https://github.com/sedarged/polymarket-bot/commit/35e1cb3fb7513e4754135f6c3f48c8ab2f76273d))
+* plan circuit breaker auto-reset integration (A-018) ([6a16315](https://github.com/sedarged/polymarket-bot/commit/6a16315fbba7b52a71c2ec8d9a4bee1b32d94837))
+
+
+### Bug Fixes
+
+* address code review feedback for circuit breaker ([576db15](https://github.com/sedarged/polymarket-bot/commit/576db1511e979b3600b19b93b9d47f0498525467))
+* address PR review feedback - add circuit breaker metrics to /status endpoint ([1a6da88](https://github.com/sedarged/polymarket-bot/commit/1a6da88ff3cb7e335ebe1c098a4f3666984b6f6f))
+
 ## [1.16.1](https://github.com/sedarged/polymarket-bot/compare/v1.16.0...v1.16.1) (2026-02-05)
 
 
