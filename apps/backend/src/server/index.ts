@@ -322,11 +322,22 @@ export function createServer(): http.Server {
     if (method === 'GET' && url === '/status') {
       if (!requireAdminAuth(req, res, 'Status')) return;
 
+      // Get circuit breaker metrics if risk manager is initialized
+      const circuitBreakerMetrics = riskManager ? {
+        name: 'risk-manager',
+        state: riskManager.getMetrics().circuitBreakerState,
+        failures: riskManager.getMetrics().circuitBreakerMetrics.failures,
+        successes: riskManager.getMetrics().circuitBreakerMetrics.successes,
+        consecutiveFailures: riskManager.getMetrics().circuitBreakerMetrics.consecutiveFailures,
+        consecutiveSuccesses: riskManager.getMetrics().circuitBreakerMetrics.consecutiveSuccesses,
+      } : null;
+
       const status = {
         liveTrading: isLiveTradingEnabled(),
         tradingClientInitialized: tradingClient.isInitialized(),
         walletAddress: tradingClient.getAddress(),
         marketFeedConnected: marketFeedService.isConnected(),
+        circuitBreakers: circuitBreakerMetrics ? [circuitBreakerMetrics] : [],
         timestamp: Date.now(),
       };
       respondJson(res, 200, status, req);

@@ -216,8 +216,13 @@ export class RiskManager {
   }
 
   /**
-   * Record an operation (success or error) for circuit breaker tracking
-   * Now uses the CircuitBreaker class with auto-reset (Audit Finding A-018)
+   * Record an operation (success or error) for legacy circuit breaker tracking.
+   * 
+   * NOTE: This does NOT affect the new CircuitBreaker class (Audit Finding A-018),
+   * which must be used by wrapping operations with getCircuitBreaker().execute()
+   * 
+   * This method maintains the legacy error-rate based circuit breaker that uses
+   * isCircuitBreakerTripped() to check if error rate exceeds threshold.
    */
   recordOperation(isError: boolean, errorMessage?: string): void {
     // Legacy tracking maintained for backward compatibility and historical error rate calculation
