@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.1](https://github.com/sedarged/polymarket-bot/compare/v1.17.0...v1.17.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* Address PR review comments for A-009 ([a0b2216](https://github.com/sedarged/polymarket-bot/commit/a0b221692d008e47480d30acced734e9b1ce46c7))
+* **retry:** Add total timeout to prevent unbounded retries (A-009) ([1510b5f](https://github.com/sedarged/polymarket-bot/commit/1510b5f950a62eb776de0c0691fa132c4c0def5f))
+
 ## [1.17.0](https://github.com/sedarged/polymarket-bot/compare/v1.16.1...v1.17.0) (2026-02-05)
 
 
