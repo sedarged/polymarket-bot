@@ -209,6 +209,8 @@ export class TradingClient {
           // updateOrderState handles the mapping from OpenOrder/ClobOrder to our Order type
           for (const clobOrder of openOrdersResponse) {
             this.updateOrderState(clobOrder);
+            // Different SDK versions use 'id' or 'orderID' - check both
+            // This cast is safe as we're just accessing a fallback property
             const orderId = clobOrder.id || (clobOrder as any).orderID;
             if (orderId) {
               remoteOrderIds.add(orderId);
@@ -642,7 +644,8 @@ export class TradingClient {
         clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
       };
       
-      // Cast to UserOrder since SDK accepts clientOrderId as extension
+      // Cast to UserOrder since SDK accepts clientOrderId as an undocumented extension point
+      // This is necessary for idempotency (Audit Finding A-006) and is supported by the API
       const response = await this.client.createOrder(orderParams as any);
 
       const order: Order = {
