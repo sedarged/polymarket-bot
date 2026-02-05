@@ -509,46 +509,68 @@ export async function startServer(): Promise<http.Server> {
     logger.info('Server listening', { port: config.port });
   });
 
-  // Graceful shutdown
-  const shutdown = () => {
+  // Graceful shutdown handler
+  // Addresses Audit Finding A-017: properly await all cleanup operations
+  const shutdown = async () => {
     logger.info('Shutting down server...');
     
-    // Stop rate limiter cleanup
-    if (rateLimiter) {
-      rateLimiter.stop();
-    }
+    // Create shutdown timeout to prevent hanging (10 seconds)
+    const shutdownTimeout = setTimeout(() => {
+      logger.error('Shutdown timeout exceeded, forcing exit');
+      process.exit(1);
+    }, 10000);
     
-    marketFeedService.stop();
-    
-    // Stop periodic reconciliation and clean up (Gap RE-001)
-    if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
-      tradingClient.stopPeriodicReconciliation();
-      try {
-        tradingClient.destroy();
-      } catch (error) {
-        logger.error('Failed to destroy trading client during shutdown', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+    try {
+      // Stop rate limiter cleanup
+      if (rateLimiter) {
+        rateLimiter.stop();
       }
-    }
-    
-    // Cancel all orders before shutdown if trading is enabled
-    if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
-      tradingClient.cancelAllOrders().catch((error) => {
-        logger.error('Failed to cancel orders during shutdown', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }).finally(() => {
+      
+      // Await market feed service stop (A-017: proper WebSocket cleanup)
+      await marketFeedService.stop();
+      logger.info('Market feed service stopped');
+      
+      // Stop periodic reconciliation and clean up (Gap RE-001)
+      if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+        tradingClient.stopPeriodicReconciliation();
+        
+        // Cancel all orders BEFORE destroying the client
+        try {
+          await tradingClient.cancelAllOrders();
+          logger.info('All orders cancelled');
+        } catch (error) {
+          logger.error('Failed to cancel orders during shutdown', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        
+        // Now destroy the client after orders are cancelled
+        try {
+          tradingClient.destroy();
+        } catch (error) {
+          logger.error('Failed to destroy trading client during shutdown', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+      
+      // Close HTTP server
+      await new Promise<void>((resolve) => {
         server.close(() => {
           logger.info('Server stopped');
-          process.exit(0);
+          resolve();
         });
       });
-    } else {
-      server.close(() => {
-        logger.info('Server stopped');
-        process.exit(0);
+      
+      // Clear shutdown timeout and exit cleanly
+      clearTimeout(shutdownTimeout);
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown', {
+        error: error instanceof Error ? error.message : String(error),
       });
+      clearTimeout(shutdownTimeout);
+      process.exit(1);
     }
   };
 

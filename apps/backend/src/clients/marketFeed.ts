@@ -285,9 +285,23 @@ export class MarketFeedClient extends EventEmitter {
     this.wsClient.connect();
   }
 
-  close(): void {
+  /**
+   * Close the market feed client gracefully
+   * Returns a Promise that resolves when cleanup is complete
+   * Implements proper cleanup for Audit Finding A-017
+   */
+  async close(): Promise<void> {
     logger.info('Stopping market feed client');
-    this.wsClient.close();
+    
+    // Wait for any in-flight resync operations to complete
+    const resyncPromises = Array.from(this.resyncPromises.values());
+    if (resyncPromises.length > 0) {
+      logger.info('Waiting for in-flight resync operations', { count: resyncPromises.length });
+      await Promise.allSettled(resyncPromises);
+    }
+    
+    // Close WebSocket connection
+    await this.wsClient.close();
     this.isSubscribed = false;
   }
 

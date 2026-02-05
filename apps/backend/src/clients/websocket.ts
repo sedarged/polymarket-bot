@@ -199,20 +199,90 @@ export class WebSocketClient extends EventEmitter {
     }
   }
 
-  close(): void {
+  /**
+   * Close the WebSocket connection gracefully
+   * Returns a Promise that resolves when the connection is fully closed
+   * Implements proper cleanup for Audit Finding A-017
+   */
+  async close(): Promise<void> {
     logger.info('Closing WebSocket client');
     this.shouldReconnect = false;
     this.updateStateMetrics(WebSocketState.CLOSED);
 
+    // Clear reconnect timer first
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
 
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    // If no active connection, nothing to close
+    if (!this.ws) {
+      return;
     }
+
+    // Store reference to WebSocket before creating promises
+    const ws = this.ws;
+    
+    // Create promise to wait for close event
+    const closePromise = new Promise<void>((resolve) => {
+      if (!ws) {
+        resolve();
+        return;
+      }
+
+      // Set up one-time close handler
+      const onClose = () => {
+        this.ws = null;
+        resolve();
+      };
+
+      // If already closing/closed, resolve immediately
+      if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+        this.ws = null;
+        resolve();
+        return;
+      }
+
+      // Listen for close event
+      ws.once('close', onClose);
+      
+      // Initiate close
+      try {
+        // Remove all event listeners to prevent memory leaks (A-017)
+        ws.removeAllListeners();
+        // Re-add the close listener we need
+        ws.once('close', onClose);
+        ws.close();
+      } catch (error) {
+        // If close() throws, still resolve (connection is gone)
+        logger.warn('Error closing WebSocket', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        this.ws = null;
+        resolve();
+      }
+    });
+
+    // Wait for close with timeout (5 seconds)
+    const timeoutPromise = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        logger.warn('WebSocket close timeout, forcing cleanup');
+        // Remove the close listener to prevent it from firing later
+        ws?.removeAllListeners();
+        if (this.ws) {
+          try {
+            this.ws.terminate();
+          } catch (error) {
+            // Ignore terminate errors
+          }
+          this.ws = null;
+        }
+        resolve();
+      }, 5000);
+    });
+
+    // Race between close and timeout
+    await Promise.race([closePromise, timeoutPromise]);
   }
 
   getState(): WebSocketState {

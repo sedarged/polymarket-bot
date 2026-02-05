@@ -67,13 +67,18 @@ class MarketFeedService {
     });
   }
 
-  stop(): void {
+  /**
+   * Stop the market feed service gracefully
+   * Returns a Promise that resolves when cleanup is complete
+   * Implements proper cleanup for Audit Finding A-017
+   */
+  async stop(): Promise<void> {
     if (!this.isRunning || !this.client) {
       return;
     }
 
     logger.info('Stopping market feed service');
-    this.client.close();
+    await this.client.close();
     this.client = null;
     this.isRunning = false;
   }
