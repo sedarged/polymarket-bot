@@ -43,14 +43,14 @@ function maskSensitiveFields(metadata: LogMetadata): LogMetadata {
 
   const sensitiveFieldNames = [
     'address',
-    'privatekey',
+    'privatekey',  // matches privateKey (camelCase) and private_key (snake_case)
     'private_key',
     'secret',
-    'apikey',
+    'apikey',      // matches apiKey (camelCase) and api_key (snake_case)
     'api_key',
     'token',
     'password',
-    'key',
+    'key',         // Note: Broadly matches any field containing 'key' (e.g., walletKey, userKey)
   ];
 
   const masked: LogMetadata = {};

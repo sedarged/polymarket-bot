@@ -945,9 +945,12 @@ grep '"level":"WARN"' logs/app.log | jq .
 ### Privacy Compliance
 
 **Log Retention:**
-- Development: 7 days
-- Staging: 30 days
-- Production: 90 days (regulatory compliance)
+
+These retention periods are operational recommendations and are **not** enforced by the bot itself. Configure actual log retention in your logging and storage infrastructure (for example, log management services, object storage lifecycle policies, or IaC-managed retention settings) to meet these targets and any local regulatory requirements.
+
+- Development: 7 days (recommended)
+- Staging: 30 days (recommended)
+- Production: 90 days (recommended for regulatory compliance)
 
 **Log Storage:**
 - Ensure logs are stored securely with appropriate access controls
