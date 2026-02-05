@@ -537,7 +537,7 @@ describe('RiskManager', () => {
       expect(result.allowed).toBe(true);
     });
 
-    it('should reset circuit breaker on risk manager reset', () => {
+    it('should reset circuit breaker on risk manager reset', async () => {
       const breaker = riskManager.getCircuitBreaker();
       
       // Get initial state
@@ -547,18 +547,13 @@ describe('RiskManager', () => {
       // Manually open the circuit (simulate failures)
       const failingFn = () => Promise.reject(new Error('test failure'));
       
-      // Use async IIFE to handle promises
-      (async () => {
-        try {
-          await breaker.execute(failingFn);
-        } catch {}
-        try {
-          await breaker.execute(failingFn);
-        } catch {}
-        try {
-          await breaker.execute(failingFn);
-        } catch {}
-      })();
+      // Trip the circuit breaker
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      
+      // Circuit should be open now
+      expect(breaker.getState()).toBe('open');
       
       // Reset risk manager
       riskManager.reset();

@@ -220,7 +220,8 @@ export class RiskManager {
    * Now uses the CircuitBreaker class with auto-reset (Audit Finding A-018)
    */
   recordOperation(isError: boolean, errorMessage?: string): void {
-    // Update legacy tracking for backward compatibility
+    // Legacy tracking maintained for backward compatibility and historical error rate calculation
+    // The legacy isCircuitBreakerTripped() method uses this data for error rate-based checking
     this.operations.push({
       timestamp: Date.now(),
       isError,
@@ -238,9 +239,9 @@ export class RiskManager {
       });
     }
 
-    // Note: The new CircuitBreaker is not directly tracked here for operation recording
-    // It's used when wrapping actual API calls with breaker.execute()
-    // This maintains backward compatibility while the system transitions
+    // NOTE: The new CircuitBreaker class is NOT directly tracked via recordOperation()
+    // It's used by wrapping critical operations with breaker.execute() in the calling code
+    // This maintains both systems during transition to full CircuitBreaker adoption
   }
 
   /**
