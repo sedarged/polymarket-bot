@@ -259,12 +259,25 @@ describe('jitter (A-023)', () => {
     const delays2: number[] = [];
     const delays3: number[] = [];
 
+    // Mock Math.random() to return deterministic but different sequences for each client
+    // This ensures the test is not flaky due to random chance
+    const randomSequences = [
+      [0.5, 0.3],   // Client 1: neutral jitter, then negative
+      [-0.2, 0.8],  // Client 2: negative, then positive
+      [0.9, -0.5],  // Client 3: positive, then negative
+    ];
+
     // Helper to capture delays for a single retry sequence
-    const captureDelays = async (delaysArray: number[]) => {
+    const captureDelays = async (delaysArray: number[], randomSequence: number[]) => {
       const fn = vi.fn()
         .mockRejectedValueOnce(new Error('fail 1'))
         .mockRejectedValueOnce(new Error('fail 2'))
         .mockResolvedValue('success');
+
+      let randomCallIndex = 0;
+      vi.spyOn(Math, 'random').mockImplementation(() => {
+        return randomSequence[randomCallIndex++] ?? 0.5;
+      });
 
       const originalSetTimeout = global.setTimeout;
       vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
@@ -286,19 +299,19 @@ describe('jitter (A-023)', () => {
       vi.restoreAllMocks();
     };
 
-    // Simulate 3 concurrent clients retrying
-    await captureDelays(delays1);
+    // Simulate 3 concurrent clients retrying with deterministic random sequences
+    await captureDelays(delays1, randomSequences[0]);
     vi.useFakeTimers();
-    await captureDelays(delays2);
+    await captureDelays(delays2, randomSequences[1]);
     vi.useFakeTimers();
-    await captureDelays(delays3);
+    await captureDelays(delays3, randomSequences[2]);
 
     // All three clients should have 2 delays
     expect(delays1.length).toBe(2);
     expect(delays2.length).toBe(2);
     expect(delays3.length).toBe(2);
 
-    // With jitter, delays should be different (prevent thundering herd)
+    // With mocked random values, delays should be different (prevent thundering herd)
     // Check first retry delay varies across clients
     const firstDelays = [delays1[0], delays2[0], delays3[0]];
     const allSame = firstDelays.every(d => d === firstDelays[0]);
@@ -372,23 +385,20 @@ describe('jitter (A-023)', () => {
   });
 
   it('should never produce negative delays with jitter', async () => {
-    const fn = vi.fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('success');
-
     const delays: number[] = [];
-    const originalSetTimeout = global.setTimeout;
-
-    vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
-      if (delay > 0) {
-        delays.push(delay);
-      }
-      return originalSetTimeout(callback, 0) as any;
-    }) as any);
 
     // Run multiple times to ensure no negative delays
     for (let i = 0; i < 10; i++) {
       vi.useFakeTimers();
+      
+      const originalSetTimeout = global.setTimeout;
+      vi.spyOn(global, 'setTimeout').mockImplementation(((callback: any, delay: number) => {
+        if (delay > 0) {
+          delays.push(delay);
+        }
+        return originalSetTimeout(callback, 0) as any;
+      }) as any);
+
       const fnInstance = vi.fn()
         .mockRejectedValueOnce(new Error('fail'))
         .mockResolvedValue('success');
@@ -401,6 +411,7 @@ describe('jitter (A-023)', () => {
 
       await vi.runAllTimersAsync();
       await promise;
+      vi.restoreAllMocks();
     }
 
     // All delays should be non-negative
