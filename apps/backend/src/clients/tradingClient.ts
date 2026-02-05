@@ -251,6 +251,7 @@ export class TradingClient {
             backoffMultiplier: 2,
             jitter: 0.1,
             timeout: 5000, // 5 second timeout per attempt
+            totalTimeout: config.retryTotalTimeout,
           }
         );
       } catch (err) {

@@ -67,6 +67,9 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   RETRY_ATTEMPTS: numberFromEnv(3, z.number().int().positive()),
   RETRY_DELAY: numberFromEnv(1000, z.number().int().nonnegative()),
+  // Audit Finding A-009: Add overall timeout cap for retry operations
+  // Default: 5 minutes (300000ms) to prevent unbounded retry duration
+  RETRY_TOTAL_TIMEOUT: numberFromEnv(300000, z.number().int().positive()),
   LIVE_TRADING: booleanFromEnv.default(false),
   COMPLIANCE_ACCEPTED: booleanFromEnv.default(false),
   PORT: numberFromEnv(3000, z.number().int().positive()),
@@ -170,6 +173,7 @@ const configSchema = envSchema.refine(
   logLevel: env.LOG_LEVEL,
   retryAttempts: env.RETRY_ATTEMPTS,
   retryDelay: env.RETRY_DELAY,
+  retryTotalTimeout: env.RETRY_TOTAL_TIMEOUT,
   liveTrading: env.LIVE_TRADING,
   complianceAccepted: env.COMPLIANCE_ACCEPTED,
   port: env.PORT,

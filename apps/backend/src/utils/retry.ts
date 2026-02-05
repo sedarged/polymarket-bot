@@ -10,6 +10,8 @@ export interface RetryOptions {
   maxDelay?: number;
   /** Timeout for each attempt in milliseconds. If not set, no timeout is applied. */
   timeout?: number;
+  /** Overall timeout for all retry attempts combined in milliseconds. Default: 300000 (5 minutes). Addresses Audit Finding A-009 */
+  totalTimeout?: number;
   /** Function to determine if an error is retryable. Default: all errors are retryable. */
   isRetryable?: (error: Error) => boolean;
 }
@@ -61,10 +63,12 @@ export function classifyError(error: Error): ErrorType {
 /**
  * Retry a function with exponential backoff, jitter, and timeout support.
  * 
+ * Addresses Audit Finding A-009: Adds overall timeout cap to prevent unbounded retry duration.
+ * 
  * @param fn - The function to retry
  * @param options - Retry configuration options
  * @returns The result of the function
- * @throws The last error if all retry attempts fail
+ * @throws The last error if all retry attempts fail or TimeoutError if total timeout is exceeded
  */
 export async function retry<T>(
   fn: () => Promise<T>,
@@ -77,16 +81,33 @@ export async function retry<T>(
     jitter = 0.1,
     maxDelay = 30000,
     timeout,
+    totalTimeout = 300000, // Default: 5 minutes (A-009)
     isRetryable = () => true,
   } = options;
 
+  const startTime = Date.now();
   let lastError: Error | undefined;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    // Check if we've exceeded the total timeout before attempting
+    const elapsed = Date.now() - startTime;
+    if (elapsed >= totalTimeout) {
+      const timeoutError = new Error(
+        `Retry operation exceeded total timeout of ${totalTimeout}ms after ${elapsed}ms`
+      );
+      logger.error('Retry total timeout exceeded', {
+        totalTimeout,
+        elapsed,
+        attempts: attempt - 1,
+        lastError: lastError?.message,
+      });
+      throw timeoutError;
+    }
+
     try {
       const promise = fn();
       
-      // Apply timeout if specified
+      // Apply per-attempt timeout if specified
       if (timeout) {
         return await withTimeout(promise, timeout);
       }
@@ -101,6 +122,7 @@ export async function retry<T>(
         attempts,
         error: lastError.message,
         errorType,
+        elapsed: Date.now() - startTime,
       });
 
       // Check if error is retryable
@@ -123,10 +145,26 @@ export async function retry<T>(
         // Cap at maxDelay
         const waitTime = Math.min(delayWithJitter, maxDelay);
         
+        // Check if waiting would exceed total timeout
+        const elapsedBeforeWait = Date.now() - startTime;
+        if (elapsedBeforeWait + waitTime >= totalTimeout) {
+          const timeoutError = new Error(
+            `Retry operation would exceed total timeout of ${totalTimeout}ms. Stopping after ${attempt} attempts.`
+          );
+          logger.error('Total timeout would be exceeded by next retry delay', {
+            totalTimeout,
+            elapsed: elapsedBeforeWait,
+            waitTime,
+            attempts: attempt,
+          });
+          throw timeoutError;
+        }
+        
         logger.debug('Waiting before retry', { 
           waitTime: Math.round(waitTime),
           attempt,
           errorType,
+          elapsed: elapsedBeforeWait,
         });
         await sleep(waitTime);
       }
