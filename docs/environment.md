@@ -326,6 +326,11 @@ RISK_MAX_DRAWDOWN=0.20              # Max drawdown (20%)
 RISK_ERROR_RATE_THRESHOLD=0.10      # Error rate threshold (10%)
 RISK_ERROR_RATE_WINDOW=100          # Error rate window (orders)
 
+# Circuit Breaker Configuration (Audit Finding A-018)
+CIRCUIT_BREAKER_FAILURE_THRESHOLD=5       # Failures before opening (default: 5)
+CIRCUIT_BREAKER_RESET_TIMEOUT_MS=60000    # Time before retry in ms (default: 60s)
+CIRCUIT_BREAKER_SUCCESS_THRESHOLD=2       # Successes to close (default: 2)
+
 # Rate Limiting (Audit Finding A-008)
 RATE_LIMIT_MAX_REQUESTS=100         # Max requests per IP per window
 RATE_LIMIT_WINDOW_MS=60000          # Rate limit window (ms, 1 minute)

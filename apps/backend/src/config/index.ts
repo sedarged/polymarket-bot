@@ -114,6 +114,10 @@ const envSchema = z.object({
   RISK_MAX_DRAWDOWN: numberFromEnv(0.20, z.number().positive().max(1)),
   RISK_ERROR_RATE_THRESHOLD: numberFromEnv(0.10, z.number().nonnegative().max(1)),
   RISK_ERROR_RATE_WINDOW: numberFromEnv(100, z.number().int().positive()),
+  // Circuit Breaker Configuration (Audit Finding A-018)
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: numberFromEnv(5, z.number().int().positive()),
+  CIRCUIT_BREAKER_RESET_TIMEOUT_MS: numberFromEnv(60000, z.number().int().positive()),
+  CIRCUIT_BREAKER_SUCCESS_THRESHOLD: numberFromEnv(2, z.number().int().positive()),
   // Admin Authentication (Audit Finding A-004)
   // ADMIN_TOKEN is required for production and live trading modes
   ADMIN_TOKEN: z.string().optional(),
@@ -192,6 +196,9 @@ const configSchema = envSchema.refine(
   riskMaxDrawdown: env.RISK_MAX_DRAWDOWN,
   riskErrorRateThreshold: env.RISK_ERROR_RATE_THRESHOLD,
   riskErrorRateWindow: env.RISK_ERROR_RATE_WINDOW,
+  circuitBreakerFailureThreshold: env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+  circuitBreakerResetTimeoutMs: env.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
+  circuitBreakerSuccessThreshold: env.CIRCUIT_BREAKER_SUCCESS_THRESHOLD,
   adminToken: env.ADMIN_TOKEN,
   allowedOrigins: env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(s => s.length > 0),
   reconciliationIntervalSeconds: env.RECONCILIATION_INTERVAL_SECONDS,

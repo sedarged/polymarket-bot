@@ -435,4 +435,177 @@ describe('RiskManager', () => {
       await clearKillSwitchState();
     });
   });
+
+  describe('Circuit Breaker Auto-Reset (Audit Finding A-018)', () => {
+    beforeEach(() => {
+      // Initialize with custom circuit breaker settings for testing
+      riskManager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+        circuitBreakerFailureThreshold: 3,
+        circuitBreakerResetTimeoutMs: 1000, // 1 second for faster testing
+        circuitBreakerSuccessThreshold: 2,
+      });
+    });
+
+    afterEach(() => {
+      // Clean up circuit breaker
+      riskManager.destroy();
+    });
+
+    it('should include circuit breaker state in metrics', () => {
+      const metrics = riskManager.getMetrics();
+      
+      expect(metrics).toHaveProperty('circuitBreakerState');
+      expect(metrics).toHaveProperty('circuitBreakerMetrics');
+      expect(metrics.circuitBreakerMetrics).toHaveProperty('failures');
+      expect(metrics.circuitBreakerMetrics).toHaveProperty('successes');
+      expect(metrics.circuitBreakerMetrics).toHaveProperty('consecutiveFailures');
+      expect(metrics.circuitBreakerMetrics).toHaveProperty('consecutiveSuccesses');
+    });
+
+    it('should expose circuit breaker instance', () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      expect(breaker).toBeDefined();
+      expect(breaker.getState()).toBe('closed');
+    });
+
+    it('should block orders when circuit breaker is open', async () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      // Manually trigger circuit breaker failures
+      const failingFn = () => Promise.reject(new Error('test failure'));
+      
+      // Trip the circuit breaker (3 consecutive failures)
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      
+      expect(breaker.getState()).toBe('open');
+      expect(breaker.isOpen()).toBe(true);
+      
+      // Orders should be blocked
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        []
+      );
+      
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Circuit breaker is open');
+    });
+
+    it('should auto-reset circuit breaker after timeout', async () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      // Trip the circuit breaker
+      const failingFn = () => Promise.reject(new Error('test failure'));
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      
+      expect(breaker.getState()).toBe('open');
+      
+      // Wait for reset timeout (1 second + buffer)
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      
+      // Should transition to half-open
+      expect(breaker.getState()).toBe('half_open');
+      
+      // Successful requests should close the circuit
+      const successFn = () => Promise.resolve('success');
+      await breaker.execute(successFn);
+      await breaker.execute(successFn);
+      
+      expect(breaker.getState()).toBe('closed');
+      
+      // Orders should be allowed again
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        []
+      );
+      
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should reset circuit breaker on risk manager reset', async () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      // Get initial state
+      const initialState = breaker.getState();
+      expect(initialState).toBe('closed');
+      
+      // Manually open the circuit (simulate failures)
+      const failingFn = () => Promise.reject(new Error('test failure'));
+      
+      // Trip the circuit breaker
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      
+      // Circuit should be open now
+      expect(breaker.getState()).toBe('open');
+      
+      // Reset risk manager
+      riskManager.reset();
+      
+      // Circuit breaker should be closed
+      expect(breaker.getState()).toBe('closed');
+      
+      const metrics = breaker.getMetrics();
+      expect(metrics.failures).toBe(0);
+      expect(metrics.consecutiveFailures).toBe(0);
+    });
+
+    it('should track circuit breaker metrics correctly', async () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      // Record some successes
+      const successFn = () => Promise.resolve('success');
+      await breaker.execute(successFn);
+      await breaker.execute(successFn);
+      
+      let metrics = riskManager.getMetrics();
+      expect(metrics.circuitBreakerMetrics.successes).toBe(2);
+      expect(metrics.circuitBreakerMetrics.failures).toBe(0);
+      
+      // Record a failure
+      const failingFn = () => Promise.reject(new Error('test failure'));
+      await expect(breaker.execute(failingFn)).rejects.toThrow();
+      
+      metrics = riskManager.getMetrics();
+      expect(metrics.circuitBreakerMetrics.failures).toBe(1);
+      expect(metrics.circuitBreakerMetrics.consecutiveFailures).toBe(1);
+    });
+
+    it('should provide circuit breaker for wrapping API calls', async () => {
+      const breaker = riskManager.getCircuitBreaker();
+      
+      // Simulate wrapping an API call
+      const mockApiCall = async (shouldFail: boolean) => {
+        if (shouldFail) {
+          throw new Error('API error');
+        }
+        return { success: true };
+      };
+      
+      // Successful call
+      const result = await breaker.execute(() => mockApiCall(false));
+      expect(result).toEqual({ success: true });
+      
+      // Failed call
+      await expect(
+        breaker.execute(() => mockApiCall(true))
+      ).rejects.toThrow('API error');
+    });
+  });
 });
