@@ -21,7 +21,6 @@ To update this status:
 
 ## Next — P1 (High Priority)
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
-- [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
 - [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
@@ -63,6 +62,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
@@ -82,7 +82,7 @@ To update this status:
 - [P0] #73 [Backend] Persist kill switch state - Audit Finding A-002
 - [P0] #72 [Security] Secure storage of private key (.env) - Audit Finding A-001
 
-*Last updated: 2026-02-04T22:58:40.963Z*
+*Last updated: 2026-02-05T00:27:59.693Z*
 
 <!-- STATUS_SYNC_END -->
 
