@@ -17,10 +17,10 @@ To update this status:
 *No issues currently in progress*
 
 ## Next — P0 (Critical)
+- [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
-- [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #107 [Backend] Validate private key format at startup - Audit Finding A-024
 - [P1] #102 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
@@ -67,16 +67,12 @@ To update this status:
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
 - [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
 - [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
+- [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
 - [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
 - [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
-- [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
-- [P1] #109 [Logging] Mask sensitive data in logs - Audit Finding A-022
-- [P1] #108 [Backend] Add jitter to backoff calculation - Audit Finding A-023
-- [P1] #106 [Testing] Expand test coverage - Audit Finding A-025
-- [P1] #105 [Backend] Remove dead code and @ts-ignore comments - Audit Finding A-026
 
-*Last updated: 2026-02-06T00:45:51.551Z*
+*Last updated: 2026-02-06T01:18:41.689Z*
 
 <!-- STATUS_SYNC_END -->
 
