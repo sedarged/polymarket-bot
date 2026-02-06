@@ -1101,10 +1101,18 @@ export class TradingClient {
     }
 
     const startTime = Date.now();
-    const targetOrders = this.state.orders.filter(o => 
-      (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED') &&
-      (tokenId ? o.tokenId === tokenId : true)
-    );
+    
+    // NOTE: We can only safely update local state when tokenId is provided.
+    // The Order type does not currently include assetId, so when cancelling
+    // by assetId alone we cannot reliably determine which local orders were
+    // actually cancelled by the API. In that case, we leave local state
+    // unchanged and rely on later reconciliation to resync if needed.
+    const targetOrders = tokenId
+      ? this.state.orders.filter(o => 
+          (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED') &&
+          o.tokenId === tokenId
+        )
+      : [];
 
     logger.info('Cancelling all orders for market', {
       tokenId,
@@ -1125,13 +1133,15 @@ export class TradingClient {
 
       const duration = Date.now() - startTime;
 
-      // Update local state for cancelled orders
-      for (const order of targetOrders) {
-        order.status = 'CANCELLED';
-        
-        // Record cancellation metric
-        orderCancellations.inc({ reason: 'market-cancel', mode: 'live' });
-        openOrdersGauge.dec({ mode: 'live' });
+      // Update local state for cancelled orders (only if we have targetOrders)
+      if (targetOrders.length > 0) {
+        for (const order of targetOrders) {
+          order.status = 'CANCELLED';
+          
+          // Record cancellation metric
+          orderCancellations.inc({ reason: 'market-cancel', mode: 'live' });
+          openOrdersGauge.dec({ mode: 'live' });
+        }
       }
 
       logger.info('Market orders cancelled', {
@@ -1139,6 +1149,7 @@ export class TradingClient {
         assetId,
         totalOrders: targetOrders.length,
         durationMs: duration,
+        note: !tokenId ? 'Local state not updated - assetId cancellation relies on reconciliation' : undefined,
       });
     } catch (error) {
       const duration = Date.now() - startTime;

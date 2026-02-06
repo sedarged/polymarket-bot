@@ -573,6 +573,15 @@ export function createServer(): http.Server {
         const assetId = urlObj.searchParams.get('assetId') || undefined;
         const scope = urlObj.searchParams.get('scope') || 'all'; // 'all', 'market', 'risk-only'
 
+        // Validate scope parameter
+        if (scope !== 'all' && scope !== 'market' && scope !== 'risk-only') {
+          respondJson(res, 400, { 
+            success: false,
+            error: `Invalid scope parameter. Must be one of: 'all', 'market', 'risk-only'` 
+          }, req);
+          return;
+        }
+
         let cancelledCount = 0;
         let message = '';
 
@@ -584,7 +593,16 @@ export function createServer(): http.Server {
           } else {
             message = 'No risk manager active';
           }
-        } else if (scope === 'market' && (tokenId || assetId)) {
+        } else if (scope === 'market') {
+          // Validate that at least one identifier is provided for market-scoped cancellations
+          if (!tokenId && !assetId) {
+            respondJson(res, 400, {
+              success: false,
+              error: 'When scope is "market", either tokenId or assetId must be provided.',
+            }, req);
+            return;
+          }
+
           // Cancel orders for specific market only
           if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
             const beforeCount = tradingClient.getState().orders.filter(o => 
@@ -599,10 +617,21 @@ export function createServer(): http.Server {
             
             cancelledCount = beforeCount - afterCount;
           }
+          
+          // Note: Paper engine doesn't support selective cancellation yet
+          // It will cancel all orders regardless of market. This creates inconsistent
+          // behavior between live and paper modes, but is documented here.
+          let paperCancelledCount = 0;
           if (paperEngine) {
-            paperEngine.cancelAllOrders(); // Paper engine doesn't support selective cancel yet
+            const paperOrders = paperEngine.getState().orders.filter(o => 
+              o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+            );
+            paperCancelledCount = paperOrders.length;
+            paperEngine.cancelAllOrders();
           }
-          message = `Cancelled ${cancelledCount} orders for market ${tokenId || assetId}`;
+          
+          const totalCancelled = cancelledCount + paperCancelledCount;
+          message = `Cancelled ${totalCancelled} orders for market ${tokenId || assetId}${paperCancelledCount > 0 ? ` (note: paper engine cancelled all ${paperCancelledCount} orders due to lack of selective cancellation support)` : ''}`;
         } else {
           // Default: cancel all orders (original behavior)
           if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
