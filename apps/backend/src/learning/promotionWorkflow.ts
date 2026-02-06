@@ -151,15 +151,29 @@ export class PromotionWorkflow {
       tradeCountPass: performance.tradeCount >= this.config.criteria.minTradeCount,
       daysPass: daysSinceStart >= this.config.criteria.minDays,
       regimesPass: !this.config.criteria.requireMultipleRegimes || this.checkMultipleRegimes(performance),
-      overallPass: gatingResult.passed,
+      overallPass: false, // Will be set below
     };
+    
+    // Overall pass requires all individual checks to pass
+    criteriaCheck.overallPass = 
+      criteriaCheck.pnlPass &&
+      criteriaCheck.sharpePass &&
+      criteriaCheck.drawdownPass &&
+      criteriaCheck.errorRatePass &&
+      criteriaCheck.tradeCountPass &&
+      criteriaCheck.daysPass &&
+      criteriaCheck.regimesPass;
     
     // Determine new status
     let newStatus: PromotionStatus;
     
     if (!existing) {
-      // New strategy - start as experimental
-      newStatus = 'experimental';
+      // New strategy - check if it should be auto-flagged
+      if (criteriaCheck.overallPass && this.config.autoFlag) {
+        newStatus = 'under-review';
+      } else {
+        newStatus = 'experimental';
+      }
     } else if (existing.status === 'rejected') {
       // Once rejected, stays rejected unless manually changed
       newStatus = 'rejected';
@@ -421,7 +435,8 @@ export class PromotionWorkflow {
   private checkMultipleRegimes(performance: StrategyPerformance): boolean {
     // Simplified implementation: assume regime check is done externally
     // and indicated by having a reasonable sample size and win rate
-    return performance.tradeCount >= 50 && performance.winRate >= 0.4;
+    // For strategies with 50+ trades and decent win rate, assume multiple regimes covered
+    return performance.tradeCount >= 50 && performance.winRate >= 0.45;
   }
   
   /**
