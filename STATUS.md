@@ -25,10 +25,7 @@ To update this status:
 - [P1] #237 [PR-009] Learning System Allocation & Governance - Bandit algorithms and promotion workflow
 - [P1] #236 [PR-008] Learning System Foundation - Event store, signal catalog, backtesting framework
 - [P1] #235 [PR-007] Periodic Reconciliation - Automated state verification every 5-10 minutes
-- [P1] #234 [PR-006] Polymarket API Verification & CLOB Expansion - 100% API coverage
-- [P1] #227 [Phase 2] Expand CLOB API coverage: all core price endpoints, improved kill switch, advanced trading features
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
-- [P1] #97 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #85 [Backend] Implement event store for learning system - Learning System
 - [P1] #84 [Backend] Add feature/signal catalog - Learning System
 - [P1] #83 [Backend] Create offline evaluation framework - Learning System
@@ -59,16 +56,18 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P1] #234 [PR-006] Polymarket API Verification & CLOB Expansion - 100% API coverage
 - [P1] #233 [PR-005] Price & Market Endpoints - Complete price query API implementation
 - [P1] #232 [PR-004] Security Hardening - Remove unsafe casting & validate private keys
 - [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
 - [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
 - [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
+- [P1] #227 [Phase 2] Expand CLOB API coverage: all core price endpoints, improved kill switch, advanced trading features
 - [P1] #226 [High] Implement all price/query endpoints: GET /price, GET /lasttrade, spread/midpoint, etc.
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 
-*Last updated: 2026-02-06T15:32:14.561Z*
+*Last updated: 2026-02-06T19:21:18.297Z*
 
 <!-- STATUS_SYNC_END -->
 
