@@ -161,6 +161,224 @@ export class ClobClient {
   }
 
   /**
+   * Get current best executable price for a token
+   * 
+   * More efficient than fetching the full orderbook when you only need the current price.
+   * Returns the best price for immediate execution on the specified side.
+   * 
+   * @param tokenId - The token/asset ID
+   * @param side - The side of the market (BUY returns best ask, SELL returns best bid)
+   * @returns The current market price as a string for precision
+   * 
+   * @see {@link https://docs.polymarket.com/api-reference/pricing/get-market-price}
+   */
+  async getPrice(tokenId: string, side: 'BUY' | 'SELL'): Promise<string> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching price', { tokenId, side });
+        
+        const response = await this.client.get<{ price: string }>('/price', {
+          params: {
+            token_id: tokenId,
+            side,
+          },
+        });
+
+        logger.info('Retrieved price', { 
+          tokenId, 
+          side,
+          price: response.data.price 
+        });
+        
+        return response.data.price;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
+   * Get the most recent trade for a token
+   * 
+   * Returns the price, size, and timestamp of the last trade executed on this market.
+   * Useful for market tracking, analytics, and determining recent market activity.
+   * 
+   * @param tokenId - The token/asset ID
+   * @returns Last trade information including price, size, and timestamp
+   * 
+   * @see {@link https://docs.polymarket.com/developers/CLOB/clients/methods-public}
+   */
+  async getLastTrade(tokenId: string): Promise<{
+    token_id: string;
+    price: string;
+    size: string;
+    timestamp: string;
+  }> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching last trade', { tokenId });
+        
+        const response = await this.client.get<{
+          token_id: string;
+          price: string;
+          size: string;
+          timestamp: string;
+        }>('/lasttrade', {
+          params: {
+            token_id: tokenId,
+          },
+        });
+
+        logger.info('Retrieved last trade', { 
+          tokenId,
+          price: response.data.price,
+          size: response.data.size,
+          timestamp: response.data.timestamp
+        });
+        
+        return response.data;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
+   * Get the current bid-ask spread for a token
+   * 
+   * Returns the best bid price, best ask price, and the spread (difference) between them.
+   * The spread indicates market liquidity - smaller spreads generally mean more liquid markets.
+   * 
+   * @param tokenId - The token/asset ID
+   * @returns Spread information including bid, ask, and calculated spread
+   * 
+   * @see {@link https://docs.polymarket.com/developers/CLOB/clients/methods-public}
+   */
+  async getSpread(tokenId: string): Promise<{
+    token_id: string;
+    bid: string;
+    ask: string;
+    spread: string;
+  }> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching spread', { tokenId });
+        
+        const response = await this.client.get<{
+          token_id: string;
+          bid: string;
+          ask: string;
+          spread: string;
+        }>('/spread', {
+          params: {
+            token_id: tokenId,
+          },
+        });
+
+        logger.info('Retrieved spread', { 
+          tokenId,
+          bid: response.data.bid,
+          ask: response.data.ask,
+          spread: response.data.spread
+        });
+        
+        return response.data;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
+   * Get the midpoint price for a token
+   * 
+   * Returns the midpoint between the best bid and best ask prices.
+   * This is often used as a "fair value" estimate for the market.
+   * May be undefined if either side of the orderbook is empty.
+   * 
+   * @param tokenId - The token/asset ID
+   * @returns Midpoint price between bid and ask
+   * 
+   * @see {@link https://docs.polymarket.com/developers/CLOB/clients/methods-public}
+   */
+  async getMidpoint(tokenId: string): Promise<{
+    token_id: string;
+    midpoint: string;
+  }> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching midpoint', { tokenId });
+        
+        const response = await this.client.get<{
+          token_id: string;
+          midpoint: string;
+        }>('/midpoint', {
+          params: {
+            token_id: tokenId,
+          },
+        });
+
+        logger.info('Retrieved midpoint', { 
+          tokenId,
+          midpoint: response.data.midpoint
+        });
+        
+        return response.data;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
    * Clean up resources.
    */
   destroy(): void {
