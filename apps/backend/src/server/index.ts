@@ -164,13 +164,21 @@ const getClientIp = (req: http.IncomingMessage): string => {
 /**
  * Parse JSON request body
  * Returns parsed JSON object or throws on invalid JSON
+ * Limits body size to 1MB to prevent DoS attacks
  */
-const parseRequestBody = (req: http.IncomingMessage): Promise<any> => {
+const parseRequestBody = (req: http.IncomingMessage): Promise<Record<string, any>> => {
   return new Promise((resolve, reject) => {
     let body = '';
+    const maxBodySize = 1024 * 1024; // 1MB limit
     
     req.on('data', (chunk) => {
       body += chunk.toString();
+      
+      // Prevent memory exhaustion from large requests
+      if (body.length > maxBodySize) {
+        reject(new Error('Request body too large (max 1MB)'));
+        req.destroy();
+      }
     });
     
     req.on('end', () => {

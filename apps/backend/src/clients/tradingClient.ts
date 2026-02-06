@@ -1,4 +1,4 @@
-import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse, UserOrder } from '@polymarket/clob-client';
+import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse, UserOrder, PostOrdersArgs, OrderType } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
@@ -821,7 +821,7 @@ export class TradingClient {
       }
 
       // Create signed orders and prepare PostOrdersArgs
-      const postOrdersArgs: Array<any> = [];
+      const postOrdersArgs: PostOrdersArgs[] = [];
       
       for (const prepared of preparedOrders) {
         try {
@@ -832,7 +832,7 @@ export class TradingClient {
           
           postOrdersArgs.push({
             order: signedOrder,
-            orderType: 'GTC', // Good Till Cancelled
+            orderType: OrderType.GTC, // Good Till Cancelled
             postOnly: false,
           });
         } catch (error) {
