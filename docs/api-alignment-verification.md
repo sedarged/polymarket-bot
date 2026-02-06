@@ -3,6 +3,7 @@
 **Date:** 2026-02-06  
 **Issue:** #116 - Verify Polymarket API alignment with official documentation  
 **Status:** ✅ Verified and Documented  
+**Last Updated:** 2026-02-06 (PR-005 - Price Endpoints)
 
 ---
 
@@ -10,7 +11,19 @@
 
 This document provides verification that the Polymarket trading bot implementation aligns with official Polymarket API documentation (2026). All critical endpoints are correctly implemented, authenticated via official SDKs, and follow documented best practices.
 
-**Overall Assessment:** The implementation demonstrates **strong alignment** with official Polymarket APIs. All core functionality uses correct endpoints, parameters, and error handling. Identified gaps are optional features or enhancements that do not impact correctness.
+**Overall Assessment:** The implementation demonstrates **strong alignment** with official Polymarket APIs. All core functionality uses correct endpoints, parameters, and error handling. Recent improvements (PR-005) added critical price query endpoints, significantly improving API coverage and efficiency.
+
+**Recent Updates (PR-005):**
+- ✅ Added GET /price - Current market price
+- ✅ Added GET /lasttrade - Most recent trade data  
+- ✅ Added GET /spread - Bid-ask spread
+- ✅ Added GET /midpoint - Market midpoint
+
+**API Coverage:**
+- **CLOB API:** 6 of 12+ endpoints implemented (~50%, up from ~15%)
+- **Gamma API:** 2 of 9 endpoints implemented (~22%)
+- **Data API:** 3 of 3 critical endpoints implemented (100%)
+- **Overall:** Strong coverage of all critical trading operations
 
 ---
 
@@ -45,6 +58,10 @@ This document provides verification that the Polymarket trading bot implementati
 | **Chain ID** | ✅ Verified | 137 (Polygon Mainnet) | config.test.ts |
 | **GET /book** | ✅ Implemented | ClobClient.getOrderbook() | clob.test.ts |
 | **GET /tick-size** | ✅ Implemented | ClobClient.getMarketMetadata() | Issue #75 |
+| **GET /price** | ✅ Implemented | ClobClient.getPrice() | PR-005, clob.test.ts |
+| **GET /lasttrade** | ✅ Implemented | ClobClient.getLastTrade() | PR-005, clob.test.ts |
+| **GET /spread** | ✅ Implemented | ClobClient.getSpread() | PR-005, clob.test.ts |
+| **GET /midpoint** | ✅ Implemented | ClobClient.getMidpoint() | PR-005, clob.test.ts |
 | **GET /markets** | ✅ Implemented | GammaClient.getActiveMarkets() | gamma.test.ts |
 | **GET /events** | ✅ Implemented | GammaClient.getEvents() | gamma.test.ts |
 | **GET /positions** | ✅ Implemented | DataApiClient.getPositions() | dataApi.test.ts (PR-001) |
@@ -62,8 +79,6 @@ These are documented API features that are not currently implemented. They are o
 
 | Feature | Endpoint/Feature | Priority | Reason Not Implemented |
 |---------|-----------------|----------|------------------------|
-| Price endpoint | GET /price | Low | Can be derived from orderbook |
-| Midpoint endpoint | GET /midpoint | Low | Can be calculated from bid/ask |
 | Batch orderbook | GET /books | Medium | Individual fetches sufficient |
 | Price history | GET /price-history | Low | Historical analysis only |
 | Batch order create | POST /orders | High* | Sequential submission works |
@@ -109,6 +124,51 @@ These are documented API features that are not currently implemented. They are o
 - **Caching:** Yes (in TradingClient)
 - **Tests:** Issue #75 implementation
 - **Verification:** ✅ Matches official specification
+
+#### GET /price (PR-005)
+- **Implementation:** `ClobClient.getPrice(tokenId: string, side: 'BUY' | 'SELL')`
+- **Parameters:** `token_id`, `side` (query parameters)
+- **Response:** `{ price: string }`
+- **Returns:** String price for precision
+- **Use Case:** Efficient price discovery without full orderbook
+- **Error Handling:** Retry logic with exponential backoff
+- **Circuit Breaker:** Yes (5 failure threshold, 60s reset)
+- **Tests:** clob.test.ts (4 tests)
+- **Verification:** ✅ Matches official specification
+- **Documentation:** docs/price-endpoints-usage.md
+
+#### GET /lasttrade (PR-005)
+- **Implementation:** `ClobClient.getLastTrade(tokenId: string)`
+- **Parameters:** `token_id` (query parameter)
+- **Response:** `{ token_id: string, price: string, size: string, timestamp: string }`
+- **Use Case:** Market activity monitoring and analytics
+- **Error Handling:** Returns 404 if no trades exist
+- **Circuit Breaker:** Yes (5 failure threshold, 60s reset)
+- **Tests:** clob.test.ts (3 tests)
+- **Verification:** ✅ Matches official specification
+- **Documentation:** docs/price-endpoints-usage.md
+
+#### GET /spread (PR-005)
+- **Implementation:** `ClobClient.getSpread(tokenId: string)`
+- **Parameters:** `token_id` (query parameter)
+- **Response:** `{ token_id: string, bid: string, ask: string, spread: string }`
+- **Use Case:** Liquidity analysis and trading cost estimation
+- **Error Handling:** Retry logic with exponential backoff
+- **Circuit Breaker:** Yes (5 failure threshold, 60s reset)
+- **Tests:** clob.test.ts (4 tests, including tight/wide spread scenarios)
+- **Verification:** ✅ Matches official specification
+- **Documentation:** docs/price-endpoints-usage.md
+
+#### GET /midpoint (PR-005)
+- **Implementation:** `ClobClient.getMidpoint(tokenId: string)`
+- **Parameters:** `token_id` (query parameter)
+- **Response:** `{ token_id: string, midpoint: string }`
+- **Use Case:** Fair value estimation for limit orders
+- **Error Handling:** Returns 400 if orderbook empty (midpoint undefined)
+- **Circuit Breaker:** Yes (5 failure threshold, 60s reset)
+- **Tests:** clob.test.ts (4 tests, including empty orderbook)
+- **Verification:** ✅ Matches official specification
+- **Documentation:** docs/price-endpoints-usage.md
 
 #### POST /order (via SDK)
 - **Implementation:** `TradingClient.createOrder()` using `@polymarket/clob-client`
