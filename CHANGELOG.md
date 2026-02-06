@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0](https://github.com/sedarged/polymarket-bot/compare/v1.19.0...v1.20.0) (2026-02-06)
+
+
+### Features
+
+* implement batch operations and fast kill switch (PR-002) ([c8e635a](https://github.com/sedarged/polymarket-bot/commit/c8e635a77cdbb68e1b106d6cd99b03fa2e669728))
+
+
+### Bug Fixes
+
+* address code review feedback - improve type safety and security ([1abdde8](https://github.com/sedarged/polymarket-bot/commit/1abdde8590c949bc66870734609d59b623d21981))
+* address critical bugs in batch operations (PR review feedback) ([ca85e3a](https://github.com/sedarged/polymarket-bot/commit/ca85e3ae145c9b1d3ded8553e99e38080043aa4f))
+
 ## [1.19.0](https://github.com/sedarged/polymarket-bot/compare/v1.18.3...v1.19.0) (2026-02-06)
 
 
