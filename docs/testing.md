@@ -306,13 +306,23 @@ Tests run automatically on:
 
 ### GitHub Actions Workflow
 
+Current CI configuration (`.github/workflows/ci.yml`):
+
 ```yaml
-- name: Run tests
+- name: Run backend tests
   run: npm test
+  working-directory: apps/backend
 
-- name: Generate coverage
+- name: Run test coverage
   run: npm run test:coverage
+  working-directory: apps/backend
+  continue-on-error: true
+```
 
+**Note:** Coverage threshold enforcement is not currently implemented in CI. The coverage report is generated but does not fail the build if coverage falls below 80%. This could be added in the future with a step like:
+
+```yaml
+# Future enhancement - not currently implemented
 - name: Check coverage threshold
   run: |
     if [ $(jq '.total.lines.pct' coverage/coverage-final.json) -lt 80 ]; then

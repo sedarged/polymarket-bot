@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getHealthStatus, getReadinessStatus, HealthStatus, ReadinessStatus } from '../src/server/health';
+import { getHealthStatus, getReadinessStatus } from '../src/server/health';
 import { Config } from '../src/config';
 
 describe('Health Check - Audit Finding A-025', () => {
@@ -309,7 +309,7 @@ describe('Health Check - Audit Finding A-025', () => {
     it('should have descriptive messages for all checks', () => {
       const status = getReadinessStatus(true, true);
 
-      for (const [checkName, check] of Object.entries(status.checks)) {
+      for (const check of Object.values(status.checks)) {
         expect(check.message).toBeDefined();
         expect(check.message).not.toBe('');
         expect(typeof check.message).toBe('string');
