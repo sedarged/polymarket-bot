@@ -19,8 +19,6 @@ To update this status:
 ## Next — P0 (Critical)
 - [P0] #245 [PR-016 FINAL AUDIT ] MASTER FINAL AUDIT: Project Completion Gate for Production Deployment
 - [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
-- [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
-- [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
@@ -70,7 +68,9 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
 - [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
+- [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
@@ -78,14 +78,8 @@ To update this status:
 - [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
 - [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
-- [P1] #125 [Backend] Surface errors in balance fetch - Audit Finding A-011
-- [P1] #124 [WebSocket] Implement WebSocket message deduplication - Audit Finding A-010
-- [P1] #123 [Backend] Add timeout to retry logic - Audit Finding A-009
-- [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
-- [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
-- [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
 
-*Last updated: 2026-02-06T06:54:11.892Z*
+*Last updated: 2026-02-06T09:45:27.010Z*
 
 <!-- STATUS_SYNC_END -->
 
