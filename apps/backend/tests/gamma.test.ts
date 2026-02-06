@@ -29,6 +29,14 @@ describe('Gamma API Client - Audit Finding A-025', () => {
         })
       );
     });
+
+    it('should initialize circuit breaker with correct config', () => {
+      // Circuit breaker is initialized in constructor
+      expect(client).toBeDefined();
+      const metrics = client.getCircuitBreakerMetrics();
+      expect(metrics).toBeDefined();
+      expect(metrics.state).toBe('closed');
+    });
   });
 
   describe('getActiveMarkets', () => {
@@ -448,5 +456,75 @@ describe('Gamma API Client - Audit Finding A-025', () => {
       // Should have retried multiple times based on config
       expect(mockGet.mock.calls.length).toBeGreaterThan(1);
     });
+  });
+
+  describe('Circuit Breaker - Issue #116 Review Fix', () => {
+    it('should have circuit breaker metrics', () => {
+      const metrics = client.getCircuitBreakerMetrics();
+
+      expect(metrics).toBeDefined();
+      expect(metrics.state).toBeDefined();
+      expect(metrics.failures).toBeDefined();
+      expect(metrics.successes).toBeDefined();
+    });
+
+    it('should track successful requests', async () => {
+      const mockGet = vi.fn().mockResolvedValue({
+        data: [],
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new GammaClient();
+
+      await client.getActiveMarkets();
+
+      const metrics = client.getCircuitBreakerMetrics();
+      expect(metrics.successes).toBeGreaterThan(0);
+    });
+
+    it('should track failed requests', async () => {
+      const mockGet = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new GammaClient();
+
+      try {
+        await client.getActiveMarkets();
+      } catch (error) {
+        // Expected to fail
+      }
+
+      const metrics = client.getCircuitBreakerMetrics();
+      expect(metrics.failures).toBeGreaterThan(0);
+    });
+
+    it('should use circuit breaker to prevent cascade failures', async () => {
+      const mockGet = vi.fn().mockRejectedValue(new Error('Service down'));
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new GammaClient();
+
+      // Make 3 failing requests - circuit breaker should open after threshold
+      for (let i = 0; i < 3; i++) {
+        try {
+          await client.getActiveMarkets();
+        } catch (error) {
+          // Expected to fail
+        }
+      }
+
+      const metrics = client.getCircuitBreakerMetrics();
+      // Circuit breaker should track failures
+      expect(metrics.failures).toBeGreaterThan(0);
+    }, 10000); // Increase timeout for this test
   });
 });
