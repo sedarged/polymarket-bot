@@ -5,6 +5,7 @@ import { Position, Fill } from '@polymarket/shared';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);
@@ -26,7 +27,7 @@ describe('DataApiClient + AuditTrail Integration', () => {
   let mockAxiosInstance: {
     get: ReturnType<typeof vi.fn>;
   };
-  const testDbPath = path.join('/tmp', `test-audit-integration-${Date.now()}.db`);
+  const testDbPath = path.join(os.tmpdir(), `test-audit-integration-${Date.now()}.db`);
   const mockAddress = '0x1234567890abcdef1234567890abcdef12345678';
 
   beforeEach(() => {
@@ -109,13 +110,12 @@ describe('DataApiClient + AuditTrail Integration', () => {
       expect(auditFills).toHaveLength(1); // Only recorded one locally
 
       // Reconciliation logic: find missing fills by checking order IDs
-      // (In audit trail, fillId is auto-generated, so we compare by orderId)
       const auditOrderIds = new Set(auditFills.map(f => f.orderId));
       const missingFills = apiFills.filter(f => !auditOrderIds.has(f.orderId));
 
       // Should detect one missing fill
       expect(missingFills).toHaveLength(1);
-      expect(missingFills[0].orderId).toBe('order-2'); // Changed from fillId to orderId
+      expect(missingFills[0].orderId).toBe('order-2');
 
       // Record missing order and fill to complete reconciliation
       auditTrail.recordOrder({

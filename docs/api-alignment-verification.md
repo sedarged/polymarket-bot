@@ -26,7 +26,7 @@ This document provides verification that the Polymarket trading bot implementati
 
 - **CLOB API:** https://docs.polymarket.com/developers/CLOB/introduction
 - **Gamma API:** https://docs.polymarket.com/developers/gamma-markets-api/overview
-- **Data API:** https://data-api.polymarket.com (PR-001)
+- **Data API:** https://docs.polymarket.com/developers/data-api (PR-001)
 - **WebSocket:** https://docs.polymarket.com/developers/CLOB/websocket/wss-overview
 - **Rate Limits:** https://docs.polymarket.com/quickstart/introduction/rate-limits
 - **Endpoints:** https://docs.polymarket.com/quickstart/reference/endpoints

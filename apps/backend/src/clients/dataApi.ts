@@ -45,7 +45,6 @@ export interface ActivityEvent {
  * - Error classification for smart retry decisions
  * 
  * @see {@link https://data-api.polymarket.com}
- * @see {@link ../../../../docs/api-missing-endpoints-analysis.md}
  */
 export class DataApiClient {
   private client: AxiosInstance;
