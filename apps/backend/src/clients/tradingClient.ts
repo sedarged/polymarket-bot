@@ -1116,6 +1116,8 @@ export class TradingClient {
     try {
       // Use SDK's cancelMarketOrders for atomic cancellation of market orders
       // This calls DELETE /orders/market endpoint which is optimized for this use case
+      // Note: API uses snake_case (asset_id) while our code uses camelCase (assetId)
+      // for consistency with TypeScript conventions
       await this.client.cancelMarketOrders({
         market: tokenId,
         asset_id: assetId,

@@ -602,7 +602,7 @@ export function createServer(): http.Server {
           if (paperEngine) {
             paperEngine.cancelAllOrders(); // Paper engine doesn't support selective cancel yet
           }
-          message = `Market orders cancelled for ${tokenId || assetId}`;
+          message = `Cancelled ${cancelledCount} orders for market ${tokenId || assetId}`;
         } else {
           // Default: cancel all orders (original behavior)
           if (isLiveTradingEnabled() && tradingClient.isInitialized()) {

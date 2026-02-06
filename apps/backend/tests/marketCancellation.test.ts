@@ -55,6 +55,26 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
   let client: TradingClient;
   let mockClobClient: any;
 
+  // Helper function to create mock orders
+  const createMockOrder = (
+    orderId: string,
+    tokenId: string,
+    status: 'OPEN' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED',
+    filledSize: string = '0',
+    size: string = '100'
+  ) => ({
+    orderId,
+    tokenId,
+    status,
+    clientOrderId: `client-${orderId}`,
+    side: 'BUY' as const,
+    price: '0.5',
+    size,
+    createdAt: Date.now(),
+    filledSize,
+    remainingSize: String(Number(size) - Number(filledSize)),
+  });
+
   beforeEach(() => {
     // Reset all mocks before each test
     vi.clearAllMocks();
@@ -79,42 +99,9 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
     it('should cancel all orders for a specific token', async () => {
       // Set up test state with orders from multiple markets
       (client as any).state.orders = [
-        { 
-          orderId: 'order1', 
-          tokenId: 'token-abc', 
-          status: 'OPEN',
-          clientOrderId: 'client1',
-          side: 'BUY',
-          price: '0.5',
-          size: '100',
-          createdAt: Date.now(),
-          filledSize: '0',
-          remainingSize: '100',
-        },
-        { 
-          orderId: 'order2', 
-          tokenId: 'token-abc', 
-          status: 'PARTIALLY_FILLED',
-          clientOrderId: 'client2',
-          side: 'SELL',
-          price: '0.6',
-          size: '200',
-          createdAt: Date.now(),
-          filledSize: '50',
-          remainingSize: '150',
-        },
-        { 
-          orderId: 'order3', 
-          tokenId: 'token-xyz', 
-          status: 'OPEN',
-          clientOrderId: 'client3',
-          side: 'BUY',
-          price: '0.7',
-          size: '50',
-          createdAt: Date.now(),
-          filledSize: '0',
-          remainingSize: '50',
-        },
+        createMockOrder('order1', 'token-abc', 'OPEN'),
+        createMockOrder('order2', 'token-abc', 'PARTIALLY_FILLED', '50', '200'),
+        createMockOrder('order3', 'token-xyz', 'OPEN'),
       ];
 
       await client.cancelMarketOrders('token-abc');
@@ -168,10 +155,10 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
 
     it('should only cancel open and partially filled orders', async () => {
       (client as any).state.orders = [
-        { orderId: 'order1', tokenId: 'token-abc', status: 'OPEN', clientOrderId: 'c1', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '0', remainingSize: '100' },
-        { orderId: 'order2', tokenId: 'token-abc', status: 'FILLED', clientOrderId: 'c2', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '100', remainingSize: '0' },
-        { orderId: 'order3', tokenId: 'token-abc', status: 'CANCELLED', clientOrderId: 'c3', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '0', remainingSize: '100' },
-        { orderId: 'order4', tokenId: 'token-abc', status: 'PARTIALLY_FILLED', clientOrderId: 'c4', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '50', remainingSize: '50' },
+        createMockOrder('order1', 'token-abc', 'OPEN'),
+        createMockOrder('order2', 'token-abc', 'FILLED', '100'),
+        createMockOrder('order3', 'token-abc', 'CANCELLED'),
+        createMockOrder('order4', 'token-abc', 'PARTIALLY_FILLED', '50'),
       ];
 
       await client.cancelMarketOrders('token-abc');
@@ -185,7 +172,7 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
 
     it('should handle API errors gracefully', async () => {
       (client as any).state.orders = [
-        { orderId: 'order1', tokenId: 'token-abc', status: 'OPEN', clientOrderId: 'c1', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '0', remainingSize: '100' },
+        createMockOrder('order1', 'token-abc', 'OPEN'),
       ];
 
       mockClobClient.cancelMarketOrders.mockRejectedValue(
@@ -205,7 +192,7 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
       const { logger } = await import('../src/utils/logger');
       
       (client as any).state.orders = [
-        { orderId: 'order1', tokenId: 'token-abc', status: 'OPEN', clientOrderId: 'c1', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '0', remainingSize: '100' },
+        createMockOrder('order1', 'token-abc', 'OPEN'),
       ];
 
       await client.cancelMarketOrders('token-abc');
@@ -233,8 +220,8 @@ describe('TradingClient - Market-Specific Cancellation (PR-006)', () => {
       const { orderCancellations, openOrders } = await import('../src/utils/metrics');
       
       (client as any).state.orders = [
-        { orderId: 'order1', tokenId: 'token-abc', status: 'OPEN', clientOrderId: 'c1', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '0', remainingSize: '100' },
-        { orderId: 'order2', tokenId: 'token-abc', status: 'PARTIALLY_FILLED', clientOrderId: 'c2', side: 'BUY', price: '0.5', size: '100', createdAt: Date.now(), filledSize: '50', remainingSize: '50' },
+        createMockOrder('order1', 'token-abc', 'OPEN'),
+        createMockOrder('order2', 'token-abc', 'PARTIALLY_FILLED', '50'),
       ];
 
       await client.cancelMarketOrders('token-abc');
