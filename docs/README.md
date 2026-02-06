@@ -42,6 +42,10 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Paper Trading Guide](./paper-trading.md) - Safe testing without real money
 - [Report Digest](./report-digest.md) - Analysis summaries and findings
 
+### Learning & Experimentation
+- [Learning System Guide](./learning-system.md) - Event store, signal catalog, and backtesting framework
+- [Learning System Design](../REPORTS/LEARNING_SYSTEM.md) - Complete architecture and design specification
+
 ### AI & Automation
 - [Project Layout](./ai/project-layout.md) - Repository structure and key files
 - [Common Pitfalls](./ai/common-pitfalls.md) - Trading bot pitfalls and how to avoid them
