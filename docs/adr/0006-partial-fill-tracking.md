@@ -162,12 +162,34 @@ Created comprehensive test suite (`partialFills.test.ts`) covering:
 - Missed fill detection during reconciliation
 - Edge cases (zero fills, decreasing fills)
 
+**Additional test coverage (`orderIdValidation.test.ts`):**
+- Order ID validation (Audit Finding A-013)
+- Rejection of undefined/null/empty order IDs
+- Prevention of state corruption from invalid data
+- Graceful handling of reconciliation errors
+
 ### Integration Points
 
 1. **Paper Trading Engine**: Already supports partial fills via `partialFillRate` config
 2. **Live Trading Client**: Now has `handleFill` and `updateOrderState` methods
 3. **WebSocket**: Message types defined for user fill events (ready for implementation)
 4. **Risk Manager**: Works with actual positions from filled amounts
+
+### Order ID Validation (A-013)
+
+**Problem:** Orders with undefined/null/empty order IDs cannot be tracked, cancelled, or reconciled properly.
+
+**Solution:** Implemented in `mapOrder()` and `updateOrderState()`:
+- Throw error for missing/empty order IDs (prevents state corruption)
+- Throw error for missing/empty token IDs (prevents position drift)
+- Log errors with audit finding reference (A-013)
+- Gracefully handle validation failures during reconciliation
+
+**Impact:**
+- Orders with invalid IDs are rejected instead of creating phantom entries
+- Position calculations remain accurate
+- Reconciliation cannot be confused by untrackable orders
+- Clear error messages for debugging
 
 ### Performance Considerations
 
@@ -186,8 +208,14 @@ Created comprehensive test suite (`partialFills.test.ts`) covering:
 ## References
 
 - REPORTS/GAP_ANALYSIS.md (lines 236-271)
-- Issue sedarged/polymarket-bot#132
+- REPORTS/AUDIT.md (Finding A-013: Undefined Order ID)
+- REPORTS/AUDIT.md (Finding A-014: Position Calculation)
+- Issue sedarged/polymarket-bot#98 - Implement robust partial fill tracking
+- Issue sedarged/polymarket-bot#127 - Do not allow undefined order IDs (A-013)
+- Issue sedarged/polymarket-bot#130 - Update position calculation logic (A-014)
+- Issue sedarged/polymarket-bot#231 - PR-003 Partial Fill Tracking & Position Logic
 - apps/backend/src/clients/tradingClient.ts
 - apps/backend/src/trading/paperTradingEngine.ts
-- apps/backend/tests/partialFills.test.ts
+- apps/backend/tests/partialFills.test.ts (848 lines, 21 tests)
+- apps/backend/tests/orderIdValidation.test.ts (12 tests for A-013)
 - packages/shared/src/index.ts (Order and Fill interfaces)
