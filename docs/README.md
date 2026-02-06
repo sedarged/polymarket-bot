@@ -17,6 +17,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
+- [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
@@ -103,9 +104,10 @@ polymarket-bot/
 
 ### For Developers
 1. [Architecture Map](./architecture.md) - Understand the technical design
-2. [Implementation Checklist](./implementation-checklist.md) - Track implementation progress
-3. [Common Pitfalls](./ai/common-pitfalls.md) - Avoid known issues
-4. [ADR-0001](./migration-log.md) - Understand key decisions
+2. [Testing Guide](./testing.md) - Test strategy and best practices
+3. [Implementation Checklist](./implementation-checklist.md) - Track implementation progress
+4. [Common Pitfalls](./ai/common-pitfalls.md) - Avoid known issues
+5. [ADR-0001](./migration-log.md) - Understand key decisions
 
 ### For Operators
 1. [Runbook](./runbook.md) - How to run and manage the bot
