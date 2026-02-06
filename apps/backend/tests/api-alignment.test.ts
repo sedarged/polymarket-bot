@@ -136,7 +136,7 @@ describe('Polymarket API Alignment - Issue #116', () => {
     it('should document HTTP 429 Rate Limit handling', () => {
       // Official Error: 429 Too Many Requests
       // Implementation: Retry logic with exponential backoff
-      // Status: ✅ Implemented with retry (clob.test.ts:139-166)
+      // Status: ✅ Implemented with retry (see clob.test.ts)
       // Recommendation: Add rate limiter (RESEARCH_REVIEW.md Section 5.1.1)
       expect(true).toBe(true);
     });
@@ -292,42 +292,42 @@ describe('Polymarket API Alignment - Issue #116', () => {
     it('should document subscription format', () => {
       // Official Format: { type: 'market', assets_ids: ['id1', 'id2', ...] }
       // Implementation: MarketFeedClient.subscribe()
-      // Status: ✅ Matches official spec (marketFeed.ts:76-82)
+      // Status: ✅ Matches official spec (see marketFeed.ts)
       expect(true).toBe(true);
     });
 
     it('should document book message type', () => {
       // Message Type: book (full orderbook snapshot)
       // Implementation: MarketFeedClient.handleSnapshot()
-      // Status: ✅ Implemented (marketFeed.ts:127-139)
+      // Status: ✅ Implemented (see marketFeed.ts)
       expect(true).toBe(true);
     });
 
     it('should document price_change message type', () => {
       // Message Type: price_change (incremental update)
       // Implementation: MarketFeedClient.handlePriceChange()
-      // Status: ✅ Implemented (marketFeed.ts:141-182)
+      // Status: ✅ Implemented (see marketFeed.ts)
       expect(true).toBe(true);
     });
 
     it('should document last_trade_price message type', () => {
       // Message Type: last_trade_price
       // Implementation: Logged but not processed
-      // Status: ✅ Acknowledged (marketFeed.ts:122)
+      // Status: ✅ Acknowledged (see marketFeed.ts)
       expect(true).toBe(true);
     });
 
     it('should document reconnection best practice', () => {
       // Best Practice: Exponential backoff with max delay
       // Implementation: WebSocketClient with configurable delays
-      // Status: ✅ Implemented (websocket.ts)
+      // Status: ✅ Implemented (see websocket.ts)
       expect(true).toBe(true);
     });
 
     it('should document resync best practice', () => {
       // Best Practice: Resync orderbook after reconnect
       // Implementation: MarketFeedClient.resyncAll()
-      // Status: ✅ Implemented (marketFeed.ts:144-173)
+      // Status: ✅ Implemented (see marketFeed.ts)
       expect(true).toBe(true);
     });
 
@@ -375,7 +375,7 @@ describe('Polymarket API Alignment - Issue #116', () => {
     it('should use official SDK for L1/L2 authentication', () => {
       // SDK: @polymarket/clob-client v5.2.1
       // Implementation: TradingClient.initialize()
-      // Status: ✅ Uses official SDK (tradingClient.ts:142-159)
+      // Status: ✅ Uses official SDK (see tradingClient.ts)
       expect(true).toBe(true);
     });
 
@@ -436,14 +436,14 @@ describe('Polymarket API Alignment - Issue #116', () => {
     it('should document clientOrderId for idempotency', () => {
       // Feature: clientOrderId (UUID v4)
       // Implementation: TradingClient.createOrder()
-      // Status: ✅ Implemented (A-006, tradingClient.ts:609-611)
+      // Status: ✅ Implemented (A-006, see tradingClient.ts)
       expect(true).toBe(true);
     });
 
     it('should document duplicate order prevention', () => {
       // Feature: Duplicate submission tracking
       // Implementation: submittedOrderIds Set
-      // Status: ✅ Implemented (tradingClient.ts:108, 618-624)
+      // Status: ✅ Implemented (see tradingClient.ts)
       expect(true).toBe(true);
     });
   });
@@ -452,35 +452,35 @@ describe('Polymarket API Alignment - Issue #116', () => {
     it('should document retry logic with exponential backoff', () => {
       // Feature: Retry with exponential backoff + jitter
       // Implementation: retry() utility (retry.ts)
-      // Status: ✅ Implemented (A-023, clob.test.ts:308-342)
+      // Status: ✅ Implemented (A-023, clob.test.ts)
       expect(true).toBe(true);
     });
 
     it('should document circuit breaker pattern', () => {
       // Feature: Circuit breaker for cascade failure prevention
       // Implementation: CircuitBreaker class
-      // Status: ✅ Implemented (A-018, clob.ts:40-58)
+      // Status: ✅ Implemented (A-018, clob.ts)
       expect(true).toBe(true);
     });
 
     it('should document timeout configuration', () => {
       // Feature: Request timeouts (10s default)
       // Implementation: Axios timeout config
-      // Status: ✅ Implemented (A-009, clob.ts:38, gamma.ts:29)
+      // Status: ✅ Implemented (A-009, clob.ts, gamma.ts)
       expect(true).toBe(true);
     });
 
     it('should document kill switch capability', () => {
       // Feature: Emergency order cancellation
       // Implementation: TradingClient.cancelAllOrders()
-      // Status: ✅ Implemented (tradingClient.ts:750-808)
+      // Status: ✅ Implemented (tradingClient.ts)
       expect(true).toBe(true);
     });
 
     it('should document startup reconciliation', () => {
       // Feature: State reconciliation on startup
       // Implementation: TradingClient.reconcile()
-      // Status: ✅ Implemented (A-006, tradingClient.ts:165-221)
+      // Status: ✅ Implemented (A-006, tradingClient.ts)
       expect(true).toBe(true);
     });
 

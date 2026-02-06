@@ -93,7 +93,7 @@ These are documented API features that are not currently implemented. They are o
 - **Response:** `{ bids: [], asks: [] }` (Orderbook type)
 - **Error Handling:** Retry logic with exponential backoff
 - **Circuit Breaker:** Yes (5 failure threshold, 60s reset)
-- **Tests:** clob.test.ts:42-74
+- **Tests:** See clob.test.ts
 - **Verification:** ✅ Matches official specification
 
 #### GET /tick-size
@@ -169,7 +169,7 @@ These are documented API features that are not currently implemented. They are o
   - `limit={n}` ✅
 - **Response:** Array of Market objects
 - **Error Handling:** Retry logic with exponential backoff
-- **Tests:** gamma.test.ts:34-165
+- **Tests:** See gamma.test.ts
 - **Verification:** ✅ Matches official specification
 
 #### GET /events
@@ -180,7 +180,7 @@ These are documented API features that are not currently implemented. They are o
   - `limit={n}` ✅
 - **Response:** Array of Event objects
 - **Error Handling:** Retry logic with exponential backoff
-- **Tests:** gamma.test.ts:168-297
+- **Tests:** See gamma.test.ts
 - **Verification:** ✅ Matches official specification
 
 ### Missing Parameters ⚠️
@@ -211,7 +211,7 @@ These are documented parameters not currently implemented:
   assets_ids: ['token_id_1', 'token_id_2', ...]
 }
 ```
-- **Implementation:** MarketFeedClient.subscribe() (marketFeed.ts:76-82)
+- **Implementation:** `MarketFeedClient.subscribe()` in `marketFeed.ts`
 - **Verification:** ✅ Matches official specification exactly
 
 #### Message Types
@@ -278,7 +278,7 @@ These are documented parameters not currently implemented:
 - **Timeout:** 10s per attempt (configurable)
 - **Total Timeout:** Configurable (default 60s)
 - **Error Classification:** ErrorType enum (PERMANENT, TRANSIENT, RATE_LIMIT, etc.)
-- **Tests:** clob.test.ts:308-342, gamma.test.ts:430-451
+- **Tests:** See clob.test.ts, gamma.test.ts
 - **Verification:** ✅ Implements official best practices (A-023)
 
 ### Circuit Breaker ✅
@@ -289,7 +289,7 @@ These are documented parameters not currently implemented:
 - **States:** closed → open → half-open → closed
 - **Metrics:** Tracked and exposed
 - **Auto-Reset:** Yes (with metrics)
-- **Tests:** clob.test.ts:168-189
+- **Tests:** See clob.test.ts
 - **Verification:** ✅ Industry standard pattern (A-018)
 
 ### Idempotency ✅
