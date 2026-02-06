@@ -1,8 +1,12 @@
 # Learning System Design Report
 
 **Date:** 2026-02-01  
-**Status:** Draft (Design Complete, Implementation Pending)  
+**Status:** Implemented (PR-008, PR-009)  
 **Scope:** Evidence-based learning and experimentation system for the Polymarket trading bot (paper trading only)
+
+**Implementation Status:**
+- ✅ **PR-008:** Event store, signal catalog, backtest engine
+- ✅ **PR-009:** Bandit allocation, metrics gating, promotion workflow
 
 ---
 
@@ -14,9 +18,13 @@ Key outcomes:
 - A unified **Data Event Store** schema for market events, signals, decisions, executions, and metrics.
 - A **Feature/Signal Catalog** with standardized definitions and metadata.
 - An **Offline Evaluation Framework** with reproducible backtesting and metrics.
-- A **Bandit/Allocation** design for paper-only experimentation and A/B testing.
-- **Promotion criteria** and governance for strategy advancement.
+- A **Bandit/Allocation** design for paper-only experimentation and A/B testing. ✅ **Implemented**
+- **Promotion criteria** and governance for strategy advancement. ✅ **Implemented**
 - Integration points with existing paper trading engine, data ingestion, and dashboard UI (#30).
+
+**Documentation:**
+- Implementation guide: [docs/learning-system-allocation.md](../docs/learning-system-allocation.md)
+- Module README: [apps/backend/src/learning/README.md](../apps/backend/src/learning/README.md)
 
 ---
 
