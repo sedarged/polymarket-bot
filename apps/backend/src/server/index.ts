@@ -562,27 +562,82 @@ export function createServer(): http.Server {
     }
 
     // Kill endpoint with admin token auth (as per requirements)
-    if (method === 'POST' && url === '/kill') {
+    // Enhanced to support selective cancellation (Issue #234, PR-006)
+    if (method === 'POST' && (url === '/kill' || url.startsWith('/kill?'))) {
       if (!requireAdminAuth(req, res, 'Kill')) return;
 
       try {
-        // Cancel orders in both live and paper trading
-        if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
-          await tradingClient.cancelAllOrders();
-        }
-        if (paperEngine) {
-          paperEngine.cancelAllOrders();
-        }
-        if (riskManager) {
-          riskManager.kill();
+        // Parse query parameters for selective cancellation
+        const urlObj = new URL(url, `http://${req.headers.host}`);
+        const tokenId = urlObj.searchParams.get('tokenId') || undefined;
+        const assetId = urlObj.searchParams.get('assetId') || undefined;
+        const scope = urlObj.searchParams.get('scope') || 'all'; // 'all', 'market', 'risk-only'
+
+        let cancelledCount = 0;
+        let message = '';
+
+        if (scope === 'risk-only') {
+          // Only trigger risk manager kill, don't cancel orders
+          if (riskManager) {
+            riskManager.kill();
+            message = 'Risk manager killed, trading disabled';
+          } else {
+            message = 'No risk manager active';
+          }
+        } else if (scope === 'market' && (tokenId || assetId)) {
+          // Cancel orders for specific market only
+          if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+            const beforeCount = tradingClient.getState().orders.filter(o => 
+              o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+            ).length;
+            
+            await tradingClient.cancelMarketOrders(tokenId, assetId);
+            
+            const afterCount = tradingClient.getState().orders.filter(o => 
+              o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+            ).length;
+            
+            cancelledCount = beforeCount - afterCount;
+          }
+          if (paperEngine) {
+            paperEngine.cancelAllOrders(); // Paper engine doesn't support selective cancel yet
+          }
+          message = `Market orders cancelled for ${tokenId || assetId}`;
+        } else {
+          // Default: cancel all orders (original behavior)
+          if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
+            const beforeCount = tradingClient.getState().orders.filter(o => 
+              o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
+            ).length;
+            
+            await tradingClient.cancelAllOrders();
+            cancelledCount = beforeCount;
+          }
+          if (paperEngine) {
+            paperEngine.cancelAllOrders();
+          }
+          if (riskManager) {
+            riskManager.kill();
+          }
+          message = 'Kill switch activated: all orders cancelled, trading disabled';
         }
 
         respondJson(res, 200, { 
           success: true, 
-          message: 'Kill switch activated: all orders cancelled, trading disabled',
+          message,
+          scope,
+          tokenId,
+          assetId,
+          cancelledCount,
           riskManager: riskManager ? riskManager.getMetrics() : null,
         }, req);
-        logger.error('Kill switch activated via /kill endpoint');
+        
+        logger.error('Kill switch activated via /kill endpoint', {
+          scope,
+          tokenId,
+          assetId,
+          cancelledCount,
+        });
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to activate kill switch',

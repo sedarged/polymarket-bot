@@ -1074,6 +1074,84 @@ export class TradingClient {
   }
 
   /**
+   * Cancel all orders for a specific market
+   * 
+   * Efficiently cancels all open orders for a particular token/market using the
+   * atomic DELETE /orders/market endpoint. Much faster than cancelling orders
+   * individually when you want to exit a specific market position.
+   * 
+   * @param tokenId - The token/market ID to cancel all orders for
+   * @param assetId - Optional asset ID (alternative to tokenId)
+   * 
+   * @example
+   * ```typescript
+   * // Cancel all orders for a specific market
+   * await tradingClient.cancelMarketOrders('token123');
+   * ```
+   */
+  async cancelMarketOrders(tokenId?: string, assetId?: string): Promise<void> {
+    assertLiveTradingEnabled();
+
+    if (!this.client) {
+      throw new Error('Trading client not initialized');
+    }
+
+    if (!tokenId && !assetId) {
+      throw new Error('Either tokenId or assetId must be provided');
+    }
+
+    const startTime = Date.now();
+    const targetOrders = this.state.orders.filter(o => 
+      (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED') &&
+      (tokenId ? o.tokenId === tokenId : true)
+    );
+
+    logger.info('Cancelling all orders for market', {
+      tokenId,
+      assetId,
+      orderCount: targetOrders.length,
+      method: 'cancelMarketOrders',
+    });
+
+    try {
+      // Use SDK's cancelMarketOrders for atomic cancellation of market orders
+      // This calls DELETE /orders/market endpoint which is optimized for this use case
+      await this.client.cancelMarketOrders({
+        market: tokenId,
+        asset_id: assetId,
+      });
+
+      const duration = Date.now() - startTime;
+
+      // Update local state for cancelled orders
+      for (const order of targetOrders) {
+        order.status = 'CANCELLED';
+        
+        // Record cancellation metric
+        orderCancellations.inc({ reason: 'market-cancel', mode: 'live' });
+        openOrdersGauge.dec({ mode: 'live' });
+      }
+
+      logger.info('Market orders cancelled', {
+        tokenId,
+        assetId,
+        totalOrders: targetOrders.length,
+        durationMs: duration,
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error('Market order cancellation failed', {
+        error: error instanceof Error ? error.message : String(error),
+        tokenId,
+        assetId,
+        orderCount: targetOrders.length,
+        durationMs: duration,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get current trading state
    */
   getState(): TradingState {

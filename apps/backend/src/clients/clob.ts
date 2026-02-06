@@ -379,6 +379,92 @@ export class ClobClient {
   }
 
   /**
+   * Get historical price data for a token
+   * 
+   * Retrieves historical price points at specified intervals for analytics, backtesting,
+   * and historical analysis. Useful for understanding market trends and price movements.
+   * 
+   * @param tokenId - The token/asset ID
+   * @param params - Query parameters for filtering historical data
+   * @param params.interval - Time interval for price points ('1h', '6h', '1d', '1w', 'max')
+   * @param params.startTs - Start timestamp in seconds (optional)
+   * @param params.endTs - End timestamp in seconds (optional)
+   * @param params.fidelity - Number of data points to return (optional)
+   * @returns Array of historical price points with timestamps
+   * 
+   * @see {@link https://docs.polymarket.com/developers/CLOB/clients/methods-public}
+   * 
+   * @example
+   * ```typescript
+   * // Get last 24 hours of hourly prices
+   * const prices = await client.getPriceHistory('token123', {
+   *   interval: '1h',
+   *   startTs: Math.floor((Date.now() - 86400000) / 1000),
+   *   endTs: Math.floor(Date.now() / 1000)
+   * });
+   * ```
+   */
+  async getPriceHistory(
+    tokenId: string,
+    params?: {
+      interval?: '1h' | '6h' | '1d' | '1w' | 'max';
+      startTs?: number;
+      endTs?: number;
+      fidelity?: number;
+    }
+  ): Promise<Array<{
+    timestamp: number;
+    price: string;
+    volume?: string;
+  }>> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching price history', { tokenId, params });
+        
+        const response = await this.client.get<Array<{
+          t: number; // timestamp
+          p: string; // price
+          v?: string; // volume
+        }>>('/prices/history', {
+          params: {
+            token_id: tokenId,
+            ...params,
+          },
+        });
+
+        // Transform response to more readable format
+        const history = response.data.map(point => ({
+          timestamp: point.t,
+          price: point.p,
+          volume: point.v,
+        }));
+
+        logger.info('Retrieved price history', { 
+          tokenId,
+          dataPoints: history.length,
+          interval: params?.interval,
+        });
+        
+        return history;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 15000, // Slightly longer timeout for historical data
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
    * Clean up resources.
    */
   destroy(): void {
