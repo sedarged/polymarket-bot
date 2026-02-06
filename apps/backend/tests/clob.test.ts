@@ -341,4 +341,415 @@ describe('CLOB Client - Audit Finding A-025', () => {
       }
     }, 30000); // Increase timeout for this test
   });
+
+  describe('getPrice - PR-005', () => {
+    it('should fetch current price for BUY side successfully', async () => {
+      const mockPrice = { price: '0.55' };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockPrice,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPrice('test-token', 'BUY');
+
+      expect(mockGet).toHaveBeenCalledWith('/price', {
+        params: { token_id: 'test-token', side: 'BUY' },
+      });
+      expect(result).toBe('0.55');
+    });
+
+    it('should fetch current price for SELL side successfully', async () => {
+      const mockPrice = { price: '0.45' };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockPrice,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPrice('test-token', 'SELL');
+
+      expect(mockGet).toHaveBeenCalledWith('/price', {
+        params: { token_id: 'test-token', side: 'SELL' },
+      });
+      expect(result).toBe('0.45');
+    });
+
+    it('should handle price precision correctly', async () => {
+      const mockPrice = { price: '0.123456789' };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockPrice,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPrice('test-token', 'BUY');
+
+      // Price should remain as string for precision
+      expect(typeof result).toBe('string');
+      expect(result).toBe('0.123456789');
+    });
+
+    it('should retry on transient errors', async () => {
+      let callCount = 0;
+      const mockGet = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount < 2) {
+          const error: any = new Error('Network error');
+          error.code = 'ECONNRESET';
+          return Promise.reject(error);
+        }
+        return Promise.resolve({
+          data: { price: '0.50' },
+        });
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPrice('test-token', 'BUY');
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(result).toBe('0.50');
+    });
+  });
+
+  describe('getLastTrade - PR-005', () => {
+    it('should fetch last trade successfully', async () => {
+      const mockLastTrade = {
+        token_id: 'test-token',
+        price: '0.55',
+        size: '100',
+        timestamp: '2026-02-06T12:00:00Z',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockLastTrade,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getLastTrade('test-token');
+
+      expect(mockGet).toHaveBeenCalledWith('/lasttrade', {
+        params: { token_id: 'test-token' },
+      });
+      expect(result).toEqual(mockLastTrade);
+    });
+
+    it('should include all trade fields', async () => {
+      const mockLastTrade = {
+        token_id: 'my-token',
+        price: '0.75',
+        size: '250',
+        timestamp: '2026-02-06T12:30:00Z',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockLastTrade,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getLastTrade('my-token');
+
+      expect(result.token_id).toBe('my-token');
+      expect(result.price).toBe('0.75');
+      expect(result.size).toBe('250');
+      expect(result.timestamp).toBe('2026-02-06T12:30:00Z');
+    });
+
+    it('should handle missing last trade gracefully', async () => {
+      const mockGet = vi.fn().mockRejectedValue({
+        response: { status: 404 },
+        isAxiosError: true,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      await expect(client.getLastTrade('no-trades-token')).rejects.toThrow();
+    });
+  });
+
+  describe('getSpread - PR-005', () => {
+    it('should fetch spread successfully', async () => {
+      const mockSpread = {
+        token_id: 'test-token',
+        bid: '0.48',
+        ask: '0.52',
+        spread: '0.04',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockSpread,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getSpread('test-token');
+
+      expect(mockGet).toHaveBeenCalledWith('/spread', {
+        params: { token_id: 'test-token' },
+      });
+      expect(result).toEqual(mockSpread);
+    });
+
+    it('should include bid, ask, and spread', async () => {
+      const mockSpread = {
+        token_id: 'my-token',
+        bid: '0.30',
+        ask: '0.35',
+        spread: '0.05',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockSpread,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getSpread('my-token');
+
+      expect(result.bid).toBe('0.30');
+      expect(result.ask).toBe('0.35');
+      expect(result.spread).toBe('0.05');
+    });
+
+    it('should handle tight spreads', async () => {
+      const mockSpread = {
+        token_id: 'liquid-token',
+        bid: '0.4999',
+        ask: '0.5001',
+        spread: '0.0002',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockSpread,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getSpread('liquid-token');
+
+      expect(result.spread).toBe('0.0002');
+    });
+
+    it('should handle wide spreads', async () => {
+      const mockSpread = {
+        token_id: 'illiquid-token',
+        bid: '0.10',
+        ask: '0.90',
+        spread: '0.80',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockSpread,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getSpread('illiquid-token');
+
+      expect(result.spread).toBe('0.80');
+    });
+  });
+
+  describe('getMidpoint - PR-005', () => {
+    it('should fetch midpoint successfully', async () => {
+      const mockMidpoint = {
+        token_id: 'test-token',
+        midpoint: '0.50',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockMidpoint,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getMidpoint('test-token');
+
+      expect(mockGet).toHaveBeenCalledWith('/midpoint', {
+        params: { token_id: 'test-token' },
+      });
+      expect(result).toEqual(mockMidpoint);
+    });
+
+    it('should include token_id and midpoint', async () => {
+      const mockMidpoint = {
+        token_id: 'my-token',
+        midpoint: '0.625',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockMidpoint,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getMidpoint('my-token');
+
+      expect(result.token_id).toBe('my-token');
+      expect(result.midpoint).toBe('0.625');
+    });
+
+    it('should handle precise midpoint calculations', async () => {
+      const mockMidpoint = {
+        token_id: 'precise-token',
+        midpoint: '0.5123456',
+      };
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockMidpoint,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getMidpoint('precise-token');
+
+      expect(result.midpoint).toBe('0.5123456');
+    });
+
+    it('should handle empty orderbook gracefully', async () => {
+      const mockGet = vi.fn().mockRejectedValue({
+        response: { 
+          status: 400,
+          data: { error: 'Midpoint undefined - orderbook empty' }
+        },
+        isAxiosError: true,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      await expect(client.getMidpoint('empty-book-token')).rejects.toThrow();
+    });
+  });
+
+  describe('Price Endpoints - Edge Cases', () => {
+    it('should handle rate limiting for price queries', async () => {
+      let callCount = 0;
+      const mockGet = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount < 2) {
+          const error: any = new Error('Rate limited');
+          error.response = { status: 429 };
+          error.isAxiosError = true;
+          return Promise.reject(error);
+        }
+        return Promise.resolve({
+          data: { price: '0.50' },
+        });
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPrice('test-token', 'BUY');
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(result).toBe('0.50');
+    });
+
+    it('should use circuit breaker for all price endpoints', async () => {
+      const mockGet = vi.fn().mockRejectedValue(new Error('Service down'));
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      // Try all endpoints and verify circuit breaker tracks failures
+      try { await client.getPrice('test', 'BUY'); } catch {}
+      try { await client.getLastTrade('test'); } catch {}
+      try { await client.getSpread('test'); } catch {}
+      try { await client.getMidpoint('test'); } catch {}
+
+      const metrics = client.getCircuitBreakerMetrics();
+      expect(metrics.failures).toBeGreaterThan(0);
+    }, 30000); // Increased timeout for multiple retries across 4 endpoints
+
+    it('should handle API errors consistently across endpoints', async () => {
+      const mockGet = vi.fn().mockRejectedValue({
+        response: { status: 500 },
+        isAxiosError: true,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      await expect(client.getPrice('test', 'BUY')).rejects.toThrow();
+      await expect(client.getLastTrade('test')).rejects.toThrow();
+      await expect(client.getSpread('test')).rejects.toThrow();
+      await expect(client.getMidpoint('test')).rejects.toThrow();
+    });
+  });
 });
