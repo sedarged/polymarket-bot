@@ -128,17 +128,6 @@ export class EventStore {
     // Create partition key: marketId + date (YYYY-MM-DD)
     const partitionKey = `${marketId}_${occurred.split('T')[0]}`;
 
-    const envelope: EventEnvelope<T> = {
-      eventId,
-      eventType,
-      eventVersion,
-      occurredAt: occurred,
-      receivedAt: now,
-      marketId,
-      source,
-      payload,
-    };
-
     const stmt = this.db.prepare(`
       INSERT INTO events (
         event_id, event_type, event_version, occurred_at, received_at,

@@ -47,7 +47,7 @@ Historical replay and strategy evaluation:
 
 ## Usage
 
-See [docs/learning-system.md](../../../docs/learning-system.md) for comprehensive usage guide.
+See [docs/learning-system.md](/docs/learning-system.md) for comprehensive usage guide.
 
 Quick example:
 
@@ -114,7 +114,7 @@ npm test -- eventStore.test.ts signalCatalog.test.ts backtestEngine.test.ts
 
 ## Design
 
-Based on [REPORTS/LEARNING_SYSTEM.md](../../../REPORTS/LEARNING_SYSTEM.md) specification.
+Based on [REPORTS/LEARNING_SYSTEM.md](/REPORTS/LEARNING_SYSTEM.md) specification.
 
 ### Key Principles
 
@@ -212,7 +212,7 @@ Default paths:
 
 ## Related Documentation
 
-- [Learning System Guide](../../../docs/learning-system.md) - Usage guide
-- [Learning System Design](../../../REPORTS/LEARNING_SYSTEM.md) - Design specification
-- [Paper Trading Guide](../../../docs/paper-trading.md) - Paper trading mode
-- [Architecture](../../../docs/architecture.md) - System architecture
+- [Learning System Guide](/docs/learning-system.md) - Usage guide
+- [Learning System Design](/REPORTS/LEARNING_SYSTEM.md) - Design specification
+- [Paper Trading Guide](/docs/paper-trading.md) - Paper trading mode
+- [Architecture](/docs/architecture.md) - System architecture

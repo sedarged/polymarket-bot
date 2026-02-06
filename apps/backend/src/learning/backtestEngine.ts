@@ -29,6 +29,23 @@ import type {
   MarketEvent,
 } from './types';
 
+/**
+ * Simple seeded random number generator for reproducible backtests
+ */
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    // Linear congruential generator
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+}
+
 export interface BacktestEngineConfig {
   path?: string;
   readonly?: boolean;
@@ -213,47 +230,128 @@ export class BacktestEngine {
       eventCount: events.length,
     });
 
-    // Simulate trading (simplified for now - real implementation would call strategy)
+    // Initialize seeded random if seed provided
+    const random = config.seed !== undefined ? new SeededRandom(config.seed) : null;
+    const getRandomValue = () => (random ? random.next() : Math.random());
+
+    // Simulate trading with proper position tracking
     const trades: BacktestResult['trades'] = [];
     let balance = config.initialBalance;
-    const positions: Record<string, { size: number; avgPrice: number }> = {};
-    let totalPnl = 0;
+    let positionSize = 0; // >0 long, <0 short
+    let positionAvgPrice = 0; // average entry price of open position
+    let realizedPnl = 0; // cumulative realized PnL (net of fees)
     let peakBalance = balance;
     let maxDrawdown = 0;
     const pnlHistory: number[] = [];
 
     // Placeholder: In real implementation, strategy would generate signals
-    // For now, just track metrics from market events
+    // For now, simple random trading to demonstrate metrics calculation
     for (const event of events) {
       const marketEvent = event.payload;
-      
+      const markPrice = marketEvent.mid;
+
       // Example trade logic (replace with actual strategy)
       // This is a placeholder for demonstration
-      if (Math.random() < 0.01) { // 1% chance to trade per event
-        const side = Math.random() < 0.5 ? 'buy' : 'sell';
-        const price = marketEvent.mid;
+      if (getRandomValue() < 0.01) {
+        // 1% chance to trade per event
+        const side: 'buy' | 'sell' = getRandomValue() < 0.5 ? 'buy' : 'sell';
         const size = 10;
-        const tradePnl = side === 'buy' ? -price * size : price * size;
-        
-        totalPnl += tradePnl;
-        balance += tradePnl - (Math.abs(tradePnl) * config.feeRate);
-        
+
+        // Apply slippage to get execution price
+        const execPrice =
+          side === 'buy'
+            ? markPrice * (1 + config.slippage)
+            : markPrice * (1 - config.slippage);
+
+        // Trade notional value
+        const notional = execPrice * size;
+        const fee = notional * config.feeRate;
+
+        // Calculate realized PnL from this trade
+        let tradeRealizedPnl = 0;
+        let sizeToFill = size;
+
+        if (side === 'buy') {
+          // Closing or reducing a short position
+          if (positionSize < 0) {
+            const closingSize = Math.min(sizeToFill, -positionSize);
+            tradeRealizedPnl += (positionAvgPrice - execPrice) * closingSize;
+            positionSize += closingSize; // positionSize is negative
+            sizeToFill -= closingSize;
+
+            // If position fully closed, reset avg price
+            if (positionSize === 0) {
+              positionAvgPrice = 0;
+            }
+          }
+
+          // Opening or increasing a long position
+          if (sizeToFill > 0) {
+            const newPositionSize = positionSize + sizeToFill;
+            positionAvgPrice =
+              positionSize === 0
+                ? execPrice
+                : (positionAvgPrice * positionSize + execPrice * sizeToFill) /
+                  newPositionSize;
+            positionSize = newPositionSize;
+          }
+        } else {
+          // side === 'sell'
+          // Closing or reducing a long position
+          if (positionSize > 0) {
+            const closingSize = Math.min(sizeToFill, positionSize);
+            tradeRealizedPnl += (execPrice - positionAvgPrice) * closingSize;
+            positionSize -= closingSize;
+            sizeToFill -= closingSize;
+
+            // If position fully closed, reset avg price
+            if (positionSize === 0) {
+              positionAvgPrice = 0;
+            }
+          }
+
+          // Opening or increasing a short position
+          if (sizeToFill > 0) {
+            const newPositionSize = positionSize - sizeToFill;
+            positionAvgPrice =
+              positionSize === 0
+                ? execPrice
+                : (positionAvgPrice * Math.abs(positionSize) +
+                    execPrice * sizeToFill) /
+                  Math.abs(newPositionSize);
+            positionSize = newPositionSize;
+          }
+        }
+
+        // Apply fee to realized PnL
+        tradeRealizedPnl -= fee;
+        realizedPnl += tradeRealizedPnl;
+
+        // Update balance
+        balance = config.initialBalance + realizedPnl;
+
+        // Calculate unrealized PnL from remaining open position
+        const unrealizedPnl =
+          positionSize !== 0 ? positionSize * (markPrice - positionAvgPrice) : 0;
+        const totalPnl = realizedPnl + unrealizedPnl;
+
         trades.push({
           timestamp: event.occurredAt,
           marketId: event.marketId,
           side,
-          price,
+          price: execPrice,
           size,
-          pnl: tradePnl,
+          pnl: tradeRealizedPnl,
         });
 
         pnlHistory.push(totalPnl);
 
-        // Track drawdown
-        if (balance > peakBalance) {
-          peakBalance = balance;
+        // Track drawdown based on total equity (balance + unrealized)
+        const equity = balance + unrealizedPnl;
+        if (equity > peakBalance) {
+          peakBalance = equity;
         } else {
-          const drawdown = (peakBalance - balance) / peakBalance;
+          const drawdown = (peakBalance - equity) / peakBalance;
           if (drawdown > maxDrawdown) {
             maxDrawdown = drawdown;
           }
@@ -264,9 +362,10 @@ export class BacktestEngine {
     // Compute metrics
     const winningTrades = trades.filter((t) => t.pnl > 0).length;
     const winRate = trades.length > 0 ? winningTrades / trades.length : 0;
-    const avgTradeSize = trades.length > 0 
-      ? trades.reduce((sum, t) => sum + t.size, 0) / trades.length 
-      : 0;
+    const avgTradeSize =
+      trades.length > 0
+        ? trades.reduce((sum, t) => sum + t.size, 0) / trades.length
+        : 0;
 
     // Sharpe ratio calculation (simplified)
     const sharpe = this.calculateSharpeRatio(pnlHistory);
@@ -276,7 +375,7 @@ export class BacktestEngine {
       strategyId: config.strategyId,
       config,
       metrics: {
-        pnl: totalPnl,
+        pnl: realizedPnl,
         sharpe,
         maxDrawdown,
         winRate,

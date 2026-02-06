@@ -447,6 +447,6 @@ See `apps/backend/tests/` for comprehensive examples:
 
 ## Related Documentation
 
-- [REPORTS/LEARNING_SYSTEM.md](../../REPORTS/LEARNING_SYSTEM.md) - Complete design specification
-- [docs/architecture.md](../architecture.md) - System architecture
-- [docs/paper-trading.md](../paper-trading.md) - Paper trading guide
+- [REPORTS/LEARNING_SYSTEM.md](../REPORTS/LEARNING_SYSTEM.md) - Complete design specification
+- [docs/architecture.md](../docs/architecture.md) - System architecture
+- [docs/paper-trading.md](../docs/paper-trading.md) - Paper trading guide

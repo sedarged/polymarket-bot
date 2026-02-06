@@ -14,11 +14,18 @@ describe('EventStore', () => {
   let eventStore: EventStore;
   const testDbPath = path.join(process.cwd(), 'data', 'test-events.db');
 
-  beforeEach(() => {
-    // Clean up any existing test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
+  const deleteTestDbFiles = () => {
+    const dbFiles = [testDbPath, `${testDbPath}-wal`, `${testDbPath}-shm`];
+    for (const filePath of dbFiles) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
+  };
+
+  beforeEach(() => {
+    // Clean up any existing test database (main file + WAL/SHM sidecars)
+    deleteTestDbFiles();
     
     eventStore = new EventStore({ path: testDbPath });
   });
@@ -26,10 +33,8 @@ describe('EventStore', () => {
   afterEach(() => {
     eventStore.close();
     
-    // Clean up test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
+    // Clean up test database (main file + WAL/SHM sidecars)
+    deleteTestDbFiles();
   });
 
   describe('initialization', () => {

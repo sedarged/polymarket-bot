@@ -14,11 +14,18 @@ describe('SignalCatalog', () => {
   let catalog: SignalCatalog;
   const testDbPath = path.join(process.cwd(), 'data', 'test-signals.db');
 
-  beforeEach(() => {
-    // Clean up any existing test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
+  const deleteTestDbFiles = () => {
+    const dbFiles = [testDbPath, `${testDbPath}-wal`, `${testDbPath}-shm`];
+    for (const filePath of dbFiles) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
+  };
+
+  beforeEach(() => {
+    // Clean up any existing test database (main file + WAL/SHM sidecars)
+    deleteTestDbFiles();
     
     catalog = new SignalCatalog({ path: testDbPath });
   });
@@ -26,10 +33,8 @@ describe('SignalCatalog', () => {
   afterEach(() => {
     catalog.close();
     
-    // Clean up test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
+    // Clean up test database (main file + WAL/SHM sidecars)
+    deleteTestDbFiles();
   });
 
   describe('initialization', () => {
@@ -188,6 +193,33 @@ describe('SignalCatalog', () => {
       expect(latest).toBeDefined();
       expect(latest?.version).toBe('2.0.0');
       expect(latest?.description).toBe('V2');
+    });
+
+    it('should handle semver ordering correctly (10.0.0 > 2.0.0)', () => {
+      catalog.registerSignal({
+        signalName: 'semver_test',
+        description: 'V2',
+        featureGroup: 'market',
+        inputFields: [],
+        outputType: 'number',
+        version: '2.0.0',
+        owner: 'test',
+      });
+
+      catalog.registerSignal({
+        signalName: 'semver_test',
+        description: 'V10',
+        featureGroup: 'market',
+        inputFields: [],
+        outputType: 'number',
+        version: '10.0.0',
+        owner: 'test',
+      });
+
+      const latest = catalog.getLatestSignal('semver_test');
+      expect(latest).toBeDefined();
+      expect(latest?.version).toBe('10.0.0');
+      expect(latest?.description).toBe('V10');
     });
 
     it('should return null for non-existent signal', () => {

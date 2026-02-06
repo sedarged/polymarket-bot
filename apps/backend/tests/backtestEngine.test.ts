@@ -17,14 +17,19 @@ describe('BacktestEngine', () => {
   const testBacktestDbPath = path.join(process.cwd(), 'data', 'test-backtests.db');
   const testEventsDbPath = path.join(process.cwd(), 'data', 'test-backtest-events.db');
 
+  const deleteTestDbFiles = (dbPath: string) => {
+    const dbFiles = [dbPath, `${dbPath}-wal`, `${dbPath}-shm`];
+    for (const filePath of dbFiles) {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  };
+
   beforeEach(() => {
-    // Clean up any existing test databases
-    if (fs.existsSync(testBacktestDbPath)) {
-      fs.unlinkSync(testBacktestDbPath);
-    }
-    if (fs.existsSync(testEventsDbPath)) {
-      fs.unlinkSync(testEventsDbPath);
-    }
+    // Clean up any existing test databases (main files + WAL/SHM sidecars)
+    deleteTestDbFiles(testBacktestDbPath);
+    deleteTestDbFiles(testEventsDbPath);
     
     eventStore = new EventStore({ path: testEventsDbPath });
     engine = new BacktestEngine({ path: testBacktestDbPath, eventStore });
@@ -37,13 +42,9 @@ describe('BacktestEngine', () => {
     engine.close();
     eventStore.close();
     
-    // Clean up test databases
-    if (fs.existsSync(testBacktestDbPath)) {
-      fs.unlinkSync(testBacktestDbPath);
-    }
-    if (fs.existsSync(testEventsDbPath)) {
-      fs.unlinkSync(testEventsDbPath);
-    }
+    // Clean up test databases (main files + WAL/SHM sidecars)
+    deleteTestDbFiles(testBacktestDbPath);
+    deleteTestDbFiles(testEventsDbPath);
   });
 
   describe('initialization', () => {

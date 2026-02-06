@@ -162,23 +162,36 @@ export class SignalCatalog {
 
   /**
    * Get latest version of a signal
-   * Uses version sorting to get the highest version number
+   * Uses semver-aware comparison for correct version ordering
    */
   getLatestSignal(signalName: string): SignalDefinition | null {
     const stmt = this.db.prepare(`
       SELECT * FROM signal_definitions 
-      WHERE signal_name = ? 
-      ORDER BY version DESC 
-      LIMIT 1
+      WHERE signal_name = ?
     `);
 
-    const row = stmt.get(signalName) as SignalDefinitionRow | undefined;
+    const rows = stmt.all(signalName) as SignalDefinitionRow[];
 
-    if (!row) {
+    if (rows.length === 0) {
       return null;
     }
 
-    return this.rowToDefinition(row);
+    // Sort by semver in JavaScript to handle versions like 10.0.0 vs 2.0.0 correctly
+    rows.sort((a, b) => {
+      const aParts = a.version.split('.').map(Number);
+      const bParts = b.version.split('.').map(Number);
+      
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const aVal = aParts[i] || 0;
+        const bVal = bParts[i] || 0;
+        if (aVal !== bVal) {
+          return bVal - aVal; // Descending order
+        }
+      }
+      return 0;
+    });
+
+    return this.rowToDefinition(rows[0]);
   }
 
   /**
