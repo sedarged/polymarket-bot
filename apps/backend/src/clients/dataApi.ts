@@ -1,9 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
-import { config } from '../config';
-import { retry, ErrorType, classifyError } from '../utils/retry';
-import { CircuitBreaker } from '../utils/circuitBreaker';
-import { logger } from '../utils/logger';
 import { Position, Fill } from '@polymarket/shared';
+import { logger } from '../utils/logger';
+import { BaseApiClient } from './baseApiClient';
 
 /**
  * Known activity event types returned by the Data API.
@@ -41,7 +38,7 @@ export interface ActivityEvent {
  * Data API Client
  * 
  * Official Documentation: https://data-api.polymarket.com
- * Base URL: https://data-api.polymarket.com
+ * Base URL: https://data-api.polymarket.com (verified 2026-02-06)
  * 
  * The Data API provides comprehensive access to user trading data including:
  * - Current positions with market values
@@ -57,7 +54,7 @@ export interface ActivityEvent {
  * Implementation Review: See docs/api-missing-endpoints-analysis.md
  * Related Issues: #223, #102, #229 (PR-001)
  * 
- * Reliability Features:
+ * Reliability Features (inherited from BaseApiClient):
  * - Circuit breaker to prevent cascade failures
  * - Retry logic with exponential backoff and jitter
  * - Configurable timeouts
@@ -65,65 +62,11 @@ export interface ActivityEvent {
  * 
  * @see {@link https://data-api.polymarket.com}
  */
-export class DataApiClient {
-  private client: AxiosInstance;
-  private circuitBreaker: CircuitBreaker;
-  private readonly retryConfig: {
-    attempts: number;
-    delay: number;
-    jitter: number;
-    maxDelay: number;
-    timeout: number;
-    totalTimeout: number;
-    isRetryable: (error: Error) => boolean;
-  };
-
+export class DataApiClient extends BaseApiClient {
   constructor() {
-    this.client = axios.create({
-      // Base URL verified against official Polymarket Data API documentation (2026-02-06)
-      // Endpoints: /positions, /trades, /activity
-      baseURL: 'https://data-api.polymarket.com',
-      timeout: 10000,
-    });
-
-    this.circuitBreaker = new CircuitBreaker({
-      name: 'data-api',
-      failureThreshold: 5,
-      resetTimeout: 60000, // 1 minute
-      successThreshold: 2,
-    });
-
-    // Shared retry configuration for all Data API methods
-    this.retryConfig = {
-      attempts: config.retryAttempts,
-      delay: config.retryDelay,
-      jitter: 0.1,
-      maxDelay: 30000,
-      timeout: 10000,
-      totalTimeout: config.retryTotalTimeout,
-      isRetryable: (error: Error) => {
-        const errorType = classifyError(error);
-        // Don't retry permanent errors (4xx except 429)
-        if (errorType === ErrorType.PERMANENT) {
-          return false;
-        }
-        // Retry transient, rate limit, timeout, and network errors
-        return true;
-      },
-    };
-
-    // Log circuit breaker state changes
-    this.circuitBreaker.on('open', (metrics) => {
-      logger.error('Data API circuit breaker opened', metrics);
-    });
-
-    this.circuitBreaker.on('half-open', (metrics) => {
-      logger.warn('Data API circuit breaker half-open, testing recovery', metrics);
-    });
-
-    this.circuitBreaker.on('closed', (metrics) => {
-      logger.info('Data API circuit breaker closed, service recovered', metrics);
-    });
+    // Base URL verified against official Polymarket Data API documentation (2026-02-06)
+    // Endpoints: /positions, /trades, /activity
+    super('https://data-api.polymarket.com', 'data-api');
   }
 
   /**
@@ -155,25 +98,23 @@ export class DataApiClient {
       offset?: number;
     }
   ): Promise<Position[]> {
-    return this.circuitBreaker.execute(() =>
-      retry(async () => {
-        logger.debug('Fetching positions from Data API', { address, params });
-        
-        const response = await this.client.get<Position[]>('/positions', {
-          params: {
-            address,
-            ...params,
-          },
-        });
+    return this.executeWithRetry(async () => {
+      logger.debug('Fetching positions from Data API', { address, params });
+      
+      const response = await this.client.get<Position[]>('/positions', {
+        params: {
+          address,
+          ...params,
+        },
+      });
 
-        logger.info('Retrieved positions', { 
-          address, 
-          count: response.data.length,
-          params 
-        });
-        return response.data;
-      }, this.retryConfig)
-    );
+      logger.info('Retrieved positions', { 
+        address, 
+        count: response.data.length,
+        params 
+      });
+      return response.data;
+    });
   }
 
   /**
@@ -210,25 +151,23 @@ export class DataApiClient {
       offset?: number;
     }
   ): Promise<Fill[]> {
-    return this.circuitBreaker.execute(() =>
-      retry(async () => {
-        logger.debug('Fetching trades from Data API', { address, params });
-        
-        const response = await this.client.get<Fill[]>('/trades', {
-          params: {
-            address,
-            ...params,
-          },
-        });
+    return this.executeWithRetry(async () => {
+      logger.debug('Fetching trades from Data API', { address, params });
+      
+      const response = await this.client.get<Fill[]>('/trades', {
+        params: {
+          address,
+          ...params,
+        },
+      });
 
-        logger.info('Retrieved trades', { 
-          address, 
-          count: response.data.length,
-          params 
-        });
-        return response.data;
-      }, this.retryConfig)
-    );
+      logger.info('Retrieved trades', { 
+        address, 
+        count: response.data.length,
+        params 
+      });
+      return response.data;
+    });
   }
 
   /**
@@ -267,47 +206,23 @@ export class DataApiClient {
       offset?: number;
     }
   ): Promise<ActivityEvent[]> {
-    return this.circuitBreaker.execute(() =>
-      retry(async () => {
-        logger.debug('Fetching activity from Data API', { address, params });
-        
-        const response = await this.client.get<ActivityEvent[]>('/activity', {
-          params: {
-            address,
-            ...params,
-          },
-        });
+    return this.executeWithRetry(async () => {
+      logger.debug('Fetching activity from Data API', { address, params });
+      
+      const response = await this.client.get<ActivityEvent[]>('/activity', {
+        params: {
+          address,
+          ...params,
+        },
+      });
 
-        logger.info('Retrieved activity events', { 
-          address, 
-          count: response.data.length,
-          params 
-        });
-        return response.data;
-      }, this.retryConfig)
-    );
-  }
-
-  /**
-   * Get circuit breaker metrics for monitoring.
-   * Use this to track Data API health and reliability.
-   */
-  getCircuitBreakerMetrics() {
-    return this.circuitBreaker.getMetrics();
-  }
-
-  /**
-   * Manually reset the circuit breaker (e.g., for testing or recovery).
-   */
-  resetCircuitBreaker(): void {
-    this.circuitBreaker.reset();
-  }
-
-  /**
-   * Clean up resources.
-   */
-  destroy(): void {
-    this.circuitBreaker.destroy();
+      logger.info('Retrieved activity events', { 
+        address, 
+        count: response.data.length,
+        params 
+      });
+      return response.data;
+    });
   }
 }
 
