@@ -821,7 +821,9 @@ export class TradingClient {
       }
 
       // Create signed orders and prepare PostOrdersArgs
+      // Track mapping between postOrdersArgs index and preparedOrders
       const postOrdersArgs: PostOrdersArgs[] = [];
+      const successfullySigned: typeof preparedOrders = [];
       
       for (const prepared of preparedOrders) {
         try {
@@ -835,6 +837,9 @@ export class TradingClient {
             orderType: OrderType.GTC, // Good Till Cancelled
             postOnly: false,
           });
+          
+          // Track successfully signed orders to maintain index alignment
+          successfullySigned.push(prepared);
         } catch (error) {
           failed.push({
             index: prepared.originalIndex,
@@ -857,9 +862,10 @@ export class TradingClient {
       try {
         const response = await this.client.postOrders(postOrdersArgs, false, false);
         
-        // Process successful orders
-        for (let i = 0; i < preparedOrders.length; i++) {
-          const prepared = preparedOrders[i];
+        // Process successful orders - iterate only over successfully signed orders
+        // This maintains correct index alignment between response.orderIDs and successfullySigned
+        for (let i = 0; i < successfullySigned.length; i++) {
+          const prepared = successfullySigned[i];
           
           try {
             const order: Order = {
@@ -891,13 +897,14 @@ export class TradingClient {
           }
         }
       } catch (error) {
-        // Batch submission failed - mark all prepared orders as failed
+        // Batch submission failed - mark only successfully signed orders as failed
+        // Orders that failed signing are already in the failed array
         logger.error('Batch order submission failed', {
           error: error instanceof Error ? error.message : String(error),
           batchSize: postOrdersArgs.length,
         });
 
-        for (const prepared of preparedOrders) {
+        for (const prepared of successfullySigned) {
           failed.push({
             index: prepared.originalIndex,
             error: `Batch submission failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -1005,15 +1012,13 @@ export class TradingClient {
       const duration = Date.now() - startTime;
 
       // Update local state for all open orders
+      // Direct update since openOrders are references from this.state.orders
       for (const order of openOrders) {
-        const localOrder = this.state.orders.find(o => o.orderId === order.orderId);
-        if (localOrder) {
-          localOrder.status = 'CANCELLED';
-          
-          // Record cancellation metric
-          orderCancellations.inc({ reason: 'kill-switch', mode: 'live' });
-          openOrdersGauge.dec({ mode: 'live' });
-        }
+        order.status = 'CANCELLED';
+        
+        // Record cancellation metric
+        orderCancellations.inc({ reason: 'kill-switch', mode: 'live' });
+        openOrdersGauge.dec({ mode: 'live' });
       }
 
       logger.warn('Kill switch complete', {

@@ -170,29 +170,61 @@ const parseRequestBody = (req: http.IncomingMessage): Promise<Record<string, any
   return new Promise((resolve, reject) => {
     let body = '';
     const maxBodySize = 1024 * 1024; // 1MB limit
+    let settled = false;
     
-    req.on('data', (chunk) => {
+    const cleanup = () => {
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onError);
+    };
+    
+    const onData = (chunk: Buffer | string) => {
       body += chunk.toString();
       
       // Prevent memory exhaustion from large requests
       if (body.length > maxBodySize) {
-        reject(new Error('Request body too large (max 1MB)'));
+        if (!settled) {
+          settled = true;
+          cleanup();
+          reject(new Error('Request body too large (max 1MB)'));
+        }
         req.destroy();
       }
-    });
+    };
     
-    req.on('end', () => {
+    const onEnd = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      
+      // Handle empty body
+      if (!body) {
+        resolve({});
+        return;
+      }
+      
       try {
         const parsed = JSON.parse(body);
         resolve(parsed);
       } catch (error) {
         reject(new Error('Invalid JSON in request body'));
       }
-    });
+    };
     
-    req.on('error', (error) => {
+    const onError = (error: Error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
       reject(error);
-    });
+    };
+    
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
   });
 };
 

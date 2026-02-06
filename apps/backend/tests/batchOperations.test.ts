@@ -243,6 +243,122 @@ describe('Batch Operations - PR-002', () => {
       expect(result.failed[0].error).toContain('Batch submission failed');
     });
 
+    it('should handle mixed signing failures and maintain correct index alignment', async () => {
+      // This test validates the fix for the critical index mismatch bug
+      // When order at index 1 fails signing, the response.orderIDs should align
+      // with the successfully signed orders (indices 0 and 2), not all orders
+      
+      let createOrderCallCount = 0;
+      mockClobClient.createOrder.mockImplementation(() => {
+        createOrderCallCount++;
+        // Fail on the second order (index 1)
+        if (createOrderCallCount === 2) {
+          throw new Error('Signing failed for order 2');
+        }
+        return Promise.resolve({ orderID: `signed-${createOrderCallCount}` });
+      });
+
+      mockClobClient.postOrders.mockResolvedValueOnce({
+        orderIDs: ['order-1', 'order-3'], // Only 2 IDs for successfully signed orders
+      });
+
+      const orders = [
+        {
+          tokenId: '0xtoken1',
+          side: 'BUY' as const,
+          price: '0.50',
+          size: '10',
+        },
+        {
+          tokenId: '0xtoken2',
+          side: 'SELL' as const,
+          price: '0.60',
+          size: '20',
+        },
+        {
+          tokenId: '0xtoken3',
+          side: 'BUY' as const,
+          price: '0.45',
+          size: '15',
+        },
+      ];
+
+      const result = await client.createOrdersBatch(orders);
+
+      // Should have 2 successful (orders 0 and 2) and 1 failed (order 1)
+      expect(result.successful).toHaveLength(2);
+      expect(result.failed).toHaveLength(1);
+      
+      // Verify the failed order is at the correct index
+      expect(result.failed[0].index).toBe(1);
+      expect(result.failed[0].error).toContain('Signing failed');
+      
+      // Verify successful orders have correct data (not misaligned)
+      expect(result.successful[0].tokenId).toBe('0xtoken1'); // First order
+      expect(result.successful[0].orderId).toBe('order-1');
+      expect(result.successful[1].tokenId).toBe('0xtoken3'); // Third order
+      expect(result.successful[1].orderId).toBe('order-3');
+    });
+
+    it('should not duplicate failures when batch submission fails', async () => {
+      // This test validates that orders failing during signing are not added
+      // to the failed array again when batch submission fails
+      
+      let createOrderCallCount = 0;
+      mockClobClient.createOrder.mockImplementation(() => {
+        createOrderCallCount++;
+        // Fail on the second order
+        if (createOrderCallCount === 2) {
+          throw new Error('Signing failed');
+        }
+        return Promise.resolve({ orderID: `signed-${createOrderCallCount}` });
+      });
+
+      // Also fail the batch submission
+      mockClobClient.postOrders.mockRejectedValueOnce(
+        new Error('Batch submission failed')
+      );
+
+      const orders = [
+        {
+          tokenId: '0xtoken1',
+          side: 'BUY' as const,
+          price: '0.50',
+          size: '10',
+        },
+        {
+          tokenId: '0xtoken2',
+          side: 'SELL' as const,
+          price: '0.60',
+          size: '20',
+        },
+        {
+          tokenId: '0xtoken3',
+          side: 'BUY' as const,
+          price: '0.45',
+          size: '15',
+        },
+      ];
+
+      const result = await client.createOrdersBatch(orders);
+
+      // Should have 3 failures total (1 signing + 2 batch submission)
+      expect(result.failed).toHaveLength(3);
+      
+      // Order at index 1 should appear only once with signing error
+      const order1Failures = result.failed.filter(f => f.index === 1);
+      expect(order1Failures).toHaveLength(1);
+      expect(order1Failures[0].error).toContain('Signing failed');
+      
+      // Orders at indices 0 and 2 should have batch submission errors
+      const order0Failures = result.failed.filter(f => f.index === 0);
+      const order2Failures = result.failed.filter(f => f.index === 2);
+      expect(order0Failures).toHaveLength(1);
+      expect(order2Failures).toHaveLength(1);
+      expect(order0Failures[0].error).toContain('Batch submission failed');
+      expect(order2Failures[0].error).toContain('Batch submission failed');
+    });
+
     it.skip('should validate balance availability before batch (known issue: timing-dependent)', async () => {
       // Note: This test is skipped because the balance validation logic in beforeEach
       // resets the timestamp. This is a minor edge case that doesn't affect the core
