@@ -48,6 +48,12 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Decision Trees](./ai/decision-trees.md) - Troubleshooting guides for common scenarios
 - [Session State Template](./ai/session-state.md) - Template for agents to track work
 
+### API & Integration
+- [Price & Market Endpoints Usage](./price-endpoints-usage.md) - Complete guide to price query APIs (PR-005)
+- [API Missing Endpoints Analysis](./api-missing-endpoints-analysis.md) - Gap analysis of Polymarket API coverage
+- [API Alignment Verification](./api-alignment-verification.md) - Verification against official Polymarket docs
+- [Demo: Price Endpoints](./examples/price-endpoints-demo.ts) - Working code example
+
 ### Reference
 - [CHANGELOG](../CHANGELOG.md) - Release history and notable changes
 - [Open Questions](./open-questions.md) - Unresolved questions and discussions
