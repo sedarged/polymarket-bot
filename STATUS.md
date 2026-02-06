@@ -18,9 +18,7 @@ To update this status:
 
 ## Next — P0 (Critical)
 - [P0] #245 [PR-016 FINAL AUDIT ] MASTER FINAL AUDIT: Project Completion Gate for Production Deployment
-- [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
 - [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
-- [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
 - [P1] #241 [PR-013] Documentation, Compliance & Troubleshooting Guides
@@ -50,8 +48,6 @@ To update this status:
 - [P2] #239 [PR-011] Dashboard Core Tabs - Overview, Controls, Alerts & Logs
 - [P2] #238 [PR-010] Observability Stack - Prometheus metrics, alerting, error logging
 - [P2] #228 [Phase 3-4] Implement complete Gamma API and Data Platform support (historical data, WebSocket, advanced endpoints)
-- [P2] #130 [Trading Logic] Update position calculation logic - Audit Finding A-014
-- [P2] #127 [Backend] Do not allow undefined order IDs - Audit Finding A-013
 - [P2] #126 [Trading Logic] Log and alert strategy execution errors - Audit Finding A-012
 - [P2] #104 [Observability] Add metrics instrumentation - Audit Finding A-027
 - [P2] #101 [Observability] Integrate Prometheus metrics - Gap OB-001
@@ -68,18 +64,15 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
 - [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
 - [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
-- [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
-- [P1] #131 [Backend] Add order parameter input validation - Audit Finding A-015
-- [P0] #129 [Backend] Implement audit trail (order/fill history) - Gap PA-002
-- [P0] #128 [Observability] Integrate Prometheus metrics - Gap OB-001
 
-*Last updated: 2026-02-06T09:45:27.010Z*
+*Last updated: 2026-02-06T11:46:25.858Z*
 
 <!-- STATUS_SYNC_END -->
 
