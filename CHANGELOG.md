@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.3](https://github.com/sedarged/polymarket-bot/compare/v1.18.2...v1.18.3) (2026-02-06)
+
+
+### Bug Fixes
+
+* Add circuit breaker to GammaClient ([#116](https://github.com/sedarged/polymarket-bot/issues/116) review) ([ad74e99](https://github.com/sedarged/polymarket-bot/commit/ad74e9983e84c33030c65daa36bcb0c4b7fcf7ec))
+
 ## [1.18.2](https://github.com/sedarged/polymarket-bot/compare/v1.18.1...v1.18.2) (2026-02-06)
 
 
