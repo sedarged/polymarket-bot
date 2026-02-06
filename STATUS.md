@@ -22,7 +22,6 @@ To update this status:
 ## Next — P1 (High Priority)
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #107 [Backend] Validate private key format at startup - Audit Finding A-024
-- [P1] #106 [Testing] Expand test coverage - Audit Finding A-025
 - [P1] #102 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
 - [P1] #97 [Backend] Verify Polymarket API alignment with official documentation
@@ -74,11 +73,10 @@ To update this status:
 - [P1] #110 [Backend] Order ID integer overflow prevention - Audit Finding A-021
 - [P1] #109 [Logging] Mask sensitive data in logs - Audit Finding A-022
 - [P1] #108 [Backend] Add jitter to backoff calculation - Audit Finding A-023
+- [P1] #106 [Testing] Expand test coverage - Audit Finding A-025
 - [P1] #105 [Backend] Remove dead code and @ts-ignore comments - Audit Finding A-026
-- [P1] #103 [Backend] Implement persistence layer (database) - Gap PA-001
-- [P1] #93 [Security] Add admin authentication for sensitive endpoints - Audit Finding A-004
 
-*Last updated: 2026-02-05T21:33:07.338Z*
+*Last updated: 2026-02-06T00:45:51.551Z*
 
 <!-- STATUS_SYNC_END -->
 
