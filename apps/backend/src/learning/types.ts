@@ -229,3 +229,119 @@ export interface BacktestRow {
   completed_at: string | null;
   error: string | null;
 }
+
+/**
+ * Bandit Allocation Types
+ */
+
+export type BanditAlgorithm = 'epsilon-greedy' | 'ucb1' | 'thompson-sampling';
+
+export interface StrategyPerformance {
+  strategyId: string;
+  pnl: number;
+  sharpe: number;
+  maxDrawdown: number;
+  winRate: number;
+  errorRate: number;
+  tradeCount: number;
+  lastUpdated: string;
+}
+
+export interface AllocationConfig {
+  algorithm: BanditAlgorithm;
+  totalCapital: number; // Total paper capital to allocate
+  explorationFactor: number; // epsilon for epsilon-greedy, c for UCB1
+  minAllocation: number; // Minimum capital per strategy
+  maxAllocation: number; // Maximum capital per strategy
+  minTradeCount: number; // Minimum trades before considering allocation
+}
+
+export interface AllocationResult {
+  strategyId: string;
+  allocation: number; // Fraction of total capital (0 to 1)
+  capitalAmount: number; // Actual capital amount
+  score: number; // Algorithm-specific score
+  reason: string; // Explanation for allocation
+  timestamp: string;
+}
+
+export interface BanditState {
+  strategyId: string;
+  pulls: number; // Number of times strategy was allocated
+  totalReward: number; // Cumulative reward (PnL)
+  meanReward: number; // Average reward
+  variance: number; // Reward variance (for Thompson Sampling)
+  lastPull: string; // ISO timestamp
+}
+
+/**
+ * Promotion Workflow Types
+ */
+
+export type PromotionStatus = 
+  | 'experimental' // Initial state, testing phase
+  | 'under-review' // Passed metrics, awaiting manual review
+  | 'candidate' // Approved for continued paper trading
+  | 'rejected'; // Failed criteria or review
+
+export interface PromotionCriteria {
+  minPnl: number; // Minimum PnL (default: 0 for positive)
+  minSharpe: number; // Minimum Sharpe ratio (default: 1.0)
+  maxDrawdown: number; // Maximum drawdown % (default: 0.1 = 10%)
+  maxErrorRate: number; // Maximum error rate (default: 0.01 = 1%)
+  minTradeCount: number; // Minimum number of trades (default: 30)
+  minDays: number; // Minimum days of data (default: 30)
+  requireMultipleRegimes: boolean; // Require performance across regimes (default: true)
+}
+
+export interface PromotionRecord {
+  strategyId: string;
+  status: PromotionStatus;
+  metrics: StrategyPerformance;
+  criteriaCheck: {
+    pnlPass: boolean;
+    sharpePass: boolean;
+    drawdownPass: boolean;
+    errorRatePass: boolean;
+    tradeCountPass: boolean;
+    daysPass: boolean;
+    regimesPass: boolean;
+    overallPass: boolean;
+  };
+  reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PromotionWorkflowConfig {
+  criteria: PromotionCriteria;
+  autoFlag: boolean; // Automatically flag strategies for review when criteria met
+  requireManualApproval: boolean; // Require human approval before promotion
+}
+
+/**
+ * Metrics Gating Types
+ */
+
+export interface MetricsThresholds {
+  minSharpe: number;
+  maxDrawdown: number;
+  minSampleSize: number; // Minimum number of trades
+  minDays: number; // Minimum days of data
+  maxErrorRate: number;
+}
+
+export interface GatingResult {
+  passed: boolean;
+  checks: {
+    sharpe: { passed: boolean; value: number; threshold: number };
+    drawdown: { passed: boolean; value: number; threshold: number };
+    sampleSize: { passed: boolean; value: number; threshold: number };
+    days: { passed: boolean; value: number; threshold: number };
+    errorRate: { passed: boolean; value: number; threshold: number };
+  };
+  failedChecks: string[];
+  message: string;
+}
