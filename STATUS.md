@@ -23,10 +23,6 @@ To update this status:
 ## Next — P1 (High Priority)
 - [P1] #241 [PR-013] Documentation, Compliance & Troubleshooting Guides
 - [P1] #237 [PR-009] Learning System Allocation & Governance - Bandit algorithms and promotion workflow
-- [P1] #236 [PR-008] Learning System Foundation - Event store, signal catalog, backtesting framework
-- [P1] #85 [Backend] Implement event store for learning system - Learning System
-- [P1] #84 [Backend] Add feature/signal catalog - Learning System
-- [P1] #83 [Backend] Create offline evaluation framework - Learning System
 - [P1] #82 [Backend] Implement bandit allocation logic - Learning System
 - [P1] #81 [Backend] Add promotion criteria and governance - Learning System
 - [P1] #76 [Documentation] Add troubleshooting guides to docs
@@ -54,6 +50,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P1] #236 [PR-008] Learning System Foundation - Event store, signal catalog, backtesting framework
 - [P1] #235 [PR-007] Periodic Reconciliation - Automated state verification every 5-10 minutes
 - [P1] #234 [PR-006] Polymarket API Verification & CLOB Expansion - 100% API coverage
 - [P1] #233 [PR-005] Price & Market Endpoints - Complete price query API implementation
@@ -66,7 +63,7 @@ To update this status:
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 
-*Last updated: 2026-02-06T22:48:58.289Z*
+*Last updated: 2026-02-06T23:38:44.232Z*
 
 <!-- STATUS_SYNC_END -->
 
