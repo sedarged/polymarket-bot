@@ -20,9 +20,7 @@ To update this status:
 - [P0] #245 [PR-016 FINAL AUDIT ] MASTER FINAL AUDIT: Project Completion Gate for Production Deployment
 - [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
 - [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
-- [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
-- [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 - [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
@@ -37,7 +35,6 @@ To update this status:
 - [P1] #227 [Phase 2] Expand CLOB API coverage: all core price endpoints, improved kill switch, advanced trading features
 - [P1] #226 [High] Implement all price/query endpoints: GET /price, GET /lasttrade, spread/midpoint, etc.
 - [P1] #107 [Backend] Validate private key format at startup - Audit Finding A-024
-- [P1] #102 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
 - [P1] #97 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #95 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
@@ -73,6 +70,8 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
+- [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 - [P1] #134 [Backend] Fix cache timer resource leak for WebSocket and backend services (Audit Finding A-016)
 - [P1] #133 [Backend] Implement graceful shutdown for WebSocket and backend services (Audit Finding A-017)
 - [P1] #132 [Backend] Add circuit breaker auto-reset and metrics (Audit Finding A-018)
@@ -85,12 +84,8 @@ To update this status:
 - [P1] #122 [Backend] Implement API rate limiting - Audit Finding A-008
 - [P1] #120 [WebSocket] Fix WebSocket resync race condition - Audit Finding A-007
 - [P1] #119 [Backend] Implement periodic reconciliation - Gap RE-001
-- [P0] #118 [Trading Logic] Implement robust partial fill tracking and accounting
-- [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
-- [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
-- [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
 
-*Last updated: 2026-02-06T02:35:38.835Z*
+*Last updated: 2026-02-06T06:54:11.892Z*
 
 <!-- STATUS_SYNC_END -->
 
