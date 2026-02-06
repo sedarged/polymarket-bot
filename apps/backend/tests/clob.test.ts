@@ -752,4 +752,211 @@ describe('CLOB Client - Audit Finding A-025', () => {
       await expect(client.getMidpoint('test')).rejects.toThrow();
     });
   });
+
+  describe('getPriceHistory - PR-006', () => {
+    it('should fetch price history successfully', async () => {
+      const mockHistory = [
+        { t: 1707235200, p: '0.50', v: '1000' },
+        { t: 1707238800, p: '0.52', v: '1200' },
+        { t: 1707242400, p: '0.51', v: '900' },
+      ];
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockHistory,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPriceHistory('test-token', {
+        interval: '1h',
+        startTs: 1707235200,
+        endTs: 1707242400,
+      });
+
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: '1h',
+          startTs: 1707235200,
+          endTs: 1707242400,
+        },
+      });
+      
+      // Check transformation
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual({
+        timestamp: 1707235200,
+        price: '0.50',
+        volume: '1000',
+      });
+      expect(result[2]).toEqual({
+        timestamp: 1707242400,
+        price: '0.51',
+        volume: '900',
+      });
+    });
+
+    it('should support different time intervals', async () => {
+      const mockHistory = [
+        { t: 1707235200, p: '0.55' },
+      ];
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockHistory,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      // Test 6h interval
+      await client.getPriceHistory('test-token', { interval: '6h' });
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: '6h',
+        },
+      });
+
+      // Test 1d interval
+      await client.getPriceHistory('test-token', { interval: '1d' });
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: '1d',
+        },
+      });
+
+      // Test 1w interval
+      await client.getPriceHistory('test-token', { interval: '1w' });
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: '1w',
+        },
+      });
+
+      // Test max interval
+      await client.getPriceHistory('test-token', { interval: 'max' });
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: 'max',
+        },
+      });
+    });
+
+    it('should handle optional fidelity parameter', async () => {
+      const mockHistory = [
+        { t: 1707235200, p: '0.50' },
+      ];
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockHistory,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      await client.getPriceHistory('test-token', {
+        interval: '1h',
+        fidelity: 100,
+      });
+
+      expect(mockGet).toHaveBeenCalledWith('/prices/history', {
+        params: { 
+          token_id: 'test-token',
+          interval: '1h',
+          fidelity: 100,
+        },
+      });
+    });
+
+    it('should handle missing volume data', async () => {
+      const mockHistory = [
+        { t: 1707235200, p: '0.50' }, // No volume
+        { t: 1707238800, p: '0.52', v: '1200' }, // With volume
+      ];
+
+      const mockGet = vi.fn().mockResolvedValue({
+        data: mockHistory,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPriceHistory('test-token');
+
+      expect(result[0].volume).toBeUndefined();
+      expect(result[1].volume).toBe('1200');
+    });
+
+    it('should handle empty history', async () => {
+      const mockGet = vi.fn().mockResolvedValue({
+        data: [],
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPriceHistory('test-token');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should retry on transient errors', async () => {
+      let callCount = 0;
+      const mockGet = vi.fn().mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          const error: any = new Error('Service unavailable');
+          error.response = { status: 503 };
+          error.isAxiosError = true;
+          throw error;
+        }
+        return { data: [{ t: 1707235200, p: '0.50' }] };
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      const result = await client.getPriceHistory('test-token');
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(1);
+    });
+
+    it('should handle API errors gracefully', async () => {
+      const mockGet = vi.fn().mockRejectedValue({
+        response: { status: 404 },
+        isAxiosError: true,
+      });
+
+      mockedAxios.create = vi.fn(() => ({
+        get: mockGet,
+      }));
+
+      client = new ClobClient();
+
+      await expect(client.getPriceHistory('nonexistent-token')).rejects.toThrow();
+    });
+  });
 });
