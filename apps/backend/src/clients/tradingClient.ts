@@ -70,19 +70,19 @@ interface UserOrderWithClientId extends UserOrder {
 }
 
 /**
- * Type-safe assertion helper to pass UserOrderWithClientId to SDK functions.
+ * Type-safe helper to pass UserOrderWithClientId to SDK functions.
  * 
- * Addresses Audit Finding A-005: Removes unsafe `as unknown as UserOrder` casts.
- * 
- * This function provides a documented, type-safe boundary for passing our extended
+ * This function provides a documented type boundary for passing our extended
  * UserOrderWithClientId type to the official SDK's createOrder function which expects
  * UserOrder.
  * 
- * Why this is safe:
+ * Why this works:
  * 1. UserOrderWithClientId extends UserOrder (structural subtyping)
- * 2. The CLOB API explicitly accepts and uses clientOrderId for idempotency
- * 3. The SDK forwards the object to the API without validating/rejecting extra fields
- * 4. Verified against CLOB REST API docs and tested with @polymarket/clob-client v5.2.1
+ * 2. TypeScript's structural typing allows passing a more specific type to a function
+ *    expecting a less specific type
+ * 3. The CLOB API explicitly accepts and uses clientOrderId for idempotency
+ * 4. The SDK forwards the object to the API without validating/rejecting extra fields
+ * 5. Verified against CLOB REST API docs and tested with @polymarket/clob-client v5.2.1
  * 
  * Runtime behavior:
  * - JavaScript allows passing objects with additional properties
@@ -90,9 +90,9 @@ interface UserOrderWithClientId extends UserOrder {
  * - The API recognizes and uses clientOrderId for order tracking
  * 
  * Type safety:
- * - Input is validated to match UserOrderWithClientId structure
+ * - Input is validated to match UserOrderWithClientId structure at compile time
  * - Output is properly typed as UserOrder for SDK consumption
- * - No unsafe double-cast through unknown
+ * - No type assertions needed - structural subtyping handles this naturally
  * 
  * Maintenance:
  * - If SDK adds clientOrderId to UserOrder type, this function becomes unnecessary
@@ -106,7 +106,8 @@ function toUserOrder(orderWithClientId: UserOrderWithClientId): UserOrder {
   // The function serves as a documented type boundary rather than performing any
   // runtime transformation. The extra clientOrderId field is preserved in the
   // JavaScript object and passed through to the API.
-  return orderWithClientId as UserOrder;
+  // TypeScript's structural typing allows passing a more specific type naturally.
+  return orderWithClientId;
 }
 
 // Interface for CLOB order responses to replace 'any'
@@ -674,8 +675,8 @@ export class TradingClient {
         clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
       };
       
-      // Type-safe conversion for SDK compatibility (Audit Finding A-005)
-      // Use helper function instead of unsafe cast - see toUserOrder() for documentation
+      // Pass order with clientOrderId to SDK using type-safe helper
+      // See toUserOrder() for documentation on why this is safe
       const response = await this.client.createOrder(toUserOrder(orderParams));
 
       const order: Order = {
@@ -853,7 +854,7 @@ export class TradingClient {
       
       for (const prepared of preparedOrders) {
         try {
-          // Create signed order using SDK with type-safe conversion (Audit Finding A-005)
+          // Create signed order using SDK with type-safe helper
           const signedOrder = await this.client.createOrder(
             toUserOrder(prepared.params)
           );
