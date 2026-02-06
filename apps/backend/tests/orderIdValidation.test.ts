@@ -9,7 +9,7 @@ import { TradingClient } from '../src/clients/tradingClient';
  * and crashes during reconciliation.
  * 
  * Audit Finding: A-013 (MEDIUM) - Undefined Order ID
- * File: apps/backend/src/clients/tradingClient.ts:L1109-1163 (mapOrder method)
+ * File: apps/backend/src/clients/tradingClient.ts:L1115-1181 (mapOrder method)
  * 
  * Issue: Orders with missing/empty IDs can't be cancelled or reconciled properly.
  * This leads to phantom orders in local state that can never be matched with

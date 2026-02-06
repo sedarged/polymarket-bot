@@ -237,7 +237,7 @@ if (currentFilledSize > previousFilledSize) {
 
 **Test Files:**
 - `apps/backend/tests/partialFills.test.ts` - 21 tests, 848 lines
-- `apps/backend/tests/orderIdValidation.test.ts` - 12 tests, 338 lines
+- `apps/backend/tests/orderIdValidation.test.ts` - 12 tests, 287 lines
 - `apps/backend/tests/tradingClient.test.ts` - 11 tests
 - `apps/backend/tests/paperTradingEngine.test.ts` - 37 tests
 
@@ -262,7 +262,7 @@ if (currentFilledSize > previousFilledSize) {
 
 2. **apps/backend/tests/orderIdValidation.test.ts** (NEW)
    - 12 comprehensive tests for order ID validation
-   - 338 lines of test code
+   - 287 lines of test code
    - Covers undefined, null, empty, whitespace-only IDs
    - Verifies state corruption prevention
 
