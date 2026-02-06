@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0](https://github.com/sedarged/polymarket-bot/compare/v1.22.0...v1.23.0) (2026-02-06)
+
+
+### Features
+
+* implement periodic reconciliation service (RE-001) ([5c023ef](https://github.com/sedarged/polymarket-bot/commit/5c023ef70288a972ad6c1d6eb82afc0d6bd1eb4f))
+
 ## [1.22.0](https://github.com/sedarged/polymarket-bot/compare/v1.21.0...v1.22.0) (2026-02-06)
 
 
