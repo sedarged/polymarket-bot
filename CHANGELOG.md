@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0](https://github.com/sedarged/polymarket-bot/compare/v1.18.3...v1.19.0) (2026-02-06)
+
+
+### Features
+
+* implement Data API client with full endpoint coverage ([13b23ba](https://github.com/sedarged/polymarket-bot/commit/13b23ba6b7c4219ceb6e1774e9ceeaa05d591e43))
+
+
+### Bug Fixes
+
+* address code review feedback ([67d5402](https://github.com/sedarged/polymarket-bot/commit/67d5402dc761fbce659795ba886fe725dc65db1a))
+* address code review feedback comprehensively ([4f6a9d3](https://github.com/sedarged/polymarket-bot/commit/4f6a9d361ee8c82bf181f161ed2bec11ee237bdd))
+
 ## [1.18.3](https://github.com/sedarged/polymarket-bot/compare/v1.18.2...v1.18.3) (2026-02-06)
 
 
