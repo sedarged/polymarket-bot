@@ -161,6 +161,33 @@ const getClientIp = (req: http.IncomingMessage): string => {
   return req.socket.remoteAddress || 'unknown';
 };
 
+/**
+ * Parse JSON request body
+ * Returns parsed JSON object or throws on invalid JSON
+ */
+const parseRequestBody = (req: http.IncomingMessage): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    
+    req.on('end', () => {
+      try {
+        const parsed = JSON.parse(body);
+        resolve(parsed);
+      } catch (error) {
+        reject(new Error('Invalid JSON in request body'));
+      }
+    });
+    
+    req.on('error', (error) => {
+      reject(error);
+    });
+  });
+};
+
 export function createServer(): http.Server {
   // Initialize rate limiter if not already initialized (Audit Finding A-008)
   if (!rateLimiter) {
@@ -372,6 +399,81 @@ export function createServer(): http.Server {
       } catch (error) {
         respondJson(res, 500, {
           error: error instanceof Error ? error.message : 'Failed to get orders',
+        }, req);
+      }
+      return;
+    }
+
+    // Batch order creation - requires authentication (PR-002)
+    // Creates multiple orders in a single API call for improved efficiency
+    // Limit: 15 orders per batch (Polymarket API constraint)
+    if (method === 'POST' && url === '/orders') {
+      if (!requireAdminAuth(req, res, 'Batch Orders')) return;
+
+      try {
+        const body = await parseRequestBody(req);
+        
+        // Validate request body
+        if (!body || !Array.isArray(body.orders)) {
+          respondJson(res, 400, {
+            error: 'Invalid request: orders array required',
+          }, req);
+          return;
+        }
+
+        const { orders } = body;
+
+        // Validate batch size
+        if (orders.length === 0) {
+          respondJson(res, 400, {
+            error: 'Batch must contain at least one order',
+          }, req);
+          return;
+        }
+
+        if (orders.length > 15) {
+          respondJson(res, 400, {
+            error: 'Batch size exceeds maximum of 15 orders',
+          }, req);
+          return;
+        }
+
+        // Validate each order has required fields
+        for (let i = 0; i < orders.length; i++) {
+          const order = orders[i];
+          if (!order.tokenId || !order.side || !order.price || !order.size) {
+            respondJson(res, 400, {
+              error: `Order at index ${i} missing required fields (tokenId, side, price, size)`,
+            }, req);
+            return;
+          }
+        }
+
+        logger.info('Processing batch order creation', {
+          batchSize: orders.length,
+        });
+
+        // Create batch orders
+        const result = await tradingClient.createOrdersBatch(orders);
+
+        respondJson(res, result.failed.length === 0 ? 201 : 207, {
+          successful: result.successful,
+          failed: result.failed,
+          summary: {
+            total: orders.length,
+            successful: result.successful.length,
+            failed: result.failed.length,
+          },
+        }, req);
+
+        logger.info('Batch order creation completed', {
+          total: orders.length,
+          successful: result.successful.length,
+          failed: result.failed.length,
+        });
+      } catch (error) {
+        respondJson(res, 500, {
+          error: error instanceof Error ? error.message : 'Failed to create batch orders',
         }, req);
       }
       return;
