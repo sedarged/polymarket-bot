@@ -1104,18 +1104,35 @@ export class TradingClient {
   }
 
   /**
-   * Map CLOB order to our Order type
+   * Map CLOB order to our Order type with validation (Audit Finding A-013)
+   * 
+   * Rejects orders with undefined/null/empty order IDs or token IDs as these
+   * cannot be properly tracked, cancelled, or reconciled. This prevents state
+   * corruption and position drift.
+   * 
+   * @throws Error if orderId or tokenId is missing/empty
    */
   private mapOrder(clobOrder: ClobOrder): Order {
-    // Validate critical fields
+    // Validate critical fields (Audit Finding A-013)
     const orderId = clobOrder.id || clobOrder.orderID;
-    if (!orderId) {
-      logger.warn('CLOB order missing ID', { order: clobOrder });
+    if (!orderId || (typeof orderId === 'string' && orderId.trim() === '')) {
+      const error = 'CLOB order missing or empty ID - cannot track order';
+      logger.error(error, { 
+        order: clobOrder,
+        auditFinding: 'A-013',
+      });
+      throw new Error(error);
     }
 
     const tokenId = clobOrder.asset_id || clobOrder.tokenID;
-    if (!tokenId) {
-      logger.warn('CLOB order missing token ID', { order: clobOrder });
+    if (!tokenId || (typeof tokenId === 'string' && tokenId.trim() === '')) {
+      const error = 'CLOB order missing or empty token ID - cannot track position';
+      logger.error(error, { 
+        orderId,
+        order: clobOrder,
+        auditFinding: 'A-013',
+      });
+      throw new Error(error);
     }
 
     const originalSize = Number(clobOrder.size || clobOrder.originalSize || 0);
@@ -1123,10 +1140,11 @@ export class TradingClient {
     
     // Clamp filledSize to valid range [0, originalSize]
     if (isNaN(filledSize) || filledSize < 0) {
-      logger.warn('Invalid filledSize, clamping to 0', { order: clobOrder, filledSize });
+      logger.warn('Invalid filledSize, clamping to 0', { orderId, order: clobOrder, filledSize });
       filledSize = 0;
     } else if (filledSize > originalSize && originalSize > 0) {
       logger.warn('FilledSize exceeds originalSize, clamping', { 
+        orderId,
         order: clobOrder, 
         filledSize, 
         originalSize 
@@ -1149,9 +1167,9 @@ export class TradingClient {
     }
 
     return {
-      orderId: orderId || '',
+      orderId: orderId as string,
       clientOrderId: clobOrder.clientOrderId,
-      tokenId: tokenId || '',
+      tokenId: tokenId as string,
       side: clobOrder.side === 'BUY' ? 'BUY' : 'SELL',
       price: String(clobOrder.price),
       size: String(originalSize),
@@ -1412,6 +1430,8 @@ export class TradingClient {
    * - Fills that occurred while bot was offline
    * - State drift due to any reason
    * 
+   * Orders with missing/empty IDs are rejected to prevent state corruption (A-013).
+   * 
    * @param clobOrder Order data from CLOB API
    * 
    * @see {@link ../../../../docs/order-state-machine.md}
@@ -1419,8 +1439,11 @@ export class TradingClient {
    */
   updateOrderState(clobOrder: ClobOrder): void {
     const orderId = clobOrder.id || clobOrder.orderID;
-    if (!orderId) {
-      logger.warn('Cannot update order, missing ID', { order: clobOrder });
+    if (!orderId || (typeof orderId === 'string' && orderId.trim() === '')) {
+      logger.warn('Cannot update order, missing or empty ID - skipping', { 
+        order: clobOrder,
+        auditFinding: 'A-013',
+      });
       return;
     }
 
@@ -1429,9 +1452,18 @@ export class TradingClient {
     
     if (!existingOrder) {
       // New order we didn't know about (e.g., from another session)
-      const newOrder = this.mapOrder(clobOrder);
-      this.state.orders.push(newOrder);
-      logger.info('Discovered new order during reconciliation', { orderId });
+      try {
+        const newOrder = this.mapOrder(clobOrder);
+        this.state.orders.push(newOrder);
+        logger.info('Discovered new order during reconciliation', { orderId });
+      } catch (error) {
+        // mapOrder threw due to invalid order data - already logged, skip this order
+        logger.warn('Skipped order with invalid data during reconciliation', {
+          orderId,
+          error: error instanceof Error ? error.message : String(error),
+          auditFinding: 'A-013',
+        });
+      }
       return;
     }
 
