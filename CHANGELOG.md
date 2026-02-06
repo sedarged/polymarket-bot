@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0](https://github.com/sedarged/polymarket-bot/compare/v1.23.0...v1.24.0) (2026-02-06)
+
+
+### Features
+
+* implement learning system foundation - event store, signal catalog, backtesting ([680e641](https://github.com/sedarged/polymarket-bot/commit/680e64148f763b7fa543cffad75ff9a1b3a9a2e1))
+* Learning System Foundation - Event store, signal catalog, backtesting framework (PR-008) ([a92da7b](https://github.com/sedarged/polymarket-bot/commit/a92da7b69261b3862b57810439d99828c71fe202))
+
+
+### Bug Fixes
+
+* address PR review feedback - semver ordering, WAL cleanup, position tracking, links ([1fcad49](https://github.com/sedarged/polymarket-bot/commit/1fcad49893fcbaf13fd74bc9cb6c4a4fcf1f7a84))
+
 ## [1.23.0](https://github.com/sedarged/polymarket-bot/compare/v1.22.0...v1.23.0) (2026-02-06)
 
 
