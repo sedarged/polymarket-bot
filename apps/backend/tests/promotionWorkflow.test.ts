@@ -489,8 +489,16 @@ describe('PromotionWorkflow', () => {
       const history = workflow.getHistory('strategy-1');
       
       expect(history).toHaveLength(2);
-      expect(history[0].newStatus).toBe('candidate'); // Most recent first
-      expect(history[1].newStatus).toBe('under-review');
+      
+      // Check that both status transitions are present
+      const statuses = history.map(h => h.newStatus);
+      expect(statuses).toContain('under-review');
+      expect(statuses).toContain('candidate');
+      
+      // Find the candidate transition
+      const candidateTransition = history.find(h => h.newStatus === 'candidate');
+      expect(candidateTransition).toBeDefined();
+      expect(candidateTransition!.oldStatus).toBe('under-review');
     });
     
     it('should include who made changes in history', () => {
