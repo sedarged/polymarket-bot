@@ -427,8 +427,6 @@ describe('DataApiClient', () => {
   });
 
   describe('circuit breaker', () => {
-    const mockAddress = '0x1234567890abcdef1234567890abcdef12345678';
-
     it('should provide circuit breaker metrics', () => {
       const metrics = client.getCircuitBreakerMetrics();
       
@@ -438,8 +436,11 @@ describe('DataApiClient', () => {
       expect(['closed', 'open', 'half-open']).toContain(metrics.state);
     });
 
-    // Note: Full circuit breaker integration test skipped due to retry delays
-    // Circuit breaker functionality is tested in unit tests for CircuitBreaker class
+    // Note: Full circuit breaker state transition tests (open/half-open/closed) are not
+    // included due to the time delays involved in retry logic (exponential backoff).
+    // The circuit breaker functionality itself is tested in unit tests for the
+    // CircuitBreaker class. Here we verify that the DataApiClient properly initializes
+    // and exposes circuit breaker metrics for monitoring.
   });
 
   describe('error handling', () => {

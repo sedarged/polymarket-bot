@@ -6,12 +6,31 @@ import { logger } from '../utils/logger';
 import { Position, Fill } from '@polymarket/shared';
 
 /**
+ * Known activity event types returned by the Data API.
+ * NOTE: This may not be exhaustive - the API may add new event types over time.
+ */
+export const ActivityEventTypes = {
+  ORDER_CREATED: 'order_created',
+  ORDER_CANCELLED: 'order_cancelled',
+  ORDER_MATCHED: 'order_matched',
+  TRADE: 'trade',
+  DEPOSIT: 'deposit',
+  WITHDRAWAL: 'withdrawal',
+} as const;
+
+/**
  * Activity event types returned by the Data API
  */
 export interface ActivityEvent {
   id: string;
   address: string;
-  eventType: 'order_created' | 'order_cancelled' | 'order_matched' | 'trade' | 'deposit' | 'withdrawal';
+  /**
+   * Event type identifier.
+   * 
+   * NOTE: This may include values beyond those listed in ActivityEventTypes
+   * as the external Data API evolves. Treat unknown values defensively.
+   */
+  eventType: string;
   tokenId?: string;
   orderId?: string;
   details: Record<string, unknown>;
@@ -49,9 +68,20 @@ export interface ActivityEvent {
 export class DataApiClient {
   private client: AxiosInstance;
   private circuitBreaker: CircuitBreaker;
+  private readonly retryConfig: {
+    attempts: number;
+    delay: number;
+    jitter: number;
+    maxDelay: number;
+    timeout: number;
+    totalTimeout: number;
+    isRetryable: (error: Error) => boolean;
+  };
 
   constructor() {
     this.client = axios.create({
+      // Base URL verified against official Polymarket Data API documentation (2026-02-06)
+      // Endpoints: /positions, /trades, /activity
       baseURL: 'https://data-api.polymarket.com',
       timeout: 10000,
     });
@@ -62,6 +92,25 @@ export class DataApiClient {
       resetTimeout: 60000, // 1 minute
       successThreshold: 2,
     });
+
+    // Shared retry configuration for all Data API methods
+    this.retryConfig = {
+      attempts: config.retryAttempts,
+      delay: config.retryDelay,
+      jitter: 0.1,
+      maxDelay: 30000,
+      timeout: 10000,
+      totalTimeout: config.retryTotalTimeout,
+      isRetryable: (error: Error) => {
+        const errorType = classifyError(error);
+        // Don't retry permanent errors (4xx except 429)
+        if (errorType === ErrorType.PERMANENT) {
+          return false;
+        }
+        // Retry transient, rate limit, timeout, and network errors
+        return true;
+      },
+    };
 
     // Log circuit breaker state changes
     this.circuitBreaker.on('open', (metrics) => {
@@ -123,23 +172,7 @@ export class DataApiClient {
           params 
         });
         return response.data;
-      }, {
-        attempts: config.retryAttempts,
-        delay: config.retryDelay,
-        jitter: 0.1,
-        maxDelay: 30000,
-        timeout: 10000,
-        totalTimeout: config.retryTotalTimeout,
-        isRetryable: (error: Error) => {
-          const errorType = classifyError(error);
-          // Don't retry permanent errors (4xx except 429)
-          if (errorType === ErrorType.PERMANENT) {
-            return false;
-          }
-          // Retry transient, rate limit, timeout, and network errors
-          return true;
-        },
-      })
+      }, this.retryConfig)
     );
   }
 
@@ -194,23 +227,7 @@ export class DataApiClient {
           params 
         });
         return response.data;
-      }, {
-        attempts: config.retryAttempts,
-        delay: config.retryDelay,
-        jitter: 0.1,
-        maxDelay: 30000,
-        timeout: 10000,
-        totalTimeout: config.retryTotalTimeout,
-        isRetryable: (error: Error) => {
-          const errorType = classifyError(error);
-          // Don't retry permanent errors (4xx except 429)
-          if (errorType === ErrorType.PERMANENT) {
-            return false;
-          }
-          // Retry transient, rate limit, timeout, and network errors
-          return true;
-        },
-      })
+      }, this.retryConfig)
     );
   }
 
@@ -267,23 +284,7 @@ export class DataApiClient {
           params 
         });
         return response.data;
-      }, {
-        attempts: config.retryAttempts,
-        delay: config.retryDelay,
-        jitter: 0.1,
-        maxDelay: 30000,
-        timeout: 10000,
-        totalTimeout: config.retryTotalTimeout,
-        isRetryable: (error: Error) => {
-          const errorType = classifyError(error);
-          // Don't retry permanent errors (4xx except 429)
-          if (errorType === ErrorType.PERMANENT) {
-            return false;
-          }
-          // Retry transient, rate limit, timeout, and network errors
-          return true;
-        },
-      })
+      }, this.retryConfig)
     );
   }
 
@@ -294,4 +295,27 @@ export class DataApiClient {
   getCircuitBreakerMetrics() {
     return this.circuitBreaker.getMetrics();
   }
+
+  /**
+   * Manually reset the circuit breaker (e.g., for testing or recovery).
+   */
+  resetCircuitBreaker(): void {
+    this.circuitBreaker.reset();
+  }
+
+  /**
+   * Clean up resources.
+   */
+  destroy(): void {
+    this.circuitBreaker.destroy();
+  }
 }
+
+/**
+ * Shared Data API client instance for application code.
+ * 
+ * This instance should be used by reconciliation services, trading
+ * workflows, and audit endpoints so that all Data API access shares
+ * a single circuit breaker and consistent configuration.
+ */
+export const dataApiClient = new DataApiClient();

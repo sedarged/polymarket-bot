@@ -109,11 +109,16 @@ describe('DataApiClient + AuditTrail Integration', () => {
       expect(apiFills).toHaveLength(2);
       expect(auditFills).toHaveLength(1); // Only recorded one locally
 
-      // Reconciliation logic: find missing fills by checking order IDs
+      // Reconciliation logic: find missing fills by checking fill IDs
+      // Note: audit trail auto-generates fillId from database, Data API provides its own fillId
+      const auditFillIds = new Set(
+        auditFills.map(f => f.fillId).filter((id): id is string => Boolean(id))
+      );
+      // For this test, we'll use orderId as proxy since audit trail doesn't preserve external fillId
       const auditOrderIds = new Set(auditFills.map(f => f.orderId));
       const missingFills = apiFills.filter(f => !auditOrderIds.has(f.orderId));
 
-      // Should detect one missing fill
+      // Should detect one missing fill (order-2 not in audit trail)
       expect(missingFills).toHaveLength(1);
       expect(missingFills[0].orderId).toBe('order-2');
 
@@ -186,7 +191,7 @@ describe('DataApiClient + AuditTrail Integration', () => {
       expect(auditFills).toHaveLength(1);
 
       // This is a reconciliation alert - local has fills that API doesn't
-      // Compare by orderId instead of fillId (which is auto-generated in audit trail)
+      // In a real scenario with fillId tracking, use fillId. Here we use orderId as proxy.
       const apiOrderIds = new Set(apiFills.map(f => f.orderId));
       const orphanedFills = auditFills.filter(f => !apiOrderIds.has(f.orderId));
 
@@ -315,25 +320,29 @@ describe('DataApiClient + AuditTrail Integration', () => {
         auditTrail.recordFill(fill);
       }
 
-      // Calculate local position from fills
+      // Calculate local position from fills with proper cost basis tracking
       const auditFills = auditTrail.getFills({ tokenId: '0xtoken1' });
-      let localSize = 0;
-      let totalCost = 0;
+      let netSize = 0;
+      let costBasis = 0;
 
       for (const fill of auditFills) {
         const fillSize = parseFloat(fill.size);
         const fillPrice = parseFloat(fill.price);
         
         if (fill.side === 'BUY') {
-          localSize += fillSize;
-          totalCost += fillSize * fillPrice;
-        } else {
-          localSize -= fillSize;
-          totalCost -= fillSize * fillPrice;
+          costBasis += fillSize * fillPrice;
+          netSize += fillSize;
+        } else { // SELL
+          // Reduce position size, reduce cost basis proportionally
+          if (netSize > 0) {
+            const avgPrice = costBasis / netSize;
+            costBasis -= fillSize * avgPrice;
+          }
+          netSize -= fillSize;
         }
       }
 
-      const localAvgPrice = localSize > 0 ? totalCost / localSize : 0;
+      const localAvgPrice = netSize > 0 ? costBasis / netSize : 0;
 
       // Fetch positions from Data API
       const apiPositions = await dataApiClient.getPositions(mockAddress);
@@ -342,7 +351,7 @@ describe('DataApiClient + AuditTrail Integration', () => {
       expect(apiPositions).toHaveLength(1);
       const apiPosition = apiPositions[0];
 
-      expect(parseFloat(apiPosition.size)).toBe(localSize);
+      expect(parseFloat(apiPosition.size)).toBe(netSize);
       // Average price should be close (accounting for fees and rounding)
       expect(Math.abs(parseFloat(apiPosition.averagePrice) - localAvgPrice)).toBeLessThan(0.01);
     });
@@ -524,38 +533,94 @@ describe('DataApiClient + AuditTrail Integration', () => {
   });
 
   describe('Pagination for Large Datasets', () => {
-    it('should handle paginated fill history', async () => {
-      // Simulate paginated API responses
-      const page1Fills: Fill[] = Array.from({ length: 100 }, (_, i) => ({
-        orderId: `order-${i}`,
-        tokenId: '0xtoken1',
-        side: i % 2 === 0 ? 'BUY' : 'SELL',
-        price: '0.55',
-        size: '10',
-        timestamp: Date.now() - i * 1000,
-        fee: '0.011',
-        fillId: `fill-${i}`,
-      }));
+    it('should handle paginated fill history with helper function', async () => {
+      // Helper to create a page of mock fills with stable, predictable data
+      const createMockFillsPage = (startIndex: number, count: number): Fill[] => {
+        const fills: Fill[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const index = startIndex + i;
+          fills.push({
+            orderId: `order-${index}`,
+            tokenId: '0xtoken1',
+            side: index % 2 === 0 ? 'BUY' : 'SELL',
+            price: '0.55',
+            size: '10',
+            timestamp: Date.now() - index * 1000,
+            fee: '0.011',
+            fillId: `fill-${index}`,
+          });
+        }
+        return fills;
+      };
 
-      mockAxiosInstance.get.mockResolvedValue({ data: page1Fills });
+      // Simulate two pages of API responses: first full page, then final partial page
+      const page1Fills: Fill[] = createMockFillsPage(0, 100);
+      const page2Fills: Fill[] = createMockFillsPage(100, 20);
 
-      // Fetch first page
-      const fills = await dataApiClient.getTrades(mockAddress, {
-        limit: 100,
-        offset: 0,
-      });
+      mockAxiosInstance.get
+        .mockResolvedValueOnce({ data: page1Fills })
+        .mockResolvedValueOnce({ data: page2Fills });
 
-      expect(fills).toHaveLength(100);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/trades', {
+      // Example pagination helper: in production this pattern would live in a service
+      // that uses DataApiClient for complete history retrieval
+      const fetchAllTradesPaginated = async (
+        address: string,
+        params: Record<string, unknown> | undefined,
+        pageSize = 100,
+        maxIterations = 100,
+      ): Promise<Fill[]> => {
+        const allFills: Fill[] = [];
+        let offset = 0;
+        let iterations = 0;
+
+        // Loop with explicit max-iteration guard to avoid infinite pagination
+        // if the API or client behaves unexpectedly
+        while (true) {
+          if (iterations >= maxIterations) {
+            throw new Error('Max pagination iterations exceeded while fetching trades');
+          }
+          iterations += 1;
+
+          const page = await dataApiClient.getTrades(address, {
+            ...params,
+            limit: pageSize,
+            offset,
+          });
+
+          allFills.push(...page);
+
+          if (page.length < pageSize) {
+            // Last page - no more data
+            break;
+          }
+
+          offset += pageSize;
+        }
+
+        return allFills;
+      };
+
+      // Fetch all pages
+      const allFills = await fetchAllTradesPaginated(mockAddress, undefined, 100, 10);
+
+      expect(allFills).toHaveLength(120);
+      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(1, '/trades', {
         params: {
           address: mockAddress,
           limit: 100,
           offset: 0,
         },
       });
+      expect(mockAxiosInstance.get).toHaveBeenNthCalledWith(2, '/trades', {
+        params: {
+          address: mockAddress,
+          limit: 100,
+          offset: 100,
+        },
+      });
 
-      // In production, would continue fetching pages until no more data
-      // and record all fills in audit trail for complete history
+      // This test demonstrates how production code should paginate until no more data
+      // while protecting against infinite loops via an explicit maxIterations guard
     });
   });
 
