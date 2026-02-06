@@ -17,10 +17,25 @@ To update this status:
 *No issues currently in progress*
 
 ## Next — P0 (Critical)
+- [P0] #245 [PR-016 FINAL AUDIT ] MASTER FINAL AUDIT: Project Completion Gate for Production Deployment
+- [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
+- [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
+- [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
+- [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
+- [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 - [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
 - [P0] #98 [Trading Logic] Implement robust partial fill tracking and accounting
 
 ## Next — P1 (High Priority)
+- [P1] #241 [PR-013] Documentation, Compliance & Troubleshooting Guides
+- [P1] #237 [PR-009] Learning System Allocation & Governance - Bandit algorithms and promotion workflow
+- [P1] #236 [PR-008] Learning System Foundation - Event store, signal catalog, backtesting framework
+- [P1] #235 [PR-007] Periodic Reconciliation - Automated state verification every 5-10 minutes
+- [P1] #234 [PR-006] Polymarket API Verification & CLOB Expansion - 100% API coverage
+- [P1] #233 [PR-005] Price & Market Endpoints - Complete price query API implementation
+- [P1] #232 [PR-004] Security Hardening - Remove unsafe casting & validate private keys
+- [P1] #227 [Phase 2] Expand CLOB API coverage: all core price endpoints, improved kill switch, advanced trading features
+- [P1] #226 [High] Implement all price/query endpoints: GET /price, GET /lasttrade, spread/midpoint, etc.
 - [P1] #107 [Backend] Validate private key format at startup - Audit Finding A-024
 - [P1] #102 [Backend] Implement audit trail (order/fill history) - Gap PA-002
 - [P1] #99 [Backend] Implement periodic reconciliation - Gap RE-001
@@ -34,10 +49,15 @@ To update this status:
 - [P1] #76 [Documentation] Add troubleshooting guides to docs
 
 ## Next — P2 (Normal Priority)
+- [P2] #243 [PR-015] DevOps & Deployment - Docker production and local setup
+- [P2] #242 [PR-014] Gamma API & Platform - Complete advanced Polymarket integration
+- [P2] #240 [PR-012] Dashboard Authentication & Learning System Tab
+- [P2] #239 [PR-011] Dashboard Core Tabs - Overview, Controls, Alerts & Logs
+- [P2] #238 [PR-010] Observability Stack - Prometheus metrics, alerting, error logging
+- [P2] #228 [Phase 3-4] Implement complete Gamma API and Data Platform support (historical data, WebSocket, advanced endpoints)
 - [P2] #130 [Trading Logic] Update position calculation logic - Audit Finding A-014
 - [P2] #127 [Backend] Do not allow undefined order IDs - Audit Finding A-013
 - [P2] #126 [Trading Logic] Log and alert strategy execution errors - Audit Finding A-012
-- [P2] #114 [Documentation] Document geo-restrictions and compliance
 - [P2] #104 [Observability] Add metrics instrumentation - Audit Finding A-027
 - [P2] #101 [Observability] Integrate Prometheus metrics - Gap OB-001
 - [P2] #100 [Observability] Set up basic alerting (Slack/email) - Gap OB-002
@@ -69,10 +89,8 @@ To update this status:
 - [P1] #117 [Backend] Implement order idempotency with UUIDs - Audit Finding A-006
 - [P1] #116 [Backend] Verify Polymarket API alignment with official documentation
 - [P1] #115 [Backend] Remove unsafe type coercion/casting - Audit Finding A-005
-- [P0] #112 [Paper Trading] Implement partial fill simulation - Audit Finding A-019
-- [P0] #111 [Trading Logic] Correct slippage calculation - Audit Finding A-020
 
-*Last updated: 2026-02-06T01:18:41.689Z*
+*Last updated: 2026-02-06T02:35:38.835Z*
 
 <!-- STATUS_SYNC_END -->
 
