@@ -10,6 +10,7 @@ import { PaperTradingEngine } from '../trading/paperTradingEngine';
 import { RiskManager } from '../trading/riskManager';
 import { getMetrics, getContentType } from '../utils/metrics';
 import { RateLimiter } from '../utils/rateLimiter';
+import type { Order } from '@polymarket/shared';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -623,7 +624,7 @@ export function createServer(): http.Server {
           // behavior between live and paper modes, but is documented here.
           let paperCancelledCount = 0;
           if (paperEngine) {
-            const paperOrders = paperEngine.getState().orders.filter(o => 
+            const paperOrders = paperEngine.getOrders().filter((o: Order) => 
               o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
             );
             paperCancelledCount = paperOrders.length;
