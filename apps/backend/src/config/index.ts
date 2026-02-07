@@ -160,25 +160,11 @@ const envSchema = z.object({
   // ========================================
   // Alerting Configuration (Gap OB-002, Issue #100)
   // ========================================
-  // Slack webhook URL for alerting critical events
-  // Generate webhook: https://api.slack.com/messaging/webhooks
-  // Example: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
-  SLACK_WEBHOOK_URL: optionalStringFromEnv(z.string().url().optional()),
   // Telegram bot configuration for alerting
   // Create bot via @BotFather on Telegram and get bot token
   // Get chat ID by sending a message to the bot and calling https://api.telegram.org/bot<TOKEN>/getUpdates
   TELEGRAM_BOT_TOKEN: optionalStringFromEnv(z.string().optional()),
   TELEGRAM_CHAT_ID: optionalStringFromEnv(z.string().optional()),
-  // Email alerting configuration (optional)
-  // SMTP server for sending email alerts
-  EMAIL_SMTP_HOST: optionalStringFromEnv(z.string().optional()),
-  EMAIL_SMTP_PORT: numberFromEnv(587, z.number().int().positive().min(1).max(65535)),
-  EMAIL_SMTP_SECURE: booleanFromEnv.default(false), // Use TLS
-  EMAIL_SMTP_USER: optionalStringFromEnv(z.string().optional()),
-  EMAIL_SMTP_PASSWORD: optionalStringFromEnv(z.string().optional()),
-  EMAIL_FROM_ADDRESS: optionalStringFromEnv(z.string().email().optional()),
-  // Comma-separated list of email addresses to send alerts to
-  EMAIL_TO_ADDRESSES: z.string().default(''),
   // Alert thresholds
   ALERT_ERROR_RATE_THRESHOLD: numberFromEnv(5, z.number().positive().min(0.1).max(100)), // Error rate percentage (default: 5%)
   ALERT_CIRCUIT_BREAKER_TRIPS: numberFromEnv(1, z.number().int().positive().min(1)), // Alert after N trips (default: 1)
@@ -189,6 +175,17 @@ const configSchema = envSchema.refine(
   {
     message: 'PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE',
     path: ['PAPER_TRADING_MAX_SLIPPAGE'],
+  }
+).refine(
+  (env) => {
+    // If either Telegram field is set, both must be set
+    const hasToken = !!env.TELEGRAM_BOT_TOKEN;
+    const hasChatId = !!env.TELEGRAM_CHAT_ID;
+    return hasToken === hasChatId;
+  },
+  {
+    message: 'Both TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set together for Telegram alerting',
+    path: ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'],
   }
 ).transform((env) => ({
   gammaApiUrl: env.GAMMA_API_URL,
@@ -235,16 +232,8 @@ const configSchema = envSchema.refine(
   rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
   rateLimitTrustProxy: env.RATE_LIMIT_TRUST_PROXY,
   // Alerting configuration
-  slackWebhookUrl: env.SLACK_WEBHOOK_URL,
   telegramBotToken: env.TELEGRAM_BOT_TOKEN,
   telegramChatId: env.TELEGRAM_CHAT_ID,
-  emailSmtpHost: env.EMAIL_SMTP_HOST,
-  emailSmtpPort: env.EMAIL_SMTP_PORT,
-  emailSmtpSecure: env.EMAIL_SMTP_SECURE,
-  emailSmtpUser: env.EMAIL_SMTP_USER,
-  emailSmtpPassword: env.EMAIL_SMTP_PASSWORD,
-  emailFromAddress: env.EMAIL_FROM_ADDRESS,
-  emailToAddresses: env.EMAIL_TO_ADDRESSES.split(',').map(s => s.trim()).filter(s => s.length > 0),
   alertErrorRateThreshold: env.ALERT_ERROR_RATE_THRESHOLD,
   alertCircuitBreakerTrips: env.ALERT_CIRCUIT_BREAKER_TRIPS,
 }));

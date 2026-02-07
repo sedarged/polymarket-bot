@@ -686,32 +686,10 @@ export async function startServer(): Promise<http.Server> {
   
   // Initialize alerting service if configured
   // This must be initialized before other services that may need to send alerts
-  if (config.slackWebhookUrl || config.telegramBotToken || config.emailSmtpHost) {
-    const emailConfig = config.emailSmtpHost && config.emailFromAddress && config.emailToAddresses.length > 0 ? {
-      smtpHost: config.emailSmtpHost,
-      smtpPort: config.emailSmtpPort,
-      smtpSecure: config.emailSmtpSecure,
-      smtpUser: config.emailSmtpUser || '',
-      smtpPassword: config.emailSmtpPassword || '',
-      fromAddress: config.emailFromAddress,
-      toAddresses: config.emailToAddresses,
-    } : undefined;
-    
+  if (config.telegramBotToken && config.telegramChatId) {
     initializeAlerting({
-      slackWebhookUrl: config.slackWebhookUrl,
       telegramBotToken: config.telegramBotToken,
       telegramChatId: config.telegramChatId,
-      emailConfig,
-      thresholds: {
-        errorRatePercent: config.alertErrorRateThreshold,
-        circuitBreakerTrips: config.alertCircuitBreakerTrips,
-      },
-    });
-    
-    logger.info('Alerting service initialized', {
-      hasSlack: !!config.slackWebhookUrl,
-      hasTelegram: !!(config.telegramBotToken && config.telegramChatId),
-      hasEmail: !!emailConfig,
       thresholds: {
         errorRatePercent: config.alertErrorRateThreshold,
         circuitBreakerTrips: config.alertCircuitBreakerTrips,

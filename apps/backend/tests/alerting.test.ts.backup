@@ -73,7 +73,6 @@ describe('AlertingService', () => {
           },
         })
       );
-    });
 
     it('should escape Markdown characters in Telegram messages', async () => {
       await alertingService.sendAlert({
@@ -182,9 +181,9 @@ describe('AlertingService', () => {
       const telegramCall = mockFetch.mock.calls[0];
       const body = JSON.parse(telegramCall[1].body);
       
-      // Check that sensitive fields are masked (note: asterisks are escaped in Markdown)
-      expect(body.text).toContain('\\*\\*\\*2345'); // apiKey masked
-      expect(body.text).toContain('\\*\\*\\*cret'); // password masked
+      // Check that sensitive fields are masked
+      expect(body.text).toContain('***2345'); // apiKey masked
+      expect(body.text).toContain('***cret'); // password masked
       expect(body.text).toContain('visible'); // normal field not masked
     });
   });

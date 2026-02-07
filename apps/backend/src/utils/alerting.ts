@@ -1,5 +1,5 @@
 /**
- * Alerting Service - Slack, Telegram, and Email notifications for critical events
+ * Alerting Service - Telegram notifications for critical events
  * 
  * Provides centralized alerting for:
  * - Circuit breaker trips
@@ -9,24 +9,14 @@
  * 
  * Addresses:
  * - Gap OB-002: Set up basic alerting
- * - Issue #100: [Observability] Set up basic alerting (Slack/Telegram/email)
+ * - Issue #100: [Observability] Set up basic alerting (Telegram)
  */
 
 import { logger } from './logger';
 
 export interface AlertConfig {
-  slackWebhookUrl?: string;
-  telegramBotToken?: string;
-  telegramChatId?: string;
-  emailConfig?: {
-    smtpHost: string;
-    smtpPort: number;
-    smtpSecure: boolean;
-    smtpUser: string;
-    smtpPassword: string;
-    fromAddress: string;
-    toAddresses: string[];
-  };
+  telegramBotToken: string;
+  telegramChatId: string;
   thresholds?: {
     errorRatePercent: number; // Alert when error rate exceeds this (default: 5%)
     circuitBreakerTrips: number; // Alert after N circuit breaker trips (default: 1)
@@ -41,10 +31,11 @@ export interface Alert {
   message: string;
   context?: Record<string, unknown>;
   timestamp: string;
+  dedupeKey?: string; // Optional key for more granular deduplication
 }
 
 /**
- * Alerting Service for sending notifications to Slack, Telegram, and Email
+ * Alerting Service for sending notifications to Telegram
  */
 export class AlertingService {
   private config: AlertConfig;
@@ -54,37 +45,65 @@ export class AlertingService {
   // Rate limiting to prevent alert storms
   private lastAlertTimestamps = new Map<string, number>();
   private alertCooldownMs = 60000; // 1 minute cooldown for same alert
+  
+  // Circuit breaker trip tracking
+  private circuitBreakerTripCounts = new Map<string, number>();
+  private circuitBreakerTripResetMs = 300000; // Reset count after 5 minutes
+  private lastCircuitBreakerTripTime = new Map<string, number>();
+  
+  // Sensitive keys to mask in context
+  private readonly SENSITIVE_KEYS = [
+    'password', 'token', 'secret', 'key', 'apiKey', 'apiSecret',
+    'privateKey', 'accessToken', 'refreshToken', 'authorization'
+  ];
 
   constructor(config: AlertConfig) {
     this.config = {
+      ...config,
       thresholds: {
         errorRatePercent: 5,
         circuitBreakerTrips: 1,
         ...config.thresholds,
       },
-      ...config,
     };
     
     logger.info('Alerting service initialized', {
-      hasSlack: !!config.slackWebhookUrl,
-      hasTelegram: !!(config.telegramBotToken && config.telegramChatId),
-      hasEmail: !!config.emailConfig,
+      hasTelegram: true,
       thresholds: this.config.thresholds,
     });
+  }
+
+  /**
+   * Mask sensitive values in context
+   */
+  private maskSensitiveContext(context?: Record<string, unknown>): Record<string, unknown> {
+    if (!context) {
+      return {};
+    }
+    
+    const masked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(context)) {
+      const lowerKey = key.toLowerCase();
+      const isSensitive = this.SENSITIVE_KEYS.some(sensitiveKey => 
+        lowerKey.includes(sensitiveKey.toLowerCase())
+      );
+      
+      if (isSensitive && typeof value === 'string' && value.length > 4) {
+        // Mask all but last 4 characters
+        masked[key] = '***' + value.slice(-4);
+      } else {
+        masked[key] = value;
+      }
+    }
+    return masked;
   }
 
   /**
    * Send an alert via all configured channels
    */
   async sendAlert(alert: Alert): Promise<void> {
-    // Add to history
-    this.alertHistory.push(alert);
-    if (this.alertHistory.length > this.maxHistorySize) {
-      this.alertHistory.shift();
-    }
-
-    // Check rate limiting to prevent alert storms
-    const alertKey = `${alert.title}:${alert.severity}`;
+    // Check rate limiting FIRST to prevent alert storms
+    const alertKey = alert.dedupeKey || `${alert.title}:${alert.severity}`;
     const lastAlertTime = this.lastAlertTimestamps.get(alertKey) || 0;
     const now = Date.now();
     
@@ -98,129 +117,69 @@ export class AlertingService {
     
     this.lastAlertTimestamps.set(alertKey, now);
 
-    // Log the alert
+    // Add to history AFTER rate limiting check
+    this.alertHistory.push(alert);
+    if (this.alertHistory.length > this.maxHistorySize) {
+      this.alertHistory.shift();
+    }
+
+    // Mask sensitive context before logging or sending
+    const maskedContext = this.maskSensitiveContext(alert.context);
+
+    // Log the alert with nested context
     logger[alert.severity === 'critical' ? 'error' : alert.severity === 'warning' ? 'warn' : 'info'](
       `ALERT: ${alert.title}`,
       {
         message: alert.message,
-        ...alert.context,
+        context: maskedContext,
       }
     );
 
-    // Send to configured channels
-    const promises: Promise<void>[] = [];
-    
-    if (this.config.slackWebhookUrl) {
-      promises.push(this.sendSlackAlert(alert));
-    }
-    
-    if (this.config.telegramBotToken && this.config.telegramChatId) {
-      promises.push(this.sendTelegramAlert(alert));
-    }
-    
-    if (this.config.emailConfig) {
-      promises.push(this.sendEmailAlert(alert));
-    }
-
-    // Wait for all alerts to be sent
-    await Promise.allSettled(promises);
+    // Send to Telegram
+    await this.sendTelegramAlert({ ...alert, context: maskedContext });
   }
 
   /**
-   * Send alert to Slack webhook
+   * Escape Markdown special characters for Telegram
    */
-  private async sendSlackAlert(alert: Alert): Promise<void> {
-    if (!this.config.slackWebhookUrl) {
-      return;
-    }
-
-    const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️';
-    const color = alert.severity === 'critical' ? '#ff0000' : alert.severity === 'warning' ? '#ffaa00' : '#0099ff';
-    
-    const payload = {
-      text: `${emoji} *${alert.title}*`,
-      attachments: [
-        {
-          color,
-          fields: [
-            {
-              title: 'Severity',
-              value: alert.severity.toUpperCase(),
-              short: true,
-            },
-            {
-              title: 'Time',
-              value: alert.timestamp,
-              short: true,
-            },
-            {
-              title: 'Message',
-              value: alert.message,
-              short: false,
-            },
-          ],
-        },
-      ],
-    };
-
-    // Add context fields if present
-    if (alert.context) {
-      const contextFields = Object.entries(alert.context).map(([key, value]) => ({
-        title: key,
-        value: String(value),
-        short: true,
-      }));
-      payload.attachments[0].fields.push(...contextFields);
-    }
-
-    try {
-      const response = await fetch(this.config.slackWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Slack webhook failed: ${response.status} ${response.statusText}`);
-      }
-
-      logger.debug('Alert sent to Slack', { title: alert.title });
-    } catch (error) {
-      logger.error('Failed to send Slack alert', {
-        error: error instanceof Error ? error.message : String(error),
-        title: alert.title,
-      });
-    }
+  private escapeMarkdown(text: string): string {
+    // Escape Markdown special characters: _ * [ ] ( ) ~ ` > # + - = | { } . !
+    return text.replace(/([_*\[\]()~`>#+=|{}.!\\-])/g, '\\$1');
   }
 
   /**
    * Send alert to Telegram bot
    */
   private async sendTelegramAlert(alert: Alert): Promise<void> {
-    if (!this.config.telegramBotToken || !this.config.telegramChatId) {
-      return;
-    }
-
     const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️';
     
+    // Escape content for Markdown to prevent API errors
+    const escapedTitle = this.escapeMarkdown(alert.title);
+    const escapedMessage = this.escapeMarkdown(alert.message);
+    
     // Format message for Telegram using Markdown
-    let message = `${emoji} *${alert.title}*\n\n`;
+    let message = `${emoji} *${escapedTitle}*\n\n`;
     message += `*Severity:* ${alert.severity.toUpperCase()}\n`;
-    message += `*Time:* ${alert.timestamp}\n`;
-    message += `*Message:* ${alert.message}\n`;
+    message += `*Time:* ${this.escapeMarkdown(alert.timestamp)}\n`;
+    message += `*Message:* ${escapedMessage}\n`;
     
     // Add context fields if present
-    if (alert.context) {
+    if (alert.context && Object.keys(alert.context).length > 0) {
       message += '\n*Details:*\n';
       for (const [key, value] of Object.entries(alert.context)) {
-        message += `• ${key}: ${String(value)}\n`;
+        const escapedKey = this.escapeMarkdown(key);
+        const escapedValue = this.escapeMarkdown(String(value));
+        message += `• ${escapedKey}: ${escapedValue}\n`;
       }
     }
 
     try {
       const url = `https://api.telegram.org/bot${this.config.telegramBotToken}/sendMessage`;
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -231,7 +190,10 @@ export class AlertingService {
           text: message,
           parse_mode: 'Markdown',
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -240,38 +202,48 @@ export class AlertingService {
 
       logger.debug('Alert sent to Telegram', { title: alert.title });
     } catch (error) {
-      logger.error('Failed to send Telegram alert', {
-        error: error instanceof Error ? error.message : String(error),
-        title: alert.title,
-      });
+      if (error instanceof Error && error.name === 'AbortError') {
+        logger.error('Telegram alert timed out', {
+          title: alert.title,
+          timeout: '10s',
+        });
+      } else {
+        logger.error('Failed to send Telegram alert', {
+          error: error instanceof Error ? error.message : String(error),
+          title: alert.title,
+        });
+      }
     }
-  }
-
-  /**
-   * Send alert via email
-   * Note: Minimal implementation - requires nodemailer or similar library
-   */
-  private async sendEmailAlert(alert: Alert): Promise<void> {
-    if (!this.config.emailConfig) {
-      return;
-    }
-
-    // Email sending requires nodemailer which is not installed yet
-    // For now, just log that we would send an email
-    logger.info('Email alert would be sent (nodemailer not configured)', {
-      title: alert.title,
-      severity: alert.severity,
-      recipients: this.config.emailConfig.toAddresses,
-    });
-    
-    // TODO: Implement actual email sending with nodemailer
-    // This is a placeholder that can be expanded when nodemailer is added
   }
 
   /**
    * Alert on circuit breaker trip
    */
   async alertCircuitBreakerTrip(breakerName: string, failures: number): Promise<void> {
+    const now = Date.now();
+    const lastTripTime = this.lastCircuitBreakerTripTime.get(breakerName) || 0;
+    
+    // Reset count if it's been more than 5 minutes since last trip
+    if (now - lastTripTime > this.circuitBreakerTripResetMs) {
+      this.circuitBreakerTripCounts.set(breakerName, 0);
+    }
+    
+    // Increment trip count
+    const currentCount = (this.circuitBreakerTripCounts.get(breakerName) || 0) + 1;
+    this.circuitBreakerTripCounts.set(breakerName, currentCount);
+    this.lastCircuitBreakerTripTime.set(breakerName, now);
+    
+    // Only alert if threshold is reached
+    const threshold = this.config.thresholds?.circuitBreakerTrips || 1;
+    if (currentCount < threshold) {
+      logger.debug('Circuit breaker trip below threshold', {
+        breaker: breakerName,
+        tripCount: currentCount,
+        threshold,
+      });
+      return;
+    }
+    
     await this.sendAlert({
       severity: 'critical',
       title: 'Circuit Breaker Tripped',
@@ -279,8 +251,10 @@ export class AlertingService {
       context: {
         breaker: breakerName,
         failures,
+        tripCount: currentCount,
       },
       timestamp: new Date().toISOString(),
+      dedupeKey: `circuit-breaker:${breakerName}:critical`,
     });
   }
 
@@ -297,6 +271,7 @@ export class AlertingService {
         activatedBy: activatedBy || 'system',
       },
       timestamp: new Date().toISOString(),
+      dedupeKey: 'kill-switch:critical',
     });
   }
 
@@ -320,6 +295,7 @@ export class AlertingService {
         windowSize,
       },
       timestamp: new Date().toISOString(),
+      dedupeKey: 'error-rate:warning',
     });
   }
 
@@ -346,6 +322,7 @@ export class AlertingService {
         ...context,
       },
       timestamp: new Date().toISOString(),
+      dedupeKey: `strategy-error:${strategyName}:critical`,
     });
   }
 
