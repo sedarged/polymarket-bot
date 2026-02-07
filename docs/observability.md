@@ -333,6 +333,12 @@ ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
 
 ### Setting Up Email Alerts
 
+**Status:** ⚠️ **PLACEHOLDER IMPLEMENTATION**
+
+Email alerting configuration is accepted but not yet fully implemented. The bot will log that an email would be sent but will not actually send emails. Full email implementation requires adding the `nodemailer` library.
+
+To enable email alerts in the future:
+
 For Gmail:
 1. Enable 2-factor authentication on your Google account
 2. Generate an app-specific password at https://myaccount.google.com/apppasswords
@@ -341,6 +347,8 @@ For Gmail:
 5. Restart the bot
 
 For other SMTP servers, configure the appropriate host, port, and credentials.
+
+**Current behavior:** Email configuration is validated and logged, but actual email sending is not implemented. Alerts will still be sent to Slack if configured.
 
 ### Alert Types
 
