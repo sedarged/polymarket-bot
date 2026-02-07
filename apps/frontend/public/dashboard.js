@@ -761,19 +761,35 @@ async function refresh() {
   addEvent('REFRESH', 'Dashboard data refreshed');
 }
 
-// Tab switching
+// View switching (compatible with both old tabs and new sidebar)
 function switchTab(tabName) {
-  // Update tab buttons
+  // Update tab buttons (old layout)
   document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.remove('active');
   });
   document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('active');
   
-  // Update tab content
+  // Update nav items (new layout)
+  document.querySelectorAll('.nav-item').forEach(nav => {
+    nav.classList.remove('active');
+  });
+  document.querySelector(`[data-view="${tabName}"]`)?.classList.add('active');
+  
+  // Update tab content (old layout)
   document.querySelectorAll('.tab-content').forEach(content => {
     content.classList.remove('active');
   });
-  document.getElementById(tabName)?.classList.add('active');
+  
+  // Update views (new layout)
+  document.querySelectorAll('.view').forEach(view => {
+    view.classList.remove('active');
+  });
+  
+  // Show the correct content area
+  const contentElement = document.getElementById(tabName);
+  if (contentElement) {
+    contentElement.classList.add('active');
+  }
   
   state.currentTab = tabName;
   
@@ -783,12 +799,22 @@ function switchTab(tabName) {
   }
 }
 
+// Make switchTab globally available for inline scripts
+window.switchTab = switchTab;
+
 // Initialize dashboard
 async function init() {
-  // Set up tab switching
+  // Set up tab switching (old layout)
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       switchTab(tab.dataset.tab);
+    });
+  });
+  
+  // Set up nav item switching (new layout)
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      switchTab(item.dataset.view);
     });
   });
   
