@@ -292,8 +292,241 @@ Potential improvements tracked in [STATUS.md](../STATUS.md):
 - [ ] Business metrics (P&L, fill rate, Sharpe ratio) - OB-004
 - [ ] Performance metrics (latency percentiles beyond p95/p99) - OB-003
 - [ ] Distributed tracing (request IDs across services) - OB-005
-- [ ] Alerting system integration (PagerDuty, Slack) - OB-002
+- [x] Alerting system integration (Slack, Email) - OB-002 ✅ **COMPLETED**
 - [ ] Orderbook staleness detection - OB-007
+
+## Built-in Alerting System
+
+**Status:** ✅ **IMPLEMENTED** (PR-010)
+
+The bot includes a built-in alerting system that sends notifications to Slack and email for critical events.
+
+### Configuration
+
+Configure alerting via environment variables in `.env`:
+
+```bash
+# Slack webhook URL for critical alerts
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+
+# Email alerting (optional)
+EMAIL_SMTP_HOST=smtp.gmail.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_SECURE=false
+EMAIL_SMTP_USER=your-email@gmail.com
+EMAIL_SMTP_PASSWORD=your-app-password
+EMAIL_FROM_ADDRESS=polymarket-bot@example.com
+EMAIL_TO_ADDRESSES=admin@example.com,ops@example.com
+
+# Alert thresholds
+ALERT_ERROR_RATE_THRESHOLD=5  # Alert when error rate exceeds 5%
+ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
+```
+
+### Setting Up Slack Alerts
+
+1. Go to https://api.slack.com/messaging/webhooks
+2. Create a new webhook for your Slack workspace
+3. Copy the webhook URL
+4. Add it to your `.env` file as `SLACK_WEBHOOK_URL`
+5. Restart the bot
+
+### Setting Up Email Alerts
+
+For Gmail:
+1. Enable 2-factor authentication on your Google account
+2. Generate an app-specific password at https://myaccount.google.com/apppasswords
+3. Use the app password in `EMAIL_SMTP_PASSWORD`
+4. Add recipient addresses to `EMAIL_TO_ADDRESSES` (comma-separated)
+5. Restart the bot
+
+For other SMTP servers, configure the appropriate host, port, and credentials.
+
+### Alert Types
+
+#### Critical Alerts 🚨
+
+**Circuit Breaker Tripped**
+- **Trigger:** Circuit breaker opens after consecutive failures
+- **Context:** Breaker name, failure count
+- **Example:**
+  ```
+  🚨 Circuit Breaker Tripped
+  Breaker: market-feed
+  Failures: 5
+  Time: 2024-02-07T00:50:00Z
+  ```
+- **Action:** Investigate root cause immediately. System will auto-recover after timeout.
+
+**Kill Switch Activated**
+- **Trigger:** Kill switch manually or automatically activated
+- **Context:** Reason, activated by (user/system)
+- **Example:**
+  ```
+  🚨 Kill Switch Activated
+  Reason: High error rate detected
+  Activated By: system
+  Time: 2024-02-07T00:50:00Z
+  ```
+- **Action:** Verify reason, resolve issue, reset kill switch when safe.
+
+**Strategy Execution Error**
+- **Trigger:** Trading strategy throws an exception
+- **Context:** Strategy name, error message, stack trace, market context
+- **Example:**
+  ```
+  🚨 Strategy Execution Error
+  Strategy: momentum-strategy
+  Error: Cannot read property 'price' of undefined
+  Market: market-123
+  Signals: {"rsi": 70, "macd": 0.5}
+  ```
+- **Action:** Review strategy code, fix bugs, redeploy.
+
+#### Warning Alerts ⚠️
+
+**High Error Rate**
+- **Trigger:** Error rate exceeds threshold (default: 5%)
+- **Context:** Current error rate, window size, threshold
+- **Example:**
+  ```
+  ⚠️  High Error Rate Detected
+  Error Rate: 8.5%
+  Threshold: 5%
+  Window: 100 operations
+  ```
+- **Action:** Monitor for escalation. Investigate if persistent.
+
+### Alert Features
+
+- **Rate Limiting:** Alerts are automatically rate-limited to prevent alert storms (1 minute cooldown per alert type)
+- **Rich Formatting:** Slack alerts include emoji, colors, and structured fields
+- **Alert History:** Last 1000 alerts kept in memory (accessible via API endpoint)
+- **Multiple Channels:** Send to Slack, email, or both simultaneously
+- **Contextual Information:** All alerts include relevant context for troubleshooting
+
+### Alert Runbooks
+
+#### Circuit Breaker Opened
+
+1. **Check metrics:**
+   ```bash
+   curl http://localhost:3000/metrics | grep circuit_breaker
+   ```
+
+2. **Review logs:**
+   ```bash
+   grep -i "circuit breaker" logs/*.log
+   ```
+
+3. **Common causes:**
+   - Network connectivity issues
+   - API rate limiting
+   - API service outage
+   - Invalid credentials
+
+4. **Resolution:**
+   - If transient: Wait for auto-recovery (default: 60 seconds)
+   - If persistent: Fix root cause, circuit breaker will self-heal
+   - Monitor `polymarket_circuit_breaker_state` metric
+
+#### Kill Switch Activated
+
+1. **Check status:**
+   ```bash
+   curl http://localhost:3000/status
+   ```
+
+2. **Review alert context for reason**
+
+3. **Common triggers:**
+   - High error rate
+   - Excessive drawdown
+   - Manual activation
+   - System anomaly detection
+
+4. **Resolution:**
+   ```bash
+   # Verify issue is resolved, then reset
+   curl -X POST http://localhost:3000/reset \
+     -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+   ```
+
+#### High Error Rate
+
+1. **Check current metrics:**
+   ```bash
+   curl http://localhost:3000/metrics | grep orders_total
+   ```
+
+2. **Review recent errors:**
+   ```bash
+   grep "ERROR" logs/*.log | tail -100
+   ```
+
+3. **Common causes:**
+   - API rate limiting
+   - Invalid order parameters
+   - Insufficient balance
+   - Market closed
+
+4. **Resolution:**
+   - Fix validation errors
+   - Adjust rate limits
+   - Ensure sufficient balance
+   - Verify market status
+
+### Testing Alerts
+
+You can manually trigger test alerts for verification:
+
+```bash
+# Test Slack/email configuration
+# Note: Requires implementing a test endpoint or using the alerting service directly in code
+```
+
+### Alert History API
+
+Get recent alert history (last 100 alerts):
+
+```bash
+curl http://localhost:3000/alerts
+```
+
+Response:
+```json
+{
+  "alerts": [
+    {
+      "severity": "critical",
+      "title": "Circuit Breaker Tripped",
+      "message": "Circuit breaker \"market-feed\" has opened",
+      "context": {
+        "breaker": "market-feed",
+        "failures": 5
+      },
+      "timestamp": "2024-02-07T00:50:00.000Z"
+    }
+  ]
+}
+```
+
+*Note: Alert history endpoint is available for monitoring/debugging purposes.*
+
+### Monitoring Alerting Health
+
+The alerting service logs all operations:
+
+```bash
+# Check if alerting service initialized
+grep "Alerting service initialized" logs/*.log
+
+# Check for alert sending failures
+grep "Failed to send.*alert" logs/*.log
+
+# View all sent alerts
+grep "ALERT:" logs/*.log
+```
 
 ## References
 
