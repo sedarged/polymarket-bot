@@ -1,5 +1,5 @@
 /**
- * Alerting Service - Slack and Email notifications for critical events
+ * Alerting Service - Slack, Telegram, and Email notifications for critical events
  * 
  * Provides centralized alerting for:
  * - Circuit breaker trips
@@ -9,13 +9,15 @@
  * 
  * Addresses:
  * - Gap OB-002: Set up basic alerting
- * - Issue #100: [Observability] Set up basic alerting (Slack/email)
+ * - Issue #100: [Observability] Set up basic alerting (Slack/Telegram/email)
  */
 
 import { logger } from './logger';
 
 export interface AlertConfig {
   slackWebhookUrl?: string;
+  telegramBotToken?: string;
+  telegramChatId?: string;
   emailConfig?: {
     smtpHost: string;
     smtpPort: number;
@@ -42,7 +44,7 @@ export interface Alert {
 }
 
 /**
- * Alerting Service for sending notifications to Slack and Email
+ * Alerting Service for sending notifications to Slack, Telegram, and Email
  */
 export class AlertingService {
   private config: AlertConfig;
@@ -65,6 +67,7 @@ export class AlertingService {
     
     logger.info('Alerting service initialized', {
       hasSlack: !!config.slackWebhookUrl,
+      hasTelegram: !!(config.telegramBotToken && config.telegramChatId),
       hasEmail: !!config.emailConfig,
       thresholds: this.config.thresholds,
     });
@@ -109,6 +112,10 @@ export class AlertingService {
     
     if (this.config.slackWebhookUrl) {
       promises.push(this.sendSlackAlert(alert));
+    }
+    
+    if (this.config.telegramBotToken && this.config.telegramChatId) {
+      promises.push(this.sendTelegramAlert(alert));
     }
     
     if (this.config.emailConfig) {
@@ -182,6 +189,58 @@ export class AlertingService {
       logger.debug('Alert sent to Slack', { title: alert.title });
     } catch (error) {
       logger.error('Failed to send Slack alert', {
+        error: error instanceof Error ? error.message : String(error),
+        title: alert.title,
+      });
+    }
+  }
+
+  /**
+   * Send alert to Telegram bot
+   */
+  private async sendTelegramAlert(alert: Alert): Promise<void> {
+    if (!this.config.telegramBotToken || !this.config.telegramChatId) {
+      return;
+    }
+
+    const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️';
+    
+    // Format message for Telegram using Markdown
+    let message = `${emoji} *${alert.title}*\n\n`;
+    message += `*Severity:* ${alert.severity.toUpperCase()}\n`;
+    message += `*Time:* ${alert.timestamp}\n`;
+    message += `*Message:* ${alert.message}\n`;
+    
+    // Add context fields if present
+    if (alert.context) {
+      message += '\n*Details:*\n';
+      for (const [key, value] of Object.entries(alert.context)) {
+        message += `• ${key}: ${String(value)}\n`;
+      }
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${this.config.telegramBotToken}/sendMessage`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.config.telegramChatId,
+          text: message,
+          parse_mode: 'Markdown',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Telegram API failed: ${response.status} ${errorText}`);
+      }
+
+      logger.debug('Alert sent to Telegram', { title: alert.title });
+    } catch (error) {
+      logger.error('Failed to send Telegram alert', {
         error: error instanceof Error ? error.message : String(error),
         title: alert.title,
       });

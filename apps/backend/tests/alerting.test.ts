@@ -14,6 +14,8 @@ describe('AlertingService', () => {
     // Reset the singleton
     const config: AlertConfig = {
       slackWebhookUrl: 'https://hooks.slack.com/services/test/webhook',
+      telegramBotToken: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+      telegramChatId: '123456789',
       thresholds: {
         errorRatePercent: 5,
         circuitBreakerTrips: 1,
@@ -26,6 +28,7 @@ describe('AlertingService', () => {
       ok: true,
       status: 200,
       statusText: 'OK',
+      text: async () => '{"ok":true}',
     });
     global.fetch = mockFetch;
   });
@@ -45,7 +48,7 @@ describe('AlertingService', () => {
   });
 
   describe('sendAlert', () => {
-    it('should send alert to Slack', async () => {
+    it('should send alert to Slack and Telegram', async () => {
       await alertingService.sendAlert({
         severity: 'critical',
         title: 'Test Alert',
@@ -53,8 +56,23 @@ describe('AlertingService', () => {
         timestamp: new Date().toISOString(),
       });
 
+      // Should be called twice: once for Slack, once for Telegram
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      
+      // Check Slack webhook call
       expect(mockFetch).toHaveBeenCalledWith(
         'https://hooks.slack.com/services/test/webhook',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      );
+      
+      // Check Telegram API call
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('https://api.telegram.org/bot'),
         expect.objectContaining({
           method: 'POST',
           headers: {
@@ -111,11 +129,11 @@ describe('AlertingService', () => {
 
       // Send first alert
       await alertingService.sendAlert(alert);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(2); // Slack + Telegram
 
       // Send duplicate immediately - should be rate limited
       await alertingService.sendAlert(alert);
-      expect(mockFetch).toHaveBeenCalledTimes(1); // Still 1, not 2
+      expect(mockFetch).toHaveBeenCalledTimes(2); // Still 2, not 4
     });
 
     it('should handle Slack webhook failure gracefully', async () => {
@@ -134,6 +152,84 @@ describe('AlertingService', () => {
           timestamp: new Date().toISOString(),
         })
       ).resolves.not.toThrow();
+    });
+  });
+
+  describe('Telegram Alerts', () => {
+    it('should send alert to Telegram with correct format', async () => {
+      await alertingService.sendAlert({
+        severity: 'critical',
+        title: 'Test Alert',
+        message: 'This is a test',
+        context: {
+          marketId: 'market-123',
+          failures: 5,
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      // Find the Telegram API call
+      const telegramCall = mockFetch.mock.calls.find(call => 
+        call[0].includes('api.telegram.org')
+      );
+      
+      expect(telegramCall).toBeDefined();
+      expect(telegramCall[0]).toContain('123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11');
+      
+      const body = JSON.parse(telegramCall[1].body);
+      expect(body.chat_id).toBe('123456789');
+      expect(body.parse_mode).toBe('Markdown');
+      expect(body.text).toContain('🚨');
+      expect(body.text).toContain('Test Alert');
+      expect(body.text).toContain('CRITICAL');
+      expect(body.text).toContain('marketId: market-123');
+      expect(body.text).toContain('failures: 5');
+    });
+
+    it('should handle Telegram API failure gracefully', async () => {
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('api.telegram.org')) {
+          return Promise.resolve({
+            ok: false,
+            status: 400,
+            statusText: 'Bad Request',
+            text: async () => 'Invalid bot token',
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          text: async () => '{"ok":true}',
+        });
+      });
+
+      // Should not throw even if Telegram fails
+      await expect(
+        alertingService.sendAlert({
+          severity: 'warning',
+          title: 'Test Alert',
+          message: 'This is a test',
+          timestamp: new Date().toISOString(),
+        })
+      ).resolves.not.toThrow();
+    });
+
+    it('should work with Telegram only (no Slack)', async () => {
+      const telegramOnlyService = new AlertingService({
+        telegramBotToken: '123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11',
+        telegramChatId: '123456789',
+      });
+
+      await telegramOnlyService.sendAlert({
+        severity: 'info',
+        title: 'Telegram Only Alert',
+        message: 'This alert goes to Telegram only',
+        timestamp: new Date().toISOString(),
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch.mock.calls[0][0]).toContain('api.telegram.org');
     });
   });
 

@@ -164,6 +164,11 @@ const envSchema = z.object({
   // Generate webhook: https://api.slack.com/messaging/webhooks
   // Example: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
   SLACK_WEBHOOK_URL: optionalStringFromEnv(z.string().url().optional()),
+  // Telegram bot configuration for alerting
+  // Create bot via @BotFather on Telegram and get bot token
+  // Get chat ID by sending a message to the bot and calling https://api.telegram.org/bot<TOKEN>/getUpdates
+  TELEGRAM_BOT_TOKEN: optionalStringFromEnv(z.string().optional()),
+  TELEGRAM_CHAT_ID: optionalStringFromEnv(z.string().optional()),
   // Email alerting configuration (optional)
   // SMTP server for sending email alerts
   EMAIL_SMTP_HOST: optionalStringFromEnv(z.string().optional()),
@@ -231,6 +236,8 @@ const configSchema = envSchema.refine(
   rateLimitTrustProxy: env.RATE_LIMIT_TRUST_PROXY,
   // Alerting configuration
   slackWebhookUrl: env.SLACK_WEBHOOK_URL,
+  telegramBotToken: env.TELEGRAM_BOT_TOKEN,
+  telegramChatId: env.TELEGRAM_CHAT_ID,
   emailSmtpHost: env.EMAIL_SMTP_HOST,
   emailSmtpPort: env.EMAIL_SMTP_PORT,
   emailSmtpSecure: env.EMAIL_SMTP_SECURE,

@@ -299,7 +299,7 @@ Potential improvements tracked in [STATUS.md](../STATUS.md):
 
 **Status:** ✅ **IMPLEMENTED** (PR-010)
 
-The bot includes a built-in alerting system that sends notifications to Slack and email for critical events.
+The bot includes a built-in alerting system that sends notifications to Slack, Telegram, and email for critical events.
 
 ### Configuration
 
@@ -308,6 +308,10 @@ Configure alerting via environment variables in `.env`:
 ```bash
 # Slack webhook URL for critical alerts
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+
+# Telegram bot configuration
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=123456789
 
 # Email alerting (optional)
 EMAIL_SMTP_HOST=smtp.gmail.com
@@ -330,6 +334,26 @@ ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
 3. Copy the webhook URL
 4. Add it to your `.env` file as `SLACK_WEBHOOK_URL`
 5. Restart the bot
+
+### Setting Up Telegram Alerts
+
+1. **Create a bot:**
+   - Open Telegram and search for @BotFather
+   - Send `/newbot` and follow the instructions
+   - BotFather will give you a bot token (e.g., `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+2. **Get your chat ID:**
+   - Start a chat with your newly created bot
+   - Send any message to the bot
+   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Look for `"chat":{"id":123456789}` in the response
+   - That number is your chat ID
+
+3. **Configure the bot:**
+   - Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file
+   - Restart the bot
+
+**Tip:** You can use Telegram groups by getting the group's chat ID (which will be negative, like `-123456789`).
 
 ### Setting Up Email Alerts
 

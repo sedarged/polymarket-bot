@@ -686,7 +686,7 @@ export async function startServer(): Promise<http.Server> {
   
   // Initialize alerting service if configured
   // This must be initialized before other services that may need to send alerts
-  if (config.slackWebhookUrl || config.emailSmtpHost) {
+  if (config.slackWebhookUrl || config.telegramBotToken || config.emailSmtpHost) {
     const emailConfig = config.emailSmtpHost && config.emailFromAddress && config.emailToAddresses.length > 0 ? {
       smtpHost: config.emailSmtpHost,
       smtpPort: config.emailSmtpPort,
@@ -699,6 +699,8 @@ export async function startServer(): Promise<http.Server> {
     
     initializeAlerting({
       slackWebhookUrl: config.slackWebhookUrl,
+      telegramBotToken: config.telegramBotToken,
+      telegramChatId: config.telegramChatId,
       emailConfig,
       thresholds: {
         errorRatePercent: config.alertErrorRateThreshold,
@@ -708,6 +710,7 @@ export async function startServer(): Promise<http.Server> {
     
     logger.info('Alerting service initialized', {
       hasSlack: !!config.slackWebhookUrl,
+      hasTelegram: !!(config.telegramBotToken && config.telegramChatId),
       hasEmail: !!emailConfig,
       thresholds: {
         errorRatePercent: config.alertErrorRateThreshold,
