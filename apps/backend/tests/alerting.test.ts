@@ -188,7 +188,8 @@ describe('AlertingService', () => {
 
     it('should handle Telegram API failure gracefully', async () => {
       mockFetch.mockImplementation((url) => {
-        if (url.includes('api.telegram.org')) {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.hostname === 'api.telegram.org') {
           return Promise.resolve({
             ok: false,
             status: 400,
