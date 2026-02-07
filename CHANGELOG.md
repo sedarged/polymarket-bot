@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.25.0](https://github.com/sedarged/polymarket-bot/compare/v1.24.0...v1.25.0) (2026-02-07)
+
+
+### Features
+
+* implement bandit allocation, metrics gating, and promotion workflow ([04e0a13](https://github.com/sedarged/polymarket-bot/commit/04e0a132e71ec940c700318a65bcc75fdeea5f12))
+
+
+### Bug Fixes
+
+* address code review feedback ([e446bd3](https://github.com/sedarged/polymarket-bot/commit/e446bd3ed1dd654c251b5de3824a9f735c3b7c78))
+* improve promotion history test robustness ([553c32f](https://github.com/sedarged/polymarket-bot/commit/553c32f96fc174857fa4bd060c62b48be63b27f5))
+
 ## [1.24.0](https://github.com/sedarged/polymarket-bot/compare/v1.23.0...v1.24.0) (2026-02-06)
 
 
