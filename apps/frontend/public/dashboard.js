@@ -74,6 +74,14 @@ function formatCurrency(num, decimals = 2) {
   return num >= 0 ? `$${formatted}` : `-$${Math.abs(formatted)}`;
 }
 
+// Helper function for status text formatting
+function getStatusText(label, isActive, activeText, inactiveText) {
+  return {
+    long: `${label}: ${isActive ? activeText : inactiveText}`,
+    short: isActive ? label : `${label} (${inactiveText})`
+  };
+}
+
 function showError(message) {
   addAlert('danger', message);
 }
@@ -245,14 +253,17 @@ async function updateStatus() {
     const tradingDot = document.getElementById('tradingStatusDot');
     const tradingStatus = document.getElementById('tradingStatus');
     
+    const feedStatusText = getStatusText('Market Feed', status.marketFeedConnected, 'Connected', 'Disconnected');
+    const tradingStatusText = getStatusText('Trading', status.tradingClientInitialized, 'Initialized', 'Not Initialized');
+    
     if (feedDot && feedStatus) {
       feedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
-      feedStatus.textContent = `Market Feed: ${status.marketFeedConnected ? 'Connected' : 'Disconnected'}`;
+      feedStatus.textContent = feedStatusText.long;
     }
     
     if (tradingDot && tradingStatus) {
       tradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
-      tradingStatus.textContent = `Trading: ${status.tradingClientInitialized ? 'Initialized' : 'Not Initialized'}`;
+      tradingStatus.textContent = tradingStatusText.long;
     }
     
     // Update sidebar status indicators (new layout)
@@ -263,12 +274,12 @@ async function updateStatus() {
     
     if (sidebarFeedDot && sidebarFeedStatus) {
       sidebarFeedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
-      sidebarFeedStatus.textContent = status.marketFeedConnected ? 'Market Feed' : 'Market Feed (Disconnected)';
+      sidebarFeedStatus.textContent = feedStatusText.short;
     }
     
     if (sidebarTradingDot && sidebarTradingStatus) {
       sidebarTradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
-      sidebarTradingStatus.textContent = status.tradingClientInitialized ? 'Trading' : 'Trading (Not Initialized)';
+      sidebarTradingStatus.textContent = tradingStatusText.short;
     }
     
     // Update wallet address
