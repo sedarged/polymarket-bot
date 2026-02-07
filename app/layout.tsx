@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" })
 
 export const metadata: Metadata = {
-  title: "Polymarket Trading Bot",
+  title: "Polymarket Trading Bot Dashboard",
   description: "Professional trading dashboard for Polymarket bot monitoring and control",
 }
 
