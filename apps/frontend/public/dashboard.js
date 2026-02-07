@@ -5,6 +5,23 @@ const API_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
+// Admin token configuration
+// SECURITY NOTE: In production, use a secure authentication flow.
+// For development, you can set the token here or via localStorage.
+const getAdminToken = () => {
+  // Check localStorage first (allows setting without code changes)
+  const stored = localStorage.getItem('adminToken');
+  if (stored) return stored;
+  
+  // Development fallback (ONLY for localhost/127.0.0.1/::1)
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
+    return 'dev-test-token-12345';
+  }
+  
+  return null;
+};
+
 // State management
 const state = {
   isLiveTrading: false,
@@ -139,9 +156,19 @@ function addConfigChange(section, field, oldValue, newValue) {
 }
 
 // API functions
-async function fetchData(endpoint) {
+async function fetchData(endpoint, requiresAuth = false) {
   try {
-    const response = await fetch(`${API_URL}${endpoint}`);
+    const headers = {};
+    
+    // Add authentication for protected endpoints
+    if (requiresAuth) {
+      const token = getAdminToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    
+    const response = await fetch(`${API_URL}${endpoint}`, { headers });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -178,7 +205,7 @@ async function postData(endpoint, data, token = null) {
 // Update functions
 async function updateStatus() {
   try {
-    const status = await fetchData('/status');
+    const status = await fetchData('/status', true);
     
     state.isLiveTrading = status.liveTrading;
     state.marketFeedConnected = status.marketFeedConnected;
@@ -222,7 +249,7 @@ async function updateStatus() {
 
 async function updateState() {
   try {
-    const stateData = await fetchData('/state');
+    const stateData = await fetchData('/state', true);
     
     // Update summary cards (count open and partially filled orders as "open")
     const openOrders = stateData.orders.filter(o => o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED').length;
@@ -299,25 +326,30 @@ async function updateMarkets() {
 
 async function updateMetrics() {
   try {
-    const metrics = await fetchData('/metrics');
+    // Use /health endpoint for basic metrics instead of Prometheus format
+    const health = await fetchData('/health');
+    
+    const uptime = health.uptime ? (health.uptime / 1000).toFixed(1) : '0';
+    const memoryUsed = health.checks?.memory?.details?.heapUsed || 0;
+    const memoryTotal = health.checks?.memory?.details?.heapTotal || 0;
     
     const html = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
         <div>
           <div class="card-label">Uptime</div>
-          <div style="font-size: 20px; font-weight: 600;">${formatNumber(metrics.uptime / 3600, 1)}h</div>
+          <div style="font-size: 20px; font-weight: 600;">${uptime}s</div>
         </div>
         <div>
-          <div class="card-label">Memory Usage (MB)</div>
-          <div style="font-size: 20px; font-weight: 600;">${metrics.memory.heapUsed}</div>
+          <div class="card-label">Memory Usage</div>
+          <div style="font-size: 20px; font-weight: 600;">${memoryUsed}MB / ${memoryTotal}MB</div>
         </div>
         <div>
-          <div class="card-label">Cached Orderbooks</div>
-          <div style="font-size: 20px; font-weight: 600;">${metrics.marketFeed.cachedOrderbooks}</div>
+          <div class="card-label">Status</div>
+          <div style="font-size: 20px; font-weight: 600;">${health.status || 'unknown'}</div>
         </div>
         <div>
-          <div class="card-label">Watched Markets</div>
-          <div style="font-size: 20px; font-weight: 600;">${metrics.marketFeed.tokenIds}</div>
+          <div class="card-label">Live Trading</div>
+          <div style="font-size: 20px; font-weight: 600;">${health.liveTradingEnabled ? 'Yes' : 'No'}</div>
         </div>
       </div>
     `;
