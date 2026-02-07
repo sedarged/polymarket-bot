@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import { createServer } from '../src/server';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * Learning System API Tests - PR-012
@@ -16,14 +19,22 @@ import { createServer } from '../src/server';
 describe('Learning System API - PR-012', () => {
   let server: http.Server;
   let baseUrl: string;
+  let tempDir: string;
 
   // Valid admin token for testing (should match ADMIN_TOKEN in test environment)
   const VALID_TOKEN = 'test-admin-token-12345';
   const INVALID_TOKEN = 'invalid-token-xyz';
 
   beforeAll(async () => {
-    // Set ADMIN_TOKEN for tests BEFORE creating server
+    // Create temp directory for test databases
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'learning-api-test-'));
+    
+    // Set ADMIN_TOKEN and DB paths for tests BEFORE creating server
     process.env.ADMIN_TOKEN = VALID_TOKEN;
+    process.env.EVENT_STORE_PATH = path.join(tempDir, 'events.db');
+    process.env.SIGNAL_CATALOG_PATH = path.join(tempDir, 'signals.db');
+    process.env.BACKTEST_ENGINE_PATH = path.join(tempDir, 'backtests.db');
+    process.env.PROMOTION_WORKFLOW_PATH = path.join(tempDir, 'promotions.db');
     
     server = createServer();
     await new Promise<void>((resolve) => {
@@ -41,6 +52,11 @@ describe('Learning System API - PR-012', () => {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
+    
+    // Clean up temp directory
+    if (tempDir && fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 
   describe('/api/learning/experiments', () => {

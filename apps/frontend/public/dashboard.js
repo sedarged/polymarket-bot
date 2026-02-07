@@ -73,36 +73,6 @@ const Auth = {
   }
 };
 
-// API Helper with Auth Support
-async function apiCall(endpoint, options = {}) {
-  const token = Auth.getToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {})
-  };
-  
-  // Add Authorization header if authenticated
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers
-  });
-  
-  // Handle 401 Unauthorized
-  if (response.status === 401) {
-    // Clear invalid token
-    Auth.clearToken();
-    showError('Authentication required. Please login.');
-    showLoginModal();
-    throw new Error('Unauthorized');
-  }
-  
-  return response;
-}
-
 // State management
 const state = {
   isLiveTrading: false,

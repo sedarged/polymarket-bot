@@ -34,40 +34,42 @@ let promotionWorkflow: PromotionWorkflow | null = null;
 
 /**
  * Initialize learning system components (lazy initialization)
+ * Initializes all components atomically to avoid partial initialization state
  */
 function initializeLearningSystem(): void {
-  if (eventStore) {
-    return; // Already initialized
+  // Check if already fully initialized
+  if (eventStore && signalCatalog && backtestEngine && banditAllocator && metricsGating && promotionWorkflow) {
+    return; // Already fully initialized
   }
 
   logger.info('Initializing learning system components');
 
   try {
-    // Initialize core components
-    eventStore = new EventStore({
+    // Initialize into locals first to avoid partial state
+    const localEventStore = new EventStore({
       path: process.env.EVENT_STORE_PATH || './data/events.db',
       readonly: false,
     });
 
-    signalCatalog = new SignalCatalog({
+    const localSignalCatalog = new SignalCatalog({
       path: process.env.SIGNAL_CATALOG_PATH || './data/signals.db',
       readonly: false,
     });
 
-    backtestEngine = new BacktestEngine({
-      path: './data/backtests.db',
-      eventStore,
+    const localBacktestEngine = new BacktestEngine({
+      path: process.env.BACKTEST_ENGINE_PATH || './data/backtests.db',
+      eventStore: localEventStore,
       readonly: false,
     });
 
-    banditAllocator = new BanditAllocator({
+    const localBanditAllocator = new BanditAllocator({
       algorithm: 'epsilon-greedy',
       totalCapital: 1000, // Paper trading capital
       explorationFactor: 0.1,
       minTradeCount: 10,
     });
 
-    metricsGating = new MetricsGating({
+    const localMetricsGating = new MetricsGating({
       thresholds: {
         minSharpe: 0.5,
         maxDrawdown: 0.2,
@@ -77,8 +79,8 @@ function initializeLearningSystem(): void {
       },
     });
 
-    promotionWorkflow = new PromotionWorkflow({
-      dbPath: './data/promotions.db',
+    const localPromotionWorkflow = new PromotionWorkflow({
+      dbPath: process.env.PROMOTION_WORKFLOW_PATH || './data/promotions.db',
       config: {
         criteria: {
           minPnl: 0,
@@ -94,9 +96,24 @@ function initializeLearningSystem(): void {
       },
     });
 
+    // Only assign to module-level singletons after all constructors succeed
+    eventStore = localEventStore;
+    signalCatalog = localSignalCatalog;
+    backtestEngine = localBacktestEngine;
+    banditAllocator = localBanditAllocator;
+    metricsGating = localMetricsGating;
+    promotionWorkflow = localPromotionWorkflow;
+
     logger.info('Learning system initialized successfully');
   } catch (error) {
     logger.error('Failed to initialize learning system', { error });
+    // Clear any partial state on failure
+    eventStore = null;
+    signalCatalog = null;
+    backtestEngine = null;
+    banditAllocator = null;
+    metricsGating = null;
+    promotionWorkflow = null;
     // Don't throw - allow API to return "not initialized" status
   }
 }
@@ -124,15 +141,16 @@ export async function handleGetExperiments(
     // Get all bandit states
     const allStates = banditAllocator.getAllStates();
     
+    // Calculate total pulls for allocation
+    const totalPulls = allStates.reduce((sum, s) => sum + s.pulls, 0);
+    
     // Format experiments data
     const experiments = allStates.map(state => ({
       strategyId: state.strategyId,
       samples: state.pulls,
       totalReward: state.totalReward,
       meanReward: state.pulls > 0 ? state.totalReward / state.pulls : 0,
-      allocation: state.pulls > 0 
-        ? state.pulls / allStates.reduce((sum, s) => sum + s.pulls, 1)
-        : 0,
+      allocation: totalPulls > 0 ? state.pulls / totalPulls : 0,
       status: state.pulls >= 10 ? 'active' : 'warming-up',
     }));
 
@@ -302,6 +320,7 @@ export async function handleGetBestStrategy(
 /**
  * GET /api/learning/status
  * Returns integration status of learning system components
+ * Returns 503 if system is not healthy/initialized
  */
 export async function handleGetLearningStatus(
   _req: http.IncomingMessage,
@@ -344,6 +363,17 @@ export async function handleGetLearningStatus(
       },
       lastUpdated: new Date().toISOString(),
     };
+
+    // Return 503 if system is not healthy/initialized
+    if (!status.overall.healthy) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        ...status,
+        error: 'Learning system not fully initialized',
+      }));
+      logger.warn('Learning system status check: system not healthy');
+      return;
+    }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(status));

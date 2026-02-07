@@ -313,7 +313,7 @@ npm run dev
 1. **Use Strong Tokens**: Minimum 32 characters, cryptographically random
 2. **HTTPS Only**: Always use HTTPS in production
 3. **CORS Configuration**: Set `ALLOWED_ORIGINS` to restrict access
-4. **Rate Limiting**: Backend includes rate limiting (60 req/min default)
+4. **Rate Limiting**: Backend includes rate limiting (100 req/min default via `RATE_LIMIT_MAX_REQUESTS=100` and `RATE_LIMIT_WINDOW_MS=60000`)
 5. **Regular Rotation**: Change tokens periodically
 
 ### Development vs Production
