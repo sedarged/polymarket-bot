@@ -11,8 +11,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run --workspaces --if-present build",
-    "dev": "npm run --workspace @polymarket/backend dev",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "backend:dev": "npm run --workspace @polymarket/backend dev",
     "markets": "npm run --workspace @polymarket/backend markets",
     "book": "npm run --workspace @polymarket/backend book",
     "test": "npm run --workspace @polymarket/backend test",
