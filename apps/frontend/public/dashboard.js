@@ -211,31 +211,65 @@ async function updateStatus() {
     state.marketFeedConnected = status.marketFeedConnected;
     state.tradingClientInitialized = status.tradingClientInitialized;
     
-    // Update mode indicator
+    // Update mode indicator (old layout - for backward compatibility)
     const banner = document.getElementById('safetyBanner');
     const modeIndicator = document.getElementById('modeIndicator');
     
-    if (status.liveTrading) {
-      banner.className = 'safety-banner live';
-      modeIndicator.className = 'mode-indicator live';
-      modeIndicator.innerHTML = '<span class="mode-icon">🔴</span><span>LIVE TRADING</span>';
-    } else {
-      banner.className = 'safety-banner paper';
-      modeIndicator.className = 'mode-indicator paper';
-      modeIndicator.innerHTML = '<span class="mode-icon">🟡</span><span>Paper Mode</span>';
+    if (banner && modeIndicator) {
+      if (status.liveTrading) {
+        banner.className = 'safety-banner live';
+        modeIndicator.className = 'mode-indicator live';
+        modeIndicator.innerHTML = '<span class="mode-icon">🔴</span><span>LIVE TRADING</span>';
+      } else {
+        banner.className = 'safety-banner paper';
+        modeIndicator.className = 'mode-indicator paper';
+        modeIndicator.innerHTML = '<span class="mode-icon">🟡</span><span>Paper Mode</span>';
+      }
     }
     
-    // Update status dots
+    // Update sidebar mode indicator (new layout)
+    const sidebarModeIndicator = document.getElementById('sidebarModeIndicator');
+    if (sidebarModeIndicator) {
+      if (status.liveTrading) {
+        sidebarModeIndicator.className = 'sidebar-mode-badge live';
+        sidebarModeIndicator.innerHTML = '<span>🔴</span><span>LIVE TRADING</span>';
+      } else {
+        sidebarModeIndicator.className = 'sidebar-mode-badge paper';
+        sidebarModeIndicator.innerHTML = '<span>🟡</span><span>Paper Mode</span>';
+      }
+    }
+    
+    // Update status dots (old layout - for backward compatibility)
     const feedDot = document.getElementById('feedStatusDot');
     const feedStatus = document.getElementById('feedStatus');
     const tradingDot = document.getElementById('tradingStatusDot');
     const tradingStatus = document.getElementById('tradingStatus');
     
-    feedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
-    feedStatus.textContent = `Market Feed: ${status.marketFeedConnected ? 'Connected' : 'Disconnected'}`;
+    if (feedDot && feedStatus) {
+      feedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
+      feedStatus.textContent = `Market Feed: ${status.marketFeedConnected ? 'Connected' : 'Disconnected'}`;
+    }
     
-    tradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
-    tradingStatus.textContent = `Trading: ${status.tradingClientInitialized ? 'Initialized' : 'Not Initialized'}`;
+    if (tradingDot && tradingStatus) {
+      tradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
+      tradingStatus.textContent = `Trading: ${status.tradingClientInitialized ? 'Initialized' : 'Not Initialized'}`;
+    }
+    
+    // Update sidebar status indicators (new layout)
+    const sidebarFeedDot = document.getElementById('sidebarFeedStatusDot');
+    const sidebarFeedStatus = document.getElementById('sidebarFeedStatus');
+    const sidebarTradingDot = document.getElementById('sidebarTradingStatusDot');
+    const sidebarTradingStatus = document.getElementById('sidebarTradingStatus');
+    
+    if (sidebarFeedDot && sidebarFeedStatus) {
+      sidebarFeedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
+      sidebarFeedStatus.textContent = status.marketFeedConnected ? 'Market Feed' : 'Market Feed (Disconnected)';
+    }
+    
+    if (sidebarTradingDot && sidebarTradingStatus) {
+      sidebarTradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
+      sidebarTradingStatus.textContent = status.tradingClientInitialized ? 'Trading' : 'Trading (Not Initialized)';
+    }
     
     // Update wallet address
     document.getElementById('walletAddress').textContent = 

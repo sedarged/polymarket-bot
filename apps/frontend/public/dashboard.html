@@ -99,6 +99,66 @@
       font-size: 12px;
       color: var(--text-tertiary);
       font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .sidebar-status {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      width: fit-content;
+    }
+
+    .sidebar-mode-badge.paper {
+      background: rgba(212, 160, 23, 0.15);
+      color: var(--paper-mode);
+      border: 1px solid rgba(212, 160, 23, 0.3);
+    }
+
+    .sidebar-mode-badge.live {
+      background: rgba(245, 34, 45, 0.15);
+      color: var(--live-mode);
+      border: 1px solid rgba(245, 34, 45, 0.3);
+    }
+
+    .sidebar-connections {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .sidebar-connection-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-dot.connected {
+      background: var(--accent-success);
+      box-shadow: 0 0 8px rgba(82, 196, 26, 0.6);
+    }
+
+    .status-dot.disconnected {
+      background: var(--text-muted);
     }
 
     .sidebar-nav {
@@ -166,68 +226,11 @@
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       padding: 0 24px;
       position: sticky;
       top: 0;
       z-index: 50;
-    }
-
-    .status-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: var(--radius-md);
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    .status-badge.paper {
-      background: rgba(212, 160, 23, 0.15);
-      color: var(--paper-mode);
-      border: 1px solid rgba(212, 160, 23, 0.3);
-    }
-
-    .status-badge.live {
-      background: rgba(245, 34, 45, 0.15);
-      color: var(--live-mode);
-      border: 1px solid rgba(245, 34, 45, 0.3);
-    }
-
-    .status-indicators {
-      display: flex;
-      gap: 16px;
-      font-size: 13px;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--text-secondary);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    .status-dot.connected {
-      background: var(--accent-success);
-      box-shadow: 0 0 8px rgba(82, 196, 26, 0.6);
-    }
-
-    .status-dot.disconnected {
-      background: var(--text-muted);
     }
 
     .status-actions {
@@ -868,6 +871,24 @@
       <div class="sidebar-header">
         <div class="app-title">Polymarket Bot</div>
         <div class="app-version">Production Dashboard v1.5</div>
+        
+        <div class="sidebar-status">
+          <div id="sidebarModeIndicator" class="sidebar-mode-badge paper">
+            <span>🟡</span>
+            <span>Paper Mode</span>
+          </div>
+          
+          <div class="sidebar-connections">
+            <div class="sidebar-connection-item">
+              <span class="status-dot connected" id="sidebarFeedStatusDot"></span>
+              <span id="sidebarFeedStatus">Market Feed</span>
+            </div>
+            <div class="sidebar-connection-item">
+              <span class="status-dot connected" id="sidebarTradingStatusDot"></span>
+              <span id="sidebarTradingStatus">Trading</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <nav class="sidebar-nav">
@@ -898,22 +919,6 @@
     <main class="main-content">
       <!-- Status Strip -->
       <div class="status-strip">
-        <div class="status-left">
-          <div id="modeIndicator" class="status-badge paper">
-            <span>🟡</span>
-            <span>Paper Mode</span>
-          </div>
-          <div class="status-indicators">
-            <div class="status-indicator">
-              <span class="status-dot connected" id="feedStatusDot"></span>
-              <span id="feedStatus">Market Feed</span>
-            </div>
-            <div class="status-indicator">
-              <span class="status-dot connected" id="tradingStatusDot"></span>
-              <span id="tradingStatus">Trading</span>
-            </div>
-          </div>
-        </div>
         <div class="status-actions">
           <button type="button" id="reconnectBtn" class="btn btn-secondary btn-sm">🔄 Reconnect</button>
           <button type="button" id="killSwitchBtn" class="btn btn-danger btn-sm">🛑 Kill Switch</button>
