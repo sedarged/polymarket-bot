@@ -198,7 +198,7 @@ Configure which tokens to monitor via the `TOKEN_IDS` environment variable.
 
 ### Trading Dashboard
 
-Access the web-based trading dashboard:
+Access the production-ready web-based trading dashboard:
 
 ```bash
 # Terminal 1: Start backend server
@@ -209,19 +209,25 @@ cd apps/frontend
 npm run dev
 ```
 
-Then open http://localhost:8080 in your browser.
+Then open http://localhost:8080/dashboard.html in your browser.
 
-The dashboard displays:
-- Trading status (Live/Paper mode)
-- Wallet address
-- Open orders count
-- Active positions
-- Available balance
-- Watched markets with best bid/ask
-- Positions with PnL
-- Open orders
-- Recent fills
-- Emergency kill switch button
+**Dashboard Features:**
+- **Overview Tab**: Wallet, orders, positions, real-time PnL, watched markets
+- **Monitoring Tab**: Detailed orders, positions, fills, real-time event feed
+- **Controls Tab**: Risk configuration, strategy parameters, reconnect settings
+- **Alerts & Logs Tab**: Active alerts, log viewer with filtering, system metrics
+- **Learning System Tab**: Experiment status and integration points
+
+**Key Capabilities:**
+- Auto-refresh every 5 seconds
+- Kill switch with admin token authentication
+- Configuration change tracking
+- Export logs and alerts (CSV/JSON)
+- Responsive design for desktop and tablet
+- Persistent safety banner showing trading mode
+
+For complete dashboard documentation, see **[Dashboard Usage Guide](./docs/dashboard-usage-guide.md)**.
+
 
 ## Project Structure
 
