@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
 
 function getAdminToken(): string | null {
   if (typeof window === "undefined") return null
