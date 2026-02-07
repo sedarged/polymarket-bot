@@ -24,7 +24,7 @@ The dashboard (`/apps/frontend/public/dashboard.html` and `dashboard.js`) was **
 ✅ **Learning System Tab** - Experiment status and integration points  
 ✅ **Kill Switch UI** - Confirmation modal with admin token authentication  
 ✅ **Auto-refresh** - Every 5 seconds without performance impact  
-✅ **Export functionality** - Logs and alerts export capability  
+✅ **Export functionality** - Log export to `.txt` file  
 ✅ **Responsive design** - Works on desktop and tablet  
 ✅ **Professional UI** - Dark theme with comprehensive styling  
 

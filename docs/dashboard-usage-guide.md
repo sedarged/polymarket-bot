@@ -37,12 +37,12 @@ The Polymarket Trading Bot Dashboard is a production-ready web interface for mon
 
 ### Configuration
 
-**For development:** The dashboard is pre-configured to use localhost:3000 and includes a development admin token.
+**For development:** The dashboard is pre-configured to use `http://localhost:3000`. To avoid 401 errors on admin actions, set the backend `ADMIN_TOKEN` environment variable in your `.env` file to the same development token value used by the dashboard's `getAdminToken()` function (see `apps/frontend/public/dashboard.js`). This development token is for local use only and must not be reused in production.
 
 **For production:** You must:
-1. Set `ADMIN_TOKEN` environment variable to a secure random value
+1. Set the backend `ADMIN_TOKEN` environment variable to a secure random value
 2. Configure `ALLOWED_ORIGINS` to whitelist your dashboard domain
-3. Update the dashboard.js `getAdminToken()` function to use secure authentication
+3. Replace the hardcoded development token in `dashboard.js` `getAdminToken()` with a secure authentication mechanism (e.g., backend-issued session or API token) and ensure no real admin secrets are exposed in the frontend
 
 ---
 
@@ -369,9 +369,9 @@ Planned features for future releases:
 ## Related Documentation
 
 - [UI Recommendations](../REPORTS/UI_RECOMMENDATIONS.md) - Complete UI/UX documentation
-- [Architecture](./ARCHITECTURE.md) - System architecture overview
+- [Architecture](./architecture.md) - System architecture overview
 - [API Reference](./api-missing-endpoints-analysis.md) - Backend API endpoints
-- [Security](./SECURITY.md) - Security best practices (if available)
+- [Security](./security.md) - Security best practices
 
 ---
 
@@ -380,8 +380,7 @@ Planned features for future releases:
 For issues or questions:
 
 1. Check [Common Pitfalls](./ai/common-pitfalls.md)
-2. Review [Troubleshooting Guide](./TROUBLESHOOTING.md) (if available)
-3. Open an issue on GitHub with:
+2. Open an issue on GitHub with:
    - Dashboard version
    - Browser and version
    - Screenshot of issue

@@ -13,8 +13,9 @@ const getAdminToken = () => {
   const stored = localStorage.getItem('adminToken');
   if (stored) return stored;
   
-  // Development fallback (ONLY for localhost)
-  if (window.location.hostname === 'localhost') {
+  // Development fallback (ONLY for localhost/127.0.0.1/::1)
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
     return 'dev-test-token-12345';
   }
   

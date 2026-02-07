@@ -222,7 +222,7 @@ Then open http://localhost:8080/dashboard.html in your browser.
 - Auto-refresh every 5 seconds
 - Kill switch with admin token authentication
 - Configuration change tracking
-- Export logs and alerts (CSV/JSON)
+- Export logs as .txt from the Alerts & Logs tab
 - Responsive design for desktop and tablet
 - Persistent safety banner showing trading mode
 
