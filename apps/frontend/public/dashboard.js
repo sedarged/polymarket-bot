@@ -74,7 +74,14 @@ function formatCurrency(num, decimals = 2) {
   return num >= 0 ? `$${formatted}` : `-$${Math.abs(formatted)}`;
 }
 
-// Helper function for status text formatting
+/**
+ * Formats status text for both sidebar (short) and legacy (long) display formats.
+ * @param {string} label - The status label (e.g., "Market Feed", "Trading")
+ * @param {boolean} isActive - Whether the service/connection is active
+ * @param {string} activeText - Text to show when active (e.g., "Connected")
+ * @param {string} inactiveText - Text to show when inactive (e.g., "Disconnected")
+ * @returns {{long: string, short: string}} Object with long format for legacy layout and short format for sidebar
+ */
 function getStatusText(label, isActive, activeText, inactiveText) {
   return {
     long: `${label}: ${isActive ? activeText : inactiveText}`,
