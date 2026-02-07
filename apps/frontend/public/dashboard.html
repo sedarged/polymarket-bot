@@ -320,7 +320,7 @@
 
     .card-header {
       display: flex;
-      justify-content: between;
+      justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
     }
@@ -1304,26 +1304,5 @@
   </div>
 
   <script src="dashboard.js"></script>
-  <script>
-    // View switching for new layout
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const viewName = item.dataset.view;
-        
-        // Update nav items
-        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Update views
-        document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-        document.getElementById(viewName)?.classList.add('active');
-        
-        // Load view-specific data
-        if (viewName === 'alerts') {
-          if (typeof updateMetrics === 'function') updateMetrics();
-        }
-      });
-    });
-  </script>
 </body>
 </html>

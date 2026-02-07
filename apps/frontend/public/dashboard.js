@@ -799,9 +799,6 @@ function switchTab(tabName) {
   }
 }
 
-// Make switchTab globally available for inline scripts
-window.switchTab = switchTab;
-
 // Initialize dashboard
 async function init() {
   // Set up tab switching (old layout)
