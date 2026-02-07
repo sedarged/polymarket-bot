@@ -81,6 +81,9 @@ function formatCurrency(num, decimals = 2) {
  * @param {string} activeText - Text to show when active (e.g., "Connected")
  * @param {string} inactiveText - Text to show when inactive (e.g., "Disconnected")
  * @returns {{long: string, short: string}} Object with long format for legacy layout and short format for sidebar
+ * 
+ * Note: Short format intentionally shows label only when active, and label + status when inactive.
+ * This creates visual emphasis on disconnected states while keeping the connected state clean.
  */
 function getStatusText(label, isActive, activeText, inactiveText) {
   return {
