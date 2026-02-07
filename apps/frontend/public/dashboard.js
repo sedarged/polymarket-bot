@@ -465,6 +465,109 @@ async function updateMetrics() {
   }
 }
 
+// Learning System update functions
+async function updateLearningSystem() {
+  // Only fetch if authenticated
+  if (!Auth.isAuthenticated()) {
+    // Show not authenticated state
+    document.getElementById('activeExperiments').textContent = '-';
+    document.getElementById('strategiesTested').textContent = '-';
+    document.getElementById('bestStrategy').textContent = 'Login Required';
+    document.getElementById('experimentUptime').textContent = '-';
+    
+    // Update status badges to show not authenticated
+    updateLearningStatusBadge('eventStoreStatus', 'not-connected', 'Auth Required');
+    updateLearningStatusBadge('featureEngineStatus', 'not-initialized', 'Auth Required');
+    updateLearningStatusBadge('evalFrameworkStatus', 'not-active', 'Auth Required');
+    updateLearningStatusBadge('banditStatus', 'not-running', 'Auth Required');
+    return;
+  }
+  
+  try {
+    // Fetch all learning system data in parallel
+    const [experiments, strategies, best, status] = await Promise.all([
+      fetchData('/api/learning/experiments', true).catch(() => ({ experiments: [], totalExperiments: 0 })),
+      fetchData('/api/learning/strategies', true).catch(() => ({ strategies: [], totalStrategies: 0 })),
+      fetchData('/api/learning/best', true).catch(() => ({ bestStrategy: null })),
+      fetchData('/api/learning/status', true).catch(() => null)
+    ]);
+    
+    // Update experiment metrics
+    const activeExperiments = experiments.experiments?.filter(e => e.status === 'active').length || 0;
+    document.getElementById('activeExperiments').textContent = activeExperiments;
+    document.getElementById('strategiesTested').textContent = strategies.totalStrategies || 0;
+    
+    // Update best strategy
+    if (best.bestStrategy) {
+      const strategyName = best.bestStrategy.strategyId;
+      const sharpe = best.bestStrategy.performance?.sharpe || 0;
+      document.getElementById('bestStrategy').textContent = 
+        `${strategyName} (Sharpe: ${formatNumber(sharpe, 2)})`;
+    } else {
+      document.getElementById('bestStrategy').textContent = 'None Yet';
+    }
+    
+    // Calculate experiment uptime (placeholder - would need actual start time)
+    document.getElementById('experimentUptime').textContent = '-';
+    
+    // Update integration status
+    if (status) {
+      updateLearningStatusBadge('eventStoreStatus', 
+        status.eventStore.initialized ? 'connected' : 'not-connected',
+        status.eventStore.status
+      );
+      updateLearningStatusBadge('featureEngineStatus',
+        status.signalCatalog.initialized ? 'initialized' : 'not-initialized', 
+        status.signalCatalog.status
+      );
+      updateLearningStatusBadge('evalFrameworkStatus',
+        status.backtestEngine.initialized ? 'active' : 'not-active',
+        status.backtestEngine.status
+      );
+      updateLearningStatusBadge('banditStatus',
+        status.banditAllocator.initialized ? 'running' : 'not-running',
+        status.banditAllocator.status
+      );
+    }
+    
+  } catch (error) {
+    console.error('Failed to update learning system:', error);
+    if (error.message !== 'Unauthorized') {
+      addLog('error', `Learning system update failed: ${error.message}`);
+    }
+  }
+}
+
+function updateLearningStatusBadge(elementId, status, text) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  
+  // Remove existing badge classes
+  element.classList.remove('badge-success', 'badge-warning', 'badge-danger', 'badge-info');
+  
+  // Map status to badge class
+  const statusMap = {
+    'connected': 'badge-success',
+    'initialized': 'badge-success',
+    'active': 'badge-success',
+    'running': 'badge-success',
+    'not-connected': 'badge-warning',
+    'not-initialized': 'badge-warning',
+    'not-active': 'badge-warning',
+    'not-running': 'badge-warning'
+  };
+  
+  const badgeClass = statusMap[status] || 'badge-warning';
+  element.classList.add(badgeClass);
+  
+  // Format text for display
+  const displayText = text ? text.split('-').map(w => 
+    w.charAt(0).toUpperCase() + w.slice(1)
+  ).join(' ') : status;
+  
+  element.textContent = displayText;
+}
+
 function updatePositionsTable(positions) {
   if (positions.length === 0) {
     document.getElementById('positionsTable').innerHTML = 
@@ -946,6 +1049,12 @@ async function refresh() {
     updateMarkets(),
     updateMetrics()
   ]);
+  
+  // Update learning system data if on that tab
+  if (state.currentTab === 'learning') {
+    await updateLearningSystem();
+  }
+  
   addEvent('REFRESH', 'Dashboard data refreshed');
 }
 
@@ -968,6 +1077,8 @@ function switchTab(tabName) {
   // Load tab-specific data
   if (tabName === 'alerts') {
     updateMetrics();
+  } else if (tabName === 'learning') {
+    updateLearningSystem();
   }
 }
 
