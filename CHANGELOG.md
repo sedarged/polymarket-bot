@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0](https://github.com/sedarged/polymarket-bot/compare/v1.25.0...v1.26.0) (2026-02-07)
+
+
+### Features
+
+* add alerting service with Slack/email support and comprehensive tests ([5e85462](https://github.com/sedarged/polymarket-bot/commit/5e85462885e7138b693775445f85fa19f1796d03))
+* add comprehensive strategy error logging with alerting integration ([fc65210](https://github.com/sedarged/polymarket-bot/commit/fc652103c7c97545944f417159e792ca687a3799))
+* add Telegram bot support for alerting alongside Slack ([5fcde26](https://github.com/sedarged/polymarket-bot/commit/5fcde26ae8e2fe8b0de28cdbbf2269fa3ed688c1))
+* wire alerting to circuit breaker, kill switch, and error rate monitoring ([b848419](https://github.com/sedarged/polymarket-bot/commit/b848419c9199aaf251b2a2d7b595c4ada37d0fb1))
+
+
+### Bug Fixes
+
+* resolve TypeScript build errors - remove unused import and fix getState call ([07c814d](https://github.com/sedarged/polymarket-bot/commit/07c814db45f07296f28820a1edc1b61438a05df2))
+
 ## [1.25.0](https://github.com/sedarged/polymarket-bot/compare/v1.24.0...v1.25.0) (2026-02-07)
 
 
