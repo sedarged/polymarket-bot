@@ -269,7 +269,7 @@ describe('MetricsGating', () => {
       const performance: StrategyPerformance = {
         strategyId: 'strategy-1',
         pnl: 500,
-        sharpe: 1.1, // Would fail original minSharpe of 1.0, passes after update
+        sharpe: 1.1, // Passes original minSharpe of 1.0, fails after minSharpe is raised to 1.5
         maxDrawdown: 0.08,
         winRate: 0.6,
         errorRate: 0.005,

@@ -182,11 +182,12 @@ export class BanditAllocator {
   }
   
   /**
-   * Thompson Sampling: Bayesian approach with beta distributions
+   * Thompson Sampling: Bayesian approach with Gaussian (normal) approximation
    * 
-   * For continuous rewards (PnL), we use a Gaussian approximation:
+   * For continuous rewards (PnL), we approximate the posterior over the mean reward
+   * with a Gaussian distribution:
    * - Mean reward as the mean of the Gaussian
-   * - Variance from sample variance
+   * - Variance derived from the sample variance and number of pulls
    */
   private thompsonSampling(performances: StrategyPerformance[]): AllocationResult[] {
     const timestamp = new Date().toISOString();
@@ -221,16 +222,27 @@ export class BanditAllocator {
   
   /**
    * Calculate performance score for a strategy
-   * Combines Sharpe, PnL, and drawdown into a single score
+   * 
+   * Follows REPORTS/LEARNING_SYSTEM.md specification:
+   * score = (sharpe * 0.5) + (pnl_norm * 0.3) - (drawdown_norm * 0.2)
+   * 
+   * Where:
+   * - sharpe: Raw Sharpe ratio
+   * - pnl_norm: Normalized PnL (capped at 1000)
+   * - drawdown_norm: Normalized drawdown (0 to 1 range)
    */
   private calculateScore(perf: StrategyPerformance): number {
-    // Normalize metrics to 0-1 range
-    const sharpeNorm = Math.max(0, Math.min(1, (perf.sharpe + 2) / 4)); // Sharpe -2 to 2 -> 0 to 1
-    const pnlNorm = Math.max(0, Math.min(1, perf.pnl / 1000)); // Cap at 1000
-    const drawdownPenalty = Math.max(0, perf.maxDrawdown); // Higher is worse
+    // Use raw Sharpe ratio
+    const sharpe = Number.isFinite(perf.sharpe) ? perf.sharpe : 0;
+    
+    // Normalize PnL to 0-1 range, capped at 1000
+    const pnlNorm = Math.max(0, Math.min(1, perf.pnl / 1000));
+    
+    // Normalize drawdown to 0-1 range (higher is worse)
+    const drawdownNorm = Math.max(0, Math.min(1, perf.maxDrawdown));
     
     // Weighted combination (as per LEARNING_SYSTEM.md example)
-    return (sharpeNorm * 0.5) + (pnlNorm * 0.3) - (drawdownPenalty * 0.2);
+    return (sharpe * 0.5) + (pnlNorm * 0.3) - (drawdownNorm * 0.2);
   }
   
   /**
@@ -271,25 +283,119 @@ export class BanditAllocator {
   }
   
   /**
-   * Normalize allocations to sum to 1.0 and apply min/max constraints
+   * Normalize allocations to sum to 1.0 and apply min/max constraints.
+   * 
+   * Strategy:
+   * 1. First clamp each allocation to [minAllocation, maxAllocation]
+   * 2. Check if the configuration is feasible (can we have allocations that sum to 1.0?)
+   * 3. If infeasible, fall back to equal allocation
+   * 4. Otherwise, iteratively redistribute to meet both sum=1.0 and bound constraints
    */
   private normalizeAndConstrain(allocations: AllocationResult[]): AllocationResult[] {
     if (allocations.length === 0) return [];
     
-    // Apply min/max constraints
-    let constrained = allocations.map(a => ({
-      ...a,
-      allocation: Math.max(this.config.minAllocation, Math.min(this.config.maxAllocation, a.allocation)),
-    }));
+    const n = allocations.length;
+    const minAlloc = this.config.minAllocation;
+    const maxAlloc = this.config.maxAllocation;
     
-    // Re-normalize to sum to 1.0
-    const sum = constrained.reduce((s, a) => s + a.allocation, 0);
+    // Check feasibility
+    if (minAlloc * n > 1.0 || maxAlloc * n < 1.0) {
+      logger.warn('Infeasible allocation constraints; using equal allocation', {
+        minAllocation: minAlloc,
+        maxAllocation: maxAlloc,
+        strategies: n,
+      });
+      const equal = 1.0 / n;
+      return allocations.map(a => ({ ...a, allocation: equal }));
+    }
+    
+    // First normalize to sum to 1.0
+    let sum = allocations.reduce((s, a) => s + a.allocation, 0);
+    let constrained: AllocationResult[];
+    
     if (sum === 0) {
-      // If all allocations are 0, distribute equally
-      const equalAllocation = 1.0 / constrained.length;
-      constrained = constrained.map(a => ({ ...a, allocation: equalAllocation }));
+      // All allocations are zero, use equal allocation
+      constrained = allocations.map(a => ({ ...a, allocation: 1.0 / n }));
     } else {
+      constrained = allocations.map(a => ({ ...a, allocation: a.allocation / sum }));
+    }
+    
+    // Apply constraints with redistribution
+    // This is a simplified approach: clamp to bounds, then redistribute excess/deficit
+    const maxIterations = 10;
+    
+    for (let iter = 0; iter < maxIterations; iter++) {
+      // Clamp all allocations to bounds
+      const clamped = constrained.map(a => ({
+        ...a,
+        allocation: Math.max(minAlloc, Math.min(maxAlloc, a.allocation)),
+      }));
+      
+      // Calculate current sum
+      sum = clamped.reduce((s, a) => s + a.allocation, 0);
+      const diff = sum - 1.0;
+      
+      // If close enough, we're done
+      if (Math.abs(diff) < 1e-9) {
+        return clamped;
+      }
+      
+      // Find indices that have room to adjust
+      if (diff > 0) {
+        // Need to decrease some allocations
+        const adjustable = clamped
+          .map((a, idx) => ({ idx, room: a.allocation - minAlloc }))
+          .filter(x => x.room > 1e-9);
+        
+        if (adjustable.length === 0) {
+          // Can't adjust further, return as is
+          return clamped;
+        }
+        
+        const totalRoom = adjustable.reduce((s, x) => s + x.room, 0);
+        const scale = Math.min(1, diff / totalRoom);
+        
+        constrained = clamped.map((a, idx) => {
+          const adj = adjustable.find(x => x.idx === idx);
+          if (adj) {
+            return { ...a, allocation: a.allocation - (adj.room * scale) };
+          }
+          return a;
+        });
+      } else {
+        // Need to increase some allocations
+        const adjustable = clamped
+          .map((a, idx) => ({ idx, room: maxAlloc - a.allocation }))
+          .filter(x => x.room > 1e-9);
+        
+        if (adjustable.length === 0) {
+          // Can't adjust further, return as is
+          return clamped;
+        }
+        
+        const totalRoom = adjustable.reduce((s, x) => s + x.room, 0);
+        const needed = -diff;
+        const scale = Math.min(1, needed / totalRoom);
+        
+        constrained = clamped.map((a, idx) => {
+          const adj = adjustable.find(x => x.idx === idx);
+          if (adj) {
+            return { ...a, allocation: a.allocation + (adj.room * scale) };
+          }
+          return a;
+        });
+      }
+    }
+    
+    // Final normalization if still not exact
+    sum = constrained.reduce((s, a) => s + a.allocation, 0);
+    if (Math.abs(sum - 1.0) > 1e-9 && sum > 0) {
       constrained = constrained.map(a => ({ ...a, allocation: a.allocation / sum }));
+      // Final clamp to ensure bounds are respected
+      constrained = constrained.map(a => ({
+        ...a,
+        allocation: Math.max(minAlloc, Math.min(maxAlloc, a.allocation)),
+      }));
     }
     
     return constrained;

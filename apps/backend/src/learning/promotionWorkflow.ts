@@ -139,17 +139,17 @@ export class PromotionWorkflow {
   ): PromotionRecord {
     const existing = this.getPromotion(strategyId);
     
-    // Check metrics gating
+    // Check metrics gating - this is our single source of truth for threshold checks
     const gatingResult = this.metricsGating.check(performance, daysSinceStart);
     
-    // Check individual criteria
+    // Check additional promotion-specific criteria
     const criteriaCheck = {
       pnlPass: performance.pnl >= this.config.criteria.minPnl,
-      sharpePass: performance.sharpe >= this.config.criteria.minSharpe,
-      drawdownPass: performance.maxDrawdown <= this.config.criteria.maxDrawdown,
-      errorRatePass: performance.errorRate <= this.config.criteria.maxErrorRate,
-      tradeCountPass: performance.tradeCount >= this.config.criteria.minTradeCount,
-      daysPass: daysSinceStart >= this.config.criteria.minDays,
+      sharpePass: gatingResult.checks.sharpe.passed,
+      drawdownPass: gatingResult.checks.drawdown.passed,
+      errorRatePass: gatingResult.checks.errorRate.passed,
+      tradeCountPass: gatingResult.checks.sampleSize.passed,
+      daysPass: gatingResult.checks.days.passed,
       regimesPass: !this.config.criteria.requireMultipleRegimes || this.checkMultipleRegimes(performance),
       overallPass: false, // Will be set below
     };
@@ -164,13 +164,36 @@ export class PromotionWorkflow {
       criteriaCheck.daysPass &&
       criteriaCheck.regimesPass;
     
+    // Log failed checks if any
+    if (!criteriaCheck.overallPass) {
+      const failedChecks: string[] = [];
+      if (!criteriaCheck.pnlPass) failedChecks.push('pnl');
+      if (!criteriaCheck.sharpePass) failedChecks.push('sharpe');
+      if (!criteriaCheck.drawdownPass) failedChecks.push('drawdown');
+      if (!criteriaCheck.errorRatePass) failedChecks.push('errorRate');
+      if (!criteriaCheck.tradeCountPass) failedChecks.push('tradeCount');
+      if (!criteriaCheck.daysPass) failedChecks.push('days');
+      if (!criteriaCheck.regimesPass) failedChecks.push('regimes');
+      
+      logger.debug('Strategy promotion criteria not met', {
+        strategyId,
+        failedChecks,
+      });
+    }
+    
     // Determine new status
     let newStatus: PromotionStatus;
     
     if (!existing) {
-      // New strategy - check if it should be auto-flagged
-      if (criteriaCheck.overallPass && this.config.autoFlag) {
-        newStatus = 'under-review';
+      // New strategy - check if it should be auto-promoted or auto-flagged
+      if (criteriaCheck.overallPass) {
+        if (this.config.autoFlag && this.config.requireManualApproval) {
+          newStatus = 'under-review';
+        } else if (this.config.autoFlag && !this.config.requireManualApproval) {
+          newStatus = 'candidate'; // Auto-promote without manual review
+        } else {
+          newStatus = 'experimental';
+        }
       } else {
         newStatus = 'experimental';
       }
@@ -183,9 +206,15 @@ export class PromotionWorkflow {
     } else if (existing.status === 'under-review') {
       // Under review stays under review until manual approval
       newStatus = 'under-review';
-    } else if (criteriaCheck.overallPass && this.config.autoFlag) {
-      // Auto-flag for review if criteria met
-      newStatus = 'under-review';
+    } else if (criteriaCheck.overallPass) {
+      // Experimental strategy that now meets criteria
+      if (this.config.autoFlag && this.config.requireManualApproval) {
+        newStatus = 'under-review';
+      } else if (this.config.autoFlag && !this.config.requireManualApproval) {
+        newStatus = 'candidate'; // Auto-promote without manual review
+      } else {
+        newStatus = 'experimental';
+      }
     } else {
       // Stay experimental
       newStatus = 'experimental';

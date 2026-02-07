@@ -249,10 +249,10 @@ export interface StrategyPerformance {
 
 export interface AllocationConfig {
   algorithm: BanditAlgorithm;
-  totalCapital: number; // Total paper capital to allocate
+  totalCapital: number; // Total paper capital to allocate (denominated in currency units)
   explorationFactor: number; // epsilon for epsilon-greedy, c for UCB1
-  minAllocation: number; // Minimum capital per strategy
-  maxAllocation: number; // Maximum capital per strategy
+  minAllocation: number; // Minimum allocation fraction of totalCapital per strategy (0 to 1, e.g. 0.05 = 5%)
+  maxAllocation: number; // Maximum allocation fraction of totalCapital per strategy (0 to 1, e.g. 0.5 = 50%)
   minTradeCount: number; // Minimum trades before considering allocation
 }
 
@@ -318,7 +318,7 @@ export interface PromotionRecord {
 export interface PromotionWorkflowConfig {
   criteria: PromotionCriteria;
   autoFlag: boolean; // Automatically flag strategies for review when criteria met
-  requireManualApproval: boolean; // Require human approval before promotion
+  requireManualApproval: boolean; // If false, auto-promote to candidate when criteria met (skips under-review)
 }
 
 /**

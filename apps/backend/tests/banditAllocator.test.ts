@@ -291,18 +291,19 @@ describe('BanditAllocator', () => {
       expect(sum).toBeCloseTo(1.0, 5);
     });
     
-    it('should produce different allocations on repeated calls (stochastic)', () => {
+    it('should allocate capital using stochastic sampling', () => {
       const allocations1 = allocator.allocate(strategies);
       const allocations2 = allocator.allocate(strategies);
       
-      // At least one allocation should be different
-      const alloc1_1 = allocations1.find(a => a.strategyId === 'strategy-1')!.allocation;
-      const alloc2_1 = allocations2.find(a => a.strategyId === 'strategy-1')!.allocation;
-      
-      // Allow for some randomness - they should sometimes be different
-      // We can't guarantee this in a single test, but over multiple runs it should happen
+      // Both allocations should be valid
       expect(allocations1).toHaveLength(2);
       expect(allocations2).toHaveLength(2);
+      
+      // Both should sum to 1.0
+      const sum1 = allocations1.reduce((s, a) => s + a.allocation, 0);
+      const sum2 = allocations2.reduce((s, a) => s + a.allocation, 0);
+      expect(sum1).toBeCloseTo(1.0, 5);
+      expect(sum2).toBeCloseTo(1.0, 5);
     });
   });
   

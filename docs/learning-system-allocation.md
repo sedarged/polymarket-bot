@@ -410,10 +410,10 @@ if (record.status === 'under-review') {
 
 ### Fail-Closed Design
 
-- Missing configuration → System refuses to operate
-- Invalid metrics → Strategy rejected
-- Database errors → No promotion allowed
-- Manual override required for edge cases
+- Missing configuration → Safe defaults applied, strategies remain experimental (no automatic promotion)
+- Failing or invalid metrics → Promotion blocked, strategy kept in experimental status pending manual review
+- Database errors during evaluation/promotion → No status change is applied; promotions are not persisted and must be retried or handled manually
+- Manual override/review required for edge cases and to promote strategies that are blocked by safeguards
 
 ## Examples
 
@@ -470,7 +470,7 @@ const history = workflow.getHistory('mm-1');
 
 ## API Reference
 
-See type definitions in `src/learning/types.ts` for complete API documentation.
+See type definitions in `apps/backend/src/learning/types.ts` (re-exported from `apps/backend/src/learning/index.ts`) for complete API documentation.
 
 ## Related Documentation
 

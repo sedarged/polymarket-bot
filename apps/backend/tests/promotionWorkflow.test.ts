@@ -15,22 +15,25 @@ import { PromotionWorkflow } from '../src/learning/promotionWorkflow';
 import type { StrategyPerformance } from '../src/learning/types';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 describe('PromotionWorkflow', () => {
   let workflow: PromotionWorkflow;
+  let testDbDir: string;
   let testDbPath: string;
   
   beforeEach(() => {
-    // Use a unique test database for each test
-    testDbPath = path.join(process.cwd(), 'data', `test-promotions-${Date.now()}.db`);
+    // Use a unique temporary directory for each test
+    testDbDir = fs.mkdtempSync(path.join(os.tmpdir(), 'promotion-workflow-'));
+    testDbPath = path.join(testDbDir, 'test-promotions.db');
     workflow = new PromotionWorkflow({ dbPath: testDbPath });
   });
   
   afterEach(() => {
     workflow.close();
-    // Clean up test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
+    // Clean up test database directory (including WAL/SHM sidecar files)
+    if (testDbDir && fs.existsSync(testDbDir)) {
+      fs.rmSync(testDbDir, { recursive: true, force: true });
     }
   });
   
