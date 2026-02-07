@@ -5,22 +5,103 @@ const API_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3000' 
   : window.location.origin;
 
-// Admin token configuration
-// SECURITY NOTE: In production, use a secure authentication flow.
-// For development, you can set the token here or via localStorage.
-const getAdminToken = () => {
-  // Check localStorage first (allows setting without code changes)
-  const stored = localStorage.getItem('adminToken');
-  if (stored) return stored;
+// Authentication Management
+// SECURITY: Token is stored in sessionStorage (cleared when browser closes)
+// NOT localStorage for security reasons
+const Auth = {
+  getToken() {
+    return sessionStorage.getItem('adminToken');
+  },
   
-  // Development fallback (ONLY for localhost/127.0.0.1/::1)
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') {
-    return 'dev-test-token-12345';
+  setToken(token) {
+    sessionStorage.setItem('adminToken', token);
+    this.updateAuthUI();
+  },
+  
+  clearToken() {
+    sessionStorage.removeItem('adminToken');
+    this.updateAuthUI();
+  },
+  
+  isAuthenticated() {
+    return !!this.getToken();
+  },
+  
+  updateAuthUI() {
+    const authBtn = document.getElementById('authBtn');
+    const authStatus = document.getElementById('authStatus');
+    const authStatusDot = document.getElementById('authStatusDot');
+    
+    if (this.isAuthenticated()) {
+      authBtn.textContent = '🔓 Logout';
+      authBtn.classList.remove('button-secondary');
+      authBtn.classList.add('button-success');
+      authStatus.textContent = 'Auth: Authenticated';
+      authStatusDot.style.background = 'var(--color-success)';
+    } else {
+      authBtn.textContent = '🔐 Login';
+      authBtn.classList.remove('button-success');
+      authBtn.classList.add('button-secondary');
+      authStatus.textContent = 'Auth: Not Authenticated';
+      authStatusDot.style.background = 'var(--color-warning)';
+    }
+  },
+  
+  async verify() {
+    const token = this.getToken();
+    if (!token) return false;
+    
+    try {
+      // Verify token by calling a protected endpoint
+      const response = await fetch(`${API_URL}/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.status === 401) {
+        // Token is invalid, clear it
+        this.clearToken();
+        return false;
+      }
+      
+      return response.ok;
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      return false;
+    }
+  }
+};
+
+// API Helper with Auth Support
+async function apiCall(endpoint, options = {}) {
+  const token = Auth.getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  
+  // Add Authorization header if authenticated
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   
-  return null;
-};
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+  
+  // Handle 401 Unauthorized
+  if (response.status === 401) {
+    // Clear invalid token
+    Auth.clearToken();
+    showError('Authentication required. Please login.');
+    showLoginModal();
+    throw new Error('Unauthorized');
+  }
+  
+  return response;
+}
 
 // State management
 const state = {
@@ -161,14 +242,23 @@ async function fetchData(endpoint, requiresAuth = false) {
     const headers = {};
     
     // Add authentication for protected endpoints
-    if (requiresAuth) {
-      const token = getAdminToken();
+    if (requiresAuth || Auth.isAuthenticated()) {
+      const token = Auth.getToken();
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
     }
     
     const response = await fetch(`${API_URL}${endpoint}`, { headers });
+    
+    // Handle 401 Unauthorized
+    if (response.status === 401 && requiresAuth) {
+      Auth.clearToken();
+      showError('Authentication required. Please login.');
+      showLoginModal();
+      throw new Error('Unauthorized');
+    }
+    
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
@@ -184,8 +274,14 @@ async function postData(endpoint, data, token = null) {
     'Content-Type': 'application/json',
   };
   
+  // Use provided token or get from Auth
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    const authToken = Auth.getToken();
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
   }
   
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -193,6 +289,14 @@ async function postData(endpoint, data, token = null) {
     headers,
     body: JSON.stringify(data)
   });
+  
+  // Handle 401 Unauthorized
+  if (response.status === 401) {
+    Auth.clearToken();
+    showError('Authentication required. Please login.');
+    showLoginModal();
+    throw new Error('Unauthorized');
+  }
   
   if (!response.ok) {
     const error = await response.json();
@@ -606,6 +710,90 @@ function cancelKillSwitch() {
   modal.classList.remove('active');
 }
 
+// Authentication modal functions
+function showLoginModal() {
+  const modal = document.getElementById('loginModal');
+  const errorDiv = document.getElementById('loginError');
+  const tokenInput = document.getElementById('loginToken');
+  
+  errorDiv.classList.add('hidden');
+  tokenInput.value = '';
+  modal.classList.add('active');
+  setTimeout(() => tokenInput.focus(), 100);
+}
+
+function hideLoginModal() {
+  const modal = document.getElementById('loginModal');
+  modal.classList.remove('active');
+}
+
+async function handleLogin() {
+  const errorDiv = document.getElementById('loginError');
+  const tokenInput = document.getElementById('loginToken');
+  const token = tokenInput.value.trim();
+  
+  if (!token) {
+    errorDiv.textContent = 'Admin token is required';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+  
+  try {
+    // Verify token by calling a protected endpoint
+    const response = await fetch(`${API_URL}/status`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.status === 401) {
+      errorDiv.textContent = 'Invalid admin token';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+    
+    if (!response.ok) {
+      errorDiv.textContent = 'Failed to verify token';
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+    
+    // Token is valid, store it
+    Auth.setToken(token);
+    hideLoginModal();
+    showSuccess('Successfully authenticated');
+    addEvent('AUTH', 'User authenticated successfully');
+    addLog('info', 'Admin authentication successful');
+    
+    // Refresh data to fetch protected information
+    refresh();
+  } catch (error) {
+    errorDiv.textContent = error.message || 'Authentication failed';
+    errorDiv.classList.remove('hidden');
+    addLog('error', `Authentication failed: ${error.message}`);
+  }
+}
+
+function handleLogout() {
+  Auth.clearToken();
+  showSuccess('Logged out successfully');
+  addEvent('AUTH', 'User logged out');
+  addLog('info', 'Admin logged out');
+  
+  // Clear any cached protected data
+  refresh();
+}
+
+function handleAuthButtonClick() {
+  if (Auth.isAuthenticated()) {
+    if (confirm('Are you sure you want to logout?')) {
+      handleLogout();
+    }
+  } else {
+    showLoginModal();
+  }
+}
+
 async function handleReconnect() {
   showWarning('Reconnecting to market feed...');
   addEvent('RECONNECT', 'Manual reconnection requested');
@@ -796,7 +984,17 @@ async function init() {
   document.getElementById('killSwitchBtn').addEventListener('click', handleKillSwitch);
   document.getElementById('confirmKillSwitchBtn').addEventListener('click', confirmKillSwitch);
   document.getElementById('cancelKillSwitchBtn').addEventListener('click', cancelKillSwitch);
+  document.getElementById('authBtn').addEventListener('click', handleAuthButtonClick);
+  document.getElementById('confirmLoginBtn').addEventListener('click', handleLogin);
+  document.getElementById('cancelLoginBtn').addEventListener('click', hideLoginModal);
   document.getElementById('reconnectBtn').addEventListener('click', handleReconnect);
+  
+  // Allow Enter key to submit login form
+  document.getElementById('loginToken').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  });
   
   document.getElementById('saveRiskConfigBtn').addEventListener('click', saveRiskConfig);
   document.getElementById('saveStrategyConfigBtn').addEventListener('click', saveStrategyConfig);
@@ -819,6 +1017,17 @@ async function init() {
   document.getElementById('viewExperimentsBtn').addEventListener('click', () => {
     showWarning('Learning system integration coming soon');
   });
+  
+  // Initialize authentication UI
+  Auth.updateAuthUI();
+  
+  // Verify token if present
+  if (Auth.isAuthenticated()) {
+    const isValid = await Auth.verify();
+    if (!isValid) {
+      showWarning('Your session has expired. Please login again.');
+    }
+  }
   
   // Initial load
   addLog('info', 'Dashboard initialized');
