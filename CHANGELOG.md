@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.27.0](https://github.com/sedarged/polymarket-bot/compare/v1.26.0...v1.27.0) (2026-02-07)
+
+
+### Features
+
+* add admin token authentication and comprehensive dashboard documentation ([4c2b7c8](https://github.com/sedarged/polymarket-bot/commit/4c2b7c83f2d628be42fe2d257f4f4070f2b818cc))
+* add dashboard authentication and fix metrics endpoint compatibility ([fe8121e](https://github.com/sedarged/polymarket-bot/commit/fe8121eb54edfa3cf88cad02b90e6d267a81f6d6))
+
+
+### Bug Fixes
+
+* address PR review feedback on documentation and localhost detection ([7bfdccc](https://github.com/sedarged/polymarket-bot/commit/7bfdccc834cb7ac1e73f96565bbc6c23ecb933e1))
+
 ## [1.26.0](https://github.com/sedarged/polymarket-bot/compare/v1.25.0...v1.26.0) (2026-02-07)
 
 
