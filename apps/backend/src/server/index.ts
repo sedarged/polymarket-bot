@@ -11,6 +11,7 @@ import { RiskManager } from '../trading/riskManager';
 import { getMetrics, getContentType } from '../utils/metrics';
 import { RateLimiter } from '../utils/rateLimiter';
 import type { Order } from '@polymarket/shared';
+import { initializeAlerting } from '../utils/alerting';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -682,6 +683,40 @@ export function createServer(): http.Server {
 
 export async function startServer(): Promise<http.Server> {
   const server = createServer();
+  
+  // Initialize alerting service if configured
+  // This must be initialized before other services that may need to send alerts
+  if (config.slackWebhookUrl || config.emailSmtpHost) {
+    const emailConfig = config.emailSmtpHost && config.emailFromAddress && config.emailToAddresses.length > 0 ? {
+      smtpHost: config.emailSmtpHost,
+      smtpPort: config.emailSmtpPort,
+      smtpSecure: config.emailSmtpSecure,
+      smtpUser: config.emailSmtpUser || '',
+      smtpPassword: config.emailSmtpPassword || '',
+      fromAddress: config.emailFromAddress,
+      toAddresses: config.emailToAddresses,
+    } : undefined;
+    
+    initializeAlerting({
+      slackWebhookUrl: config.slackWebhookUrl,
+      emailConfig,
+      thresholds: {
+        errorRatePercent: config.alertErrorRateThreshold,
+        circuitBreakerTrips: config.alertCircuitBreakerTrips,
+      },
+    });
+    
+    logger.info('Alerting service initialized', {
+      hasSlack: !!config.slackWebhookUrl,
+      hasEmail: !!emailConfig,
+      thresholds: {
+        errorRatePercent: config.alertErrorRateThreshold,
+        circuitBreakerTrips: config.alertCircuitBreakerTrips,
+      },
+    });
+  } else {
+    logger.info('Alerting service not configured - alerts will only be logged');
+  }
   
   // Start market feed service
   marketFeedService.start();
