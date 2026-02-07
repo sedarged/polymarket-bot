@@ -292,48 +292,28 @@ Potential improvements tracked in [STATUS.md](../STATUS.md):
 - [ ] Business metrics (P&L, fill rate, Sharpe ratio) - OB-004
 - [ ] Performance metrics (latency percentiles beyond p95/p99) - OB-003
 - [ ] Distributed tracing (request IDs across services) - OB-005
-- [x] Alerting system integration (Slack, Email) - OB-002 ✅ **COMPLETED**
+- [x] Alerting system integration (Telegram) - OB-002 ✅ **COMPLETED**
 - [ ] Orderbook staleness detection - OB-007
 
 ## Built-in Alerting System
 
 **Status:** ✅ **IMPLEMENTED** (PR-010)
 
-The bot includes a built-in alerting system that sends notifications to Slack, Telegram, and email for critical events.
+The bot includes a built-in alerting system that sends notifications to Telegram for critical events.
 
 ### Configuration
 
 Configure alerting via environment variables in `.env`:
 
 ```bash
-# Slack webhook URL for critical alerts
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
-
-# Telegram bot configuration
+# Telegram bot configuration (required - both fields must be set)
 TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
 TELEGRAM_CHAT_ID=123456789
-
-# Email alerting (optional)
-EMAIL_SMTP_HOST=smtp.gmail.com
-EMAIL_SMTP_PORT=587
-EMAIL_SMTP_SECURE=false
-EMAIL_SMTP_USER=your-email@gmail.com
-EMAIL_SMTP_PASSWORD=your-app-password
-EMAIL_FROM_ADDRESS=polymarket-bot@example.com
-EMAIL_TO_ADDRESSES=admin@example.com,ops@example.com
 
 # Alert thresholds
 ALERT_ERROR_RATE_THRESHOLD=5  # Alert when error rate exceeds 5%
 ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
 ```
-
-### Setting Up Slack Alerts
-
-1. Go to https://api.slack.com/messaging/webhooks
-2. Create a new webhook for your Slack workspace
-3. Copy the webhook URL
-4. Add it to your `.env` file as `SLACK_WEBHOOK_URL`
-5. Restart the bot
 
 ### Setting Up Telegram Alerts
 
@@ -351,28 +331,10 @@ ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
 
 3. **Configure the bot:**
    - Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file
+   - Both fields are required - the bot will validate this at startup
    - Restart the bot
 
 **Tip:** You can use Telegram groups by getting the group's chat ID (which will be negative, like `-123456789`).
-
-### Setting Up Email Alerts
-
-**Status:** ⚠️ **PLACEHOLDER IMPLEMENTATION**
-
-Email alerting configuration is accepted but not yet fully implemented. The bot will log that an email would be sent but will not actually send emails. Full email implementation requires adding the `nodemailer` library.
-
-To enable email alerts in the future:
-
-For Gmail:
-1. Enable 2-factor authentication on your Google account
-2. Generate an app-specific password at https://myaccount.google.com/apppasswords
-3. Use the app password in `EMAIL_SMTP_PASSWORD`
-4. Add recipient addresses to `EMAIL_TO_ADDRESSES` (comma-separated)
-5. Restart the bot
-
-For other SMTP servers, configure the appropriate host, port, and credentials.
-
-**Current behavior:** Email configuration is validated and logged, but actual email sending is not implemented. Alerts will still be sent to Slack if configured.
 
 ### Alert Types
 
@@ -507,43 +469,6 @@ For other SMTP servers, configure the appropriate host, port, and credentials.
    - Adjust rate limits
    - Ensure sufficient balance
    - Verify market status
-
-### Testing Alerts
-
-You can manually trigger test alerts for verification:
-
-```bash
-# Test Slack/email configuration
-# Note: Requires implementing a test endpoint or using the alerting service directly in code
-```
-
-### Alert History API
-
-Get recent alert history (last 100 alerts):
-
-```bash
-curl http://localhost:3000/alerts
-```
-
-Response:
-```json
-{
-  "alerts": [
-    {
-      "severity": "critical",
-      "title": "Circuit Breaker Tripped",
-      "message": "Circuit breaker \"market-feed\" has opened",
-      "context": {
-        "breaker": "market-feed",
-        "failures": 5
-      },
-      "timestamp": "2024-02-07T00:50:00.000Z"
-    }
-  ]
-}
-```
-
-*Note: Alert history endpoint is available for monitoring/debugging purposes.*
 
 ### Monitoring Alerting Health
 
