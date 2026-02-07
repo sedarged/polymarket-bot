@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react"
 import type { Alert, LogEntry, EventEntry, ConfigChange } from "@/lib/types"
 
+console.log("[v0] Dashboard store loading")
+
 interface DashboardState {
   alerts: Alert[]
   logs: LogEntry[]
