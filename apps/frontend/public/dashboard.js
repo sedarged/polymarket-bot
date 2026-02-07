@@ -233,31 +233,23 @@ async function updateStatus() {
     const banner = document.getElementById('safetyBanner');
     const modeIndicator = document.getElementById('modeIndicator');
     
-    if (banner && modeIndicator) {
+    // Update mode indicator in top status bar
+    if (modeIndicator) {
       if (status.liveTrading) {
-        banner.className = 'safety-banner live';
-        modeIndicator.className = 'mode-indicator live';
-        modeIndicator.innerHTML = '<span class="mode-icon">🔴</span><span>LIVE TRADING</span>';
+        modeIndicator.className = 'status-badge live';
+        modeIndicator.innerHTML = '<span>🔴</span><span>LIVE TRADING</span>';
       } else {
-        banner.className = 'safety-banner paper';
-        modeIndicator.className = 'mode-indicator paper';
-        modeIndicator.innerHTML = '<span class="mode-icon">🟡</span><span>Paper Mode</span>';
+        modeIndicator.className = 'status-badge paper';
+        modeIndicator.innerHTML = '<span>🟡</span><span>Paper Mode</span>';
       }
     }
     
-    // Update sidebar mode indicator (new layout)
-    const sidebarModeIndicator = document.getElementById('sidebarModeIndicator');
-    if (sidebarModeIndicator) {
-      if (status.liveTrading) {
-        sidebarModeIndicator.className = 'sidebar-mode-badge live';
-        sidebarModeIndicator.innerHTML = '<span>🔴</span><span>LIVE TRADING</span>';
-      } else {
-        sidebarModeIndicator.className = 'sidebar-mode-badge paper';
-        sidebarModeIndicator.innerHTML = '<span>🟡</span><span>Paper Mode</span>';
-      }
+    // Update old banner if it exists (backward compatibility)
+    if (banner) {
+      banner.className = status.liveTrading ? 'safety-banner live' : 'safety-banner paper';
     }
     
-    // Update status dots (old layout - for backward compatibility)
+    // Update status dots in top status bar
     const feedDot = document.getElementById('feedStatusDot');
     const feedStatus = document.getElementById('feedStatus');
     const tradingDot = document.getElementById('tradingStatusDot');
@@ -274,22 +266,6 @@ async function updateStatus() {
     if (tradingDot && tradingStatus) {
       tradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
       tradingStatus.textContent = tradingStatusText.long;
-    }
-    
-    // Update sidebar status indicators (new layout)
-    const sidebarFeedDot = document.getElementById('sidebarFeedStatusDot');
-    const sidebarFeedStatus = document.getElementById('sidebarFeedStatus');
-    const sidebarTradingDot = document.getElementById('sidebarTradingStatusDot');
-    const sidebarTradingStatus = document.getElementById('sidebarTradingStatus');
-    
-    if (sidebarFeedDot && sidebarFeedStatus) {
-      sidebarFeedDot.className = `status-dot ${status.marketFeedConnected ? 'connected' : 'disconnected'}`;
-      sidebarFeedStatus.textContent = feedStatusText.short;
-    }
-    
-    if (sidebarTradingDot && sidebarTradingStatus) {
-      sidebarTradingDot.className = `status-dot ${status.tradingClientInitialized ? 'connected' : 'disconnected'}`;
-      sidebarTradingStatus.textContent = tradingStatusText.short;
     }
     
     // Update wallet address
