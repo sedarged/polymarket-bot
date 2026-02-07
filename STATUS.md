@@ -29,12 +29,7 @@ To update this status:
 - [P2] #242 [PR-014] Gamma API & Platform - Complete advanced Polymarket integration
 - [P2] #240 [PR-012] Dashboard Authentication & Learning System Tab
 - [P2] #239 [PR-011] Dashboard Core Tabs - Overview, Controls, Alerts & Logs
-- [P2] #238 [PR-010] Observability Stack - Prometheus metrics, alerting, error logging
 - [P2] #228 [Phase 3-4] Implement complete Gamma API and Data Platform support (historical data, WebSocket, advanced endpoints)
-- [P2] #126 [Trading Logic] Log and alert strategy execution errors - Audit Finding A-012
-- [P2] #104 [Observability] Add metrics instrumentation - Audit Finding A-027
-- [P2] #101 [Observability] Integrate Prometheus metrics - Gap OB-001
-- [P2] #100 [Observability] Set up basic alerting (Slack/email) - Gap OB-002
 - [P2] #96 [Documentation] Document geo-restrictions and compliance
 - [P2] #90 [Frontend] Add authentication for admin operations - Dashboard
 - [P2] #89 [Frontend] Implement Overview tab (status, orders, PnL) - Dashboard
@@ -47,6 +42,7 @@ To update this status:
 - [P2] #77 [Documentation] Complete docs/RUNBOOK.md
 
 ## Recently Closed (Last 14 Days)
+- [P2] #238 [PR-010] Observability Stack - Prometheus metrics, alerting, error logging
 - [P1] #237 [PR-009] Learning System Allocation & Governance - Bandit algorithms and promotion workflow
 - [P1] #236 [PR-008] Learning System Foundation - Event store, signal catalog, backtesting framework
 - [P1] #235 [PR-007] Periodic Reconciliation - Automated state verification every 5-10 minutes
@@ -61,7 +57,7 @@ To update this status:
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 
-*Last updated: 2026-02-07T00:33:00.750Z*
+*Last updated: 2026-02-07T04:11:42.422Z*
 
 <!-- STATUS_SYNC_END -->
 
