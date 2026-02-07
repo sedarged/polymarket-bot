@@ -292,8 +292,198 @@ Potential improvements tracked in [STATUS.md](../STATUS.md):
 - [ ] Business metrics (P&L, fill rate, Sharpe ratio) - OB-004
 - [ ] Performance metrics (latency percentiles beyond p95/p99) - OB-003
 - [ ] Distributed tracing (request IDs across services) - OB-005
-- [ ] Alerting system integration (PagerDuty, Slack) - OB-002
+- [x] Alerting system integration (Telegram) - OB-002 ✅ **COMPLETED**
 - [ ] Orderbook staleness detection - OB-007
+
+## Built-in Alerting System
+
+**Status:** ✅ **IMPLEMENTED** (PR-010)
+
+The bot includes a built-in alerting system that sends notifications to Telegram for critical events.
+
+### Configuration
+
+Configure alerting via environment variables in `.env`:
+
+```bash
+# Telegram bot configuration (required - both fields must be set)
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=123456789
+
+# Alert thresholds
+ALERT_ERROR_RATE_THRESHOLD=5  # Alert when error rate exceeds 5%
+ALERT_CIRCUIT_BREAKER_TRIPS=1  # Alert after 1 circuit breaker trip
+```
+
+### Setting Up Telegram Alerts
+
+1. **Create a bot:**
+   - Open Telegram and search for @BotFather
+   - Send `/newbot` and follow the instructions
+   - BotFather will give you a bot token (e.g., `1234567890:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+2. **Get your chat ID:**
+   - Start a chat with your newly created bot
+   - Send any message to the bot
+   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Look for `"chat":{"id":123456789}` in the response
+   - That number is your chat ID
+
+3. **Configure the bot:**
+   - Add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file
+   - Both fields are required - the bot will validate this at startup
+   - Restart the bot
+
+**Tip:** You can use Telegram groups by getting the group's chat ID (which will be negative, like `-123456789`).
+
+### Alert Types
+
+#### Critical Alerts 🚨
+
+**Circuit Breaker Tripped**
+- **Trigger:** Circuit breaker opens after consecutive failures
+- **Context:** Breaker name, failure count
+- **Example:**
+  ```
+  🚨 Circuit Breaker Tripped
+  Breaker: market-feed
+  Failures: 5
+  Time: 2024-02-07T00:50:00Z
+  ```
+- **Action:** Investigate root cause immediately. System will auto-recover after timeout.
+
+**Kill Switch Activated**
+- **Trigger:** Kill switch manually or automatically activated
+- **Context:** Reason, activated by (user/system)
+- **Example:**
+  ```
+  🚨 Kill Switch Activated
+  Reason: High error rate detected
+  Activated By: system
+  Time: 2024-02-07T00:50:00Z
+  ```
+- **Action:** Verify reason, resolve issue, reset kill switch when safe.
+
+**Strategy Execution Error**
+- **Trigger:** Trading strategy throws an exception
+- **Context:** Strategy name, error message, stack trace, market context
+- **Example:**
+  ```
+  🚨 Strategy Execution Error
+  Strategy: momentum-strategy
+  Error: Cannot read property 'price' of undefined
+  Market: market-123
+  Signals: {"rsi": 70, "macd": 0.5}
+  ```
+- **Action:** Review strategy code, fix bugs, redeploy.
+
+#### Warning Alerts ⚠️
+
+**High Error Rate**
+- **Trigger:** Error rate exceeds threshold (default: 5%)
+- **Context:** Current error rate, window size, threshold
+- **Example:**
+  ```
+  ⚠️  High Error Rate Detected
+  Error Rate: 8.5%
+  Threshold: 5%
+  Window: 100 operations
+  ```
+- **Action:** Monitor for escalation. Investigate if persistent.
+
+### Alert Features
+
+- **Rate Limiting:** Alerts are automatically rate-limited to prevent alert storms (1 minute cooldown per alert type)
+- **Rich Formatting:** Slack alerts include emoji, colors, and structured fields
+- **Alert History:** Last 1000 alerts kept in memory (accessible via API endpoint)
+- **Multiple Channels:** Send to Slack, email, or both simultaneously
+- **Contextual Information:** All alerts include relevant context for troubleshooting
+
+### Alert Runbooks
+
+#### Circuit Breaker Opened
+
+1. **Check metrics:**
+   ```bash
+   curl http://localhost:3000/metrics | grep circuit_breaker
+   ```
+
+2. **Review logs:**
+   ```bash
+   grep -i "circuit breaker" logs/*.log
+   ```
+
+3. **Common causes:**
+   - Network connectivity issues
+   - API rate limiting
+   - API service outage
+   - Invalid credentials
+
+4. **Resolution:**
+   - If transient: Wait for auto-recovery (default: 60 seconds)
+   - If persistent: Fix root cause, circuit breaker will self-heal
+   - Monitor `polymarket_circuit_breaker_state` metric
+
+#### Kill Switch Activated
+
+1. **Check status:**
+   ```bash
+   curl http://localhost:3000/status
+   ```
+
+2. **Review alert context for reason**
+
+3. **Common triggers:**
+   - High error rate
+   - Excessive drawdown
+   - Manual activation
+   - System anomaly detection
+
+4. **Resolution:**
+   ```bash
+   # Verify issue is resolved, then reset
+   curl -X POST http://localhost:3000/reset \
+     -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+   ```
+
+#### High Error Rate
+
+1. **Check current metrics:**
+   ```bash
+   curl http://localhost:3000/metrics | grep orders_total
+   ```
+
+2. **Review recent errors:**
+   ```bash
+   grep "ERROR" logs/*.log | tail -100
+   ```
+
+3. **Common causes:**
+   - API rate limiting
+   - Invalid order parameters
+   - Insufficient balance
+   - Market closed
+
+4. **Resolution:**
+   - Fix validation errors
+   - Adjust rate limits
+   - Ensure sufficient balance
+   - Verify market status
+
+### Monitoring Alerting Health
+
+The alerting service logs all operations:
+
+```bash
+# Check if alerting service initialized
+grep "Alerting service initialized" logs/*.log
+
+# Check for alert sending failures
+grep "Failed to send.*alert" logs/*.log
+
+# View all sent alerts
+grep "ALERT:" logs/*.log
+```
 
 ## References
 

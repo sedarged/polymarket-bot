@@ -2,6 +2,7 @@ import { Order, Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '../utils/statePersistence';
 import { CircuitBreaker, CircuitState } from '../utils/circuitBreaker';
+import { getAlertingService } from '../utils/alerting';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -215,39 +216,55 @@ export class RiskManager {
     return { allowed: true };
   }
 
-  /**
-   * Record an operation (success or error) for legacy circuit breaker tracking.
-   * 
-   * NOTE: This does NOT affect the new CircuitBreaker class (Audit Finding A-018),
-   * which must be used by wrapping operations with getCircuitBreaker().execute()
-   * 
-   * This method maintains the legacy error-rate based circuit breaker that uses
-   * isCircuitBreakerTripped() to check if error rate exceeds threshold.
-   */
-  recordOperation(isError: boolean, errorMessage?: string): void {
-    // Legacy tracking maintained for backward compatibility and historical error rate calculation
-    // The legacy isCircuitBreakerTripped() method uses this data for error rate-based checking
-    this.operations.push({
-      timestamp: Date.now(),
-      isError,
-    });
+   /**
+    * Record an operation (success or error) for legacy circuit breaker tracking.
+    * 
+    * NOTE: This does NOT affect the new CircuitBreaker class (Audit Finding A-018),
+    * which must be used by wrapping operations with getCircuitBreaker().execute()
+    * 
+    * This method maintains the legacy error-rate based circuit breaker that uses
+    * isCircuitBreakerTripped() to check if error rate exceeds threshold.
+    */
+   recordOperation(isError: boolean, errorMessage?: string): void {
+     // Legacy tracking maintained for backward compatibility and historical error rate calculation
+     // The legacy isCircuitBreakerTripped() method uses this data for error rate-based checking
+     this.operations.push({
+       timestamp: Date.now(),
+       isError,
+     });
 
-    // Keep only recent operations (last minute)
-    const now = Date.now();
-    this.operations = this.operations.filter(e => now - e.timestamp < 60000);
+     // Keep only recent operations (last minute)
+     const now = Date.now();
+     this.operations = this.operations.filter(e => now - e.timestamp < 60000);
 
-    if (isError && errorMessage) {
-      logger.warn('Error recorded for circuit breaker', {
-        error: errorMessage,
-        recentOperations: this.operations.length,
-        recentErrors: this.operations.filter(op => op.isError).length,
-      });
-    }
+     if (isError && errorMessage) {
+       logger.warn('Error recorded for circuit breaker', {
+         error: errorMessage,
+         recentOperations: this.operations.length,
+         recentErrors: this.operations.filter(op => op.isError).length,
+       });
+     }
+     
+     // Check error rate and send alert if threshold exceeded
+     if (this.operations.length >= this.config.errorRateWindow) {
+       const lastWindowOps = this.operations.slice(-this.config.errorRateWindow);
+       const errorCount = lastWindowOps.filter(op => op.isError).length;
+       const errorRate = errorCount / this.config.errorRateWindow;
+       
+       const alerting = getAlertingService();
+       if (alerting) {
+         alerting.alertHighErrorRate(errorRate, this.config.errorRateWindow).catch((error) => {
+           logger.error('Failed to send error rate alert', {
+             error: error instanceof Error ? error.message : String(error),
+           });
+         });
+       }
+     }
 
-    // NOTE: The new CircuitBreaker class is NOT directly tracked via recordOperation()
-    // It's used by wrapping critical operations with breaker.execute() in the calling code
-    // This maintains both systems during transition to full CircuitBreaker adoption
-  }
+     // NOTE: The new CircuitBreaker class is NOT directly tracked via recordOperation()
+     // It's used by wrapping critical operations with breaker.execute() in the calling code
+     // This maintains both systems during transition to full CircuitBreaker adoption
+   }
 
   /**
    * Record an error for circuit breaker tracking
@@ -292,6 +309,16 @@ export class RiskManager {
   kill(reason?: string): void {
     this.killed = true;
     logger.error('Kill switch activated', { reason });
+    
+    // Send alert if alerting service is configured
+    const alerting = getAlertingService();
+    if (alerting) {
+      alerting.alertKillSwitch(reason || 'Kill switch manually activated').catch((error) => {
+        logger.error('Failed to send kill switch alert', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
     
     // Persist state to disk (async, but don't wait - best effort)
     const persistOp = saveKillSwitchState({

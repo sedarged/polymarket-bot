@@ -157,6 +157,17 @@ const envSchema = z.object({
   //               can spoof their IP address to bypass rate limiting by setting custom headers.
   //   - Example: RATE_LIMIT_TRUST_PROXY=true when deployed behind nginx or AWS ALB.
   RATE_LIMIT_TRUST_PROXY: booleanFromEnv.default(false),
+  // ========================================
+  // Alerting Configuration (Gap OB-002, Issue #100)
+  // ========================================
+  // Telegram bot configuration for alerting
+  // Create bot via @BotFather on Telegram and get bot token
+  // Get chat ID by sending a message to the bot and calling https://api.telegram.org/bot<TOKEN>/getUpdates
+  TELEGRAM_BOT_TOKEN: optionalStringFromEnv(z.string().optional()),
+  TELEGRAM_CHAT_ID: optionalStringFromEnv(z.string().optional()),
+  // Alert thresholds
+  ALERT_ERROR_RATE_THRESHOLD: numberFromEnv(5, z.number().positive().min(0.1).max(100)), // Error rate percentage (default: 5%)
+  ALERT_CIRCUIT_BREAKER_TRIPS: numberFromEnv(1, z.number().int().positive().min(1)), // Alert after N trips (default: 1)
 });
 
 const configSchema = envSchema.refine(
@@ -164,6 +175,17 @@ const configSchema = envSchema.refine(
   {
     message: 'PAPER_TRADING_MAX_SLIPPAGE must be greater than or equal to PAPER_TRADING_SLIPPAGE',
     path: ['PAPER_TRADING_MAX_SLIPPAGE'],
+  }
+).refine(
+  (env) => {
+    // If either Telegram field is set, both must be set
+    const hasToken = !!env.TELEGRAM_BOT_TOKEN;
+    const hasChatId = !!env.TELEGRAM_CHAT_ID;
+    return hasToken === hasChatId;
+  },
+  {
+    message: 'Both TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be set together for Telegram alerting',
+    path: ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'],
   }
 ).transform((env) => ({
   gammaApiUrl: env.GAMMA_API_URL,
@@ -209,6 +231,11 @@ const configSchema = envSchema.refine(
   rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
   rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
   rateLimitTrustProxy: env.RATE_LIMIT_TRUST_PROXY,
+  // Alerting configuration
+  telegramBotToken: env.TELEGRAM_BOT_TOKEN,
+  telegramChatId: env.TELEGRAM_CHAT_ID,
+  alertErrorRateThreshold: env.ALERT_ERROR_RATE_THRESHOLD,
+  alertCircuitBreakerTrips: env.ALERT_CIRCUIT_BREAKER_TRIPS,
 }));
 
 export type Config = z.infer<typeof configSchema>;

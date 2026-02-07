@@ -14,7 +14,6 @@ import { logger } from '../utils/logger';
 import type {
   BanditAlgorithm,
   StrategyPerformance,
-  AllocationConfig,
   AllocationResult,
   BanditState,
 } from './types';

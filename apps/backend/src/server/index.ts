@@ -10,6 +10,8 @@ import { PaperTradingEngine } from '../trading/paperTradingEngine';
 import { RiskManager } from '../trading/riskManager';
 import { getMetrics, getContentType } from '../utils/metrics';
 import { RateLimiter } from '../utils/rateLimiter';
+import type { Order } from '@polymarket/shared';
+import { initializeAlerting } from '../utils/alerting';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -623,7 +625,7 @@ export function createServer(): http.Server {
           // behavior between live and paper modes, but is documented here.
           let paperCancelledCount = 0;
           if (paperEngine) {
-            const paperOrders = paperEngine.getState().orders.filter(o => 
+            const paperOrders = paperEngine.getOrders().filter((o: Order) => 
               o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
             );
             paperCancelledCount = paperOrders.length;
@@ -681,6 +683,21 @@ export function createServer(): http.Server {
 
 export async function startServer(): Promise<http.Server> {
   const server = createServer();
+  
+  // Initialize alerting service if configured
+  // This must be initialized before other services that may need to send alerts
+  if (config.telegramBotToken && config.telegramChatId) {
+    initializeAlerting({
+      telegramBotToken: config.telegramBotToken,
+      telegramChatId: config.telegramChatId,
+      thresholds: {
+        errorRatePercent: config.alertErrorRateThreshold,
+        circuitBreakerTrips: config.alertCircuitBreakerTrips,
+      },
+    });
+  } else {
+    logger.info('Alerting service not configured - alerts will only be logged');
+  }
   
   // Start market feed service
   marketFeedService.start();

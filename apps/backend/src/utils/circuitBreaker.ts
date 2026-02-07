@@ -6,6 +6,7 @@ import {
   circuitBreakerFailures, 
   circuitBreakerSuccesses,
 } from './metrics';
+import { getAlertingService } from './alerting';
 
 export enum CircuitState {
   CLOSED = 'closed',
@@ -189,6 +190,16 @@ export class CircuitBreaker extends EventEmitter {
     });
 
     this.emit('open', this.getMetrics());
+    
+    // Send alert if alerting service is configured
+    const alerting = getAlertingService();
+    if (alerting) {
+      alerting.alertCircuitBreakerTrip(this.name, this.consecutiveFailures).catch((error) => {
+        logger.error('Failed to send circuit breaker alert', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
 
     // Schedule transition to half-open
     if (this.resetTimer) {
