@@ -157,6 +157,26 @@ const envSchema = z.object({
   //               can spoof their IP address to bypass rate limiting by setting custom headers.
   //   - Example: RATE_LIMIT_TRUST_PROXY=true when deployed behind nginx or AWS ALB.
   RATE_LIMIT_TRUST_PROXY: booleanFromEnv.default(false),
+  // ========================================
+  // Alerting Configuration (Gap OB-002, Issue #100)
+  // ========================================
+  // Slack webhook URL for alerting critical events
+  // Generate webhook: https://api.slack.com/messaging/webhooks
+  // Example: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+  SLACK_WEBHOOK_URL: optionalStringFromEnv(z.string().url().optional()),
+  // Email alerting configuration (optional)
+  // SMTP server for sending email alerts
+  EMAIL_SMTP_HOST: optionalStringFromEnv(z.string().optional()),
+  EMAIL_SMTP_PORT: numberFromEnv(587, z.number().int().positive().min(1).max(65535)),
+  EMAIL_SMTP_SECURE: booleanFromEnv.default(false), // Use TLS
+  EMAIL_SMTP_USER: optionalStringFromEnv(z.string().optional()),
+  EMAIL_SMTP_PASSWORD: optionalStringFromEnv(z.string().optional()),
+  EMAIL_FROM_ADDRESS: optionalStringFromEnv(z.string().email().optional()),
+  // Comma-separated list of email addresses to send alerts to
+  EMAIL_TO_ADDRESSES: z.string().default(''),
+  // Alert thresholds
+  ALERT_ERROR_RATE_THRESHOLD: numberFromEnv(5, z.number().positive().min(0.1).max(100)), // Error rate percentage (default: 5%)
+  ALERT_CIRCUIT_BREAKER_TRIPS: numberFromEnv(1, z.number().int().positive().min(1)), // Alert after N trips (default: 1)
 });
 
 const configSchema = envSchema.refine(
@@ -209,6 +229,17 @@ const configSchema = envSchema.refine(
   rateLimitMaxRequests: env.RATE_LIMIT_MAX_REQUESTS,
   rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS,
   rateLimitTrustProxy: env.RATE_LIMIT_TRUST_PROXY,
+  // Alerting configuration
+  slackWebhookUrl: env.SLACK_WEBHOOK_URL,
+  emailSmtpHost: env.EMAIL_SMTP_HOST,
+  emailSmtpPort: env.EMAIL_SMTP_PORT,
+  emailSmtpSecure: env.EMAIL_SMTP_SECURE,
+  emailSmtpUser: env.EMAIL_SMTP_USER,
+  emailSmtpPassword: env.EMAIL_SMTP_PASSWORD,
+  emailFromAddress: env.EMAIL_FROM_ADDRESS,
+  emailToAddresses: env.EMAIL_TO_ADDRESSES.split(',').map(s => s.trim()).filter(s => s.length > 0),
+  alertErrorRateThreshold: env.ALERT_ERROR_RATE_THRESHOLD,
+  alertCircuitBreakerTrips: env.ALERT_CIRCUIT_BREAKER_TRIPS,
 }));
 
 export type Config = z.infer<typeof configSchema>;
