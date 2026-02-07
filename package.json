@@ -6,10 +6,6 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
