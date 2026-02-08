@@ -1,0 +1,115 @@
+name: Real API Tests
+
+permissions:
+  contents: read
+
+on:
+  # Automatic read-only tests on push and PRs
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  
+  # Manual trigger for write tests (maintainer only)
+  workflow_dispatch:
+    inputs:
+      run_write_tests:
+        description: 'Run write tests (requires authorization)'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  # Read-only tests run automatically
+  read-only-tests:
+    name: Read-Only API Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run read-only API tests
+        run: npm run --workspace @polymarket/backend test:real-readonly
+        env:
+          # Optional: Use read-only API credentials if available
+          POLYMARKET_API_KEY_READONLY: ${{ secrets.POLYMARKET_API_KEY_READONLY }}
+          POLYMARKET_API_SECRET_READONLY: ${{ secrets.POLYMARKET_API_SECRET_READONLY }}
+          # Override API base if needed (default uses public endpoint)
+          POLYMARKET_API_BASE: ${{ secrets.POLYMARKET_API_BASE || 'https://gamma-api.polymarket.com' }}
+        continue-on-error: true # Don't fail the workflow if tests fail (external dependency)
+
+  # Write tests only run on manual trigger
+  write-tests:
+    name: Write API Tests (Manual)
+    runs-on: ubuntu-latest
+    # Only run if manually triggered with write_tests input
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_write_tests == 'true'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Verify safety gates
+        run: |
+          echo "Verifying safety gates are configured..."
+          if [ "$LIVE_TRADING" != "true" ]; then
+            echo "❌ LIVE_TRADING must be 'true'"
+            exit 1
+          fi
+          if [ "$COMPLIANCE_ACCEPTED" != "true" ]; then
+            echo "❌ COMPLIANCE_ACCEPTED must be 'true'"
+            exit 1
+          fi
+          if [ "$FORCE_REAL_TEST" != "true" ]; then
+            echo "❌ FORCE_REAL_TEST must be 'true'"
+            exit 1
+          fi
+          echo "✓ All safety gates verified"
+        env:
+          LIVE_TRADING: ${{ secrets.LIVE_TRADING }}
+          COMPLIANCE_ACCEPTED: ${{ secrets.COMPLIANCE_ACCEPTED }}
+          FORCE_REAL_TEST: ${{ secrets.FORCE_REAL_TEST }}
+      
+      - name: Run write API tests
+        run: npm run --workspace @polymarket/backend test:real-write
+        env:
+          # Safety gates (from secrets)
+          LIVE_TRADING: ${{ secrets.LIVE_TRADING }}
+          COMPLIANCE_ACCEPTED: ${{ secrets.COMPLIANCE_ACCEPTED }}
+          FORCE_REAL_TEST: ${{ secrets.FORCE_REAL_TEST }}
+          ALLOWED_TEST_RUNNERS: ${{ secrets.ALLOWED_TEST_RUNNERS }}
+          
+          # Write API credentials (from secrets)
+          POLYMARKET_API_KEY_WRITE: ${{ secrets.POLYMARKET_API_KEY_WRITE }}
+          POLYMARKET_API_SECRET_WRITE: ${{ secrets.POLYMARKET_API_SECRET_WRITE }}
+          
+          # API configuration
+          POLYMARKET_API_BASE: ${{ secrets.POLYMARKET_API_BASE || 'https://gamma-api.polymarket.com' }}
+          
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Write Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Warning**: Write tests performed REAL API operations" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review test output above for details." >> $GITHUB_STEP_SUMMARY
