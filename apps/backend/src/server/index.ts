@@ -12,6 +12,12 @@ import { getMetrics, getContentType } from '../utils/metrics';
 import { RateLimiter } from '../utils/rateLimiter';
 import type { Order } from '@polymarket/shared';
 import { initializeAlerting } from '../utils/alerting';
+import {
+  handleGetExperiments,
+  handleGetStrategies,
+  handleGetBestStrategy,
+  handleGetLearningStatus,
+} from './learningApiHandlers';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -674,6 +680,31 @@ export function createServer(): http.Server {
           error: error instanceof Error ? error.message : 'Failed to activate kill switch',
         }, req);
       }
+      return;
+    }
+
+    // Learning System API endpoints (admin auth required)
+    if (url === '/api/learning/experiments' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Learning Experiments')) return;
+      await handleGetExperiments(req, res);
+      return;
+    }
+
+    if (url === '/api/learning/strategies' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Learning Strategies')) return;
+      await handleGetStrategies(req, res);
+      return;
+    }
+
+    if (url === '/api/learning/best' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Learning Best Strategy')) return;
+      await handleGetBestStrategy(req, res);
+      return;
+    }
+
+    if (url === '/api/learning/status' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Learning Status')) return;
+      await handleGetLearningStatus(req, res);
       return;
     }
 

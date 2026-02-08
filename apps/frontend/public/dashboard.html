@@ -699,10 +699,15 @@
             <span class="status-dot connected" id="tradingStatusDot"></span>
             <span id="tradingStatus">Trading: Initialized</span>
           </div>
+          <div class="status-item">
+            <span class="status-dot" id="authStatusDot" style="background: var(--color-warning);"></span>
+            <span id="authStatus">Auth: Not Authenticated</span>
+          </div>
         </div>
       </div>
       <div class="banner-actions">
         <button type="button" id="reconnectBtn" class="button button-secondary button-small">🔄 Reconnect</button>
+        <button type="button" id="authBtn" class="button button-secondary button-small">🔐 Login</button>
         <button type="button" id="killSwitchBtn" class="button button-danger button-small">🛑 Kill Switch</button>
       </div>
     </div>
@@ -1018,6 +1023,30 @@
       <div class="modal-footer">
         <button type="button" class="button button-secondary" id="cancelKillSwitchBtn">Cancel</button>
         <button type="button" class="button button-danger" id="confirmKillSwitchBtn">🛑 Activate Kill Switch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">🔐 Admin Authentication</div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; color: var(--text-secondary);">
+          Admin authentication is required to access sensitive operations and learning system data.
+        </p>
+        <form id="loginForm" onsubmit="return false;">
+          <div class="form-group">
+            <label class="form-label" for="loginToken">Admin Token</label>
+            <input type="password" class="form-input" id="loginToken" placeholder="Enter your admin token" autocomplete="off" autofocus>
+            <p class="form-help">This token is set in the ADMIN_TOKEN environment variable on the backend</p>
+          </div>
+          <div id="loginError" class="form-error hidden"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="button button-secondary" id="cancelLoginBtn">Cancel</button>
+        <button type="button" class="button button-primary" id="confirmLoginBtn">🔓 Login</button>
       </div>
     </div>
   </div>
