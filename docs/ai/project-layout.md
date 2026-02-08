@@ -87,6 +87,9 @@ The main application code. This is where most development happens.
 - `src/clients/clob.ts` - CLOB API client (order book & trading)
 - `src/clients/dataApi.ts` - Data API client (positions, trades, activity)
 - `src/clients/marketFeed.ts` - WebSocket market feed client
+- `src/clients/tradingClient.ts` - Trading client wrapper (order placement, cancellation)
+- `src/clients/websocket.ts` - Base WebSocket client with reconnection
+- `src/clients/orderbookCache.ts` - In-memory orderbook cache
 - `src/server/index.ts` - HTTP server with API endpoints
 - `src/server/learningApiHandlers.ts` - Learning system API endpoints
 - `src/config/index.ts` - Environment configuration with Zod validation
@@ -94,6 +97,7 @@ The main application code. This is where most development happens.
 - `src/trading/paperTradingEngine.ts` - Paper trading simulation
 - `src/trading/riskManager.ts` - Risk management and limits
 - `src/trading/auditTrail.ts` - Trading audit logging
+- `src/trading/persistenceService.ts` - State persistence
 - `src/learning/` - ML learning system (event store, backtest, bandit allocation)
 - `src/utils/logger.ts` - Structured logging with privacy masking
 - `src/utils/retry.ts` - Retry logic with exponential backoff

@@ -23,16 +23,17 @@ Work on tasks in this priority order:
 
 ### Required Reading
 - **[docs/README.md](./docs/README.md)**: Documentation index - start here
-- **[docs/ai/project-layout.md](./docs/ai/)**: Understand the repository structure
-- **[docs/ai/common-pitfalls.md](./docs/ai/)**: Avoid common mistakes
-- **[docs/ai/decision-trees.md](./docs/ai/)**: Handle common scenarios
+- **[docs/ai/project-layout.md](./docs/ai/project-layout.md)**: Understand the repository structure
+- **[docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md)**: Avoid common mistakes
+- **[docs/ai/decision-trees.md](./docs/ai/decision-trees.md)**: Handle common scenarios
+- **[docs/DEV_WORKFLOW.md](./docs/DEV_WORKFLOW.md)**: Documentation maintenance requirements
 
 ### Development Workflow
 1. **Read the docs**: Check relevant documentation before coding
 2. **Small changes**: Make minimal, surgical modifications
 3. **Test early**: Validate changes as soon as possible
 4. **Update tests**: Add/modify tests for your changes
-5. **Update docs**: Keep documentation in sync with code changes
+5. **Update docs**: Keep documentation in sync with code changes (see DEV_WORKFLOW.md)
 
 ### Code Quality Standards
 - TypeScript strict mode enabled
