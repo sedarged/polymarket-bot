@@ -1,5 +1,7 @@
 # Audit Implementation Issues - Complete Guide
 
+**NOTE:** The local issue files have been archived to `archive/2026-02-08/issues/audit-implementation/` as the issues are now managed on GitHub. This document is retained for historical reference and understanding the issue generation process.
+
 This document explains the comprehensive issue generation for the Production Audit (#23).
 
 ## What Was Done

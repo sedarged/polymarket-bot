@@ -52,6 +52,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
+- [Development Workflow](./DEV_WORKFLOW.md) - Mandatory documentation maintenance procedures
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
 - [Environment Setup](./environment.md) - Complete development environment and command reference
@@ -175,9 +176,15 @@ polymarket-bot/
 
 ## 📝 Documentation Standards
 
+### Documentation Maintenance
+
+**All code changes MUST include documentation updates.** See [Development Workflow](./DEV_WORKFLOW.md) for detailed requirements.
+
 ### When to Update Documentation
 - **Code changes**: Update relevant technical docs
 - **New features**: Add to examples and update system overview
+- **Environment variables**: Update .env.example and docs/environment.md
+- **API endpoints**: Update README.md and docs/runbook.md
 - **Architecture changes**: Update architecture docs and create ADRs
 - **Operational changes**: Update runbook and environment guide
 - **API changes**: Update examples and integration docs
@@ -185,9 +192,10 @@ polymarket-bot/
 ### Documentation Style
 - Use clear, concise language
 - Include code examples where helpful
-- Keep docs up-to-date with code changes
+- Keep docs up-to-date with code changes (mandatory)
 - Use markdown for formatting consistency
 - Link to related documentation
+- Test all code examples before committing
 
 ## 🔄 Automation
 

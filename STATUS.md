@@ -81,9 +81,9 @@ Add any manual notes, context, or important information below this line. The aut
 - Risk & Safety Controls: 7/10 (PASS)
 
 **Implementation Issues Created:** 27 audit issues (audit findings only)
-- **Location:** `issues/audit-implementation/`
-- **Index:** [issues/audit-implementation/INDEX.md](issues/audit-implementation/INDEX.md)
-- **README:** [issues/audit-implementation/README.md](issues/audit-implementation/README.md)
+- **Location:** Archived to `archive/2026-02-08/issues/audit-implementation/` (now managed on GitHub)
+- **Index:** [Archive Index](archive/2026-02-08/issues/audit-implementation/INDEX.md)
+- **README:** [Archive README](archive/2026-02-08/issues/audit-implementation/README.md)
 
 **PR Plan:** 13 PRs mapped in [docs/small-pr-plan.md](docs/small-pr-plan.md)
 - **PR-001:** Critical Security Fixes (A-001, A-002, A-003) - P0

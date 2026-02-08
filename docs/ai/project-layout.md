@@ -10,17 +10,21 @@ polymarket-bot/
 │   ├── backend/              # Node 20 + TypeScript backend
 │   │   ├── src/
 │   │   │   ├── index.ts      # Main entry point
-│   │   │   ├── api/          # API clients (Gamma, CLOB)
-│   │   │   ├── trading/      # Trading logic and strategies
-│   │   │   ├── websocket/    # WebSocket connections and handlers
-│   │   │   ├── orderbook/    # Order book management
-│   │   │   ├── utils/        # Utility functions
-│   │   │   └── types/        # TypeScript type definitions
+│   │   │   ├── cli/          # CLI commands
+│   │   │   ├── clients/      # API clients (Gamma, CLOB, DataApi, MarketFeed)
+│   │   │   ├── config/       # Configuration and env variable parsing
+│   │   │   ├── learning/     # ML/Learning system (EventStore, Backtest, Bandit)
+│   │   │   ├── secrets/      # Secret management (encrypted keys, Vault, AWS, Azure)
+│   │   │   ├── server/       # HTTP server and API handlers
+│   │   │   ├── trading/      # Trading logic (PaperEngine, RiskManager, AuditTrail)
+│   │   │   ├── types/        # TypeScript type definitions
+│   │   │   └── utils/        # Utilities (logger, retry, circuitBreaker, metrics, alerting)
 │   │   ├── tests/            # Vitest test files
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
 │   └── frontend/             # Frontend (minimal, upgradeable to Vite+React)
+│       ├── public/           # Static files and dashboard
 │       ├── src/
 │       ├── package.json
 │       └── tsconfig.json
@@ -28,9 +32,7 @@ polymarket-bot/
 ├── packages/
 │   └── shared/               # Shared code between apps
 │       ├── src/
-│       │   ├── types/        # Shared types
-│       │   ├── constants/    # Shared constants
-│       │   └── utils/        # Shared utilities
+│       │   └── index.ts      # Shared exports
 │       ├── package.json
 │       └── tsconfig.json
 │
@@ -40,6 +42,9 @@ polymarket-bot/
 │   ├── adr/                  # Architecture Decision Records
 │   └── [various .md files]   # Technical and operational docs
 │
+├── archive/                  # Archived obsolete files
+│   └── 2026-02-08/           # Date-stamped archive directory
+│
 ├── .github/
 │   ├── workflows/            # GitHub Actions workflows
 │   │   ├── priority-label.yml
@@ -47,7 +52,18 @@ polymarket-bot/
 │   │   └── codecov.yml
 │   ├── ISSUE_TEMPLATE/       # Issue templates
 │   │   └── task.yml
+│   ├── pull_request_template.md
 │   └── copilot-instructions.md
+│
+├── REPORTS/                  # Audit and analysis reports
+│   ├── AUDIT.md              # Security audit findings
+│   ├── GAP_ANALYSIS.md       # Production readiness gaps
+│   └── LEARNING_SYSTEM.md    # Learning system design
+│
+├── grafana/                  # Grafana dashboard config
+│   └── polymarket-dashboard.json
+│
+├── scripts/                  # Automation scripts
 │
 ├── .env.example              # Environment variable template
 ├── package.json              # Root workspace configuration
@@ -55,7 +71,8 @@ polymarket-bot/
 ├── STATUS.md                 # Current work status (auto-synced)
 ├── AGENTS.md                 # AI agent contract
 ├── README.md                 # Project overview
-└── CHANGELOG.md              # Release history
+├── CHANGELOG.md              # Release history
+└── SECURITY_SUMMARY.md       # Security status
 ```
 
 ## Key Directories
@@ -64,14 +81,29 @@ polymarket-bot/
 The main application code. This is where most development happens.
 
 **Important files:**
-- `src/index.ts` - Entry point, CLI commands
-- `src/api/gamma.ts` - Gamma API client (markets data)
-- `src/api/clob.ts` - CLOB API client (order book data)
-- `src/websocket/manager.ts` - WebSocket connection management
-- `src/orderbook/cache.ts` - In-memory order book cache
-- `src/trading/` - Trading strategies and execution logic
-- `src/utils/logger.ts` - Structured logging
+- `src/index.ts` - Entry point, starts server or runs CLI commands
+- `src/cli/index.ts` - CLI command handlers (markets, book, kill)
+- `src/clients/gamma.ts` - Gamma API client (markets data)
+- `src/clients/clob.ts` - CLOB API client (order book & trading)
+- `src/clients/dataApi.ts` - Data API client (positions, trades, activity)
+- `src/clients/marketFeed.ts` - WebSocket market feed client
+- `src/clients/tradingClient.ts` - Trading client wrapper (order placement, cancellation)
+- `src/clients/websocket.ts` - Base WebSocket client with reconnection
+- `src/clients/orderbookCache.ts` - In-memory orderbook cache
+- `src/server/index.ts` - HTTP server with API endpoints
+- `src/server/learningApiHandlers.ts` - Learning system API endpoints
+- `src/config/index.ts` - Environment configuration with Zod validation
+- `src/secrets/index.ts` - Secret management (encrypted, Vault, AWS, Azure)
+- `src/trading/paperTradingEngine.ts` - Paper trading simulation
+- `src/trading/riskManager.ts` - Risk management and limits
+- `src/trading/auditTrail.ts` - Trading audit logging
+- `src/trading/persistenceService.ts` - State persistence
+- `src/learning/` - ML learning system (event store, backtest, bandit allocation)
+- `src/utils/logger.ts` - Structured logging with privacy masking
 - `src/utils/retry.ts` - Retry logic with exponential backoff
+- `src/utils/circuitBreaker.ts` - Circuit breaker pattern
+- `src/utils/metrics.ts` - Prometheus metrics
+- `src/utils/alerting.ts` - Telegram alerting service
 
 **Test files:**
 - `tests/*.test.ts` - Unit tests (vitest)
@@ -80,10 +112,9 @@ The main application code. This is where most development happens.
 ### `/packages/shared/`
 Shared code used by both frontend and backend.
 
-**Common files:**
-- `src/types/` - Shared TypeScript interfaces
-- `src/constants/` - API endpoints, configuration
-- `src/utils/` - Shared utility functions
+**Current structure:**
+- `src/index.ts` - Single export file for shared code
+- Minimal shared utilities (can be expanded as needed)
 
 ### `/docs/`
 All documentation lives here or in the root.
