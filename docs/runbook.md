@@ -430,7 +430,259 @@ curl http://localhost:3000/orderbooks
 # Expected: [ { tokenId, market, summary: { bestBid, bestAsk, mid, spread } }, ... ]
 ```
 
-### Verification Checklist
+### Health Check Procedures
+
+**Frequency:** Every 5 minutes (automated) or on-demand
+
+**Health Check Script:**
+```bash
+#!/bin/bash
+# File: scripts/health-check.sh
+# Run this script every 5 minutes via cron or monitoring system
+
+set -euo pipefail
+
+# Configuration
+API_URL="${API_URL:-http://localhost:3000}"
+ALERT_WEBHOOK="${ALERT_WEBHOOK:-}"
+ADMIN_TOKEN="${ADMIN_TOKEN:-}"
+
+# Colors for output
+RED='\033[0:31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Track issues
+ISSUES=0
+
+# Function to send alert
+send_alert() {
+    local message="$1"
+    if [ -n "$ALERT_WEBHOOK" ]; then
+        curl -X POST "$ALERT_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"🚨 Health Check Alert: $message\"}" \
+            2>/dev/null || true
+    fi
+    echo -e "${RED}ALERT: $message${NC}"
+}
+
+# Function to check endpoint
+check_endpoint() {
+    local endpoint="$1"
+    local expected_code="${2:-200}"
+    local timeout="${3:-5}"
+    
+    local code=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time "$timeout" \
+        "$API_URL$endpoint" 2>/dev/null || echo "000")
+    
+    if [ "$code" = "$expected_code" ]; then
+        echo -e "${GREEN}✅ $endpoint: $code${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ $endpoint: expected $expected_code, got $code${NC}"
+        ISSUES=$((ISSUES + 1))
+        return 1
+    fi
+}
+
+echo "=== Polymarket Bot Health Check ==="
+echo "Time: $(date)"
+echo "API URL: $API_URL"
+echo ""
+
+# 1. Basic connectivity
+echo "1. Checking API connectivity..."
+if check_endpoint "/health" 200 5; then
+    HEALTH_JSON=$(curl -s "$API_URL/health" 2>/dev/null)
+    STATUS=$(echo "$HEALTH_JSON" | jq -r '.status // "unknown"')
+    
+    if [ "$STATUS" = "ok" ]; then
+        echo -e "${GREEN}   Status: OK${NC}"
+    elif [ "$STATUS" = "degraded" ]; then
+        echo -e "${YELLOW}   Status: DEGRADED${NC}"
+        send_alert "System is degraded"
+        ISSUES=$((ISSUES + 1))
+    else
+        echo -e "${RED}   Status: UNHEALTHY${NC}"
+        send_alert "System is unhealthy: $STATUS"
+        ISSUES=$((ISSUES + 1))
+    fi
+else
+    send_alert "Health endpoint unreachable"
+fi
+
+# 2. Readiness check
+echo ""
+echo "2. Checking system readiness..."
+READY_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+    --max-time 5 "$API_URL/ready" 2>/dev/null || echo "000")
+
+if [ "$READY_CODE" = "200" ]; then
+    echo -e "${GREEN}✅ System is ready${NC}"
+    READY_JSON=$(curl -s "$API_URL/ready" 2>/dev/null)
+    
+    # Check individual readiness components
+    MARKET_FEED=$(echo "$READY_JSON" | jq -r '.checks.marketFeed.ready // false')
+    TRADING_CLIENT=$(echo "$READY_JSON" | jq -r '.checks.tradingClient.ready // false')
+    
+    if [ "$MARKET_FEED" != "true" ]; then
+        echo -e "${YELLOW}   ⚠️  Market feed not ready${NC}"
+        send_alert "Market feed not ready"
+        ISSUES=$((ISSUES + 1))
+    fi
+    
+    if [ "$TRADING_CLIENT" != "true" ]; then
+        echo -e "${YELLOW}   ⚠️  Trading client not ready${NC}"
+    fi
+else
+    echo -e "${RED}❌ System not ready (HTTP $READY_CODE)${NC}"
+    send_alert "System not ready: HTTP $READY_CODE"
+    ISSUES=$((ISSUES + 1))
+fi
+
+# 3. Check trading status
+echo ""
+echo "3. Checking trading status..."
+if check_endpoint "/status" 200 5; then
+    STATUS_JSON=$(curl -s "$API_URL/status" 2>/dev/null)
+    
+    LIVE_TRADING=$(echo "$STATUS_JSON" | jq -r '.liveTrading // false')
+    TRADING_INIT=$(echo "$STATUS_JSON" | jq -r '.tradingClientInitialized // false')
+    MARKET_FEED_CONNECTED=$(echo "$STATUS_JSON" | jq -r '.marketFeedConnected // false')
+    
+    echo "   Live Trading: $LIVE_TRADING"
+    echo "   Trading Client Initialized: $TRADING_INIT"
+    echo "   Market Feed Connected: $MARKET_FEED_CONNECTED"
+    
+    if [ "$LIVE_TRADING" = "true" ] && [ "$TRADING_INIT" != "true" ]; then
+        echo -e "${RED}   ⚠️  Live trading enabled but client not initialized${NC}"
+        send_alert "Trading client not initialized despite live trading mode"
+        ISSUES=$((ISSUES + 1))
+    fi
+    
+    if [ "$MARKET_FEED_CONNECTED" != "true" ]; then
+        echo -e "${YELLOW}   ⚠️  Market feed disconnected${NC}"
+        send_alert "Market feed disconnected"
+        ISSUES=$((ISSUES + 1))
+    fi
+fi
+
+# 4. Check circuit breakers
+echo ""
+echo "4. Checking circuit breakers..."
+if check_endpoint "/metrics" 200 5; then
+    METRICS_JSON=$(curl -s "$API_URL/metrics" 2>/dev/null)
+    CB_COUNT=$(echo "$METRICS_JSON" | jq '.circuitBreakers | length')
+    
+    if [ "$CB_COUNT" -gt 0 ]; then
+        echo "   Found $CB_COUNT circuit breaker(s)"
+        
+        # Check each circuit breaker
+        echo "$METRICS_JSON" | jq -c '.circuitBreakers[]' | while read -r cb; do
+            NAME=$(echo "$cb" | jq -r '.name')
+            STATE=$(echo "$cb" | jq -r '.state')
+            FAILURES=$(echo "$cb" | jq -r '.failures')
+            
+            if [ "$STATE" = "open" ]; then
+                echo -e "${RED}   ❌ $NAME: OPEN (failures: $FAILURES)${NC}"
+                send_alert "Circuit breaker $NAME is OPEN"
+                ISSUES=$((ISSUES + 1))
+            elif [ "$STATE" = "half_open" ]; then
+                echo -e "${YELLOW}   ⚠️  $NAME: HALF-OPEN (recovering)${NC}"
+            else
+                echo -e "${GREEN}   ✅ $NAME: CLOSED${NC}"
+            fi
+        done
+    else
+        echo "   No circuit breakers configured"
+    fi
+fi
+
+# 5. Check memory usage
+echo ""
+echo "5. Checking memory usage..."
+if check_endpoint "/health" 200 5; then
+    HEALTH_JSON=$(curl -s "$API_URL/health" 2>/dev/null)
+    HEAP_USED=$(echo "$HEALTH_JSON" | jq -r '.checks.memory.details.heapUsed // 0')
+    HEAP_TOTAL=$(echo "$HEALTH_JSON" | jq -r '.checks.memory.details.heapTotal // 0')
+    
+    if [ "$HEAP_TOTAL" -gt 0 ]; then
+        UTILIZATION=$((HEAP_USED * 100 / HEAP_TOTAL))
+        echo "   Heap: ${HEAP_USED}MB / ${HEAP_TOTAL}MB (${UTILIZATION}%)"
+        
+        if [ "$UTILIZATION" -gt 85 ]; then
+            echo -e "${RED}   ❌ High memory usage: ${UTILIZATION}%${NC}"
+            send_alert "High memory usage: ${UTILIZATION}%"
+            ISSUES=$((ISSUES + 1))
+        elif [ "$UTILIZATION" -gt 70 ]; then
+            echo -e "${YELLOW}   ⚠️  Elevated memory usage: ${UTILIZATION}%${NC}"
+        else
+            echo -e "${GREEN}   ✅ Memory usage normal${NC}"
+        fi
+    fi
+fi
+
+# 6. Check error rate (if available)
+echo ""
+echo "6. Checking recent errors..."
+if [ -f "logs/app.log" ]; then
+    # Count errors in last 5 minutes
+    FIVE_MIN_AGO=$(date -d '5 minutes ago' '+%Y-%m-%dT%H:%M' 2>/dev/null || date -v-5M '+%Y-%m-%dT%H:%M')
+    ERROR_COUNT=$(grep -c "\"level\":\"ERROR\"" logs/app.log 2>/dev/null | tail -1 || echo "0")
+    
+    echo "   Errors in logs: $ERROR_COUNT"
+    
+    if [ "$ERROR_COUNT" -gt 50 ]; then
+        echo -e "${RED}   ❌ High error rate: $ERROR_COUNT errors${NC}"
+        send_alert "High error rate: $ERROR_COUNT errors in last 5 minutes"
+        ISSUES=$((ISSUES + 1))
+    elif [ "$ERROR_COUNT" -gt 20 ]; then
+        echo -e "${YELLOW}   ⚠️  Elevated error rate: $ERROR_COUNT errors${NC}"
+    else
+        echo -e "${GREEN}   ✅ Error rate normal${NC}"
+    fi
+fi
+
+# Final summary
+echo ""
+echo "=== Health Check Summary ==="
+if [ "$ISSUES" -eq 0 ]; then
+    echo -e "${GREEN}✅ All checks passed${NC}"
+    exit 0
+elif [ "$ISSUES" -le 2 ]; then
+    echo -e "${YELLOW}⚠️  $ISSUES issue(s) detected (degraded)${NC}"
+    exit 1
+else
+    echo -e "${RED}❌ $ISSUES issue(s) detected (unhealthy)${NC}"
+    exit 2
+fi
+```
+
+**Setup automated health checks:**
+```bash
+# Make script executable
+chmod +x scripts/health-check.sh
+
+# Test manually
+./scripts/health-check.sh
+
+# Add to cron (every 5 minutes)
+crontab -e
+# Add: */5 * * * * /path/to/polymarket-bot/scripts/health-check.sh >> /var/log/health-check.log 2>&1
+```
+
+**Configure alerting:**
+```bash
+# In .env or environment
+export ALERT_WEBHOOK="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+# or
+export ALERT_WEBHOOK="https://discord.com/api/webhooks/YOUR/WEBHOOK/URL"
+```
+
+### Health Check Verification Checklist
 - ✅ **Connectivity:** All API endpoints respond within 2s
 - ✅ **WebSocket:** Market feed connected (feed/status shows connected: true)
 - ✅ **Wallet:** Trading status shows correct wallet address
@@ -557,32 +809,293 @@ curl -X POST http://localhost:3000/kill-switch
   - If the file exists with `killed: true`, trading remains disabled on startup.
 - **Validation:** State file structure is validated using Zod schema. Invalid structure triggers fail-closed behavior (kill switch active).
 
-## Incident Response
-### WebSocket Disconnects
-1. Pause trading.
-2. Attempt reconnect with exponential backoff.
-3. On reconnection, resync order books via REST.
-4. If reconnect fails > N attempts, alert and keep trading disabled.
+## Incident Response Procedures
 
-### API Error Spike
-1. Detect elevated 4xx/5xx error rates.
-2. Pause order placements and enter cooldown.
-3. Retry with backoff; if persistent, alert operator.
+**CRITICAL: Follow these procedures for production incidents.**
 
-### Sudden PnL Drawdown
-1. Trigger circuit breaker if loss exceeds threshold.
-2. Cancel open orders and stop trading.
-3. Notify operator and require manual clearance before resuming.
+### Incident Severity Levels
 
-### Market Volatility Spike
-1. Cancel orders in affected market(s).
-2. Pause quoting until volatility stabilizes.
-3. Resume with wider spreads after cooldown.
+| Severity | Description | Response Time | Example |
+|----------|-------------|---------------|---------|
+| **SEV-1** | Production down, trading halted, funds at risk | Immediate (< 5 min) | Kill switch triggered, reconciliation failed, wallet compromise |
+| **SEV-2** | Service degraded, partial functionality lost | < 30 min | WebSocket instability, API error rate >10%, circuit breaker open |
+| **SEV-3** | Minor issue, workaround available | < 4 hours | Slow response times, minor retries, dashboard issues |
+| **SEV-4** | Cosmetic, no impact on trading | Next business day | Logging issues, UI formatting |
 
-### Data Corruption or State Mismatch
-1. Stop trading and enter safe mode.
-2. Reconcile state from API + persisted records.
-3. If mismatch persists, alert operator and keep trading disabled.
+### Incident Response Process
+
+**Step 1: Detect & Alert (0-2 minutes)**
+```bash
+# Automated detection (monitoring should alert on):
+# - /health endpoint returns degraded/unhealthy
+# - /ready endpoint returns 503
+# - Kill switch activated
+# - Circuit breaker opened
+# - Error rate > threshold
+# - WebSocket disconnects > threshold
+# - Reconciliation failures
+
+# Manual detection:
+# - Check logs: tail -f logs/app.log | grep -E "(ERROR|CRITICAL)"
+# - Check metrics: curl http://localhost:3000/metrics
+# - Check health: curl http://localhost:3000/health
+```
+
+**Step 2: Assess & Triage (2-5 minutes)**
+```bash
+# Determine severity
+# SEV-1: Activate kill switch immediately
+curl -X POST http://localhost:3000/kill-switch \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Gather initial data
+curl http://localhost:3000/status > incident-status.json
+curl http://localhost:3000/state > incident-state.json
+curl http://localhost:3000/metrics > incident-metrics.json
+grep -A 50 "ERROR" logs/app.log > incident-errors.log
+
+# Document in incident channel (Slack/Discord)
+# - Severity level
+# - When detected
+# - Impact (trading status, positions, balance)
+# - Current actions taken
+```
+
+**Step 3: Mitigate (5-15 minutes)**
+
+**For SEV-1 incidents:**
+```bash
+# 1. STOP all trading
+curl -X POST http://localhost:3000/kill-switch \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 2. Snapshot current state
+curl http://localhost:3000/state > incident-snapshot-$(date +%Y%m%d-%H%M%S).json
+
+# 3. Check wallet security
+# - Review recent transactions on Polygonscan
+# - Verify no unauthorized access
+# - Check for unusual activity
+
+# 4. Preserve logs
+cp logs/app.log incident-logs-$(date +%Y%m%d-%H%M%S).log
+
+# 5. Notify stakeholders
+# - Post incident summary
+# - Estimated impact ($ amount at risk, positions affected)
+# - Next steps
+```
+
+**For SEV-2 incidents:**
+```bash
+# 1. Reduce trading activity
+# - Cancel non-essential orders
+# - Reduce position sizes
+# - Increase spread widths
+
+# 2. Enable verbose logging
+echo "LOG_LEVEL=debug" >> .env
+# Restart: kill and npm run dev
+
+# 3. Monitor closely
+watch -n 5 'curl -s http://localhost:3000/metrics | jq ".circuitBreakers"'
+
+# 4. Identify root cause
+# - Check service status: curl https://clob.polymarket.com/health
+# - Test network: ping clob.polymarket.com
+# - Review error patterns: grep "ERROR" logs/app.log | tail -50
+```
+
+**Step 4: Resolve (15 minutes - 4 hours)**
+
+See [Troubleshooting Guide](./troubleshooting.md) for specific issue resolution:
+
+**Common incident types:**
+
+### WebSocket Disconnects (SEV-2/SEV-3)
+1. Bot automatically attempts reconnect with exponential backoff
+2. On reconnection, resync order books via REST API
+3. If reconnect fails > 10 attempts in 10 minutes:
+   - Activate kill switch (SEV-2 escalation)
+   - Alert operator
+   - Check Polymarket service status
+4. **Resolution:** Fix network/firewall, wait for service recovery
+5. **Prevention:** Monitor WebSocket uptime, implement retry limits
+
+**Detailed troubleshooting:** See [Troubleshooting Guide - WebSocket Issues](./troubleshooting.md#websocket-connection-issues)
+
+### API Error Spike (SEV-2)
+1. Circuit breaker automatically opens after 5 consecutive failures
+2. All API requests rejected until circuit recovers
+3. Circuit auto-transitions to half-open after 60 seconds
+4. If persistent (>5 minutes):
+   - Pause all order placements
+   - Alert operator
+   - Check rate limits, authentication, service status
+5. **Resolution:** Fix root cause (rate limits, credentials, service outage)
+6. **Prevention:** Implement client-side rate limiting, respect backoff signals
+
+**Detailed troubleshooting:** See [Troubleshooting Guide - API Client Errors](./troubleshooting.md#api-client-errors)
+
+### Sudden PnL Drawdown (SEV-1)
+1. Circuit breaker triggers if loss exceeds RISK_MAX_DRAWDOWN
+2. Cancel all open orders immediately
+3. Stop all new trading (kill switch activated)
+4. Notify operator - manual clearance required
+5. **Root cause analysis:**
+   ```bash
+   # Review recent trades
+   curl http://localhost:3000/state | jq '.fills[-20:]'
+   
+   # Check position changes
+   curl http://localhost:3000/state | jq '.positions'
+   
+   # Analyze market conditions
+   # - Was there a black swan event?
+   # - Strategy malfunction?
+   # - Fat finger error?
+   ```
+6. **Resolution:** Fix strategy, adjust risk limits, resume cautiously
+7. **Prevention:** Set appropriate RISK_MAX_DRAWDOWN, test strategies in paper mode
+
+### Market Volatility Spike (SEV-2)
+1. Detect via rapid price movements in orderbook
+2. Cancel orders in affected market(s)
+3. Pause quoting until volatility stabilizes
+4. Resume with wider spreads after cooldown period
+5. **Resolution:** Wait for market stabilization, adjust strategy parameters
+6. **Prevention:** Implement volatility filters, dynamic spread widening
+
+### Data Corruption or State Mismatch (SEV-1)
+1. Detect via reconciliation checks (startup or periodic)
+2. Stop trading immediately and enter safe mode
+3. Activate kill switch
+4. Reconcile state from CLOB API + persisted records
+5. If mismatch persists:
+   - Alert operator
+   - Keep trading disabled
+   - Manual investigation required
+6. **Recovery procedure:**
+   ```bash
+   # Force full reconciliation
+   curl -X POST http://localhost:3000/api/reconcile \
+     -H "Authorization: Bearer $ADMIN_TOKEN"
+   
+   # Compare with exchange
+   # - Open orders: curl "https://clob.polymarket.com/orders?address=..."
+   # - Fills: curl "https://clob.polymarket.com/fills?address=..."
+   # - Balances: check Polygonscan
+   
+   # If reconciliation fixes state:
+   # - Remove kill switch: rm apps/backend/.state/kill-switch.json
+   # - Restart bot
+   
+   # If mismatch persists:
+   # - Manual investigation required
+   # - Review audit trail
+   # - Check for missing WebSocket messages
+   # - Verify no external order placement
+   ```
+7. **Prevention:** Implement periodic reconciliation (every 5 minutes), enable audit trail
+
+**Detailed troubleshooting:** See [Troubleshooting Guide - Balance & Reconciliation](./troubleshooting.md#balance--reconciliation-errors)
+
+### Security Incident (SEV-1) 🚨
+**Examples:** Private key exposed, unauthorized access, suspicious activity
+
+**IMMEDIATE ACTIONS:**
+```bash
+# 1. KILL SWITCH
+curl -X POST http://localhost:3000/kill-switch \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# 2. SHUTDOWN
+pkill -f "npm run dev"
+
+# 3. PRESERVE EVIDENCE
+cp -r logs/ incident-evidence-$(date +%Y%m%d-%H%M%S)/
+cp .env incident-evidence-$(date +%Y%m%d-%H%M%S)/config.env
+curl http://localhost:3000/state > incident-evidence-$(date +%Y%m%d-%H%M%S)/final-state.json
+
+# 4. SECURE WALLET
+# - Rotate private key IMMEDIATELY
+# - Transfer funds to new wallet
+# - Monitor old wallet for unauthorized transactions
+
+# 5. NOTIFY
+# - Legal/compliance team
+# - Polymarket (if ToS violation suspected)
+# - Law enforcement (if criminal activity)
+```
+
+**DO NOT restart until:**
+- ✅ Security issue is fully understood
+- ✅ Vulnerability is patched
+- ✅ New credentials are generated
+- ✅ Audit log is reviewed
+- ✅ Legal/compliance approval obtained
+
+**See also:** [Compliance Guide - Security Incidents](./compliance.md#incident-response--reporting)
+
+**Step 5: Document & Close (Post-incident)**
+
+```bash
+# Create incident report
+cat > incident-report-$(date +%Y%m%d).md << 'EOF'
+# Incident Report
+
+**Date:** YYYY-MM-DD
+**Severity:** SEV-X
+**Duration:** Started HH:MM, Resolved HH:MM (total: X hours)
+**Impact:** Trading halted, X positions affected, $Y potential loss
+
+## Timeline
+- HH:MM: Incident detected (description)
+- HH:MM: Kill switch activated
+- HH:MM: Root cause identified
+- HH:MM: Fix applied
+- HH:MM: Trading resumed
+
+## Root Cause
+(Detailed description of what went wrong and why)
+
+## Impact
+- Trading downtime: X minutes
+- Positions affected: Y
+- Financial impact: $Z (realized) + $W (unrealized)
+- Orders cancelled: N
+
+## Resolution
+(What was done to fix the issue)
+
+## Prevention
+(Changes to prevent recurrence)
+- [ ] Code changes: (description)
+- [ ] Configuration changes: (description)
+- [ ] Process changes: (description)
+- [ ] Monitoring improvements: (description)
+
+## Lessons Learned
+(Key takeaways from the incident)
+
+## Action Items
+- [ ] Update runbook with new procedures
+- [ ] Implement automated detection
+- [ ] Add test coverage for scenario
+- [ ] Review similar risks in codebase
+EOF
+
+# Update runbook with learnings
+# Add new section or update existing procedures
+```
+
+**Step 6: Post-Incident Review**
+- Schedule within 24 hours of incident resolution
+- Invite all stakeholders
+- Review timeline, root cause, resolution
+- Identify action items to prevent recurrence
+- Update documentation (runbook, troubleshooting guide)
+- Implement monitoring improvements
 
 ## Alerts and Escalation
 - **Sev-1:** Loss limit breached, kill switch triggered, or reconciliation failed.
@@ -960,7 +1473,21 @@ These retention periods are operational recommendations and are **not** enforced
 **Audit Trail:**
 For order and fill history, use the dedicated audit trail (see Gap PA-002) rather than logs.
 
-## Troubleshooting Guide
+## Comprehensive Troubleshooting
+
+**For detailed troubleshooting, see [docs/troubleshooting.md](./troubleshooting.md)** - Complete guide covering:
+- Top 10 common issues with solutions
+- WebSocket connection problems
+- Trading gate failures
+- API client errors
+- Authentication issues
+- Order placement failures
+- Kill switch problems
+- Balance & reconciliation errors
+- Performance & reliability issues
+- Security & compliance concerns
+
+**Quick troubleshooting reference below:**
 
 ### Issue: Bot won't start
 
