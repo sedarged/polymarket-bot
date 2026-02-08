@@ -37,4 +37,4 @@ cp archive/2026-02-08/FILENAME /path/to/restore/location
 
 ## Related Issues
 
-- This archive was created as part of issue #[TBD] - Deep code and documentation audit
+- This archive was created as part of a deep code and documentation audit

@@ -116,12 +116,14 @@ npm run validate  # Validate order configuration
 
 ## Pull Request Requirements
 
-Every PR must include:
+Every PR that includes code changes must include:
 
 1. **Code changes** ✅
-2. **Test updates** ✅
-3. **Documentation updates** ✅
+2. **Test updates** ✅ (if modifying behavior)
+3. **Documentation updates** ✅ (if user-facing changes)
 4. **PR description** explaining what docs were updated and why
+
+**Documentation-only PRs** do not require code or test changes.
 
 ### PR Description Template
 
@@ -193,22 +195,24 @@ Reviewers must verify:
 
 ## Automation
 
-### Validation Scripts
+### Validation Scripts (Planned)
 
-Run these before committing:
+The following validation scripts are planned for future implementation:
 
 ```bash
-# Check for missing env vars (planned)
+# Check for missing env vars (not yet implemented)
 npm run check:env
 
-# Validate markdown links (planned)
+# Validate markdown links (not yet implemented)
 npm run check:links
 
-# Test all documented examples (planned)
+# Test all documented examples (not yet implemented)
 npm run check:examples
 ```
 
-### CI/CD Integration
+Until these scripts are available, manually verify documentation changes.
+
+### CI/CD Integration (Future)
 
 GitHub Actions will eventually:
 - ✅ Check .env.example matches code
