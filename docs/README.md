@@ -56,6 +56,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
 - [Environment Setup](./environment.md) - Complete development environment and command reference
+- [Codespaces Setup Guide](./CODESPACES_SETUP.md) - 🚀 Complete guide for GitHub Codespaces testing with all features
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
 - [Small PR Implementation Plan](./small-pr-plan.md) - Phased PR rollout with acceptance criteria
@@ -153,7 +154,7 @@ polymarket-bot/
 1. Start with [System Overview](./architecture-overview.md) for the big picture
 2. Review [AGENTS.md](../AGENTS.md) for contribution guidelines
 3. Check [STATUS.md](../STATUS.md) for current priorities
-4. Read [Environment Setup](./environment.md) to get your dev environment ready
+4. Read [Environment Setup](./environment.md) or [Codespaces Setup Guide](./CODESPACES_SETUP.md) to get your dev environment ready
 
 ### For Developers
 1. [Architecture Map](./architecture.md) - Understand the technical design
