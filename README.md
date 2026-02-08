@@ -47,6 +47,29 @@ For complete environment details, see **[Environment Setup](./docs/environment.m
 
 ## Installation
 
+### Option 1: GitHub Codespaces (Recommended)
+
+The quickest way to get started is using GitHub Codespaces with the pre-configured devcontainer:
+
+1. Click the "Code" button on GitHub
+2. Select "Codespaces" tab
+3. Click "Create codespace on main"
+
+The devcontainer includes:
+- Node 20 LTS pre-installed
+- All VS Code extensions configured (TypeScript, ESLint, Vitest, etc.)
+- Automatic dependency installation
+- Port forwarding for local development
+
+### Option 2: VS Code Remote Containers
+
+1. Install [Docker](https://www.docker.com/products/docker-desktop) and [VS Code Remote Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Clone the repository
+3. Open in VS Code
+4. Click "Reopen in Container" when prompted
+
+### Option 3: Local Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/YOUR_USERNAME/polymarket-bot.git
@@ -256,6 +279,8 @@ tests/
 
 ## Testing
 
+### Unit Tests
+
 ```bash
 # Run all tests
 npm test
@@ -266,6 +291,43 @@ npm run test:watch
 # Run tests with coverage
 npm run test:coverage
 ```
+
+### Real API Integration Tests
+
+The project includes real API integration tests for verifying functionality against actual Polymarket endpoints:
+
+#### Read-Only Tests (Safe for CI/CD)
+```bash
+# Run read-only smoke tests
+npm run --workspace @polymarket/backend test:real-readonly
+```
+
+These tests verify:
+- API connectivity and availability
+- Response data structures
+- Rate limiting behavior
+- No write operations performed
+
+#### Write Tests (Gated, Manual Only)
+```bash
+# Set required safety gates
+export LIVE_TRADING=true
+export COMPLIANCE_ACCEPTED=true
+export FORCE_REAL_TEST=true
+
+# Run write tests (creates/cancels real orders)
+npm run --workspace @polymarket/backend test:real-write
+```
+
+⚠️ **WARNING:** Write tests perform REAL operations. Only run when explicitly authorized.
+
+**Safety Requirements:**
+- All three environment variables must be set to `true`
+- Write-enabled API credentials must be configured
+- Optional: Set `ALLOWED_TEST_RUNNERS` to restrict authorized users
+
+For complete documentation, see [Real API Tests README](apps/backend/tests/real-api/README.md).
+
 
 ## API Documentation
 
