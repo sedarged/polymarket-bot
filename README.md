@@ -47,16 +47,49 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 
 ## Features
 
+### Market Data & Trading
 - 📊 Fetch active markets and events from Gamma API
 - 📈 Retrieve orderbook data from CLOB API
-- 🔄 Built-in retry logic with exponential backoff
-- 📝 Comprehensive logging
-- 🧪 Unit tests for core functionality
-- ⚡ TypeScript strict mode
-- 🛠️ Easy-to-use CLI commands
-- 🌐 Real-time WebSocket market feed
+- 💱 Live trading with CLOB client integration
+- 📄 Paper trading simulation with realistic fills
+- 🎯 Batch order operations (create/cancel multiple orders)
+- 🛑 Kill switch for emergency order cancellation
+- 📊 Position and balance tracking via Data API
+- 🔄 Startup reconciliation (orders, positions, balances)
+
+### Infrastructure & Reliability
+- 🔄 Built-in retry logic with exponential backoff and circuit breakers
+- 🌐 Real-time WebSocket market feed with auto-reconnect
 - 💾 In-memory orderbook cache with automatic resync
 - 🔌 Auto-reconnect with backoff + jitter strategy
+- 🔒 Idempotent operations with client-generated order IDs
+- 🔐 Multiple secret management backends (Vault, AWS, Azure, encrypted)
+- 📊 Prometheus metrics and Grafana dashboards
+- 🚨 Telegram alerting for errors and circuit breaker trips
+
+### Risk Management & Safety
+- ⚖️ Risk management with exposure and drawdown limits
+- 🛡️ Two-factor live trading gates (LIVE_TRADING + COMPLIANCE_ACCEPTED)
+- 🔐 Admin token authentication for sensitive endpoints
+- 🚫 Rate limiting with IP tracking
+- 📝 Audit trail for all trading operations
+- 🔄 Periodic state reconciliation (every 5 minutes)
+- 🎓 CORS configuration with origin validation
+
+### ML & Learning System
+- 🧠 Learning system with event store and signal catalog
+- 🔬 Backtesting engine for strategy validation
+- 🎰 Multi-armed bandit allocation for strategy selection
+- 📈 Metrics gating for strategy promotion
+- 🎯 REST API for learning system integration
+
+### Development & Quality
+- 🧪 100+ unit tests with vitest
+- ⚡ TypeScript strict mode
+- 📝 Structured logging with privacy masking
+- 🛠️ Easy-to-use CLI commands
+- 🌐 Web-based trading dashboard
+- 📚 Comprehensive documentation
 
 ## Requirements
 
@@ -300,26 +333,40 @@ For complete dashboard documentation, see **[Dashboard Usage Guide](./docs/dashb
 ## Project Structure
 
 ```
-src/
-├── cli/          # CLI command handlers
-│   └── index.ts
-├── clients/      # API clients
-│   ├── gamma.ts  # Gamma API client (markets/events)
-│   └── clob.ts   # CLOB API client (orderbooks)
-├── config/       # Configuration
-│   └── index.ts
-├── domain/       # Domain models
-│   ├── market.ts
-│   └── orderbook.ts
-├── utils/        # Utilities
-│   ├── logger.ts    # Logging utility
-│   ├── retry.ts     # Retry/backoff logic
-│   └── orderbook.ts # Orderbook calculations
-└── index.ts      # CLI entry point
+apps/backend/src/
+├── cli/              # CLI command handlers
+│   └── index.ts      # Markets, book, kill commands
+├── clients/          # API clients
+│   ├── gamma.ts      # Gamma API (markets/events)
+│   ├── clob.ts       # CLOB API (orderbooks/trading)
+│   ├── dataApi.ts    # Data API (positions/trades)
+│   └── marketFeed.ts # WebSocket market feed
+├── config/           # Configuration
+│   └── index.ts      # Env vars with Zod validation
+├── secrets/          # Secret management
+│   └── index.ts      # Encrypted keys, Vault, AWS, Azure
+├── server/           # HTTP server
+│   ├── index.ts      # Main server & API endpoints
+│   └── learningApiHandlers.ts  # ML system endpoints
+├── trading/          # Trading logic
+│   ├── paperTradingEngine.ts   # Paper trading
+│   ├── riskManager.ts          # Risk management
+│   └── auditTrail.ts           # Trade logging
+├── learning/         # ML/Learning system
+│   ├── eventStore.ts           # Event storage
+│   ├── backtestEngine.ts       # Backtesting
+│   └── banditAllocator.ts      # Strategy allocation
+├── utils/            # Utilities
+│   ├── logger.ts     # Structured logging
+│   ├── retry.ts      # Retry/backoff logic
+│   ├── circuitBreaker.ts  # Circuit breaker
+│   ├── metrics.ts    # Prometheus metrics
+│   └── alerting.ts   # Telegram alerts
+└── index.ts          # Entry point
 
 tests/
-├── orderbook.test.ts  # Orderbook math tests
-└── retry.test.ts      # Retry logic tests
+├── *.test.ts         # 100+ unit tests (vitest)
+└── [mirrors src/]    # Test structure matches source
 ```
 
 ## Testing
@@ -495,34 +542,49 @@ The project uses TypeScript's strict mode with the following compiler options:
 
 ## Current Status
 
-**Phase:** Live Trading Integration ✅
+**Phase:** Production Hardening & ML Learning System ✅
 
 **Completed:**
-- ✅ Market data fetching
-- ✅ Orderbook retrieval
-- ✅ Retry logic and error handling
+- ✅ Market data fetching (Gamma API)
+- ✅ Orderbook retrieval (CLOB API)
+- ✅ Position and trade data (Data API)
+- ✅ Retry logic with circuit breakers
 - ✅ Comprehensive documentation
-- ✅ WebSocket market feed client
+- ✅ WebSocket market feed with auto-reconnect
 - ✅ In-memory orderbook cache
-- ✅ Auto-reconnect with backoff strategy
-- ✅ HTTP server with orderbook API endpoints
+- ✅ HTTP server with public + admin API endpoints
 - ✅ Live trading integration with CLOB client
 - ✅ Idempotency via clientOrderId
 - ✅ Startup reconciliation (orders, balances, positions)
-- ✅ Trading API endpoints (/status, /state, /orders, /fills)
+- ✅ Periodic reconciliation (every 5 minutes)
+- ✅ Trading API endpoints (/status, /state, /orders, /fills, /kill)
 - ✅ Web-based trading dashboard
-- ✅ Kill switch for emergency order cancellation
+- ✅ Kill switch with scoped cancellation
+- ✅ Batch order operations (create/cancel multiple)
+- ✅ **Paper trading engine with realistic fills**
+- ✅ **Risk management framework with limits**
+- ✅ **Audit trail for compliance**
+- ✅ **Admin authentication with token**
+- ✅ **Rate limiting with IP tracking**
+- ✅ **Secret management (Vault/AWS/Azure)**
+- ✅ **Prometheus metrics & Grafana dashboards**
+- ✅ **Telegram alerting**
+- ✅ **Learning system (EventStore, Backtest, Bandit)**
 
-**In Progress:**
-- 🔄 Risk management framework
-- 🔄 Paper trading engine
+**Known Issues (see [docs/environment.md](./docs/environment.md)):**
+- ⚠️ Pre-existing TypeScript build errors (documented)
+- ⚠️ 21 auth test failures (pre-existing, being addressed)
+- ⚠️ 16 low severity npm audit issues in dependencies
 
-**Planned:**
+**Next Steps (see [STATUS.md](./STATUS.md) for current priorities):**
+- 🔄 Additional audit findings implementation
+- 🔄 Enhanced observability and monitoring
+- ⏳ Automated trading strategies
 - ⏳ Market making strategy
 - ⏳ Arbitrage detection
 - ⏳ Multi-market orchestration
 
-See [Master Development Plan](./docs/master-plan.md) for complete roadmap.
+See [Master Development Plan](./docs/master-plan.md) for complete roadmap and [STATUS.md](./STATUS.md) for active work.
 
 ## Limitations
 
@@ -530,11 +592,13 @@ See [Master Development Plan](./docs/master-plan.md) for complete roadmap.
 - ⚠️ Live trading is disabled by default - requires explicit opt-in via two environment flags
 - ⚠️ No VPN/proxy/geo-bypass capabilities - respects Polymarket's regional restrictions
 - ⚠️ User is responsible for compliance with local laws and regulations
+- ⚠️ Known security vulnerabilities exist - see [REPORTS/AUDIT.md](./REPORTS/AUDIT.md) for details
 
 **Current Limitations:**
-- ❌ No paper trading simulation yet (on roadmap)
-- ❌ No automated trading strategies yet (on roadmap)
-- ❌ No risk management framework yet (on roadmap)
+- ❌ No automated trading strategies yet (learning system infrastructure in place)
+- ❌ No market making strategy implementation
+- ❌ No arbitrage detection
+- ❌ Some audit findings still being addressed (see STATUS.md)
 
 See [Master Development Plan](./docs/master-plan.md) for complete roadmap.
 
