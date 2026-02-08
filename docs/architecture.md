@@ -1610,6 +1610,297 @@ CIRCULAR DEPENDENCY PREVENTION:
 
 ---
 
+## Detailed Data Flow Diagrams
+
+For operational procedures using these flows, see [Runbook](./runbook.md).  
+For troubleshooting data flow issues, see [Troubleshooting Guide](./troubleshooting.md).
+
+### WebSocket Connection & Market Data Flow
+
+**Purpose:** Real-time market data ingestion and orderbook maintenance
+
+**Connection Flow:**
+```
+┌──────────┐              ┌─────────────┐              ┌──────────────┐
+│  Server  │─────init────▶│  WebSocket  │─────conn────▶│ Polymarket   │
+│  Start   │              │   Client    │              │  WS Server   │
+└──────────┘              └──────┬──────┘              └───────┬──────┘
+                                 │                             │
+                          STATE: CONNECTING              Handshake
+                                 │                             │
+                          STATE: CONNECTED◀───────────────────┘
+                                 │
+                          Subscribe to markets
+                          {type: "market", markets: [...]}
+                                 │
+                          STATE: SUBSCRIBED
+                                 │
+                         ┌───────▼────────────────────────────────────┐
+                         │  Market Updates (price, book, trades)      │
+                         └───────┬────────────────────────────────────┘
+                                 │
+                         ┌───────▼─────────┐
+                         │  MarketFeed     │
+                         │  Service        │
+                         │  - Parse msgs   │
+                         │  - Validate     │
+                         │  - Cache update │
+                         └───────┬─────────┘
+                                 │
+                         ┌───────▼────────┐
+                         │  Orderbook     │
+                         │    Cache       │
+                         │  (in-memory)   │
+                         │  - getBest()   │
+                         │  - getMid()    │
+                         └────────────────┘
+```
+
+**Reconnection Flow (Audit Findings A-007, A-016 addressed):**
+```
+Disconnect → Exponential Backoff → Reconnect → Re-subscribe → Resync
+   │            (1s, 2s, 4s...)        │            │             │
+   │                                   │            │      CLOB REST API
+   │                              New WebSocket  Resubscribe  /book endpoint
+   │                                   │            │             │
+   └─────────────────────────────STATE: RECONNECTING─────────────┘
+                                       │
+                                STATE: CONNECTED
+                                    (resumed)
+```
+
+**Key Implementation Details:**
+- Exponential backoff prevents thundering herd (Audit Finding A-023 - needs jitter implementation)
+- Resync prevents stale data (Audit Finding A-015 - cache TTL needed)
+- Message deduplication via sequence numbers (Audit Finding A-010 - RESOLVED in ADR-0008)
+- Race condition prevention (Audit Finding A-007 - per-token lock needed)
+- Reconnect timer cleanup (Audit Finding A-016 - timer leak needs fix)
+
+_Note:_ The audit report (dated 2026-02-01) listed some findings as Open. Some have since been addressed in the codebase (e.g., A-010 message deduplication). Refer to individual ADRs and recent commits for current implementation status.
+
+### Order Placement Data Flow
+
+**Live Trading Path:**
+```
+┌───────────┐
+│ Strategy  │ Generate signal (BUY/SELL, price, size)
+└─────┬─────┘
+      │
+┌─────▼──────┐
+│ Gate Check │ LIVE_TRADING=true AND COMPLIANCE_ACCEPTED=true?
+└─────┬──────┘
+      │ Yes (or Paper mode)
+┌─────▼──────┐
+│ Risk Check │ Exposure, Position, Drawdown, Kill Switch, Circuit Breaker
+└─────┬──────┘
+      │ Pass
+┌─────▼──────────┐
+│ Validation     │ Tick size, Min/max size, Side, Token ID
+│ (Zod schema)   │ Generate UUID order ID (Audit Finding A-006 RESOLVED)
+└─────┬──────────┘
+      │ Valid
+┌─────▼──────────┐
+│ Sign Order     │ Wallet private key signature
+│ (ethers.js)    │ L2 API credentials
+└─────┬──────────┘
+      │
+┌─────▼──────────┐
+│ CLOB API       │ POST /order
+│ Submission     │ Response: {orderId, status: "OPEN"}
+└─────┬──────────┘
+      │
+┌─────▼──────────┐
+│ Store in       │ orders Map: clientOrderId → {orderId, status, ...}
+│ Tracking       │ Monitor via WebSocket for fills
+└────────────────┘
+```
+
+**Paper Trading Path:**
+```
+┌───────────┐
+│ Strategy  │ Generate signal
+└─────┬─────┘
+      │
+┌─────▼──────┐
+│ Gate Check │ LIVE_TRADING=false → Paper mode
+└─────┬──────┘
+      │
+┌─────▼──────┐
+│ Risk Check │ Same as live
+└─────┬──────┘
+      │
+┌─────▼──────────┐
+│ Validation     │ Same as live, UUID order ID
+└─────┬──────────┘
+      │
+┌─────▼──────────────────┐
+│ Simulate Fill          │
+│ 1. Check if price      │
+│    crosses orderbook   │
+│ 2. Apply slippage      │
+│    (default 1%)        │
+│ 3. Apply fees          │
+│    (default 0.2%)      │
+│ 4. Update position     │
+│ 5. Update balance      │
+│ 6. Calculate PnL       │
+└─────┬──────────────────┘
+      │
+┌─────▼──────────┐
+│ Update State   │ orders[], fills[], positions, balance, pnl
+└────────────────┘
+```
+
+**Key Differences:**
+- Live: Real CLOB API, blockchain signatures, actual funds
+- Paper: Simulated fills, virtual balance, realistic slippage/fees
+
+### Kill Switch Data Flow
+
+**Activation Flow (Audit Finding A-002 RESOLVED with persistence):**
+```
+┌──────────┐
+│ Trigger  │ Manual (POST /kill-switch) or Auto (risk breach)
+└─────┬────┘
+      │
+┌─────▼────────────┐
+│ Auth Check       │ Validate ADMIN_TOKEN (Audit Finding A-004)
+└─────┬────────────┘
+      │ Authorized
+┌─────▼────────────┐
+│ Validate Scope   │ "all", "market" (requires tokenId), or "risk-only"
+└─────┬────────────┘
+      │ Valid
+┌─────▼────────────────────┐
+│ RiskManager              │
+│ 1. Set killed = true     │
+│ 2. Store scope, reason   │
+│ 3. Record timestamp      │
+└─────┬────────────────────┘
+      │
+┌─────▼────────────────────┐
+│ Persist to Disk          │
+│ File: .state/kill-switch.json
+│ {killed: true,           │
+│  timestamp, reason}      │
+└─────┬────────────────────┘
+      │
+      ├──────────────┬──────────────┐
+      │              │              │
+┌─────▼────────┐ ┌──▼──────┐ ┌─────▼─────────┐
+│ Cancel All   │ │ Block   │ │ Return HTTP   │
+│ Open Orders  │ │ New     │ │ 200 Success   │
+│ (if live)    │ │ Orders  │ │ {cancelled: N}│
+└──────────────┘ └─────────┘ └───────────────┘
+```
+
+**Persistence on Restart:**
+```
+┌──────────┐
+│ Restart  │ Server initialization
+└─────┬────┘
+      │
+┌─────▼────────────────────┐
+│ Load State from Disk     │
+│ Read: .state/kill-switch.json
+└─────┬────────────────────┘
+      │
+┌─────▼────────────────────┐
+│ Validate with Zod Schema │
+│ Schema: {killed, timestamp, reason}
+│ Invalid → Fail closed    │
+│ (killed = true)          │
+└─────┬────────────────────┘
+      │ Valid
+┌─────▼────────────────────┐
+│ Restore RiskManager      │
+│ killed = loaded.killed   │
+│ If true → Trading DISABLED
+│ If false → Trading enabled
+└──────────────────────────┘
+```
+
+_Note:_ The persisted state schema (see [apps/backend/src/utils/statePersistence.ts](../apps/backend/src/utils/statePersistence.ts)) stores `{killed, timestamp, reason}`. The `scope` field shown in earlier documentation is not currently persisted and would need to be added to the schema if selective kill-switch persistence is required.
+
+**Deactivation:**
+```
+Manual: Delete .state/kill-switch.json + restart backend
+        (No HTTP DELETE endpoint is currently implemented)
+```
+
+### Balance Reconciliation Data Flow
+
+**Startup & Periodic (every 5 minutes):**
+```
+┌──────────────┐
+│ Timer Tick   │ Startup or periodic (Gap RE-001)
+└──────┬───────┘
+       │
+┌──────▼────────────────────┐
+│ TradingClient.reconcile() │
+└──────┬────────────────────┘
+       │
+       ├────────────────┬────────────────┬────────────────┐
+       │                │                │                │
+┌──────▼──────┐  ┌──────▼──────┐  ┌─────▼──────┐  ┌─────▼──────┐
+│ Fetch Wallet│  │ Fetch Open  │  │ Fetch      │  │ Fetch      │
+│ Balance     │  │ Orders      │  │ Fills      │  │ Positions  │
+│ (Polygon)   │  │ (CLOB API)  │  │ (CLOB API) │  │ (Calculate)│
+└──────┬──────┘  └──────┬──────┘  └─────┬──────┘  └─────┬──────┘
+       │                │                │                │
+       └────────────────┴────────────────┴────────────────┘
+                        │
+               ┌────────▼─────────┐
+               │ Compare with     │
+               │ Local State      │
+               └────────┬─────────┘
+                        │
+        ┌───────────────┼───────────────┬──────────────┐
+        │               │               │              │
+┌───────▼────────┐ ┌────▼─────────┐ ┌──▼──────────┐ ┌─▼────────────┐
+│ Missing Orders │ │ Orphaned     │ │ Balance     │ │ Position     │
+│ (Gap RE-002)   │ │ Orders       │ │ Drift       │ │ Drift        │
+│ In local but   │ │ On CLOB but  │ │ (Gap RE-003)│ │ Size mismatch│
+│ not on CLOB    │ │ not in local │ │ >10% alert  │ │ >5% alert    │
+└───────┬────────┘ └────┬─────────┘ └──┬──────────┘ └─┬────────────┘
+        │               │               │              │
+        │ Log warning   │ Add to local  │ Update local │ Recalculate
+        │ Remove from   │ OR cancel     │ balance      │ positions
+        │ local state   │               │              │
+        └───────────────┴───────────────┴──────────────┘
+                        │
+               ┌────────▼─────────┐
+               │ Log Summary      │
+               │ - Orders: N      │
+               │ - Balance drift: │
+               │ - Position drift:│
+               │ - Action taken   │
+               └──────────────────┘
+                        │
+                  Drift > critical?
+                        │
+                 ┌──────┴──────┐
+                 │ Yes         │ No → Done
+          ┌──────▼──────┐      
+          │ Alert       │      
+          │ Kill switch?│      
+          └─────────────┘      
+```
+
+**Reconciliation Outcomes:**
+- **Success:** Drift < threshold, log summary
+- **Warning:** Drift 5-10%, alert operator
+- **Critical:** Drift >10%, activate kill switch + alert
+
+**Audit Findings Addressed:**
+- A-011 (HIGH): Balance fetch throws errors (RESOLVED)
+- A-014 (MEDIUM): Position includes partial fills
+- Gap RE-001: Periodic reconciliation every 5 minutes
+- Gap RE-002: Missing/orphaned order detection
+- Gap RE-003: Balance drift monitoring
+
+---
+
 ## Compliance & Safety
 
 ### Hard Rules (Non-Negotiable)
@@ -1676,9 +1967,13 @@ CIRCULAR DEPENDENCY PREVENTION:
 ## References
 
 - [System Overview (Non-technical)](./architecture-overview.md)
-- [ADR-0001: Architecture Decisions](./adr/0001-initial-architecture.md)
-- [Implementation Checklist](./implementation-checklist.md)
+- [Compliance Guide](./compliance.md)
+- [Troubleshooting Guide](./troubleshooting.md)
 - [Runbook (Operational Procedures)](./runbook.md)
+- [ADR-0001: Architecture Decisions](./adr/0001-initial-architecture.md)
+- [Security Audit Report](../REPORTS/AUDIT.md)
+- [Gap Analysis](../REPORTS/GAP_ANALYSIS.md)
+- [Implementation Checklist](./implementation-checklist.md)
 - [Master Development Plan](./master-plan.md)
 
 ---

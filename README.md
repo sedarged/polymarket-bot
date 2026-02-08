@@ -2,12 +2,32 @@
 
 An autonomous trading bot for Polymarket prediction markets. Currently features read-only data retrieval with a roadmap for full trading capabilities including market making, arbitrage, and advanced risk management.
 
+---
+
+## ⚠️ RISK DISCLAIMER & COMPLIANCE
+
+**READ THIS BEFORE USING THIS SOFTWARE**
+
+- **FINANCIAL RISK:** Trading involves substantial risk of loss. You can lose your entire investment. This software is provided "AS IS" with NO WARRANTY.
+- **LEGAL COMPLIANCE:** You are solely responsible for compliance with all applicable laws. Trading may be illegal in your jurisdiction.
+- **GEOGRAPHIC RESTRICTIONS:** Prohibited for U.S. residents and residents of sanctioned countries. See [Compliance Guide](./docs/compliance.md).
+- **SECURITY WARNINGS:** Known critical security vulnerabilities exist. See [Security Audit](./REPORTS/AUDIT.md) - NOT PRODUCTION READY.
+- **PAPER TRADING DEFAULT:** Live trading requires explicit opt-in via environment variables (`LIVE_TRADING=true` AND `COMPLIANCE_ACCEPTED=true`).
+
+**📖 MANDATORY READING:** [docs/compliance.md](./docs/compliance.md) - Complete legal and compliance information
+
+---
+
 ## 📚 Documentation
 
 **Quick Start:**
 - **[STATUS.md](./STATUS.md)** - Current work status and priorities (updated automatically from GitHub Issues)
 - **[System Overview](./docs/architecture-overview.md)** - Plain language explanation of how the system works (start here!)
 - **[Documentation Index](./docs/README.md)** - Complete documentation catalog and navigation
+
+**Legal & Compliance (MUST READ):**
+- **[Compliance Guide](./docs/compliance.md)** - 🚨 Geographic restrictions, ToS compliance, risk disclaimers
+- **[Security Guide](./docs/security.md)** - Private key security and best practices
 
 **For Contributors:**
 - **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
