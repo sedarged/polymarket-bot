@@ -2,6 +2,18 @@
 
 This document provides a contract for AI agents (GitHub Copilot, custom automation agents, etc.) working on this repository.
 
+## Quick Reference - What to Read When
+
+| Situation | Read This |
+|-----------|-----------|
+| 🆕 **Starting any work** | [STATUS.md](./STATUS.md) → [docs/ai/project-layout.md](./docs/ai/project-layout.md) |
+| 🔍 **Finding code/files** | [docs/ai/project-layout.md](./docs/ai/project-layout.md) |
+| 🐛 **Debugging an error** | [docs/ai/decision-trees.md](./docs/ai/decision-trees.md) |
+| 💰 **Implementing trading** | [docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md) |
+| 📝 **Creating a PR** | [docs/DEV_WORKFLOW.md](./docs/DEV_WORKFLOW.md) |
+| 📊 **Tracking your work** | [docs/ai/session-state.md](./docs/ai/session-state.md) |
+| 📚 **Finding any doc** | [docs/README.md](./docs/README.md) |
+
 ## Priority Order
 
 **ALWAYS read [STATUS.md](./STATUS.md) first** to understand the current work state.
@@ -22,11 +34,37 @@ Work on tasks in this priority order:
 ## Making Changes
 
 ### Required Reading
-- **[docs/README.md](./docs/README.md)**: Documentation index - start here
-- **[docs/ai/project-layout.md](./docs/ai/project-layout.md)**: Understand the repository structure
-- **[docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md)**: Avoid common mistakes
-- **[docs/ai/decision-trees.md](./docs/ai/decision-trees.md)**: Handle common scenarios
-- **[docs/DEV_WORKFLOW.md](./docs/DEV_WORKFLOW.md)**: Documentation maintenance requirements
+
+**Start Here:**
+- **[STATUS.md](./STATUS.md)**: Current work priorities and active tasks - ALWAYS read this first
+- **[docs/README.md](./docs/README.md)**: Documentation index - complete catalog of all project docs
+
+**AI Agent Specific Guides (docs/ai/):**
+- **[docs/ai/project-layout.md](./docs/ai/project-layout.md)**: 
+  - **When to read**: Before making any code changes
+  - **What it contains**: Complete repository structure, directory layout, key files and their purposes
+  - **Use it to**: Find where code lives, understand module organization, locate specific functionality
+
+- **[docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md)**: 
+  - **When to read**: Before implementing trading logic, API calls, or WebSocket handling
+  - **What it contains**: Critical mistakes that cause financial loss or bugs, with code examples showing wrong vs. right approaches
+  - **Use it to**: Avoid double order submission, rate limiting issues, WebSocket disconnects, missing trading gates, race conditions
+
+- **[docs/ai/decision-trees.md](./docs/ai/decision-trees.md)**: 
+  - **When to read**: When debugging issues or errors
+  - **What it contains**: Step-by-step troubleshooting guides for common problems
+  - **Use it to**: Debug order submission failures, WebSocket issues, balance problems, API errors
+
+- **[docs/ai/session-state.md](./docs/ai/session-state.md)**: 
+  - **When to read**: At the start of each work session
+  - **What it contains**: Template for tracking your work, decisions, and progress
+  - **Use it to**: Document your session, record decisions, track issues, prepare handoffs to other agents
+
+**Process & Workflow:**
+- **[docs/DEV_WORKFLOW.md](./docs/DEV_WORKFLOW.md)**: 
+  - **When to read**: Before creating any PR
+  - **What it contains**: Mandatory documentation update rules, PR requirements, checklists
+  - **Use it to**: Ensure you update docs with code changes, follow PR checklist, prevent documentation drift
 
 ### Development Workflow
 1. **Read the docs**: Check relevant documentation before coding
