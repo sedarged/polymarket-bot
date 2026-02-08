@@ -49,8 +49,5 @@
   "postCreateCommand": "bash .devcontainer/post-start.sh",
   "remoteEnv": {
     "NODE_ENV": "development"
-  },
-  "mounts": [
-    "source=${localEnv:HOME}/.gitconfig,target=/home/node/.gitconfig,type=bind,consistency=cached"
-  ]
+  }
 }

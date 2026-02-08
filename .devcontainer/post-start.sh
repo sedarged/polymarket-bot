@@ -17,13 +17,27 @@ if [ ! -f .env ]; then
     # Add Codespaces-safe defaults if not already present
     echo "" >> .env
     echo "# Codespaces Development Defaults" >> .env
-    if ! grep -q "ADMIN_TOKEN=" .env 2>/dev/null || [ -z "$(grep "ADMIN_TOKEN=" .env | cut -d'=' -f2)" ]; then
-      echo "ADMIN_TOKEN=USE_GITHUB_CODESPACES_SECRET_OR_GENERATE_WITH_openssl_rand_hex_32" >> .env
+    if ! grep -Eq '^[[:space:]]*ADMIN_TOKEN=' .env 2>/dev/null || [ -z "$(grep -E '^[[:space:]]*ADMIN_TOKEN=' .env | head -n1 | cut -d'=' -f2-)" ]; then
+      # Generate a random token for local development
+      GENERATED_ADMIN_TOKEN=""
+      if command -v openssl >/dev/null 2>&1; then
+        GENERATED_ADMIN_TOKEN="$(openssl rand -hex 32 2>/dev/null || true)"
+      else
+        GENERATED_ADMIN_TOKEN="$(LC_ALL=C tr -dc 'A-F0-9' </dev/urandom 2>/dev/null | head -c 64 || true)"
+      fi
+      if [ -n "$GENERATED_ADMIN_TOKEN" ]; then
+        echo "ADMIN_TOKEN=$GENERATED_ADMIN_TOKEN" >> .env
+        echo "🔐 Generated random ADMIN_TOKEN for local development."
+        echo "   If running in GitHub Codespaces, consider adding this value as a secret."
+      else
+        echo "ADMIN_TOKEN=" >> .env
+        echo "🔐 ADMIN_TOKEN left empty. Admin endpoints will be disabled until you set this value."
+      fi
     fi
-    if ! grep -q "ALLOWED_ORIGINS=" .env 2>/dev/null; then
+    if ! grep -Eq '^[[:space:]]*ALLOWED_ORIGINS=' .env 2>/dev/null; then
       echo "ALLOWED_ORIGINS=*" >> .env
     fi
-    if ! grep -q "LOG_LEVEL=" .env 2>/dev/null; then
+    if ! grep -Eq '^[[:space:]]*LOG_LEVEL=' .env 2>/dev/null; then
       echo "LOG_LEVEL=debug" >> .env
     fi
   else

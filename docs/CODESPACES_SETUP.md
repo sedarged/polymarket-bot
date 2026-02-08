@@ -229,10 +229,14 @@ openssl rand -hex 32
 
 **4. Verify:**
 ```bash
-# Check the env var is available
-echo $ADMIN_TOKEN
+# Check the env var is available without printing it
+if [ -n "$ADMIN_TOKEN" ]; then
+  echo "ADMIN_TOKEN is set"
+else
+  echo "ADMIN_TOKEN is NOT set"
+fi
 
-# Test admin endpoint
+# Test admin endpoint (token will be sent but not printed)
 curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/status
 ```
 
@@ -303,7 +307,7 @@ To change port visibility:
 **Solution:**
 ```bash
 # Check ports are listening
-netstat -tuln | grep -E '3000|8080'
+ss -tuln | grep -E '3000|8080'
 
 # Manually start services
 npm run dev                      # Backend on 3000
@@ -417,7 +421,7 @@ curl http://localhost:3000/health
 | Feature | Command | Expected Result | Notes |
 |---------|---------|-----------------|-------|
 | **Build** | `npm run build` | Compiles successfully | Pre-existing errors documented |
-| **Tests** | `npm test` | All pass (see known issues) | 21 auth tests may fail (pre-existing) |
+| **Tests** | `npm test` | Runs successfully; some auth tests may fail | Up to 21 auth tests may fail due to known issues; see [STATUS.md](../STATUS.md) |
 | **Market Fetch** | `npm run markets -- --limit 5` | Lists 5 markets | Requires internet access |
 | **Orderbook** | `npm run book -- --tokenId <ID>` | Shows bid/ask/spread | Use token from markets |
 | **Backend Start** | `npm run dev` | Server on port 3000 | Check with curl or browser |
@@ -457,6 +461,7 @@ curl http://localhost:3000/health
 - **Resource Limits:** Free tier has limited hours - manage usage carefully
 - **Network Access:** Codespaces have full internet access for API calls
 - **Auto-sleep:** Inactive Codespaces auto-suspend after 30 minutes (default)
+- **Local Development:** For local development without Codespaces, see [Environment Setup](./environment.md) for complete setup instructions
 
 ## Getting Help
 
