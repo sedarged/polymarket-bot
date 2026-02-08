@@ -357,17 +357,17 @@ For local development without Codespaces:
 
 ## 10. Additional Resources
 
-- [Environment Variables Documentation](./ENVIRONMENT.md)
-- [Security Guide](./SECURITY.md)
-- [Paper Trading Guide](./PAPER_TRADING.md)
+- [Environment Variables Documentation](./environment.md)
+- [Security Guide](./security.md)
+- [Paper Trading Guide](./paper-trading.md)
 - [Development Workflow](./DEV_WORKFLOW.md)
-- [Troubleshooting Guide](./TROUBLESHOOTING.md)
+- [Troubleshooting Guide](./troubleshooting.md)
 
 ## 11. Support
 
 If you encounter issues setting up Codespaces:
 
-1. Check the [Troubleshooting Guide](./TROUBLESHOOTING.md)
+1. Check the [Troubleshooting Guide](./troubleshooting.md)
 2. Review GitHub Codespaces documentation
 3. Open an issue with the `codespaces` label
 4. Include relevant logs and error messages
