@@ -1670,9 +1670,13 @@ Disconnect → Exponential Backoff → Reconnect → Re-subscribe → Resync
 ```
 
 **Key Implementation Details:**
-- Exponential backoff prevents thundering herd (Audit Finding A-023)
-- Resync prevents stale data (Audit Finding A-015)
-- Message deduplication via sequence numbers (Audit Finding A-010 RESOLVED)
+- Exponential backoff prevents thundering herd (Audit Finding A-023 - needs jitter implementation)
+- Resync prevents stale data (Audit Finding A-015 - cache TTL needed)
+- Message deduplication via sequence numbers (Audit Finding A-010 - RESOLVED in ADR-0008)
+- Race condition prevention (Audit Finding A-007 - per-token lock needed)
+- Reconnect timer cleanup (Audit Finding A-016 - timer leak needs fix)
+
+_Note:_ The audit report (dated 2026-02-01) listed some findings as Open. Some have since been addressed in the codebase (e.g., A-010 message deduplication). Refer to individual ADRs and recent commits for current implementation status.
 
 ### Order Placement Data Flow
 
@@ -1778,8 +1782,7 @@ Disconnect → Exponential Backoff → Reconnect → Re-subscribe → Resync
 │ Persist to Disk          │
 │ File: .state/kill-switch.json
 │ {killed: true,           │
-│  timestamp, reason,      │
-│  scope}                  │
+│  timestamp, reason}      │
 └─────┬────────────────────┘
       │
       ├──────────────┬──────────────┐
@@ -1804,6 +1807,7 @@ Disconnect → Exponential Backoff → Reconnect → Re-subscribe → Resync
       │
 ┌─────▼────────────────────┐
 │ Validate with Zod Schema │
+│ Schema: {killed, timestamp, reason}
 │ Invalid → Fail closed    │
 │ (killed = true)          │
 └─────┬────────────────────┘
@@ -1816,10 +1820,12 @@ Disconnect → Exponential Backoff → Reconnect → Re-subscribe → Resync
 └──────────────────────────┘
 ```
 
+_Note:_ The persisted state schema (see [apps/backend/src/utils/statePersistence.ts](../apps/backend/src/utils/statePersistence.ts)) stores `{killed, timestamp, reason}`. The `scope` field shown in earlier documentation is not currently persisted and would need to be added to the schema if selective kill-switch persistence is required.
+
 **Deactivation:**
 ```
-Manual: DELETE /kill-switch (requires ADMIN_TOKEN)
-        OR delete .state/kill-switch.json + restart
+Manual: Delete .state/kill-switch.json + restart backend
+        (No HTTP DELETE endpoint is currently implemented)
 ```
 
 ### Balance Reconciliation Data Flow

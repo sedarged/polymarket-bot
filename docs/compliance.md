@@ -139,12 +139,13 @@ If either variable is false or unset, the bot will:
 - **WebSocket:** 1 connection per account (enforced server-side)
 
 **Bot Configuration:**
-- Retry logic with exponential backoff: [apps/backend/src/utils/retry.ts](../apps/backend/src/utils/retry.ts)
-- No explicit rate limiting implemented (API-side enforcement only)
+- Incoming HTTP requests to this backend are rate limited at the server level (see [apps/backend/src/server/index.ts](../apps/backend/src/server/index.ts))
+- Outbound requests to Polymarket APIs: retry logic with exponential backoff (see [apps/backend/src/utils/retry.ts](../apps/backend/src/utils/retry.ts))
+- No explicit client-side rate limiting for outbound Polymarket API calls beyond API-side enforcement
 
-**Risk:** Exceeding rate limits may result in temporary or permanent API key suspension.
+**Risk (outbound Polymarket API calls):** Exceeding rate limits may result in temporary or permanent API key suspension.
 
-**Recommendation:** Implement client-side rate limiting before production use (Audit Finding A-008).
+**Recommendation:** Implement explicit client-side rate limiting for outbound Polymarket API calls before production use (Audit Finding A-008).
 
 ---
 
@@ -172,7 +173,7 @@ If either variable is false or unset, the bot will:
 **This bot implements:**
 - ✅ Kill switch functionality (all scopes: market, risk-only, all)
 - ✅ Paper trading mode for safe testing
-- ⚠️ Kill switch persistence incomplete (Audit Finding A-002 - CRITICAL)
+- ✅ Kill switch persistence implemented (Audit Finding A-002 - previously CRITICAL, now resolved; state persisted to `.state/kill-switch.json`)
 - ⚠️ No position or loss limits (Gap Analysis - needed for production)
 
 ### Algorithm Registration
@@ -305,8 +306,10 @@ If either variable is false or unset, the bot will:
 | Finding ID | Severity | Issue | Status |
 |------------|----------|-------|--------|
 | **A-001** | CRITICAL | Plaintext private key storage | ❌ Open |
-| **A-002** | CRITICAL | Kill switch state not persisted | ❌ Open |
+| **A-002** | CRITICAL | Kill switch state not persisted | ✅ Resolved (kill switch state now persisted to `.state/kill-switch.json` and restored on startup) |
 | **A-003** | CRITICAL | CORS set to wildcard `*` | ❌ Open |
+
+_Note:_ A-002 was marked **Open** in the original audit report (dated 2026-02-01). The kill switch persistence issue has since been remediated in the codebase; see [ADR-0004](./adr/0004-kill-switch-persistence.md) and the current [Runbook](./runbook.md#kill-switch) for details on the persistence implementation.
 
 **Full Audit Report:** [REPORTS/AUDIT.md](../REPORTS/AUDIT.md) - 27 findings total
 

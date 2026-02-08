@@ -448,7 +448,7 @@ ALERT_WEBHOOK="${ALERT_WEBHOOK:-}"
 ADMIN_TOKEN="${ADMIN_TOKEN:-}"
 
 # Colors for output
-RED='\033[0:31m'
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
@@ -546,8 +546,15 @@ fi
 # 3. Check trading status
 echo ""
 echo "3. Checking trading status..."
-if check_endpoint "/status" 200 5; then
-    STATUS_JSON=$(curl -s "$API_URL/status" 2>/dev/null)
+if [ -n "$ADMIN_TOKEN" ]; then
+    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 5 \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
+        "$API_URL/status" 2>/dev/null || echo "000")
+    
+    if [ "$STATUS_CODE" = "200" ]; then
+        echo -e "${GREEN}✅ Status endpoint accessible${NC}"
+        STATUS_JSON=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$API_URL/status" 2>/dev/null)
     
     LIVE_TRADING=$(echo "$STATUS_JSON" | jq -r '.liveTrading // false')
     TRADING_INIT=$(echo "$STATUS_JSON" | jq -r '.tradingClientInitialized // false')
@@ -570,18 +577,24 @@ if check_endpoint "/status" 200 5; then
     fi
 fi
 
-# 4. Check circuit breakers
+# 4. Check circuit breakers (from /status endpoint which includes them)
 echo ""
 echo "4. Checking circuit breakers..."
-if check_endpoint "/metrics" 200 5; then
-    METRICS_JSON=$(curl -s "$API_URL/metrics" 2>/dev/null)
-    CB_COUNT=$(echo "$METRICS_JSON" | jq '.circuitBreakers | length')
+if [ -n "$ADMIN_TOKEN" ]; then
+    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 5 \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
+        "$API_URL/status" 2>/dev/null || echo "000")
     
-    if [ "$CB_COUNT" -gt 0 ]; then
-        echo "   Found $CB_COUNT circuit breaker(s)"
+    if [ "$STATUS_CODE" = "200" ]; then
+        STATUS_JSON=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$API_URL/status" 2>/dev/null)
+        CB_COUNT=$(echo "$STATUS_JSON" | jq '.circuitBreakers | length')
         
-        # Check each circuit breaker
-        echo "$METRICS_JSON" | jq -c '.circuitBreakers[]' | while read -r cb; do
+        if [ "$CB_COUNT" -gt 0" ]; then
+            echo "   Found $CB_COUNT circuit breaker(s)"
+            
+            # Check each circuit breaker
+            echo "$STATUS_JSON" | jq -c '.circuitBreakers[]' | while read -r cb; do
             NAME=$(echo "$cb" | jq -r '.name')
             STATE=$(echo "$cb" | jq -r '.state')
             FAILURES=$(echo "$cb" | jq -r '.failures')

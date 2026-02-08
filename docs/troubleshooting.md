@@ -31,8 +31,8 @@
 # 1. Check service status
 npm run dev  # Does the server start?
 
-# 2. Check configuration
-cat .env | grep -v "PRIVATE_KEY"  # Review env vars (safely)
+# 2. Check non-sensitive configuration (do NOT print secrets)
+grep -E '^(LIVE_TRADING|COMPLIANCE_ACCEPTED|LOG_LEVEL|PORT)=' .env  # Only non-sensitive keys; NEVER print secrets
 
 # 3. Check logs
 tail -n 100 logs/app.log  # Recent errors
@@ -40,8 +40,9 @@ tail -n 100 logs/app.log  # Recent errors
 # 4. Test connectivity
 npm run markets  # Can we fetch markets?
 
-# 5. Check kill switch status
-curl http://localhost:3000/health  # Is trading enabled?
+# 5. Check kill switch status (requires admin token)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/status | jq '.circuitBreakers, .liveTrading'  # Trading status and circuit breakers
 
 # 6. Review recent commits
 git log --oneline -10  # Recent changes?
@@ -254,15 +255,10 @@ Invalid size: must be between 1 and 100000
 # Check market constraints
 npm run markets | jq '.[] | {id, min_size, max_size, tick_size}'
 
-# Validate order parameters
-curl -X POST http://localhost:3000/api/orders/validate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tokenId": "0x123...",
-    "price": "0.55",
-    "size": "10",
-    "side": "BUY"
-  }'
+# Note: There is no /api/orders/validate endpoint currently.
+# Order validation happens automatically when placing orders.
+# To test order validation, see the validation tests:
+# apps/backend/tests/orderValidation.test.ts
 ```
 
 **Related:**
@@ -301,11 +297,11 @@ curl http://localhost:3000/health | jq '.killSwitch'
 
 **Deactivate (if safe):**
 ```bash
-# Resume all trading
-curl -X DELETE http://localhost:3000/kill-switch \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
-
-# Response: { "message": "Kill switch deactivated", "scope": "all" }
+# To resume trading after kill switch:
+# 1. Fix the issue that triggered the kill switch
+# 2. Delete the state file: rm apps/backend/.state/kill-switch.json
+# 3. Restart the server
+# Note: No HTTP DELETE endpoint is currently implemented for deactivation
 ```
 
 **Kill Switch Scopes:**
@@ -452,11 +448,8 @@ Position calculation may be incorrect
 # Check order tracking
 curl http://localhost:3000/api/orders | jq '.'
 
-# Check if order exists on CLOB
-curl "https://clob.polymarket.com/orders?address=YOUR_WALLET_ADDRESS"
-
-# Check logs for order ID
-grep "orderID" logs/app.log | tail -20
+# Check market feed status (WebSocket connection)
+curl http://localhost:3000/feed/status
 ```
 
 **Related:**
@@ -784,12 +777,19 @@ Drift detected: 5 shares
 
 **Solution:**
 ```bash
-# Force full reconciliation
-curl -X POST http://localhost:3000/api/reconcile \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
+# Restart triggers automatic reconciliation on startup
+npm run dev
 
-# Check reconciliation results
-curl http://localhost:3000/api/positions | jq '.'
+# Check reconciliation results in logs
+tail -f logs/app.log | grep "Reconciliation"
+
+# Check positions via /state endpoint (requires admin token)
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/state | jq '.positions'
+
+# Note: Periodic reconciliation runs automatically every 
+# RECONCILIATION_INTERVAL_SECONDS (default: 300s/5min)
+# No manual /api/reconcile endpoint is currently implemented
 ```
 
 ---
