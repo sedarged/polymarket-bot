@@ -4,6 +4,27 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 
 ## 📋 Quick Navigation
 
+### 🚨 Critical - Must Read First
+
+**Before using this bot, you MUST read these documents:**
+
+1. **[Compliance Guide](./compliance.md)** 🔴 MANDATORY
+   - Geographic restrictions (US, sanctioned countries)
+   - Terms of Service compliance
+   - Risk disclaimers and legal responsibilities
+   - Trading gates and paper mode explanation
+
+2. **[Security Guide](./security.md)** 🔴 CRITICAL
+   - Private key management
+   - Secret storage best practices
+   - Known security vulnerabilities
+   - Production security requirements
+
+3. **[Security Audit Report](../REPORTS/AUDIT.md)** 🔴 CRITICAL
+   - 27 security & reliability findings
+   - 3 CRITICAL issues (must fix before live trading)
+   - Known vulnerabilities and mitigations
+
 ### Getting Started
 - [README](../README.md) - Project overview, installation, and quick start
 - [STATUS](../STATUS.md) - Current work status and priorities (auto-updated from Issues)
@@ -11,8 +32,23 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Examples](./examples.md) - CLI usage examples and common patterns
 
 ### Security & Audits
+- [Compliance Guide](./compliance.md) - 🚨 Geographic restrictions, ToS compliance, risk disclaimers
+- [Security Guide](./security.md) - 🔐 Private key security and best practices
 - [Security Audit Report](../REPORTS/AUDIT.md) - Comprehensive security & reliability audit (27 findings)
+- [Gap Analysis](../REPORTS/GAP_ANALYSIS.md) - Production readiness assessment
 - [Reports Index](../REPORTS/README.md) - All audit and analysis reports
+
+### Operations & Troubleshooting
+- **[Runbook](./runbook.md)** - 📖 Complete operational procedures for production
+  - Prerequisites, startup/shutdown, health checks
+  - **Incident response procedures** (SEV-1 to SEV-4)
+  - Kill switch usage and monitoring
+  - Backup and recovery procedures
+- **[Troubleshooting Guide](./troubleshooting.md)** - 🔧 Comprehensive problem-solving guide
+  - **Top 10 common issues with solutions**
+  - WebSocket, API, authentication errors
+  - Order placement, kill switch, balance issues
+  - Debug mode and logging
 
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
@@ -26,13 +62,19 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [PR Quick Reference](./pr-quick-reference.md) - One-page PR summary (print for reference)
 
 ### Architecture & Design
-- [Architecture Map](./architecture.md) - Technical architecture documentation with critical paths
+- **[Architecture Map](./architecture.md)** - Technical architecture documentation with critical paths
+  - System components and interactions
+  - **Detailed data flow diagrams** (WebSocket, orders, kill switch, reconciliation)
+  - Module dependencies and technology stack
+- [Architecture Overview](./architecture-overview.md) - Plain language system explanation
 - [Architecture Decision Records (ADR)](./migration-log.md) - Key architectural decisions and rationale
+  - Complete list in [adr/ directory](./adr/)
 - [Original PR Plan](./plan.md) - Original 10-PR rollout plan
 - [Small PR Plan](./small-pr-plan.md) - Detailed 13-PR breakdown addressing audit fixes
 
 ### Operations
-- [Runbook](./runbook.md) - Operational procedures for running the bot
+- [Runbook](./runbook.md) - Operational procedures, incident response, monitoring
+- [Troubleshooting Guide](./troubleshooting.md) - Common issues and solutions
 - [Observability & Monitoring](./observability.md) - Metrics, dashboards, and alerting
 - [Audit Trail](./audit-trail.md) - Order and fill history tracking for compliance
 - [Persistence Layer](./persistence.md) - Database-backed state for production reliability
