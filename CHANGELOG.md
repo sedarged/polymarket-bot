@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.0](https://github.com/sedarged/polymarket-bot/compare/v1.28.0...v1.29.0) (2026-02-08)
+
+
+### Features
+
+* add .env.codespaces.example and update documentation ([bcc412d](https://github.com/sedarged/polymarket-bot/commit/bcc412d6a40c16f5d52a3fe75c2ceb801efb7003))
+* add complete GitHub Codespaces configuration ([c7cd5e2](https://github.com/sedarged/polymarket-bot/commit/c7cd5e27f258f6fe71de883c64f3dfffae031f12))
+* add comprehensive Codespaces setup guide and update .env.example with all environment variables ([17eaecb](https://github.com/sedarged/polymarket-bot/commit/17eaecb3de7534621f490022a144fcb2759581c1))
+
+
+### Bug Fixes
+
+* address security and usability issues from code review ([8106ef3](https://github.com/sedarged/polymarket-bot/commit/8106ef316859fa08311f4ee7ba1ccf577225f0f1))
+* clarify stubbed integrations and planned variables in documentation ([b13e0ce](https://github.com/sedarged/polymarket-bot/commit/b13e0ceb070f56d30435e2ec0a86924a63e86ca4))
+* correct documentation links in Codespaces setup guide ([f50e8a3](https://github.com/sedarged/polymarket-bot/commit/f50e8a3423c2d7cd41d5226e9d39090bbdf3cdec))
+
 ## [1.28.0](https://github.com/sedarged/polymarket-bot/compare/v1.27.1...v1.28.0) (2026-02-08)
 
 
