@@ -1,22 +1,23 @@
 # Environment Variable Coverage Summary
 
 ## Overview
-This document provides a comprehensive overview of all environment variables supported by the Polymarket bot, organized by category.
+This document provides an overview of environment variables used by the Polymarket bot at runtime, plus variables reserved for future use that are not yet wired into the codebase, organized by category.
 
-**Total Variables:** 50  
+**Total Variables (including planned):** 50  
 **Last Updated:** 2026-02-08  
 **Reference:** `.env.example`
 
 ---
 
-## 1. Polymarket API Configuration (4 variables)
+## 1. Polymarket API Configuration (3 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `GAMMA_API_URL` | `https://gamma-api.polymarket.com` | Yes | Gamma API endpoint for market data |
 | `CLOB_API_URL` | `https://clob.polymarket.com` | Yes | CLOB API endpoint for order book & trading |
-| `DATA_API_URL` | `https://data-api.polymarket.com` | Yes | Data API endpoint for positions & trades |
 | `WS_MARKET_URL` | `wss://ws-subscriptions-clob...` | Yes | WebSocket endpoint for real-time market data |
+
+**Note:** The Data API URL is hardcoded in `apps/backend/src/clients/dataApi.ts` and is not configurable via environment variable.
 
 ---
 
@@ -54,31 +55,31 @@ This document provides a comprehensive overview of all environment variables sup
 
 ---
 
-## 6. Secret Management (11 variables)
+## 6. Secret Management (11 variables - 3 functional, 8 stubbed)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `SECRET_SOURCE` | `env` | No | Secret source: env, encrypted, aws, vault, azure |
+| `SECRET_SOURCE` | `env` | No | Secret source: `env`, `encrypted` (functional). `aws`, `vault`, `azure` (stubbed - throw "not implemented") |
 | `PRIVATE_KEY` | - | Conditional | Private key (Method 1 - direct env var) |
 | `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2) |
 | `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2) |
-| `AWS_SECRET_NAME` | - | Conditional | AWS Secrets Manager secret name (Method 3) |
-| `AWS_REGION` | - | Conditional | AWS region (Method 3) |
-| `AWS_ACCESS_KEY_ID` | - | Conditional | AWS access key (Method 3) |
-| `AWS_SECRET_ACCESS_KEY` | - | Conditional | AWS secret key (Method 3) |
-| `VAULT_ADDR` | - | Conditional | Vault server address (Method 4) |
-| `VAULT_TOKEN` | - | Conditional | Vault authentication token (Method 4) |
-| `VAULT_PATH` | - | Conditional | Vault secret path (Method 4) |
+| `AWS_SECRET_NAME` | - | Conditional | **(Stubbed)** Intended AWS Secrets Manager secret name. Backend not yet implemented. |
+| `AWS_REGION` | - | Conditional | **(Stubbed)** Intended AWS region. Backend not yet implemented. |
+| `AWS_ACCESS_KEY_ID` | - | Conditional | **(Stubbed)** Intended AWS access key. Backend not yet implemented. |
+| `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Stubbed)** Intended AWS secret key. Backend not yet implemented. |
+| `VAULT_ADDR` | - | Conditional | **(Stubbed)** Intended Vault server address. Backend not yet implemented. |
+| `VAULT_TOKEN` | - | Conditional | **(Stubbed)** Intended Vault token. Backend not yet implemented. |
+| `VAULT_PATH` | - | Conditional | **(Stubbed)** Intended Vault secret path. Backend not yet implemented. |
 
 **Continued:**
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `AZURE_KEY_VAULT_NAME` | - | Conditional | Azure Key Vault name (Method 5) |
-| `AZURE_SECRET_NAME` | - | Conditional | Azure secret name (Method 5) |
-| `AZURE_CLIENT_ID` | - | Conditional | Azure client ID (Method 5) |
-| `AZURE_CLIENT_SECRET` | - | Conditional | Azure client secret (Method 5) |
-| `AZURE_TENANT_ID` | - | Conditional | Azure tenant ID (Method 5) |
+| `AZURE_KEY_VAULT_NAME` | - | Conditional | **(Stubbed)** Intended Azure Key Vault name. Backend not yet implemented. |
+| `AZURE_SECRET_NAME` | - | Conditional | **(Stubbed)** Intended Azure secret name. Backend not yet implemented. |
+| `AZURE_CLIENT_ID` | - | Conditional | **(Stubbed)** Intended Azure client ID. Backend not yet implemented. |
+| `AZURE_CLIENT_SECRET` | - | Conditional | **(Stubbed)** Intended Azure client secret. Backend not yet implemented. |
+| `AZURE_TENANT_ID` | - | Conditional | **(Stubbed)** Intended Azure tenant ID. Backend not yet implemented. |
 
 ---
 
@@ -172,37 +173,41 @@ This document provides a comprehensive overview of all environment variables sup
 
 ---
 
-## 16. Learning System (8 variables)
+## 16. Learning System (4 variables functional, 4 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `LEARNING_SYSTEM_ENABLED` | `false` | No | Enable/disable learning system |
+| `LEARNING_SYSTEM_ENABLED` | `false` | No | **(Planned)** Enable/disable learning system. Not yet wired into config. |
 | `EVENT_STORE_PATH` | `./data/events.db` | No | Event store database path |
 | `SIGNAL_CATALOG_PATH` | `./data/signals.db` | No | Signal catalog database path |
 | `BACKTEST_ENGINE_PATH` | `./data/backtests.db` | No | Backtest engine database path |
 | `PROMOTION_WORKFLOW_PATH` | `./data/promotions.db` | No | Promotion workflow database path |
-| `BANDIT_ALGORITHM` | `epsilon-greedy` | No | Bandit algorithm type |
-| `BANDIT_EXPLORATION_FACTOR` | `0.1` | No | Exploration factor (0-1) |
-| `BANDIT_MIN_TRADE_COUNT` | `10` | No | Minimum trades before allocation |
+| `BANDIT_ALGORITHM` | `epsilon-greedy` | No | **(Planned)** Bandit algorithm type. Not yet wired into config. |
+| `BANDIT_EXPLORATION_FACTOR` | `0.1` | No | **(Planned)** Exploration factor (0-1). Not yet wired into config. |
+| `BANDIT_MIN_TRADE_COUNT` | `10` | No | **(Planned)** Minimum trades before allocation. Not yet wired into config. |
 
 ---
 
-## 17. Metrics Configuration (2 variables)
+## 17. Metrics Configuration (0 variables functional, 2 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `METRICS_ENABLED` | `true` | No | Enable Prometheus metrics |
-| `METRICS_ENDPOINT` | `/metrics` | No | Metrics endpoint path |
+| `METRICS_ENABLED` | `true` | No | **(Planned)** Enable Prometheus metrics. Not yet wired into config. |
+| `METRICS_ENDPOINT` | `/metrics` | No | **(Planned)** Metrics endpoint path. Not yet wired into config. |
+
+**Note:** Prometheus metrics collection exists in the code but these env vars are not yet configurable.
 
 ---
 
-## 18. WebSocket Configuration (3 variables)
+## 18. WebSocket Configuration (0 variables functional, 3 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `WS_RECONNECT_DELAY` | `1000` | No | Initial reconnection delay in milliseconds |
-| `WS_MAX_RECONNECT_ATTEMPTS` | `Infinity` | No | Maximum reconnection attempts |
-| `WS_HEARTBEAT_INTERVAL` | `30000` | No | Heartbeat interval in milliseconds |
+| `WS_RECONNECT_DELAY` | `1000` | No | **(Planned)** Initial reconnection delay in ms. Not yet wired into config. |
+| `WS_MAX_RECONNECT_ATTEMPTS` | `Infinity` | No | **(Planned)** Maximum reconnection attempts. Not yet wired into config. |
+| `WS_HEARTBEAT_INTERVAL` | `30000` | No | **(Planned)** Heartbeat interval in ms. Not yet wired into config. |
+
+**Note:** WebSocket reconnection logic exists in the code but uses hardcoded defaults; these env vars are reserved for future configurability.
 
 ---
 
@@ -210,12 +215,12 @@ This document provides a comprehensive overview of all environment variables sup
 
 | Category | Variable Count | Notes |
 |----------|----------------|-------|
-| API Configuration | 4 | Core Polymarket API endpoints |
+| API Configuration | 3 | Core Polymarket API endpoints (Data API URL hardcoded) |
 | Market Feed | 1 | Token monitoring |
 | Logging | 1 | Application logging |
 | Trading Gates | 2 | Safety controls |
 | Server | 2 | HTTP server settings |
-| Secret Management | 11 | 5 different storage methods |
+| Secret Management | 11 | 2 functional methods (env, encrypted), 3 stubbed (AWS, Vault, Azure) |
 | Retry | 3 | Retry logic configuration |
 | Paper Trading | 6 | Simulation settings |
 | Risk Management | 5 | Trading limits |
@@ -225,10 +230,10 @@ This document provides a comprehensive overview of all environment variables sup
 | Reconciliation | 1 | State verification |
 | Rate Limiting | 3 | DoS protection |
 | Alerting | 4 | Telegram notifications |
-| Learning System | 8 | ML/experimentation |
-| Metrics | 2 | Observability |
-| WebSocket | 3 | Real-time connections |
-| **TOTAL** | **50** | **Complete coverage** |
+| Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
+| Metrics | 2 | Planned - not yet wired into config |
+| WebSocket | 3 | Planned - not yet wired into config |
+| **TOTAL** | **50** | **~37 functional, ~13 planned/stubbed** |
 
 ---
 
@@ -265,11 +270,11 @@ Required settings:
 
 ## Validation
 
-All variables are validated at startup using Zod schemas in `apps/backend/src/config/index.ts`. Invalid configuration will prevent the application from starting with clear error messages.
+Core backend configuration variables defined in `apps/backend/src/config/index.ts` are validated at startup using Zod schemas. Invalid validated configuration will prevent the application from starting with clear error messages. Note that planned/future variables (metrics, websocket tuning, some learning system flags) are not yet part of the validated config schema.
 
 ---
 
 **For more details:**
-- See [.env.example](./.env.example) for complete documentation
-- See [docs/environment.md](./docs/environment.md) for environment setup
-- See [docs/CODESPACES_SETUP.md](./docs/CODESPACES_SETUP.md) for Codespaces configuration
+- See [.env.example](../.env.example) for complete documentation
+- See [environment.md](./environment.md) for environment setup
+- See [CODESPACES_SETUP.md](./CODESPACES_SETUP.md) for Codespaces configuration

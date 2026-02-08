@@ -12,43 +12,46 @@ Navigate to: **Repository Settings → Secrets and variables → Codespaces → 
 
 Click "New repository secret" for each of the following:
 
-### AWS Secrets Manager (for testing Method 3)
+### AWS Secrets Manager (for testing Method 3 - currently stubbed)
+**Note:** AWS Secrets Manager integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
 ```
 Name: AWS_ACCESS_KEY_ID
 Value: AKIAIOSFODNN7EXAMPLE
-Description: Fake AWS access key for testing AWS Secrets Manager integration
+Description: Fake AWS access key for testing AWS error handling (integration stubbed)
 ```
 
 ```
 Name: AWS_SECRET_ACCESS_KEY
 Value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-Description: Fake AWS secret key for testing AWS Secrets Manager integration
+Description: Fake AWS secret key for testing AWS error handling (integration stubbed)
 ```
 
-### Azure Key Vault (for testing Method 5)
+### Azure Key Vault (for testing Method 5 - currently stubbed)
+**Note:** Azure Key Vault integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
 ```
 Name: AZURE_CLIENT_ID
 Value: 12345678-1234-1234-1234-123456789012
-Description: Fake Azure client ID for testing Azure Key Vault integration
+Description: Fake Azure client ID for testing Azure error handling (integration stubbed)
 ```
 
 ```
 Name: AZURE_CLIENT_SECRET
 Value: test-secret-value-not-real-safe-for-dev
-Description: Fake Azure client secret for testing Azure Key Vault integration
+Description: Fake Azure client secret for testing Azure error handling (integration stubbed)
 ```
 
 ```
 Name: AZURE_TENANT_ID
 Value: 87654321-4321-4321-4321-210987654321
-Description: Fake Azure tenant ID for testing Azure Key Vault integration
+Description: Fake Azure tenant ID for testing Azure error handling (integration stubbed)
 ```
 
-### HashiCorp Vault (for testing Method 4)
+### HashiCorp Vault (for testing Method 4 - currently stubbed)
+**Note:** HashiCorp Vault integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
 ```
 Name: VAULT_TOKEN
 Value: hvs.test_fake_token_for_development_only
-Description: Fake Vault token for testing HashiCorp Vault integration
+Description: Fake Vault token for testing Vault error handling (integration stubbed)
 ```
 
 ### Encrypted Storage (for testing Method 2)
@@ -150,14 +153,18 @@ After configuration, test that everything works:
 1. Open a new Codespace or rebuild existing one
 2. Verify secrets are loaded:
    ```bash
-   # Secrets should NOT be visible in env
-   # But the app should be able to access them
+   # Secrets are available as environment variables in the Codespace.
+   # Do NOT echo/print environment variables or log secret values.
    npm run dev
    ```
 
 3. Test secret management methods:
    ```bash
-   # This should fail gracefully with clear error messages
+   # Only env and encrypted methods are functional
+   SECRET_SOURCE=env npm run dev
+   SECRET_SOURCE=encrypted npm run dev
+   
+   # These will throw "not implemented" errors (expected behavior)
    SECRET_SOURCE=aws npm run dev
    SECRET_SOURCE=azure npm run dev
    SECRET_SOURCE=vault npm run dev
@@ -191,11 +198,11 @@ Ensure contributors know about the setup:
 
 ## CI/CD Configuration (Bonus)
 
-The same secrets can be configured for GitHub Actions to enable testing in CI:
+The same secrets can be configured for GitHub Actions to enable testing in CI. Note that only `env` and `encrypted` secret sources are currently functional; AWS/Azure/Vault backends are stubbed.
 
 Navigate to: **Repository Settings → Secrets and variables → Actions**
 
-Configure the same secrets as above in the "Secrets" tab. This allows CI workflows to test all secret management methods.
+Configure the same secrets as above in the "Secrets" tab. This allows CI workflows to test environment-variable based secrets and encrypted secrets; AWS/Azure/Vault integrations will be covered once those backends are implemented.
 
 ## Troubleshooting
 
@@ -213,12 +220,12 @@ Configure the same secrets as above in the "Secrets" tab. This allows CI workflo
 3. Codespace was rebuilt after adding secrets
 
 ### Issue: Tests failing with "Missing credentials"
-**Solution:** This is expected for AWS/Azure/Vault tests since we're using fake credentials. The tests should:
-1. Attempt to connect with fake credentials
-2. Fail gracefully with clear error messages
+**Solution:** This is expected for AWS/Azure/Vault tests since we're using stubbed implementations. The code should:
+1. Attempt to use the stubbed backend
+2. Throw "integration not implemented" error
 3. Not crash or hang
 
-This proves the error handling works correctly.
+This proves the error handling works correctly. Only `env` and `encrypted` sources are fully functional.
 
 ## Verification Checklist
 
@@ -244,7 +251,7 @@ Once this setup is complete:
 - [GitHub Codespaces Documentation](https://docs.github.com/en/codespaces)
 - [Managing encrypted secrets for Codespaces](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-encrypted-secrets-for-your-codespaces)
 - [Codespaces Setup Guide for Contributors](../docs/CODESPACES_SETUP.md)
-- [Environment Variables Reference](.env.example)
+- [Environment Variables Reference](../.env.example)
 
 ---
 

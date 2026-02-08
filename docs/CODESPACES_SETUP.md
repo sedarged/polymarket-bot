@@ -14,7 +14,7 @@ GitHub Codespaces provides a complete development environment in the cloud, allo
 
 ## 1. Codespaces Secrets Configuration
 
-GitHub Codespaces allows you to configure encrypted secrets that are automatically injected into your development environment. These secrets are encrypted and never exposed in logs or UI.
+GitHub Codespaces allows you to configure encrypted secrets that are automatically injected into your development environment as environment variables. These secrets are encrypted at rest and not shown in GitHub's web UI, but any process in the Codespace can read and print them, so you must avoid echoing or logging secret values.
 
 ### Setting Up Codespaces Secrets
 
@@ -75,9 +75,10 @@ Environment variables can be set at the repository or user level for Codespaces.
 ```
 GAMMA_API_URL=https://gamma-api.polymarket.com
 CLOB_API_URL=https://clob.polymarket.com
-DATA_API_URL=https://data-api.polymarket.com
 WS_MARKET_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
 ```
+
+**Note:** `DATA_API_URL` is not configurable; the Data API client uses a hardcoded URL.
 
 ### Trading Configuration
 ```
@@ -236,20 +237,22 @@ SECRET_SOURCE=env npm run dev
 SECRET_SOURCE=encrypted npm run dev
 ```
 
-#### Test AWS Source (will fail gracefully with fake credentials)
+#### Test AWS Source (currently stubbed - will throw "not implemented" error)
 ```bash
 SECRET_SOURCE=aws npm run dev
 ```
 
-#### Test Vault Source (will fail gracefully with fake credentials)
+#### Test Vault Source (currently stubbed - will throw "not implemented" error)
 ```bash
 SECRET_SOURCE=vault npm run dev
 ```
 
-#### Test Azure Source (will fail gracefully with fake credentials)
+#### Test Azure Source (currently stubbed - will throw "not implemented" error)
 ```bash
 SECRET_SOURCE=azure npm run dev
 ```
+
+**Note:** AWS, Vault, and Azure secret management integrations are currently stubbed implementations that throw "integration not implemented" errors. Only `env` and `encrypted` sources are functional. This allows testing of error handling for unimplemented backends.
 
 ## 5. Testing Features
 
