@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.28.0](https://github.com/sedarged/polymarket-bot/compare/v1.27.1...v1.28.0) (2026-02-08)
+
+
+### Features
+
+* add dashboard authentication and learning system API integration ([9a90e27](https://github.com/sedarged/polymarket-bot/commit/9a90e278b07850bab2e87e85ff386c7eac44a017))
+* add frontend authentication with login modal and session management ([3008ff3](https://github.com/sedarged/polymarket-bot/commit/3008ff3cdafbe129089e96b51ff9343359fde878))
+* add learning system API endpoints with admin authentication ([ff62c3c](https://github.com/sedarged/polymarket-bot/commit/ff62c3cdaf0b9a0bc05704b2d2e66952fc5f898d))
+* integrate learning system tab with backend API ([851f29b](https://github.com/sedarged/polymarket-bot/commit/851f29b6ef0c5b5bd32502cc9969440f1803ab51))
+
+
+### Bug Fixes
+
+* address PR review feedback ([8f6bccf](https://github.com/sedarged/polymarket-bot/commit/8f6bccf23b9bdaa326bf9a38bfe7a21a74a0f5b4))
+
 ## [1.27.1](https://github.com/sedarged/polymarket-bot/compare/v1.27.0...v1.27.1) (2026-02-07)
 
 
