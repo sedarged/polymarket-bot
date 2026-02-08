@@ -18,7 +18,9 @@
     "kill": "tsx src/index.ts kill",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:real-readonly": "vitest run tests/real-api/read-only.spec.ts",
+    "test:real-write": "vitest run tests/real-api/write.spec.ts"
   },
   "dependencies": {
     "@polymarket/clob-client": "^5.2.1",

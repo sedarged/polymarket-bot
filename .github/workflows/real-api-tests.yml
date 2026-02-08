@@ -1,0 +1,107 @@
+name: Real API Integration Tests
+
+permissions:
+  contents: read
+
+on:
+  # Read-only tests run automatically on all pushes and PRs
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  
+  # Write tests run only on manual trigger
+  workflow_dispatch:
+    inputs:
+      run_write_tests:
+        description: 'Run write/paper-trading tests (requires authorization)'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  # Job 1: Read-only tests (automatic, safe for CI/CD)
+  read-only:
+    name: Read-Only API Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run read-only API tests
+        run: npm run --workspace @polymarket/backend test:real-readonly
+        env:
+          # Optional: Set read-only credentials if needed
+          POLYMARKET_API_BASE: ${{ secrets.POLYMARKET_API_BASE || 'https://polymarket.com/api' }}
+          POLYMARKET_API_KEY_READONLY: ${{ secrets.POLYMARKET_API_KEY_READONLY }}
+          POLYMARKET_API_SECRET_READONLY: ${{ secrets.POLYMARKET_API_SECRET_READONLY }}
+          GAMMA_API_URL: https://gamma-api.polymarket.com
+          CLOB_API_URL: https://clob.polymarket.com
+
+  # Job 2: Write tests (manual only, gated)
+  write:
+    name: Write/Paper-Trading Tests (Manual Only)
+    runs-on: ubuntu-latest
+    # Only run if explicitly triggered via workflow_dispatch
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_write_tests == 'true'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Verify authorization
+        run: |
+          echo "⚠️  WARNING: Running write/paper-trading tests"
+          echo "   This job uses real API credentials for a paper-trading account."
+          echo "   Triggered by: ${{ github.actor }}"
+          echo "   Repository: ${{ github.repository }}"
+          echo ""
+          
+      - name: Run safety checks
+        run: node scripts/safety-check.js --write --runner github-actions
+        env:
+          LIVE_TRADING: 'true'
+          COMPLIANCE_ACCEPTED: 'true'
+          FORCE_REAL_TEST: ${{ secrets.FORCE_REAL_TEST }}
+          ALLOWED_TEST_RUNNERS: github-actions
+          
+      - name: Run write API tests
+        run: npm run --workspace @polymarket/backend test:real-write
+        env:
+          # API credentials from secrets
+          POLYMARKET_API_BASE: ${{ secrets.POLYMARKET_API_BASE || 'https://polymarket.com/api' }}
+          POLYMARKET_API_KEY_WRITE: ${{ secrets.POLYMARKET_API_KEY_WRITE }}
+          POLYMARKET_API_SECRET_WRITE: ${{ secrets.POLYMARKET_API_SECRET_WRITE }}
+          GAMMA_API_URL: https://gamma-api.polymarket.com
+          CLOB_API_URL: https://clob.polymarket.com
+          
+          # Safety gates (required for write operations)
+          LIVE_TRADING: 'true'
+          COMPLIANCE_ACCEPTED: 'true'
+          FORCE_REAL_TEST: ${{ secrets.FORCE_REAL_TEST }}
+          ALLOWED_TEST_RUNNERS: github-actions
+          
+      - name: Test completion notice
+        if: success()
+        run: |
+          echo "✅ Write tests completed successfully"
+          echo "   All paper-trading operations executed as expected."
