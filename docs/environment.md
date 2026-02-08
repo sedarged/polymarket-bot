@@ -339,6 +339,45 @@ RATE_LIMIT_TRUST_PROXY=false        # Trust X-Forwarded-For headers (only behind
 
 # Admin Authentication
 ADMIN_TOKEN=change_me_to_a_strong_random_admin_token
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3000    # Comma-separated allowed origins
+
+# Reconciliation Configuration (Gap RE-001)
+RECONCILIATION_INTERVAL_SECONDS=300      # Periodic reconciliation interval (5 minutes)
+
+# Alerting Configuration (Gap OB-002)
+TELEGRAM_BOT_TOKEN=                      # Telegram bot token for alerts
+TELEGRAM_CHAT_ID=                        # Telegram chat ID for alerts
+ALERT_ERROR_RATE_THRESHOLD=5             # Alert when error rate exceeds % (default: 5%)
+ALERT_CIRCUIT_BREAKER_TRIPS=1            # Alert after N circuit breaker trips (default: 1)
+
+# Learning System Configuration (Phase 8)
+EVENT_STORE_PATH=./data/events.db              # Event store database
+SIGNAL_CATALOG_PATH=./data/signals.db          # Signal catalog database
+BACKTEST_ENGINE_PATH=./data/backtests.db       # Backtest engine database
+PROMOTION_WORKFLOW_PATH=./data/promotions.db   # Promotion workflow database
+
+# Partial Fill Simulation (for realistic paper trading)
+PAPER_TRADING_PARTIAL_FILL_RATE=0.0     # Probability of partial fill (0-1)
+PAPER_TRADING_MIN_FILL_RATIO=0.1        # Min fill ratio when partial fill occurs
+PAPER_TRADING_MAX_FILL_RATIO=0.9        # Max fill ratio when partial fill occurs
+
+# Secret Management (Audit Finding A-001)
+SECRET_SOURCE=env                        # Secret source: env|encrypted|aws|vault|azure
+# For encrypted source:
+ENCRYPTION_KEY=                          # Passphrase for encrypted private key
+ENCRYPTED_PRIVATE_KEY=                   # Encrypted private key data
+# For AWS Secrets Manager:
+AWS_SECRET_NAME=                         # AWS secret name
+AWS_REGION=                              # AWS region
+# For HashiCorp Vault:
+VAULT_ADDR=                              # Vault server address
+VAULT_TOKEN=                             # Vault token
+VAULT_PATH=                              # Vault secret path
+# For Azure Key Vault:
+AZURE_KEY_VAULT_NAME=                    # Azure Key Vault name
+AZURE_SECRET_NAME=                       # Azure secret name
 ```
 
 ### Rate Limiting Details

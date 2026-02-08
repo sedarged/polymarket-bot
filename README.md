@@ -84,7 +84,9 @@ npm run build
 
 ## Configuration
 
-The project uses environment variables for configuration. You can customize these in a `.env` file:
+The project uses environment variables for configuration. You can customize these in a `.env` file.
+
+### Essential Configuration
 
 ```env
 # Polymarket API Configuration
@@ -94,27 +96,60 @@ WS_MARKET_URL=wss://ws-subscriptions-clob.polymarket.com/ws/market
 
 # Market Feed Configuration
 # Comma-separated list of token IDs to monitor via WebSocket
-# Example: TOKEN_IDS=0x123abc,0x456def
 TOKEN_IDS=
 
 # Logging
 LOG_LEVEL=info
 
+# Server
+PORT=3000
+```
+
+### Trading Configuration
+
+```env
 # Trading gates (default to paper mode)
 LIVE_TRADING=false
 COMPLIANCE_ACCEPTED=false
 
 # Trading credentials (optional - only required for live trading)
-# PRIVATE_KEY=your_wallet_private_key_here
+# See .env.example for multiple secret storage options:
+# - Direct env variable (development only)
+# - Encrypted local storage
+# - AWS Secrets Manager
+# - HashiCorp Vault
+# - Azure Key Vault
+PRIVATE_KEY=your_wallet_private_key_here
 CHAIN_ID=137
-
-# Server
-PORT=3000
-
-# Retry Configuration (optional)
-RETRY_ATTEMPTS=3
-RETRY_DELAY=1000
 ```
+
+### Security Configuration
+
+```env
+# Admin Authentication (required for production/live trading)
+# Generate with: openssl rand -hex 32
+ADMIN_TOKEN=
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_MAX_REQUESTS=100
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_TRUST_PROXY=false
+```
+
+### Advanced Configuration
+
+See `.env.example` for complete configuration options including:
+- Paper trading parameters (slippage, fees, partial fills)
+- Risk management limits
+- Circuit breaker settings
+- Reconciliation intervals
+- Alerting configuration (Telegram)
+- Learning system database paths
+
+For detailed configuration guide, see **[Environment Setup](./docs/environment.md)**.
 
 ### Live Trading Setup
 
@@ -201,18 +236,31 @@ npm run dev
 
 The server provides the following endpoints:
 
-**Market Data:**
+**Public Endpoints:**
 - `GET /health` - Server health status
-- `GET /feed/status` - WebSocket feed connection status
+- `GET /ready` - Readiness check
+- `GET /metrics` - Prometheus metrics
 - `GET /orderbooks` - List all cached orderbooks with summaries
 - `GET /orderbook/:tokenId` - Get full orderbook for a specific token
+- `GET /feed/status` - WebSocket feed connection status
 
-**Trading (requires live trading to be enabled):**
+**Admin Endpoints (require ADMIN_TOKEN):**
 - `GET /status` - Trading status and wallet information
 - `GET /state` - Complete trading state (orders, positions, balances)
 - `GET /orders` - List all orders
+- `POST /orders` - Batch create orders (max 15)
 - `GET /fills` - List all fills
-- `POST /kill-switch` - Emergency: cancel all open orders
+- `POST /kill` - Cancel orders (supports query params: tokenId, assetId, scope)
+- `POST /kill-switch` - Legacy: cancel all open orders
+- `GET /api/learning/experiments` - ML experiments
+- `GET /api/learning/strategies` - Strategy list
+- `GET /api/learning/best` - Best performing strategy
+- `GET /api/learning/status` - Learning system status
+
+**Authentication:** Admin endpoints require the `Authorization` header:
+```bash
+curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" http://localhost:3000/status
+```
 
 Configure which tokens to monitor via the `TOKEN_IDS` environment variable.
 
