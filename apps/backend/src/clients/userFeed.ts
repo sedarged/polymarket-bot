@@ -45,6 +45,7 @@ export interface UserFeedOptions {
   marketIds?: string[]; // Optional: specific markets to subscribe to
   reconnectDelay?: number;
   maxReconnectDelay?: number;
+  wsUrl?: string; // Optional: override WebSocket URL for testing
 }
 
 /**
@@ -74,6 +75,7 @@ export class UserFeedClient extends EventEmitter {
   private marketIds: Set<string>; // Use Set to prevent duplicates
   private reconnectDelay: number;
   private maxReconnectDelay: number;
+  private wsUrl?: string; // Optional WebSocket URL override
   // Track authentication state
   private isAuthenticated: boolean = false;
   // Message deduplication: Track processed message IDs
@@ -90,6 +92,7 @@ export class UserFeedClient extends EventEmitter {
     this.marketIds = new Set(options.marketIds || []);
     this.reconnectDelay = options.reconnectDelay ?? 1000;
     this.maxReconnectDelay = options.maxReconnectDelay ?? 30000;
+    this.wsUrl = options.wsUrl; // Store optional URL override
 
     // Initialize CLOB client for API credential generation
     this.clobClient = new ClobClient(
@@ -116,8 +119,8 @@ export class UserFeedClient extends EventEmitter {
         return;
       }
 
-      // User WebSocket URL pattern
-      const wsUserUrl = config.wsMarketUrl.replace('/ws/market', '/ws/user');
+      // User WebSocket URL pattern (use override if provided, otherwise derive from config)
+      const wsUserUrl = this.wsUrl || config.wsMarketUrl.replace('/ws/market', '/ws/user');
       logger.info('Connecting to user feed WebSocket', { url: wsUserUrl });
 
       this.wsClient = new WebSocketClient({

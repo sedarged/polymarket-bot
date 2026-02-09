@@ -36,7 +36,15 @@ vi.mock('../src/config', () => ({
     retryAttempts: 3,
     retryDelay: 1000,
     retryTotalTimeout: 300000,
+    liveTrading: true, // Required for UserFeedClient
+    complianceAccepted: true, // Required for UserFeedClient
   },
+}));
+
+// Mock live trading check
+vi.mock('../src/utils/liveTrading', () => ({
+  assertLiveTradingEnabled: vi.fn(), // Allow UserFeedClient to be created in tests
+  isLiveTradingEnabled: vi.fn().mockReturnValue(true),
 }));
 
 describe('UserFeedClient', () => {
@@ -74,6 +82,7 @@ describe('UserFeedClient', () => {
   describe('initialization', () => {
     it('should initialize with wallet', () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -84,6 +93,7 @@ describe('UserFeedClient', () => {
     it('should initialize with market IDs', () => {
       const marketIds = ['market1', 'market2'];
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
         marketIds,
       });
@@ -105,18 +115,10 @@ describe('UserFeedClient', () => {
 
       client = new UserFeedClient({
         wallet: testWallet,
+        wsUrl: `ws://localhost:${port}/ws/user`, // Use wsUrl parameter for testing
       });
 
       client.on('connected', connectedHandler);
-
-      // Override wsMarketUrl in config for testing
-      vi.mock('../src/config', () => ({
-        config: {
-          wsMarketUrl: `ws://localhost:${port}/ws/market`,
-          clobApiUrl: 'https://clob.polymarket.com',
-          chainId: 137,
-        },
-      }));
 
       await client.connect();
 
@@ -146,6 +148,7 @@ describe('UserFeedClient', () => {
       });
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
         marketIds,
       });
@@ -181,6 +184,7 @@ describe('UserFeedClient', () => {
       });
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -216,6 +220,7 @@ describe('UserFeedClient', () => {
       });
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -253,6 +258,7 @@ describe('UserFeedClient', () => {
       });
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -285,6 +291,7 @@ describe('UserFeedClient', () => {
       });
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -318,6 +325,7 @@ describe('UserFeedClient', () => {
 
       const marketIds = ['market1', 'market2'];
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
         marketIds,
       });
@@ -338,6 +346,7 @@ describe('UserFeedClient', () => {
   describe('disconnection', () => {
     it('should disconnect and update state', async () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -353,6 +362,7 @@ describe('UserFeedClient', () => {
       const disconnectedHandler = vi.fn();
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -377,6 +387,7 @@ describe('UserFeedClient', () => {
       const errorHandler = vi.fn();
 
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -396,6 +407,7 @@ describe('UserFeedClient', () => {
 
     it('should throw error if subscribe called before connection', async () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -406,6 +418,7 @@ describe('UserFeedClient', () => {
 
     it('should throw error if unsubscribe called before connection', async () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -418,6 +431,7 @@ describe('UserFeedClient', () => {
   describe('authentication state', () => {
     it('should report authenticated state after connection', async () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
@@ -432,6 +446,7 @@ describe('UserFeedClient', () => {
 
     it('should reset authenticated state on disconnection', async () => {
       client = new UserFeedClient({
+        wsUrl: `ws://localhost:${port}/ws/user`,
         wallet: testWallet,
       });
 
