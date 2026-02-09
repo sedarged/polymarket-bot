@@ -114,6 +114,55 @@ npm run validate  # Validate order configuration
 - Security advisory check: Run `npm audit` and address issues
 - Verify README examples still work with new versions
 
+## Mandatory Codespaces Verification
+
+**REQUIRED FOR ALL PRs**
+
+Every PR must complete real-world testing using GitHub Codespaces to prevent "works on my machine" syndrome and ensure production readiness.
+
+### Why Codespaces Testing is Mandatory
+
+1. **Standardized environment** - Tests in exact production-like setup
+2. **Catches hidden bugs** - Finds environment-specific issues
+3. **Validates documentation** - Proves all commands actually work
+4. **Drives improvement** - Surfaces gaps in tooling and docs
+
+### Verification Requirements
+
+Before marking any PR as ready for review, complete:
+
+1. **Create a Codespace** from your PR branch
+2. **Complete the [Codespaces Verification Checklist](./CODESPACES_VERIFICATION_CHECKLIST.md)**
+3. **Collect proof** (terminal output, screenshots) for all verification steps
+4. **Document gaps** discovered during verification
+5. **Update documentation/scripts** immediately when gaps are found
+6. **Create new CLI commands or tests** if verification tooling is missing
+7. **Add all evidence** to your PR description
+
+### What Gets Verified
+
+Every PR must verify applicable sections:
+
+- ✅ **Environment Setup** - Dependencies, .env, Node version
+- ✅ **Build & Test** - TypeScript compilation, test suite, coverage
+- ✅ **CLI Commands** - All command-line tools work as documented
+- ✅ **Backend API** - All endpoints respond correctly
+- ✅ **Frontend Dashboard** - UI loads and functions (if applicable)
+- ✅ **WebSocket** - Connection and reconnection work (if applicable)
+- ✅ **Security** - No secrets committed, no new vulnerabilities, paper trading mode
+
+### Enforcement
+
+**⚠️ PRs CANNOT be approved without:**
+- Completed verification checklist
+- Proof provided for all applicable sections
+- Documentation gaps addressed
+- Security verification passed
+
+**See full checklist:** [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./CODESPACES_VERIFICATION_CHECKLIST.md)
+
+---
+
 ## Pull Request Requirements
 
 Every PR that includes code changes must include:
@@ -121,9 +170,10 @@ Every PR that includes code changes must include:
 1. **Code changes** ✅
 2. **Test updates** ✅ (if modifying behavior)
 3. **Documentation updates** ✅ (if user-facing changes)
-4. **PR description** explaining what docs were updated and why
+4. **Codespaces verification** ✅ (MANDATORY - see above)
+5. **PR description** explaining what docs were updated and why
 
-**Documentation-only PRs** do not require code or test changes.
+**Documentation-only PRs** still require Codespaces verification to ensure examples work.
 
 ### PR Description Template
 

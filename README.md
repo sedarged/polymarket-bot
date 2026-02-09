@@ -31,6 +31,9 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 
 **For Contributors:**
 - **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
+- **[Codespaces Verification Checklist](./docs/CODESPACES_VERIFICATION_CHECKLIST.md)** - 🚨 MANDATORY verification for all PRs
+- **[Development Workflow](./docs/DEV_WORKFLOW.md)** - Documentation maintenance and PR requirements
+- **[Codespaces Setup Guide](./docs/CODESPACES_SETUP.md)** - Quick start guide for GitHub Codespaces
 - **[CHANGELOG.md](./CHANGELOG.md)** - Release history and notable changes
 
 **Security & Audits:**

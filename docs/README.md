@@ -53,10 +53,14 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Development Workflow](./DEV_WORKFLOW.md) - Mandatory documentation maintenance procedures
+- [Codespaces Verification Checklist](./CODESPACES_VERIFICATION_CHECKLIST.md) - 🚨 **MANDATORY** real-world testing checklist for all PRs
+- [Verification Policy Executive Summary](./VERIFICATION_POLICY.md) - Overview of the verification policy and its benefits
+- [Codespaces Setup Guide](./CODESPACES_SETUP.md) - 🚀 Complete guide for GitHub Codespaces testing with all features
+- [Codespaces Maintainer Checklist](./CODESPACES_MAINTAINER_CHECKLIST.md) - Setup guide for repository maintainers
+- [Automation Scripts Guide](../scripts/README.md) - 🤖 Helper scripts for verification, quality checks, and validation
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
 - [Environment Setup](./environment.md) - Complete development environment and command reference
-- [Codespaces Setup Guide](./CODESPACES_SETUP.md) - 🚀 Complete guide for GitHub Codespaces testing with all features
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
 - [Small PR Implementation Plan](./small-pr-plan.md) - Phased PR rollout with acceptance criteria
@@ -91,6 +95,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Learning System Design](../REPORTS/LEARNING_SYSTEM.md) - Complete architecture and design specification
 
 ### AI & Automation
+- [AI Agent Workflow & Quality Gates](./AI_AGENT_WORKFLOW.md) - 🤖 Complete autonomous workflow with strict quality gates
 - [Project Layout](./ai/project-layout.md) - Repository structure and key files
 - [Common Pitfalls](./ai/common-pitfalls.md) - Trading bot pitfalls and how to avoid them
 - [Decision Trees](./ai/decision-trees.md) - Troubleshooting guides for common scenarios

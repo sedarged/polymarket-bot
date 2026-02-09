@@ -20,6 +20,15 @@ GitHub Codespaces provides a complete, cloud-based development environment for t
 - Testing API integrations
 - Paper trading experiments
 
+**🚨 MANDATORY: All PRs must complete the [Codespaces Verification Checklist](./CODESPACES_VERIFICATION_CHECKLIST.md)**
+
+This checklist ensures:
+- No "works on my machine" problems
+- All changes tested in production-like environment
+- Documentation stays accurate and up-to-date
+- Security practices followed
+- Proof of functionality provided in PRs
+
 ## Quick Start
 
 ### 1. Create a Codespace
@@ -134,6 +143,10 @@ code .env
 **Important:** Changes to `.env` in Codespaces are NOT committed (it's gitignored).
 
 ## Testing Checklist
+
+**🚨 IMPORTANT: For complete PR verification requirements, see [Codespaces Verification Checklist](./CODESPACES_VERIFICATION_CHECKLIST.md)**
+
+This section provides a quick overview of basic tests. For PR completion, you must follow the full mandatory verification checklist.
 
 ### ✅ Basic Setup Tests
 
@@ -446,6 +459,7 @@ curl http://localhost:3000/health
 - [.devcontainer/devcontainer.json](../.devcontainer/devcontainer.json) - Container configuration
 
 ### Testing and Operations
+- [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./CODESPACES_VERIFICATION_CHECKLIST.md) - 🚨 **MANDATORY** verification for all PRs
 - [docs/testing.md](./testing.md) - Testing strategy and guidelines
 - [docs/runbook.md](./runbook.md) - Operational procedures and incident response
 - [docs/troubleshooting.md](./troubleshooting.md) - Common issues and solutions
