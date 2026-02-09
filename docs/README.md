@@ -94,6 +94,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Learning System Design](../REPORTS/LEARNING_SYSTEM.md) - Complete architecture and design specification
 
 ### AI & Automation
+- [AI Agent Workflow & Quality Gates](./AI_AGENT_WORKFLOW.md) - 🤖 Complete autonomous workflow with strict quality gates
 - [Project Layout](./ai/project-layout.md) - Repository structure and key files
 - [Common Pitfalls](./ai/common-pitfalls.md) - Trading bot pitfalls and how to avoid them
 - [Decision Trees](./ai/decision-trees.md) - Troubleshooting guides for common scenarios

@@ -7,6 +7,7 @@ This document provides a contract for AI agents (GitHub Copilot, custom automati
 | Situation | Read This |
 |-----------|-----------|
 | 🆕 **Starting any work** | [STATUS.md](./STATUS.md) → [docs/ai/project-layout.md](./docs/ai/project-layout.md) |
+| 🤖 **Understanding agent workflow** | [docs/AI_AGENT_WORKFLOW.md](./docs/AI_AGENT_WORKFLOW.md) |
 | 🔍 **Finding code/files** | [docs/ai/project-layout.md](./docs/ai/project-layout.md) |
 | 🐛 **Debugging an error** | [docs/ai/decision-trees.md](./docs/ai/decision-trees.md) |
 | 💰 **Implementing trading** | [docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md) |
@@ -41,6 +42,11 @@ Work on tasks in this priority order:
 - **[docs/README.md](./docs/README.md)**: Documentation index - complete catalog of all project docs
 
 **AI Agent Specific Guides (docs/ai/):**
+- **[docs/AI_AGENT_WORKFLOW.md](./docs/AI_AGENT_WORKFLOW.md)**:
+  - **When to read**: Before starting any autonomous work
+  - **What it contains**: Complete workflow with quality gates, anti-patterns, tool usage, examples
+  - **Use it to**: Follow structured Research → Plan → Implement → Test → Review → Repeat workflow with strict quality gates
+
 - **[docs/ai/project-layout.md](./docs/ai/project-layout.md)**: 
   - **When to read**: Before making any code changes
   - **What it contains**: Complete repository structure, directory layout, key files and their purposes
