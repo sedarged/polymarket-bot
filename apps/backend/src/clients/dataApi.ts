@@ -1,4 +1,4 @@
-import { Position, Fill } from '@polymarket/shared';
+import { Position, Fill, History, Replay } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { BaseApiClient } from './baseApiClient';
 

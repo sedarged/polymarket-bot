@@ -3,7 +3,7 @@ import { config } from "../config";
 import { retry, ErrorType, classifyError } from "../utils/retry";
 import { CircuitBreaker } from "../utils/circuitBreaker";
 import { logger } from "../utils/logger";
-import { Event, Market } from "@polymarket/shared";
+import { Event, Market, Account, MarketHistory, MarketReplay, Series, Tag, Replay, History } from "@polymarket/shared";
 
 /**
  * Gamma API Client
