@@ -17,7 +17,8 @@
     "book": "npm run --workspace @polymarket/backend book",
     "test": "npm run --workspace @polymarket/backend test",
     "test:watch": "npm run --workspace @polymarket/backend test:watch",
-    "test:coverage": "npm run --workspace @polymarket/backend test:coverage"
+    "test:coverage": "npm run --workspace @polymarket/backend test:coverage",
+    "lint": "eslint --ext .ts,.tsx apps/backend/src apps/backend/tests packages/shared/src scripts docs/examples"
   },
   "keywords": [
     "polymarket",
@@ -25,5 +26,10 @@
     "markets",
     "typescript"
   ],
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2"
+  }
 }

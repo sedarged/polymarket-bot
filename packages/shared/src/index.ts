@@ -46,12 +46,12 @@ export interface OrderbookSummary {
 
 // WebSocket message types
 export interface WSMarketSubscription {
-  type: 'market';
+  type: "market";
   assets_ids: string[];
 }
 
 export interface WSOrderbookSnapshot {
-  event_type: 'book';
+  event_type: "book";
   asset_id: string;
   market: string;
   bids: OrderbookLevel[];
@@ -60,33 +60,36 @@ export interface WSOrderbookSnapshot {
 }
 
 export interface WSPriceChange {
-  event_type: 'price_change';
+  event_type: "price_change";
   asset_id: string;
   market: string;
-  side: 'buy' | 'sell';
+  side: "buy" | "sell";
   price: string;
   size: string;
   timestamp: number;
 }
 
 export interface WSLastTradePrice {
-  event_type: 'last_trade_price';
+  event_type: "last_trade_price";
   asset_id: string;
   price: string;
   timestamp: number;
 }
 
-export type WSMarketMessage = WSOrderbookSnapshot | WSPriceChange | WSLastTradePrice;
+export type WSMarketMessage =
+  | WSOrderbookSnapshot
+  | WSPriceChange
+  | WSLastTradePrice;
 
 // Trading types
 export interface Order {
   orderId: string;
   clientOrderId?: string;
   tokenId: string;
-  side: 'BUY' | 'SELL';
+  side: "BUY" | "SELL";
   price: string;
   size: string;
-  status: 'OPEN' | 'PARTIALLY_FILLED' | 'MATCHED' | 'CANCELLED';
+  status: "OPEN" | "PARTIALLY_FILLED" | "MATCHED" | "CANCELLED";
   createdAt: number;
   filledSize?: string;
   remainingSize?: string;
@@ -95,7 +98,7 @@ export interface Order {
 export interface Fill {
   orderId: string;
   tokenId: string;
-  side: 'BUY' | 'SELL';
+  side: "BUY" | "SELL";
   price: string;
   size: string;
   timestamp: number;
@@ -105,11 +108,11 @@ export interface Fill {
 
 // WebSocket user channel message types for order updates and fills
 export interface WSUserOrder {
-  event_type: 'order';
+  event_type: "order";
   order_id: string;
   client_order_id?: string;
   asset_id: string;
-  side: 'BUY' | 'SELL';
+  side: "BUY" | "SELL";
   price: string;
   original_size: string;
   size_matched: string;
@@ -118,11 +121,11 @@ export interface WSUserOrder {
 }
 
 export interface WSUserFill {
-  event_type: 'fill';
+  event_type: "fill";
   fill_id: string;
   order_id: string;
   asset_id: string;
-  side: 'BUY' | 'SELL';
+  side: "BUY" | "SELL";
   price: string;
   size: string;
   fee: string;
@@ -143,4 +146,73 @@ export interface Balance {
   currency: string;
   available: string;
   total: string;
+}
+
+/**
+ * Account structure for Polymarket user
+ */
+export interface Account {
+  address: string;
+  balances: Balance[];
+  positions: Position[];
+  history?: History[];
+  tags?: string[];
+}
+
+/**
+ * Series structure for grouping markets
+ */
+export interface Series {
+  id: string;
+  name: string;
+  tags: string[];
+  markets: Market[];
+  description?: string;
+}
+
+/**
+ * Tag structure for market/event categorization
+ */
+export interface Tag {
+  id: string;
+  name: string;
+  description?: string;
+  series?: string[];
+  markets?: string[];
+}
+
+/**
+ * Replay event for backtesting and analysis
+ */
+export interface Replay {
+  id: string;
+  eventType: string;
+  timestamp: number;
+  data: unknown;
+}
+
+/**
+ * History event for market/account activity
+ */
+export interface History {
+  id: string;
+  eventType: string;
+  timestamp: number;
+  data: unknown;
+}
+
+/**
+ * MarketHistory structure for historical events per market
+ */
+export interface MarketHistory {
+  marketId: string;
+  events: History[];
+}
+
+/**
+ * MarketReplay structure for replay events per market
+ */
+export interface MarketReplay {
+  marketId: string;
+  events: Replay[];
 }
