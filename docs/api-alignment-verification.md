@@ -128,7 +128,7 @@ These are documented API features that are not currently implemented. They are o
 | FOK order type | orderType: 'FOK' | Low | Advanced strategy feature |
 | FAK order type | orderType: 'FAK' | Low | Advanced strategy feature |
 | postOnly flag | postOnly: true | Medium | Market making enhancement |
-| Pagination offset | offset={n} | Medium | Limit-only pagination works |
+| Pagination offset | offset={n} | Medium | Not supported by GammaClient.getActiveMarkets(); only first page accessible |
 | Sort ordering | order=asc|desc | Low | Default ordering acceptable |
 
 *Note: High/Medium priority items marked in RESEARCH_REVIEW.md for future enhancement but not required for correctness.

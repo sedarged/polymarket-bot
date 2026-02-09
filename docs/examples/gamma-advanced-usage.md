@@ -17,7 +17,7 @@ This guide demonstrates how to use the newly implemented Gamma API endpoints for
 
 ### Get User Account Information
 ```typescript
-import { GammaClient } from '../clients/gamma';
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
 
 const gamma = new GammaClient();
 
@@ -34,6 +34,10 @@ console.log('Account:', {
 
 ### List and Filter Accounts
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get all accounts with specific filters
 const accounts = await gamma.getAccounts({
   limit: 50,
@@ -49,6 +53,10 @@ console.log(`Found ${accounts.length} accounts`);
 
 ### Get Individual Market by ID
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Fetch specific market details
 const market = await gamma.getMarket('0xmarket123');
 
@@ -63,6 +71,10 @@ console.log('Market:', {
 
 ### Get Market History
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Fetch historical events for a market
 const history = await gamma.getMarketHistory('0xmarket123', {
   limit: 100,
@@ -77,6 +89,10 @@ history.forEach(event => {
 
 ### Get Market Replay Data for Backtesting
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Fetch replay events for backtesting strategies
 const replay = await gamma.getMarketReplay('0xmarket123', {
   startTs: Date.now() - 7 * 24 * 60 * 60 * 1000, // Last 7 days
@@ -98,6 +114,10 @@ replay.forEach(event => {
 
 ### Browse Event Series
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get all series (grouped events)
 const series = await gamma.getSeries({
   limit: 20,
@@ -111,6 +131,10 @@ series.forEach(s => {
 
 ### Get Specific Series
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get details of a specific series
 const series = await gamma.getSeriesById('series-id-123');
 
@@ -124,6 +148,10 @@ console.log('Series:', {
 
 ### Explore Tags and Categories
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get all available tags
 const tags = await gamma.getTags({
   limit: 50,
@@ -137,6 +165,10 @@ tags.forEach(tag => {
 
 ### Get Tag Details
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get specific tag information
 const tag = await gamma.getTagById('politics');
 
@@ -154,6 +186,10 @@ console.log('Tag:', {
 
 ### Get Historical Events
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Fetch historical market data
 const history = await gamma.getHistory({
   startTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // Last 30 days
@@ -175,6 +211,10 @@ console.log('Event type distribution:', Object.fromEntries(eventTypes));
 
 ### Event Lookup
 ```typescript
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
 // Get specific event details
 const event = await gamma.getEventById('event-abc-123');
 
@@ -279,19 +319,24 @@ All Gamma client methods include:
 - **Error classification** for smart retry decisions
 
 ```typescript
-import { GammaClient } from '../clients/gamma';
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+import axios from 'axios';
 
 const gamma = new GammaClient();
 
 try {
   const market = await gamma.getMarket('invalid-id');
 } catch (error) {
-  if (error.response?.status === 404) {
-    console.error('Market not found');
-  } else if (error.response?.status === 429) {
-    console.error('Rate limited - will retry automatically');
+  if (axios.isAxiosError(error)) {
+    if (error.response?.status === 404) {
+      console.error('Market not found');
+    } else if (error.response?.status === 429) {
+      console.error('Rate limited - will retry automatically');
+    } else {
+      console.error('Unexpected error:', error.message);
+    }
   } else {
-    console.error('Unexpected error:', error.message);
+    console.error('Unexpected non-HTTP error:', error);
   }
 }
 
@@ -306,22 +351,19 @@ console.log('Circuit breaker state:', metrics.state);
 
 ### 1. Use Pagination for Large Datasets
 ```typescript
-// Efficient pagination
-async function getAllMarkets() {
-  const gamma = new GammaClient();
-  const allMarkets = [];
-  let batch;
-  let offset = 0;
-  const limit = 100;
-  
-  do {
-    batch = await gamma.getActiveMarkets(limit);
-    allMarkets.push(...batch);
-    offset += limit;
-  } while (batch.length === limit);
-  
-  return allMarkets;
+import { GammaClient } from '../../apps/backend/src/clients/gamma';
+
+const gamma = new GammaClient();
+
+// Note: getActiveMarkets() currently only supports limit parameter
+// It does not support offset, so you can only fetch the first page
+async function getFirstPageOfMarkets() {
+  const markets = await gamma.getActiveMarkets(100);
+  return markets;
 }
+
+// If you need pagination, you'll need to use a different approach
+// or wait for offset support to be added to the API
 ```
 
 ### 2. Filter Data at the API Level
