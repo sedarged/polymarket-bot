@@ -230,7 +230,7 @@ export class UserFeedClient extends EventEmitter {
 
       const authMessage: UserAuthMessage = {
         type: 'USER',
-        apikey: credentials.apiKey,
+        apikey: credentials.key,
         secret: credentials.secret,
         passphrase: credentials.passphrase,
         markets: this.marketIds.size > 0 ? Array.from(this.marketIds) : undefined,
@@ -315,7 +315,9 @@ export class UserFeedClient extends EventEmitter {
       if (this.processedMessageIds.size > this.MESSAGE_ID_CACHE_SIZE) {
         // Remove oldest entries (first added)
         const firstId = this.processedMessageIds.values().next().value;
-        this.processedMessageIds.delete(firstId);
+        if (firstId !== undefined) {
+          this.processedMessageIds.delete(firstId);
+        }
       }
 
       // Route message to appropriate handler

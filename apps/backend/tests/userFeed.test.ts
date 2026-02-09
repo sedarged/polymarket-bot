@@ -7,13 +7,15 @@ import { WSUserOrder, WSUserFill } from '@polymarket/shared';
 // Mock ClobClient to avoid L1 authentication during tests
 vi.mock('@polymarket/clob-client', () => {
   return {
-    ClobClient: vi.fn().mockImplementation(() => ({
-      createOrDeriveApiKey: vi.fn().mockResolvedValue({
-        apiKey: 'test-api-key',
-        secret: 'test-secret',
-        passphrase: 'test-passphrase',
-      }),
-    })),
+    ClobClient: class {
+      async createOrDeriveApiKey() {
+        return {
+          key: 'test-api-key',
+          secret: 'test-secret',
+          passphrase: 'test-passphrase',
+        };
+      }
+    },
   };
 });
 
