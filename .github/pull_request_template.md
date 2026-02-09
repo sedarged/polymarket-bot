@@ -22,7 +22,7 @@
 
 ## Codespaces Verification (MANDATORY)
 
-**🚨 REQUIRED FOR ALL PRs - See [Codespaces Verification Checklist](../docs/CODESPACES_VERIFICATION_CHECKLIST.md)**
+**🚨 REQUIRED FOR ALL PRs - See [Codespaces Verification Checklist](docs/CODESPACES_VERIFICATION_CHECKLIST.md)**
 
 - [ ] Completed full Codespaces verification checklist
 - [ ] All applicable sections verified (environment, build, CLI, API, frontend, WebSocket, security)

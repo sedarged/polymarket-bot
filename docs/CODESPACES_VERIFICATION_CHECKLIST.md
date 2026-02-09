@@ -100,16 +100,21 @@ npm --version
 
 **Commands:**
 ```bash
-npm run build
+npm run build 2>&1 | tee /tmp/build-output.txt
 echo "Exit code: $?"
 ```
 
 **Expected Result:**
-- ✅ Build completes successfully
-- ✅ Exit code 0
-- ⚠️ Note: Pre-existing TypeScript errors are documented in `docs/environment.md`
+- ✅ Build completes (may show documented pre-existing TypeScript errors)
+- ⚠️ **Important:** Pre-existing TypeScript errors are documented in `docs/environment.md`
+- ⚠️ **Your responsibility:** Ensure no NEW errors beyond the documented ones
+- ✅ If build fails, errors must match the documented pre-existing errors exactly
 
-**Proof Required:** Paste build output showing success or document any NEW errors
+**Proof Required:** 
+- Paste build output
+- If errors exist, explicitly state whether they are:
+  - PRE-EXISTING (documented in `docs/environment.md`) ✅ OK
+  - NEW (introduced by your changes) ❌ MUST FIX
 
 ---
 
@@ -117,20 +122,26 @@ echo "Exit code: $?"
 
 **Commands:**
 ```bash
-npm test
+npm test 2>&1 | tee /tmp/test-output.txt
 echo "Exit code: $?"
 ```
 
 **Expected Result:**
 - ✅ Test suite runs successfully
-- ✅ Most tests pass
-- ⚠️ Note: Up to 8 pre-existing test failures are documented in `docs/testing.md`
+- ✅ Tests pass (or only pre-existing failures documented in `docs/testing.md`)
+- ⚠️ **Note:** Pre-existing test failures are documented in `docs/testing.md`
+- ⚠️ **Your responsibility:** Ensure no NEW test failures beyond the documented ones
 
-**Proof Required:** Paste test summary showing pass/fail counts
+**Proof Required:** 
+- Paste test summary showing pass/fail counts
+- If tests fail, explicitly state whether failures are:
+  - PRE-EXISTING (documented in `docs/testing.md`) ✅ OK
+  - NEW (introduced by your changes) ❌ MUST FIX
 
-**Action Required if tests fail:**
-- Compare failures to documented pre-existing failures
-- If NEW failures appear, investigate and fix before proceeding
+**Action Required if NEW test failures appear:**
+- Investigate the failures
+- Fix your code to make tests pass
+- Re-run verification
 
 ---
 
@@ -188,14 +199,19 @@ npm run book -- --tokenId <TOKEN_ID_FROM_MARKETS>
 
 **Commands:**
 ```bash
-npm run dev -- --help
+# The CLI displays usage when run with an unknown or missing command:
+cd apps/backend
+npm run cli
+# Or trigger help by running any unrecognized command:
+npm run cli -- help
 ```
 
 **Expected Result:**
-- ✅ Displays available commands and options
-- ✅ No errors
+- ✅ Displays usage information showing available commands
+- ✅ Shows: `npm run markets`, `npm run book`, `npm run kill`
+- ✅ Exit code 1 (expected for help/usage display)
 
-**Proof Required:** Paste help output
+**Proof Required:** Paste usage output showing available commands
 
 ---
 
@@ -215,9 +231,22 @@ curl http://localhost:3000/health
 **Expected Result:**
 - ✅ Server starts on port 3000
 - ✅ No startup errors
-- ✅ Health endpoint returns `{"status":"ok"}`
+- ✅ Health endpoint returns a structured JSON payload with status, timestamp, liveTradingEnabled, uptime, and checks
+- ✅ Example response:
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2024-01-01T00:00:00.000Z",
+    "liveTradingEnabled": false,
+    "uptime": 123456,
+    "checks": {
+      "memory": {"status": "ok", "message": "..."},
+      "uptime": {"status": "ok", "message": "..."}
+    }
+  }
+  ```
 
-**Proof Required:** Paste startup logs and health check response
+**Proof Required:** Paste startup logs and full health check JSON response
 
 ---
 
@@ -233,11 +262,11 @@ curl http://localhost:3000/feed/status
 ```
 
 **Expected Result:**
-- ✅ `/health` - Returns `{"status":"ok"}`
-- ✅ `/ready` - Returns readiness status
-- ✅ `/metrics` - Returns Prometheus metrics
-- ✅ `/orderbooks` - Returns orderbook data
-- ✅ `/feed/status` - Returns WebSocket status
+- ✅ `/health` - Returns structured JSON with status, timestamp, liveTradingEnabled, uptime, and checks (see Section 4.1 for full example)
+- ✅ `/ready` - Returns readiness status JSON with `ready` boolean and checks
+- ✅ `/metrics` - Returns Prometheus metrics in text format
+- ✅ `/orderbooks` - Returns orderbook data as JSON
+- ✅ `/feed/status` - Returns WebSocket status JSON with `connected`, `tokenIds`, and `cachedOrderbooks`
 
 **Proof Required:** Paste response from each endpoint (first 10-20 lines if long)
 
@@ -258,9 +287,9 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/orders
 **Expected Result:**
 - ✅ `/status` - Returns trading status including `live_trading: false`
 - ✅ `/state` - Returns system state
-- ✅ `/orders` - Returns empty array or current orders
+- ✅ `/orders` - Returns an object like `{"orders":[]}` or `{"orders":[...]}` with current orders
 
-**Proof Required:** Paste response from each endpoint
+**Proof Required:** Paste JSON response from each endpoint (for `/orders`, include the full object showing the `orders` array, empty or populated)
 
 **Action Required if 401 errors:**
 - Verify `ADMIN_TOKEN` is set in `.env`
@@ -336,11 +365,12 @@ curl http://localhost:3000/feed/status
 ```
 
 **Expected Result:**
-- ✅ Returns WebSocket connection status
-- ✅ Status should be "connected" or "connecting"
+- ✅ Returns WebSocket connection status as a JSON object
+- ✅ Response includes `connected` (boolean), `tokenIds` array, and `cachedOrderbooks` count
+- ✅ Example: `{"connected":true,"tokenIds":["12345"],"cachedOrderbooks":1}`
 - ✅ No error messages
 
-**Proof Required:** Paste WebSocket status response
+**Proof Required:** Paste `/feed/status` JSON response
 
 ---
 
@@ -366,17 +396,19 @@ curl http://localhost:3000/feed/status
 
 **Commands:**
 ```bash
-# Check no secrets committed
-git log --oneline -10
-git diff main | grep -iE "password|secret|key|token" || echo "No secrets found in diff"
+# Basic check for obvious secrets in your changes
+git diff origin/main | grep -iE "password|secret|private.*key|token.*=" || echo "No obvious secrets found in diff"
+
+# For comprehensive scanning, use TruffleHog (if available in CI):
+# docker run --rm -v "$(pwd):/proj" trufflesecurity/trufflehog:latest git file:///proj --since-commit origin/main
 ```
 
 **Expected Result:**
-- ✅ No secrets in git history
-- ✅ No secrets in current changes
-- ✅ All credentials in `.env` file (which is gitignored)
+- ✅ No obvious secrets in your diff (password=, secret=, private_key=, token=, etc.)
+- ✅ All credentials stored in `.env` file (which is gitignored)
+- ⚠️ **Note:** This basic check catches obvious patterns only. CI runs TruffleHog for comprehensive scanning.
 
-**Proof Required:** Paste output confirming no secrets found
+**Proof Required:** Paste output confirming no secrets found. Note: Full secret scanning happens in CI via TruffleHog.
 
 ---
 

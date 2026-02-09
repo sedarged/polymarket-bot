@@ -96,7 +96,8 @@ Location: [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./CODESPACES_VERIFICATION_
 ❌ No proof provided  
 ❌ New high/critical vulnerabilities introduced  
 ❌ Documentation gaps not addressed  
-❌ Tests failing (excluding pre-existing failures)
+❌ NEW test failures (beyond documented pre-existing failures)
+❌ NEW TypeScript errors (beyond documented pre-existing errors)
 
 ### PR Can Be Approved If:
 
@@ -104,7 +105,8 @@ Location: [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./CODESPACES_VERIFICATION_
 ✅ Proof provided for all verification steps  
 ✅ Documentation updated for any gaps found  
 ✅ Security verification passed  
-✅ Tests passing (or only pre-existing failures)
+✅ No NEW test failures (pre-existing failures documented in `docs/testing.md` are acceptable)
+✅ No NEW TypeScript errors (pre-existing errors documented in `docs/environment.md` are acceptable)
 
 ## Where Is This Enforced?
 
