@@ -123,12 +123,16 @@ echo "7. Checking security configuration..."
 if grep -q "^[[:space:]]*USER" Dockerfile; then
     USER_LINE=$(grep "^[[:space:]]*USER" Dockerfile | tail -1)
     USER_VALUE=$(echo "$USER_LINE" | sed -E 's/^[[:space:]]*USER[[:space:]]+//; s/[[:space:]]+$//')
-    if [[ "$USER_VALUE" == "root" || "$USER_VALUE" == "0" || "$USER_VALUE" == root:* || "$USER_VALUE" == 0:* ]]; then
-        error "Container is configured to run as root user ('$USER_VALUE') (security risk)"
-        exit 1
-    else
-        success "Non-root user configured: $USER_VALUE"
-    fi
+    # Check if user is root (root, 0, root:*, 0:*)
+    case "$USER_VALUE" in
+        root|0|root:*|0:*)
+            error "Container is configured to run as root user ('$USER_VALUE') (security risk)"
+            exit 1
+            ;;
+        *)
+            success "Non-root user configured: $USER_VALUE"
+            ;;
+    esac
 else
     warning "No non-root user configured (security risk)"
 fi
