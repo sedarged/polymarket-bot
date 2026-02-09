@@ -2,8 +2,6 @@
 # Supports local development and testing
 # Addresses PR-015: Docker local/development deployment
 
-version: '3.8'
-
 services:
   # Backend service - Polymarket Trading Bot API
   backend:

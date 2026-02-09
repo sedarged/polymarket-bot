@@ -7,12 +7,14 @@
 # =============================================================================
 FROM node:20-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache \
+# Update package index and install build dependencies
+# Note: Some packages may require native compilation (better-sqlite3)
+RUN apk update && apk add --no-cache \
     python3 \
     make \
     g++ \
-    git
+    git \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -39,10 +41,11 @@ RUN npm prune --production --legacy-peer-deps
 # =============================================================================
 FROM node:20-alpine AS production
 
-# Install runtime dependencies only
-RUN apk add --no-cache \
+# Update package index and install runtime dependencies only
+RUN apk update && apk add --no-cache \
     dumb-init \
-    tini
+    tini \
+    && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S polymarket && \
