@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.0](https://github.com/sedarged/polymarket-bot/compare/v1.29.0...v1.30.0) (2026-02-09)
+
+
+### Features
+
+* complete Gamma API integration with WebSocket user streaming (Issue [#242](https://github.com/sedarged/polymarket-bot/issues/242)) ([55244e2](https://github.com/sedarged/polymarket-bot/commit/55244e2c2e69ddeb7d484f5761770cab000ce2e9))
+* implement UserFeedClient for WebSocket user streaming ([f3ce96c](https://github.com/sedarged/polymarket-bot/commit/f3ce96cba4bd1e16a6f02c776c3bc5cbc0f4a489))
+
+
+### Bug Fixes
+
+* add missing type imports for Gamma and Data API clients ([74092c9](https://github.com/sedarged/polymarket-bot/commit/74092c9decf23430fcfcec28914d8a4c649520ce))
+* address code review feedback - phase 1 ([140915c](https://github.com/sedarged/polymarket-bot/commit/140915c0d51cf80dfe84eda294eec6818bcee96f))
+* refactor UserFeedClient to support WebSocket URL override for testing ([86ff2b8](https://github.com/sedarged/polymarket-bot/commit/86ff2b8e15c8ccc82196606102075e2e59cd1d97))
+
 ## [1.29.0](https://github.com/sedarged/polymarket-bot/compare/v1.28.0...v1.29.0) (2026-02-08)
 
 
