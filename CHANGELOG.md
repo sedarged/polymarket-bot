@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.32.0](https://github.com/sedarged/polymarket-bot/compare/v1.31.0...v1.32.0) (2026-02-09)
+
+
+### Features
+
+* add Docker deployment infrastructure with security hardening ([ea281aa](https://github.com/sedarged/polymarket-bot/commit/ea281aadf332e50b43134f1c9340b006ee5c6942))
+* add Docker verification script and update architecture docs ([183769e](https://github.com/sedarged/polymarket-bot/commit/183769eab6d39a8c2ff810ca1e1de2a28d93cfe5))
+
+
+### Bug Fixes
+
+* address code review feedback for Docker infrastructure ([546e415](https://github.com/sedarged/polymarket-bot/commit/546e41524d03ac86d64deac9b456c490ce9b8e59))
+* address code review findings for Docker configuration ([3c2d60b](https://github.com/sedarged/polymarket-bot/commit/3c2d60b561beae7737b1c5235e68cff2990149e3))
+* improve POSIX compatibility in verify-docker.sh ([b90b040](https://github.com/sedarged/polymarket-bot/commit/b90b040a80de5ad9d618594bafeb3dfa90b8a454))
+
 ## [1.31.0](https://github.com/sedarged/polymarket-bot/compare/v1.30.1...v1.31.0) (2026-02-09)
 
 
