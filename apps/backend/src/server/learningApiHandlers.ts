@@ -1,5 +1,5 @@
-import http from 'http';
-import { logger } from '../utils/logger';
+import http from "http";
+import { logger } from "../utils/logger";
 import {
   EventStore,
   SignalCatalog,
@@ -7,20 +7,20 @@ import {
   BanditAllocator,
   MetricsGating,
   PromotionWorkflow,
-} from '../learning';
+} from "../learning";
 
 /**
  * Learning System API Handlers
- * 
+ *
  * Provides REST API endpoints for the learning system dashboard integration.
  * All endpoints require admin authentication (enforced by server middleware).
- * 
+ *
  * Endpoints:
  * - GET /api/learning/experiments - List active experiments with metrics
  * - GET /api/learning/strategies - List strategies with performance data
  * - GET /api/learning/best - Get best performing strategy
  * - GET /api/learning/status - Get integration status
- * 
+ *
  * Paper trading only - no live trading integration.
  */
 
@@ -38,32 +38,39 @@ let promotionWorkflow: PromotionWorkflow | null = null;
  */
 function initializeLearningSystem(): void {
   // Check if already fully initialized
-  if (eventStore && signalCatalog && backtestEngine && banditAllocator && metricsGating && promotionWorkflow) {
+  if (
+    eventStore &&
+    signalCatalog &&
+    backtestEngine &&
+    banditAllocator &&
+    metricsGating &&
+    promotionWorkflow
+  ) {
     return; // Already fully initialized
   }
 
-  logger.info('Initializing learning system components');
+  logger.info("Initializing learning system components");
 
   try {
     // Initialize into locals first to avoid partial state
     const localEventStore = new EventStore({
-      path: process.env.EVENT_STORE_PATH || './data/events.db',
+      path: process.env.EVENT_STORE_PATH || "./data/events.db",
       readonly: false,
     });
 
     const localSignalCatalog = new SignalCatalog({
-      path: process.env.SIGNAL_CATALOG_PATH || './data/signals.db',
+      path: process.env.SIGNAL_CATALOG_PATH || "./data/signals.db",
       readonly: false,
     });
 
     const localBacktestEngine = new BacktestEngine({
-      path: process.env.BACKTEST_ENGINE_PATH || './data/backtests.db',
+      path: process.env.BACKTEST_ENGINE_PATH || "./data/backtests.db",
       eventStore: localEventStore,
       readonly: false,
     });
 
     const localBanditAllocator = new BanditAllocator({
-      algorithm: 'epsilon-greedy',
+      algorithm: "epsilon-greedy",
       totalCapital: 1000, // Paper trading capital
       explorationFactor: 0.1,
       minTradeCount: 10,
@@ -80,7 +87,7 @@ function initializeLearningSystem(): void {
     });
 
     const localPromotionWorkflow = new PromotionWorkflow({
-      dbPath: process.env.PROMOTION_WORKFLOW_PATH || './data/promotions.db',
+      dbPath: process.env.PROMOTION_WORKFLOW_PATH || "./data/promotions.db",
       config: {
         criteria: {
           minPnl: 0,
@@ -104,9 +111,9 @@ function initializeLearningSystem(): void {
     metricsGating = localMetricsGating;
     promotionWorkflow = localPromotionWorkflow;
 
-    logger.info('Learning system initialized successfully');
+    logger.info("Learning system initialized successfully");
   } catch (error) {
-    logger.error('Failed to initialize learning system', { error });
+    logger.error("Failed to initialize learning system", { error });
     // Clear any partial state on failure
     eventStore = null;
     signalCatalog = null;
@@ -124,50 +131,57 @@ function initializeLearningSystem(): void {
  */
 export async function handleGetExperiments(
   _req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ): Promise<void> {
   try {
     initializeLearningSystem();
 
     if (!banditAllocator) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: 'Learning system not initialized',
-        experiments: [],
-      }));
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: "Learning system not initialized",
+          experiments: [],
+        }),
+      );
       return;
     }
 
     // Get all bandit states
     const allStates = banditAllocator.getAllStates();
-    
+
     // Calculate total pulls for allocation
     const totalPulls = allStates.reduce((sum, s) => sum + s.pulls, 0);
-    
+
     // Format experiments data
-    const experiments = allStates.map(state => ({
+    const experiments = allStates.map((state) => ({
       strategyId: state.strategyId,
       samples: state.pulls,
       totalReward: state.totalReward,
       meanReward: state.pulls > 0 ? state.totalReward / state.pulls : 0,
       allocation: totalPulls > 0 ? state.pulls / totalPulls : 0,
-      status: state.pulls >= 10 ? 'active' : 'warming-up',
+      status: state.pulls >= 10 ? "active" : "warming-up",
     }));
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      totalExperiments: experiments.length,
-      experiments,
-      lastUpdated: new Date().toISOString(),
-    }));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        totalExperiments: experiments.length,
+        experiments,
+        lastUpdated: new Date().toISOString(),
+      }),
+    );
 
-    logger.debug('Experiments data retrieved', { count: experiments.length });
+    logger.debug("Experiments data retrieved", { count: experiments.length });
   } catch (error) {
-    logger.error('Failed to get experiments', { error });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Failed to get experiments',
-    }));
+    logger.error("Failed to get experiments", { error });
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          error instanceof Error ? error.message : "Failed to get experiments",
+      }),
+    );
   }
 }
 
@@ -177,29 +191,32 @@ export async function handleGetExperiments(
  */
 export async function handleGetStrategies(
   _req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ): Promise<void> {
   try {
     initializeLearningSystem();
 
     if (!promotionWorkflow) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: 'Learning system not initialized',
-        strategies: [],
-      }));
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: "Learning system not initialized",
+          strategies: [],
+        }),
+      );
       return;
     }
 
     // Get all strategies from promotion workflow using listPromotions
     const allPromotions = promotionWorkflow.listPromotions();
-    
+
     // Format strategy data
-    const strategies = allPromotions.map(promotion => {
-      const metrics = typeof promotion.metrics === 'string' 
-        ? JSON.parse(promotion.metrics) 
-        : promotion.metrics;
-      
+    const strategies = allPromotions.map((promotion) => {
+      const metrics =
+        typeof promotion.metrics === "string"
+          ? JSON.parse(promotion.metrics)
+          : promotion.metrics;
+
       return {
         strategyId: promotion.strategyId,
         status: promotion.status,
@@ -209,24 +226,29 @@ export async function handleGetStrategies(
         winRate: metrics.winRate || 0,
         maxDrawdown: metrics.maxDrawdown || 0,
         lastEvaluated: metrics.lastUpdated || new Date().toISOString(),
-        promotionEligible: promotion.status === 'under-review',
+        promotionEligible: promotion.status === "under-review",
       };
     });
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      totalStrategies: strategies.length,
-      strategies,
-      lastUpdated: new Date().toISOString(),
-    }));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        totalStrategies: strategies.length,
+        strategies,
+        lastUpdated: new Date().toISOString(),
+      }),
+    );
 
-    logger.debug('Strategies data retrieved', { count: strategies.length });
+    logger.debug("Strategies data retrieved", { count: strategies.length });
   } catch (error) {
-    logger.error('Failed to get strategies', { error });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Failed to get strategies',
-    }));
+    logger.error("Failed to get strategies", { error });
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          error instanceof Error ? error.message : "Failed to get strategies",
+      }),
+    );
   }
 }
 
@@ -236,44 +258,57 @@ export async function handleGetStrategies(
  */
 export async function handleGetBestStrategy(
   _req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ): Promise<void> {
   try {
     initializeLearningSystem();
 
     if (!promotionWorkflow || !metricsGating) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: 'Learning system not initialized',
-        bestStrategy: null,
-      }));
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: "Learning system not initialized",
+          bestStrategy: null,
+        }),
+      );
       return;
     }
 
     // Get all strategies
     const allPromotions = promotionWorkflow.listPromotions();
-    
+
     if (allPromotions.length === 0) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        bestStrategy: null,
-        message: 'No strategies evaluated yet',
-      }));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          bestStrategy: null,
+          recommendation: "No strategies available",
+          message: "No strategies evaluated yet",
+          lastUpdated: new Date().toISOString(),
+        }),
+      );
       return;
     }
 
     // Find best strategy by Sharpe ratio
     const bestPromotion = allPromotions.reduce((best, current) => {
-      const bestMetrics = typeof best.metrics === 'string' ? JSON.parse(best.metrics) : best.metrics;
-      const currentMetrics = typeof current.metrics === 'string' ? JSON.parse(current.metrics) : current.metrics;
+      const bestMetrics =
+        typeof best.metrics === "string"
+          ? JSON.parse(best.metrics)
+          : best.metrics;
+      const currentMetrics =
+        typeof current.metrics === "string"
+          ? JSON.parse(current.metrics)
+          : current.metrics;
       const bestSharpe = bestMetrics.sharpe || -Infinity;
       const currentSharpe = currentMetrics.sharpe || -Infinity;
       return currentSharpe > bestSharpe ? current : best;
     });
 
-    const metrics = typeof bestPromotion.metrics === 'string' 
-      ? JSON.parse(bestPromotion.metrics) 
-      : bestPromotion.metrics;
+    const metrics =
+      typeof bestPromotion.metrics === "string"
+        ? JSON.parse(bestPromotion.metrics)
+        : bestPromotion.metrics;
 
     // Check if best strategy meets promotion criteria using metrics gating
     const performance = {
@@ -286,34 +321,44 @@ export async function handleGetBestStrategy(
       errorRate: metrics.errorRate || 0,
       lastUpdated: metrics.lastUpdated || new Date().toISOString(),
     };
-    
+
     const daysSinceStart = Math.floor(
-      (Date.now() - new Date(bestPromotion.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(bestPromotion.createdAt).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
     const gatingResult = metricsGating.check(performance, daysSinceStart);
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      bestStrategy: {
-        strategyId: bestPromotion.strategyId,
-        status: bestPromotion.status,
-        performance,
-        promotionEligible: gatingResult.passed,
-        promotionBlockers: gatingResult.failedChecks,
-      },
-      recommendation: gatingResult.passed
-        ? 'Strategy meets promotion criteria and can be considered for candidate status'
-        : `Strategy does not meet promotion criteria: ${gatingResult.failedChecks.join(', ')}`,
-      lastUpdated: new Date().toISOString(),
-    }));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        bestStrategy: {
+          strategyId: bestPromotion.strategyId,
+          status: bestPromotion.status,
+          performance,
+          promotionEligible: gatingResult.passed,
+          promotionBlockers: gatingResult.failedChecks,
+        },
+        recommendation: gatingResult.passed
+          ? "Strategy meets promotion criteria and can be considered for candidate status"
+          : `Strategy does not meet promotion criteria: ${gatingResult.failedChecks.join(", ")}`,
+        lastUpdated: new Date().toISOString(),
+      }),
+    );
 
-    logger.debug('Best strategy retrieved', { strategyId: bestPromotion.strategyId });
+    logger.debug("Best strategy retrieved", {
+      strategyId: bestPromotion.strategyId,
+    });
   } catch (error) {
-    logger.error('Failed to get best strategy', { error });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Failed to get best strategy',
-    }));
+    logger.error("Failed to get best strategy", { error });
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get best strategy",
+      }),
+    );
   }
 }
 
@@ -324,7 +369,7 @@ export async function handleGetBestStrategy(
  */
 export async function handleGetLearningStatus(
   _req: http.IncomingMessage,
-  res: http.ServerResponse
+  res: http.ServerResponse,
 ): Promise<void> {
   try {
     initializeLearningSystem();
@@ -332,58 +377,72 @@ export async function handleGetLearningStatus(
     const status = {
       eventStore: {
         initialized: eventStore !== null,
-        status: eventStore ? 'connected' : 'not-connected',
+        status: eventStore ? "connected" : "not-connected",
         eventsCount: 0, // Would need to query event store for actual count
       },
       signalCatalog: {
         initialized: signalCatalog !== null,
-        status: signalCatalog ? 'connected' : 'not-connected',
-        signalsCount: signalCatalog ? signalCatalog.listSignalNames().length : 0,
+        status: signalCatalog ? "connected" : "not-connected",
+        signalsCount: signalCatalog
+          ? signalCatalog.listSignalNames().length
+          : 0,
       },
       backtestEngine: {
         initialized: backtestEngine !== null,
-        status: backtestEngine ? 'active' : 'not-active',
+        status: backtestEngine ? "active" : "not-active",
       },
       banditAllocator: {
         initialized: banditAllocator !== null,
-        status: banditAllocator ? 'running' : 'not-running',
-        algorithm: banditAllocator ? banditAllocator.getConfig().algorithm : null,
+        status: banditAllocator ? "running" : "not-running",
+        algorithm: banditAllocator
+          ? banditAllocator.getConfig().algorithm
+          : null,
       },
       metricsGating: {
         initialized: metricsGating !== null,
-        status: metricsGating ? 'active' : 'not-active',
+        status: metricsGating ? "active" : "not-active",
       },
       promotionWorkflow: {
         initialized: promotionWorkflow !== null,
-        status: promotionWorkflow ? 'active' : 'not-active',
+        status: promotionWorkflow ? "active" : "not-active",
       },
       overall: {
-        healthy: eventStore !== null && banditAllocator !== null && promotionWorkflow !== null,
-        mode: 'paper-trading-only',
+        healthy:
+          eventStore !== null &&
+          banditAllocator !== null &&
+          promotionWorkflow !== null,
+        mode: "paper-trading-only",
       },
       lastUpdated: new Date().toISOString(),
     };
 
     // Return 503 if system is not healthy/initialized
     if (!status.overall.healthy) {
-      res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        ...status,
-        error: 'Learning system not fully initialized',
-      }));
-      logger.warn('Learning system status check: system not healthy');
+      res.writeHead(503, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ...status,
+          error: "Learning system not fully initialized",
+        }),
+      );
+      logger.warn("Learning system status check: system not healthy");
       return;
     }
 
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(status));
 
-    logger.debug('Learning system status retrieved');
+    logger.debug("Learning system status retrieved");
   } catch (error) {
-    logger.error('Failed to get learning system status', { error });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Failed to get learning system status',
-    }));
+    logger.error("Failed to get learning system status", { error });
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get learning system status",
+      }),
+    );
   }
 }

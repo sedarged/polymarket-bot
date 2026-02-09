@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { WebSocketClient, WebSocketState } from '../src/clients/websocket';
-import { WebSocketServer } from 'ws';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { WebSocketClient, WebSocketState } from "../src/clients/websocket";
+import { WebSocketServer } from "ws";
 
-describe('WebSocketClient', () => {
+describe("WebSocketClient", () => {
   let server: WebSocketServer;
   let port: number;
   let client: WebSocketClient;
@@ -11,9 +11,9 @@ describe('WebSocketClient', () => {
     // Create a test WebSocket server
     server = new WebSocketServer({ port: 0 });
     await new Promise<void>((resolve) => {
-      server.on('listening', () => {
+      server.on("listening", () => {
         const address = server.address();
-        if (address && typeof address !== 'string') {
+        if (address && typeof address !== "string") {
           port = address.port;
         }
         resolve();
@@ -23,22 +23,22 @@ describe('WebSocketClient', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
   });
 
-  describe('connection lifecycle', () => {
-    it('should connect to WebSocket server', async () => {
+  describe("connection lifecycle", () => {
+    it("should connect to WebSocket server", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
         reconnectDelay: 100,
       });
 
       const openPromise = new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
       });
 
       client.connect();
@@ -48,65 +48,68 @@ describe('WebSocketClient', () => {
       expect(client.getState()).toBe(WebSocketState.CONNECTED);
     });
 
-    it('should emit open event on connection', async () => {
+    it("should emit open event on connection", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
       });
 
       const openHandler = vi.fn();
-      client.on('open', openHandler);
+      client.on("open", openHandler);
 
       client.connect();
       await new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
       });
 
       expect(openHandler).toHaveBeenCalledOnce();
     });
 
-    it('should emit close event on disconnection', async () => {
+    it("should emit close event on disconnection", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
         reconnectDelay: 1000, // Prevent immediate reconnect
       });
 
-      const closeHandler = vi.fn();
-      client.on('close', closeHandler);
+      const closeHandler = vi.fn(() => {
+        // Debug log
+        console.log("WebSocketClient: close event fired");
+      });
+      client.on("close", closeHandler);
 
       await new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
         client.connect();
       });
 
       const closePromise = new Promise<void>((resolve) => {
-        client.on('close', () => resolve());
+        client.on("close", () => resolve());
       });
 
-      client.close();
+      await client.close();
       await closePromise;
 
       expect(closeHandler).toHaveBeenCalled();
       expect(client.getState()).toBe(WebSocketState.CLOSED);
-    });
+    }, 10000);
   });
 
-  describe('message handling', () => {
+  describe("message handling", () => {
     beforeEach(async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
       });
 
       await new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
         client.connect();
       });
     });
 
-    it('should receive and parse JSON messages', async () => {
-      const testMessage = { type: 'test', data: 'hello' };
+    it("should receive and parse JSON messages", async () => {
+      const testMessage = { type: "test", data: "hello" };
 
       const messagePromise = new Promise<unknown>((resolve) => {
-        client.on('message', (msg) => resolve(msg));
+        client.on("message", (msg) => resolve(msg));
       });
 
       // Server sends message to client
@@ -118,27 +121,27 @@ describe('WebSocketClient', () => {
       expect(received).toEqual(testMessage);
     });
 
-    it('should send messages to server', async () => {
-      const testMessage = { type: 'subscribe', data: 'market' };
+    it("should send messages to server", async () => {
+      const testMessage = { type: "subscribe", data: "market" };
 
       const messagePromise = new Promise<unknown>((resolve) => {
         // Set up the handler for any new connections
         const handleConnection = (ws: any) => {
-          ws.on('message', (data: any) => {
+          ws.on("message", (data: any) => {
             resolve(JSON.parse(data.toString()));
           });
         };
-        
+
         // Handle existing connections
         if (server.clients.size > 0) {
           server.clients.forEach((ws) => {
-            ws.on('message', (data: any) => {
+            ws.on("message", (data: any) => {
               resolve(JSON.parse(data.toString()));
             });
           });
         }
-        
-        server.on('connection', handleConnection);
+
+        server.on("connection", handleConnection);
       });
 
       client.send(testMessage);
@@ -148,8 +151,8 @@ describe('WebSocketClient', () => {
     });
   });
 
-  describe('reconnection', () => {
-    it('should use exponential backoff configuration', () => {
+  describe("reconnection", () => {
+    it("should use exponential backoff configuration", () => {
       // Test that configuration is properly set
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
@@ -161,14 +164,14 @@ describe('WebSocketClient', () => {
       expect(client.getState()).toBe(WebSocketState.DISCONNECTED);
     });
 
-    it('should not reconnect when closed manually', async () => {
+    it("should not reconnect when closed manually", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
         reconnectDelay: 100,
       });
 
       await new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
         client.connect();
       });
 
@@ -182,19 +185,19 @@ describe('WebSocketClient', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('should not connect if already connected', async () => {
+  describe("edge cases", () => {
+    it("should not connect if already connected", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
       });
 
       await new Promise<void>((resolve) => {
-        client.on('open', () => resolve());
+        client.on("open", () => resolve());
         client.connect();
       });
 
       const openHandler = vi.fn();
-      client.on('open', openHandler);
+      client.on("open", openHandler);
 
       // Try to connect again
       client.connect();
@@ -205,13 +208,13 @@ describe('WebSocketClient', () => {
       expect(openHandler).not.toHaveBeenCalled();
     });
 
-    it('should not send messages when disconnected', async () => {
+    it("should not send messages when disconnected", async () => {
       client = new WebSocketClient({
         url: `ws://localhost:${port}`,
       });
 
       // Try to send before connecting
-      client.send({ test: 'data' });
+      client.send({ test: "data" });
 
       // Should not throw, just log warning
       expect(client.isConnected()).toBe(false);

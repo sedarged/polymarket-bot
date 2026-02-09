@@ -1,13 +1,13 @@
-import WebSocket from 'ws';
-import { EventEmitter } from 'events';
-import { logger } from '../utils/logger';
-import { 
-  websocketState, 
-  websocketReconnects, 
-  websocketMessages, 
+import WebSocket from "ws";
+import { EventEmitter } from "events";
+import { logger } from "../utils/logger";
+import {
+  websocketState,
+  websocketReconnects,
+  websocketMessages,
   websocketErrors,
   websocketUptime,
-} from '../utils/metrics';
+} from "../utils/metrics";
 
 export interface WebSocketClientOptions {
   url: string;
@@ -18,11 +18,11 @@ export interface WebSocketClientOptions {
 }
 
 export enum WebSocketState {
-  DISCONNECTED = 'disconnected',
-  CONNECTING = 'connecting',
-  CONNECTED = 'connected',
-  RECONNECTING = 'reconnecting',
-  CLOSED = 'closed',
+  DISCONNECTED = "disconnected",
+  CONNECTING = "connecting",
+  CONNECTED = "connected",
+  RECONNECTING = "reconnecting",
+  CLOSED = "closed",
 }
 
 export class WebSocketClient extends EventEmitter {
@@ -38,7 +38,7 @@ export class WebSocketClient extends EventEmitter {
   private state: WebSocketState = WebSocketState.DISCONNECTED;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private connectedAt: number | null = null;
-  private feedType: string = 'market'; // default feed type for metrics
+  private feedType: string = "market"; // default feed type for metrics
 
   constructor(options: WebSocketClientOptions) {
     super();
@@ -55,7 +55,7 @@ export class WebSocketClient extends EventEmitter {
    */
   private updateStateMetrics(newState: WebSocketState): void {
     this.state = newState;
-    
+
     // Map state to numeric value for Prometheus gauge
     const stateValue = {
       [WebSocketState.DISCONNECTED]: 0,
@@ -64,9 +64,9 @@ export class WebSocketClient extends EventEmitter {
       [WebSocketState.RECONNECTING]: 3,
       [WebSocketState.CLOSED]: 4,
     }[newState];
-    
+
     websocketState.set({ feed_type: this.feedType }, stateValue);
-    
+
     // Track connection uptime
     if (newState === WebSocketState.CONNECTED) {
       this.connectedAt = Date.now();
@@ -78,74 +78,98 @@ export class WebSocketClient extends EventEmitter {
   }
 
   connect(): void {
-    if (this.state === WebSocketState.CONNECTING || this.state === WebSocketState.CONNECTED) {
-      logger.debug('WebSocket already connecting or connected', { state: this.state });
+    if (
+      this.state === WebSocketState.CONNECTING ||
+      this.state === WebSocketState.CONNECTED
+    ) {
+      logger.debug("WebSocket already connecting or connected", {
+        state: this.state,
+      });
       return;
     }
 
     this.updateStateMetrics(WebSocketState.CONNECTING);
-    logger.info('Connecting to WebSocket', { url: this.url });
+    logger.info("Connecting to WebSocket", { url: this.url });
 
     this.ws = new WebSocket(this.url);
 
-    this.ws.on('open', () => {
+    this.ws.on("open", () => {
       this.updateStateMetrics(WebSocketState.CONNECTED);
-      
+
       // Record successful reconnection if this was a reconnect attempt
       const wasReconnecting = this.reconnectAttempts > 0;
       this.reconnectAttempts = 0;
       this.currentReconnectDelay = this.reconnectDelay;
-      logger.info('WebSocket connected', { url: this.url });
-      
+      logger.info("WebSocket connected", { url: this.url });
+
       if (wasReconnecting) {
-        websocketReconnects.inc({ feed_type: this.feedType, result: 'success' });
+        websocketReconnects.inc({
+          feed_type: this.feedType,
+          result: "success",
+        });
       }
-      
-      this.emit('open');
+
+      this.emit("open");
     });
 
-    this.ws.on('message', (data: WebSocket.Data) => {
+    this.ws.on("message", (data: WebSocket.Data) => {
       try {
         const message = JSON.parse(data.toString());
-        
+
         // Record message received
-        const messageType = message.type || 'unknown';
-        websocketMessages.inc({ feed_type: this.feedType, message_type: messageType });
-        
-        this.emit('message', message);
+        const messageType = message.type || "unknown";
+        websocketMessages.inc({
+          feed_type: this.feedType,
+          message_type: messageType,
+        });
+
+        this.emit("message", message);
       } catch (error) {
-        logger.error('Failed to parse WebSocket message', {
+        logger.error("Failed to parse WebSocket message", {
           error: error instanceof Error ? error.message : String(error),
           data: data.toString(),
         });
-        websocketErrors.inc({ feed_type: this.feedType, error_type: 'protocol' });
+        websocketErrors.inc({
+          feed_type: this.feedType,
+          error_type: "protocol",
+        });
       }
     });
 
-    this.ws.on('error', (error: Error) => {
-      logger.error('WebSocket error', {
+    this.ws.on("error", (error: Error) => {
+      logger.error("WebSocket error", {
         error: error.message,
         state: this.state,
       });
-      websocketErrors.inc({ feed_type: this.feedType, error_type: 'connection' });
-      this.emit('error', error);
+      websocketErrors.inc({
+        feed_type: this.feedType,
+        error_type: "connection",
+      });
+      this.emit("error", error);
     });
 
-    this.ws.on('close', (code: number, reason: Buffer) => {
+    this.ws.on("close", (code: number, reason: Buffer) => {
       const reasonStr = reason.toString();
-      logger.info('WebSocket closed', { code, reason: reasonStr, state: this.state });
-      
+      logger.info("WebSocket closed", {
+        code,
+        reason: reasonStr,
+        state: this.state,
+      });
+
       this.ws = null;
-      
+
       if (this.shouldReconnect && this.state !== WebSocketState.CLOSED) {
         this.scheduleReconnect();
       } else {
         // When explicitly closed or should not reconnect, set to appropriate state
-        const newState = this.state === WebSocketState.CLOSED ? WebSocketState.CLOSED : WebSocketState.DISCONNECTED;
+        const newState =
+          this.state === WebSocketState.CLOSED
+            ? WebSocketState.CLOSED
+            : WebSocketState.DISCONNECTED;
         this.updateStateMetrics(newState);
       }
-      
-      this.emit('close', code, reasonStr);
+
+      this.emit("close", code, reasonStr);
     });
   }
 
@@ -156,35 +180,35 @@ export class WebSocketClient extends EventEmitter {
 
     this.updateStateMetrics(WebSocketState.RECONNECTING);
     this.reconnectAttempts++;
-    
+
     // Record reconnection attempt
-    websocketReconnects.inc({ feed_type: this.feedType, result: 'attempt' });
+    websocketReconnects.inc({ feed_type: this.feedType, result: "attempt" });
 
     // Calculate delay with exponential backoff and jitter
     const jitter = 1 + (Math.random() * 2 - 1) * this.reconnectJitter;
     const delay = Math.min(
       this.currentReconnectDelay * jitter,
-      this.maxReconnectDelay
+      this.maxReconnectDelay,
     );
 
-    logger.info('Scheduling reconnect', {
+    logger.info("Scheduling reconnect", {
       attempt: this.reconnectAttempts,
       delay: Math.round(delay),
     });
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      
+
       // A-016: Check shouldReconnect before attempting reconnect
       // This prevents reconnect if close() was called after timer fired
       if (!this.shouldReconnect || this.state === WebSocketState.CLOSED) {
-        logger.debug('Reconnect cancelled, client is closed');
+        logger.debug("Reconnect cancelled, client is closed");
         return;
       }
-      
+
       this.currentReconnectDelay = Math.min(
         this.currentReconnectDelay * this.reconnectBackoffMultiplier,
-        this.maxReconnectDelay
+        this.maxReconnectDelay,
       );
       this.connect();
     }, delay);
@@ -192,16 +216,18 @@ export class WebSocketClient extends EventEmitter {
 
   send(data: unknown): void {
     if (this.state !== WebSocketState.CONNECTED || !this.ws) {
-      logger.warn('Cannot send message, WebSocket not connected', { state: this.state });
+      logger.warn("Cannot send message, WebSocket not connected", {
+        state: this.state,
+      });
       return;
     }
 
     try {
-      const message = typeof data === 'string' ? data : JSON.stringify(data);
+      const message = typeof data === "string" ? data : JSON.stringify(data);
       this.ws.send(message);
-      logger.debug('Sent WebSocket message', { data });
+      logger.debug("Sent WebSocket message", { data });
     } catch (error) {
-      logger.error('Failed to send WebSocket message', {
+      logger.error("Failed to send WebSocket message", {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -213,7 +239,7 @@ export class WebSocketClient extends EventEmitter {
    * Implements proper cleanup for Audit Finding A-017
    */
   async close(): Promise<void> {
-    logger.info('Closing WebSocket client');
+    logger.info("Closing WebSocket client");
     this.shouldReconnect = false;
     this.updateStateMetrics(WebSocketState.CLOSED);
 
@@ -230,7 +256,7 @@ export class WebSocketClient extends EventEmitter {
 
     // Store reference to WebSocket before creating promises
     const ws = this.ws;
-    
+
     // Create promise to wait for close event
     const closePromise = new Promise<void>((resolve) => {
       if (!ws) {
@@ -241,32 +267,39 @@ export class WebSocketClient extends EventEmitter {
       // Set up one-time close handler
       const onClose = () => {
         this.ws = null;
+        // Emit 'close' event przez EventEmitter klienta
+        this.emit("close");
         resolve();
       };
 
       // If already closing/closed, resolve immediately
-      if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+      if (
+        ws.readyState === WebSocket.CLOSING ||
+        ws.readyState === WebSocket.CLOSED
+      ) {
         this.ws = null;
+        this.emit("close");
         resolve();
         return;
       }
 
       // Listen for close event
-      ws.once('close', onClose);
-      
+      ws.once("close", onClose);
+
       // Initiate close
       try {
         // Remove all event listeners to prevent memory leaks (A-017)
         ws.removeAllListeners();
         // Re-add the close listener we need
-        ws.once('close', onClose);
+        ws.once("close", onClose);
         ws.close();
       } catch (error) {
         // If close() throws, still resolve (connection is gone)
-        logger.warn('Error closing WebSocket', {
+        logger.warn("Error closing WebSocket", {
           error: error instanceof Error ? error.message : String(error),
         });
         this.ws = null;
+        this.emit("close");
         resolve();
       }
     });
@@ -274,7 +307,7 @@ export class WebSocketClient extends EventEmitter {
     // Wait for close with timeout (5 seconds)
     const timeoutPromise = new Promise<void>((resolve) => {
       setTimeout(() => {
-        logger.warn('WebSocket close timeout, forcing cleanup');
+        logger.warn("WebSocket close timeout, forcing cleanup");
         // Remove the close listener to prevent it from firing later
         ws?.removeAllListeners();
         if (this.ws) {
@@ -285,6 +318,7 @@ export class WebSocketClient extends EventEmitter {
           }
           this.ws = null;
         }
+        this.emit("close");
         resolve();
       }, 5000);
     });
