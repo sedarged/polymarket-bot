@@ -17,6 +17,7 @@ To update this status:
 *No issues currently in progress*
 
 ## Next — P0 (Critical)
+- [P0] #316 [Enforce Codespaces Real-World Testing & Doc Improvement Policy]
 - [P0] #245 [PR-016 FINAL AUDIT ] MASTER FINAL AUDIT: Project Completion Gate for Production Deployment
 - [P0] #220 Evidence-Based Trading Bot Audit & Competitive Review
 
@@ -25,8 +26,6 @@ To update this status:
 
 ## Next — P2 (Normal Priority)
 - [P2] #243 [PR-015] DevOps & Deployment - Docker production and local setup
-- [P2] #242 [PR-014] Gamma API & Platform - Complete advanced Polymarket integration
-- [P2] #228 [Phase 3-4] Implement complete Gamma API and Data Platform support (historical data, WebSocket, advanced endpoints)
 - [P2] #80 [DevOps] Create Dockerfile for production deployment
 - [P2] #79 [DevOps] Create docker-compose.yml for local/development deployment
 
@@ -34,6 +33,7 @@ To update this status:
 - #304 Setup Codespaces and Environment for Full Agent/App Testing
 - [P0] #301 URGENT: Deep code & documentation audit - FIX EVERYTHING, NO REPORTS
 - #283 Redesign the Polymarket Trading Bot dashboard UI to be more modern
+- [P2] #242 [PR-014] Gamma API & Platform - Complete advanced Polymarket integration
 - [P1] #241 [PR-013] Documentation, Compliance & Troubleshooting Guides
 - [P2] #240 [PR-012] Dashboard Authentication & Learning System Tab
 - [P2] #239 [PR-011] Dashboard Core Tabs - Overview, Controls, Alerts & Logs
@@ -47,12 +47,13 @@ To update this status:
 - [P0] #231 [PR-003] Partial Fill Tracking & Position Logic - Comprehensive order state management
 - [P0] #230 [PR-002] Batch Operations & Kill Switch - Emergency controls and batch order management
 - [P0] #229 [PR-001] Data API Foundation - Implement Data API client and audit trail
+- [P2] #228 [Phase 3-4] Implement complete Gamma API and Data Platform support (historical data, WebSocket, advanced endpoints)
 - [P1] #227 [Phase 2] Expand CLOB API coverage: all core price endpoints, improved kill switch, advanced trading features
 - [P1] #226 [High] Implement all price/query endpoints: GET /price, GET /lasttrade, spread/midpoint, etc.
 - [P0] #224 [Critical] Implement full batch operations: POST /orders (batch create), DELETE /orders/all (fast kill switch)
 - [P0] #223 [Critical] Implement full Data API client (GET /positions, /trades, /activity) for 100% Polymarket alignment
 
-*Last updated: 2026-02-09T02:09:40.735Z*
+*Last updated: 2026-02-09T07:11:50.148Z*
 
 <!-- STATUS_SYNC_END -->
 
