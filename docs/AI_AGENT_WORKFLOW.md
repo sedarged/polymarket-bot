@@ -95,6 +95,7 @@
 - `edit` - Make surgical code changes
 - `bash` - Run tests, build, lint
 - `report_progress` - Commit each verified change
+- `scripts/quality-check.sh` - **NEW:** Automated pre-commit quality checks
 
 **Anti-patterns to AVOID:**
 - ❌ Making multiple unrelated changes at once
@@ -133,6 +134,7 @@
 **Tools:**
 - `bash` - Run npm test, npm run build
 - `task` sub-agent - Run comprehensive test suites
+- `scripts/quality-check.sh` - **NEW:** Automated quality checks (type check, lint, test, security)
 
 **Evidence Required:**
 - Test output showing pass/fail counts
@@ -163,6 +165,7 @@
 - `code_review` - Automated code review
 - `codeql_checker` - Security vulnerability scanning
 - `bash` - npm audit, git diff for secrets
+- `scripts/quality-check.sh` - **NEW:** Includes secret detection and security audit
 
 **Output:** Security summary in PR description
 
@@ -187,6 +190,7 @@
 
 **Tools:**
 - See [CODESPACES_VERIFICATION_CHECKLIST.md](./CODESPACES_VERIFICATION_CHECKLIST.md)
+- `scripts/verify-codespaces.sh` - **NEW:** Automated verification helper (runs basic checks)
 
 **Output:** Verification proof in PR description
 
@@ -213,6 +217,7 @@
 **Tools:**
 - `edit` - Update documentation files
 - `bash` - Test documented commands
+- `scripts/check-docs-links.sh` - **NEW:** Validate internal links in markdown files
 
 **Reference:** [DEV_WORKFLOW.md](./DEV_WORKFLOW.md) for doc maintenance rules
 
@@ -320,6 +325,64 @@
 - Keep functions small and focused
 - Extract common logic to utilities
 - Use structured logging
+
+---
+
+## Automation Scripts
+
+### Available Helper Scripts
+
+The repository includes automation scripts to streamline the workflow:
+
+**1. Quality Check Script** (`scripts/quality-check.sh`)
+- Runs before every commit
+- Checks: TypeScript, linting, tests, secrets, security
+- Use: `./scripts/quality-check.sh`
+
+**2. Codespaces Verification** (`scripts/verify-codespaces.sh`)
+- Automates basic verification checklist
+- Checks: Environment, build, tests, CLI, security
+- Use: `./scripts/verify-codespaces.sh`
+
+**3. Documentation Link Checker** (`scripts/check-docs-links.sh`)
+- Validates internal markdown links
+- Checks: All `.md` files for broken links
+- Use: `./scripts/check-docs-links.sh`
+
+**See:** [scripts/README.md](../scripts/README.md) for complete documentation
+
+### When to Use Scripts
+
+**Phase 3 (Implementation) - After each change:**
+```bash
+./scripts/quality-check.sh
+# If pass, commit with report_progress
+```
+
+**Phase 4 (Testing) - Before finalizing:**
+```bash
+./scripts/quality-check.sh
+```
+
+**Phase 6 (Verification) - Automated basic checks:**
+```bash
+./scripts/verify-codespaces.sh
+# Then complete manual sections
+```
+
+**Phase 7 (Documentation) - After doc updates:**
+```bash
+./scripts/check-docs-links.sh
+```
+
+### Quick Command for Full Verification
+
+```bash
+# Run all checks before creating PR
+./scripts/quality-check.sh && \
+./scripts/verify-codespaces.sh && \
+./scripts/check-docs-links.sh
+```
 
 ---
 

@@ -57,6 +57,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Verification Policy Executive Summary](./VERIFICATION_POLICY.md) - Overview of the verification policy and its benefits
 - [Codespaces Setup Guide](./CODESPACES_SETUP.md) - 🚀 Complete guide for GitHub Codespaces testing with all features
 - [Codespaces Maintainer Checklist](./CODESPACES_MAINTAINER_CHECKLIST.md) - Setup guide for repository maintainers
+- [Automation Scripts Guide](../scripts/README.md) - 🤖 Helper scripts for verification, quality checks, and validation
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
 - [Environment Setup](./environment.md) - Complete development environment and command reference
