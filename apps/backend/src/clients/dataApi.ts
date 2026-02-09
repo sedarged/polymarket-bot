@@ -1,4 +1,4 @@
-import { Position, Fill } from '@polymarket/shared';
+import { Position, Fill, History, Replay } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { BaseApiClient } from './baseApiClient';
 
@@ -221,6 +221,58 @@ export class DataApiClient extends BaseApiClient {
         count: response.data.length,
         params 
       });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get historical events for a wallet address (market/account history)
+   */
+  async getHistory(
+    address: string,
+    params?: {
+      eventType?: string;
+      startTime?: number;
+      endTime?: number;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<History[]> {
+    return this.executeWithRetry(async () => {
+      logger.debug('Fetching history from Data API', { address, params });
+      const response = await this.client.get<History[]>('/history', {
+        params: {
+          address,
+          ...params,
+        },
+      });
+      logger.info('Retrieved history', { address, count: response.data.length, params });
+      return response.data;
+    });
+  }
+
+  /**
+   * Get replay events for a wallet address (backtesting)
+   */
+  async getReplay(
+    address: string,
+    params?: {
+      eventType?: string;
+      startTime?: number;
+      endTime?: number;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<Replay[]> {
+    return this.executeWithRetry(async () => {
+      logger.debug('Fetching replay from Data API', { address, params });
+      const response = await this.client.get<Replay[]>('/replay', {
+        params: {
+          address,
+          ...params,
+        },
+      });
+      logger.info('Retrieved replay', { address, count: response.data.length, params });
       return response.data;
     });
   }

@@ -527,4 +527,230 @@ describe('Gamma API Client - Audit Finding A-025', () => {
       expect(metrics.failures).toBeGreaterThan(0);
     }, 10000); // Increase timeout for this test
   });
+
+  describe('New Endpoints - PR-014', () => {
+    describe('getAccount', () => {
+      it('should fetch account by address', async () => {
+        const mockAccount = {
+          address: '0x1234567890abcdef1234567890abcdef12345678',
+          balances: [{ currency: 'USDC', available: '1000', total: '1000' }],
+          positions: [],
+        };
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockAccount });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getAccount('0x1234567890abcdef1234567890abcdef12345678');
+
+        expect(mockGet).toHaveBeenCalledWith('/account/0x1234567890abcdef1234567890abcdef12345678');
+        expect(result).toEqual(mockAccount);
+      });
+
+      it('should retry on transient errors', async () => {
+        let callCount = 0;
+        const mockGet = vi.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount < 2) {
+            const error: any = new Error('Network error');
+            error.code = 'ECONNRESET';
+            return Promise.reject(error);
+          }
+          return Promise.resolve({ data: {} });
+        });
+
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        await client.getAccount('0xaddress');
+        expect(mockGet).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    describe('getMarket', () => {
+      it('should fetch market by id', async () => {
+        const mockMarket = {
+          id: 'market-1',
+          question: 'Test market',
+          active: true,
+        };
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockMarket });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getMarket('market-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/market/market-1');
+        expect(result).toEqual(mockMarket);
+      });
+    });
+
+    describe('getSeries', () => {
+      it('should fetch series list', async () => {
+        const mockSeries = [
+          { id: 'series-1', name: 'Test Series', tags: [], markets: [] },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockSeries });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getSeries();
+
+        expect(mockGet).toHaveBeenCalledWith('/series', { params: undefined });
+        expect(result).toEqual(mockSeries);
+      });
+
+      it('should support params', async () => {
+        const mockGet = vi.fn().mockResolvedValue({ data: [] });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        await client.getSeries({ tag: 'politics' });
+
+        expect(mockGet).toHaveBeenCalledWith('/series', { params: { tag: 'politics' } });
+      });
+    });
+
+    describe('getSeriesById', () => {
+      it('should fetch series by id', async () => {
+        const mockSeries = { id: 'series-1', name: 'Test', tags: [], markets: [] };
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockSeries });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getSeriesById('series-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/series/series-1');
+        expect(result).toEqual(mockSeries);
+      });
+    });
+
+    describe('getTags', () => {
+      it('should fetch tags list', async () => {
+        const mockTags = [
+          { id: 'tag-1', name: 'Politics', description: 'Political markets' },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockTags });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getTags();
+
+        expect(mockGet).toHaveBeenCalledWith('/tags', { params: undefined });
+        expect(result).toEqual(mockTags);
+      });
+    });
+
+    describe('getTagById', () => {
+      it('should fetch tag by id', async () => {
+        const mockTag = { id: 'tag-1', name: 'Politics' };
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockTag });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getTagById('tag-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/tag/tag-1');
+        expect(result).toEqual(mockTag);
+      });
+    });
+
+    describe('getEventById', () => {
+      it('should fetch event by id', async () => {
+        const mockEvent = { id: 'event-1', title: 'Test Event', markets: [] };
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockEvent });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getEventById('event-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/event/event-1');
+        expect(result).toEqual(mockEvent);
+      });
+    });
+
+    describe('getMarketHistory', () => {
+      it('should fetch market history', async () => {
+        const mockHistory = [
+          { marketId: 'market-1', events: [] },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockHistory });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getMarketHistory('market-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/market/market-1/history', { params: undefined });
+        expect(result).toEqual(mockHistory);
+      });
+
+      it('should support params', async () => {
+        const mockGet = vi.fn().mockResolvedValue({ data: [] });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        await client.getMarketHistory('market-1', { limit: 100 });
+
+        expect(mockGet).toHaveBeenCalledWith('/market/market-1/history', { params: { limit: 100 } });
+      });
+    });
+
+    describe('getMarketReplay', () => {
+      it('should fetch market replay data', async () => {
+        const mockReplay = [
+          { marketId: 'market-1', events: [] },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockReplay });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getMarketReplay('market-1');
+
+        expect(mockGet).toHaveBeenCalledWith('/market/market-1/replay', { params: undefined });
+        expect(result).toEqual(mockReplay);
+      });
+    });
+
+    describe('getReplay', () => {
+      it('should fetch replay events', async () => {
+        const mockReplay = [
+          { id: 'replay-1', eventType: 'price_change', timestamp: 123, data: {} },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockReplay });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getReplay();
+
+        expect(mockGet).toHaveBeenCalledWith('/replay', { params: undefined });
+        expect(result).toEqual(mockReplay);
+      });
+    });
+
+    describe('getHistory', () => {
+      it('should fetch history events', async () => {
+        const mockHistory = [
+          { id: 'hist-1', eventType: 'market_created', timestamp: 123, data: {} },
+        ];
+
+        const mockGet = vi.fn().mockResolvedValue({ data: mockHistory });
+        mockedAxios.create = vi.fn(() => ({ get: mockGet }));
+        client = new GammaClient();
+
+        const result = await client.getHistory();
+
+        expect(mockGet).toHaveBeenCalledWith('/history', { params: undefined });
+        expect(result).toEqual(mockHistory);
+      });
+    });
+  });
 });

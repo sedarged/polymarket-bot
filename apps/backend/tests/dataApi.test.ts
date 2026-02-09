@@ -536,4 +536,234 @@ describe('DataApiClient', () => {
       );
     });
   });
+
+  describe('getHistory - PR-014', () => {
+    const mockAddress = '0x1234567890abcdef1234567890abcdef12345678';
+    const mockHistory = [
+      {
+        id: 'hist-1',
+        eventType: 'market_created',
+        timestamp: 1234567890000,
+        data: { marketId: 'market-1' },
+      },
+      {
+        id: 'hist-2',
+        eventType: 'order_placed',
+        timestamp: 1234567895000,
+        data: { orderId: 'order-1' },
+      },
+    ];
+
+    it('should fetch history successfully', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockHistory });
+
+      const result = await client.getHistory(mockAddress);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/history', {
+        params: {
+          address: mockAddress,
+        },
+      });
+      expect(result).toEqual(mockHistory);
+    });
+
+    it('should support eventType filter', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: [mockHistory[0]] });
+
+      const result = await client.getHistory(mockAddress, { 
+        eventType: 'market_created' 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/history', {
+        params: {
+          address: mockAddress,
+          eventType: 'market_created',
+        },
+      });
+      expect(result).toEqual([mockHistory[0]]);
+    });
+
+    it('should support time range filtering', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockHistory });
+
+      const startTime = 1234567890000;
+      const endTime = 1234567900000;
+
+      await client.getHistory(mockAddress, { 
+        startTime, 
+        endTime 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/history', {
+        params: {
+          address: mockAddress,
+          startTime,
+          endTime,
+        },
+      });
+    });
+
+    it('should support pagination parameters', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockHistory });
+
+      await client.getHistory(mockAddress, { 
+        limit: 100, 
+        offset: 50 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/history', {
+        params: {
+          address: mockAddress,
+          limit: 100,
+          offset: 50,
+        },
+      });
+    });
+
+    it('should handle empty history array', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await client.getHistory(mockAddress);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should retry on transient errors', async () => {
+      mockAxiosInstance.get
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ data: mockHistory });
+
+      const result = await client.getHistory(mockAddress);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(mockHistory);
+    });
+  });
+
+  describe('getReplay - PR-014', () => {
+    const mockAddress = '0x1234567890abcdef1234567890abcdef12345678';
+    const mockReplay = [
+      {
+        id: 'replay-1',
+        eventType: 'price_change',
+        timestamp: 1234567890000,
+        data: { price: '0.55', tokenId: '0xtoken1' },
+      },
+      {
+        id: 'replay-2',
+        eventType: 'trade_executed',
+        timestamp: 1234567895000,
+        data: { size: '100', price: '0.55' },
+      },
+    ];
+
+    it('should fetch replay data successfully', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockReplay });
+
+      const result = await client.getReplay(mockAddress);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/replay', {
+        params: {
+          address: mockAddress,
+        },
+      });
+      expect(result).toEqual(mockReplay);
+    });
+
+    it('should support eventType filter', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: [mockReplay[0]] });
+
+      const result = await client.getReplay(mockAddress, { 
+        eventType: 'price_change' 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/replay', {
+        params: {
+          address: mockAddress,
+          eventType: 'price_change',
+        },
+      });
+      expect(result).toEqual([mockReplay[0]]);
+    });
+
+    it('should support time range for backtesting', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockReplay });
+
+      const startTime = 1234567890000;
+      const endTime = 1234567900000;
+
+      await client.getReplay(mockAddress, { 
+        startTime, 
+        endTime 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/replay', {
+        params: {
+          address: mockAddress,
+          startTime,
+          endTime,
+        },
+      });
+    });
+
+    it('should support pagination parameters', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockReplay });
+
+      await client.getReplay(mockAddress, { 
+        limit: 1000, 
+        offset: 0 
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/replay', {
+        params: {
+          address: mockAddress,
+          limit: 1000,
+          offset: 0,
+        },
+      });
+    });
+
+    it('should handle empty replay array', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await client.getReplay(mockAddress);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should support combined filters for backtesting', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockReplay });
+
+      const params = {
+        eventType: 'trade_executed',
+        startTime: 1234567890000,
+        endTime: 1234567900000,
+        limit: 500,
+        offset: 0,
+      };
+
+      await client.getReplay(mockAddress, params);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/replay', {
+        params: {
+          address: mockAddress,
+          ...params,
+        },
+      });
+    });
+
+    it('should retry on transient errors', async () => {
+      const timeoutError = new Error('Request timed out');
+      (timeoutError as Error & { code: string }).code = 'ECONNABORTED';
+      
+      mockAxiosInstance.get
+        .mockRejectedValueOnce(timeoutError)
+        .mockResolvedValueOnce({ data: mockReplay });
+
+      const result = await client.getReplay(mockAddress);
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(mockReplay);
+    });
+  });
 });

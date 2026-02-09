@@ -11,6 +11,7 @@ import {
 
 export interface WebSocketClientOptions {
   url: string;
+  feedType?: string; // For metrics: "market" or "user"
   reconnectDelay?: number;
   maxReconnectDelay?: number;
   reconnectBackoffMultiplier?: number;
@@ -43,6 +44,7 @@ export class WebSocketClient extends EventEmitter {
   constructor(options: WebSocketClientOptions) {
     super();
     this.url = options.url;
+    this.feedType = options.feedType ?? "market"; // Default to "market" for backward compatibility
     this.reconnectDelay = options.reconnectDelay ?? 1000;
     this.maxReconnectDelay = options.maxReconnectDelay ?? 30000;
     this.reconnectBackoffMultiplier = options.reconnectBackoffMultiplier ?? 2;
