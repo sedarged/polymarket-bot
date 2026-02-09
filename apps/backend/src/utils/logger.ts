@@ -1,133 +1,326 @@
+/**
+ * Categorized Logging System using Pino
+ * 
+ * Provides user-friendly, categorized logging for full project transparency
+ * while maintaining security through automatic sensitive data redaction.
+ * 
+ * Features:
+ * - Category-based logging (orderFlow, marketData, compliance, etc.)
+ * - Automatic sensitive data masking (A-022)
+ * - Human-readable output in development (pino-pretty)
+ * - Structured JSON in production
+ * - High performance with async logging
+ * 
+ * @see docs/adr/0009-categorized-logging-with-pino.md
+ * @see Issue #323
+ */
+
+import pino from 'pino';
+
+/**
+ * Log categories for organizing messages by domain
+ */
+export enum LogCategory {
+  ORDER_FLOW = 'orderFlow',        // Order placement, cancellation, fills
+  MARKET_DATA = 'marketData',      // Market updates, orderbook changes, price feeds
+  COMPLIANCE = 'compliance',       // Trading gates, risk checks, kill switch
+  SYSTEM = 'system',               // Startup, shutdown, configuration, health
+  WEBSOCKET = 'websocket',         // WebSocket connections, reconnects, subscriptions
+  API = 'api',                     // API calls, rate limiting, circuit breakers
+  LEARNING = 'learning',           // ML/learning system, backtesting
+  ERROR = 'error',                 // All errors and exceptions
+  DATABASE = 'database',           // Database operations, persistence
+  AUDIT = 'audit',                 // Audit trail, compliance logging
+}
+
+/**
+ * Metadata attached to log entries
+ */
+export type LogMetadata = Record<string, unknown>;
+
+/**
+ * Sensitive field paths that should be redacted
+ * Supports nested paths with wildcards
+ */
+const SENSITIVE_FIELDS = [
+  'address',
+  'privateKey',
+  'private_key',
+  'secret',
+  'apiKey',
+  'api_key',
+  'api_secret',
+  'token',
+  'password',
+  'passphrase',
+  'mnemonic',
+  'seed',
+  // Wildcard patterns for nested objects
+  '*.address',
+  '*.privateKey',
+  '*.private_key',
+  '*.apiKey',
+  '*.api_key',
+  '*.secret',
+  '*.token',
+  '*.password',
+  // Deep nesting patterns
+  '**.address',
+  '**.privateKey',
+  '**.private_key',
+  '**.apiKey',
+  '**.api_key',
+  '**.secret',
+  '**.token',
+  '**.password',
+];
+
+/**
+ * Custom redactor that masks sensitive data
+ * Shows first 6 chars and last 4 chars for identifiability
+ */
+function maskSensitiveDataInternal(value: string): string {
+  if (!value || value.length <= 10) {
+    return '***';
+  }
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+/**
+ * Recursively redact sensitive fields from objects
+ * Handles nested objects and arrays
+ */
+function redactSensitiveFields(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => redactSensitiveFields(item));
+  }
+
+  // Handle non-object primitives
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+
+  // Handle objects
+  const result: any = {};
+  const sensitiveKeyPatterns = [
+    'address',
+    'privatekey',
+    'private_key', 
+    'apikey',
+    'api_key',
+    'api_secret',
+    'secret',
+    'token',
+    'password',
+    'passphrase',
+    'mnemonic',
+    'seed',
+  ];
+
+  for (const [key, value] of Object.entries(obj)) {
+    const lowerKey = key.toLowerCase();
+    
+    // Check if this key is sensitive
+    const isSensitive = sensitiveKeyPatterns.some(pattern => 
+      lowerKey.includes(pattern)
+    );
+
+    if (isSensitive && typeof value === 'string') {
+      result[key] = maskSensitiveDataInternal(value);
+    } else if (typeof value === 'object' && value !== null) {
+      // Recursively redact nested objects
+      result[key] = redactSensitiveFields(value);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Configure Pino logger with appropriate settings for environment
+ */
+function createPinoLogger() {
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const logLevel = process.env.LOG_LEVEL?.toLowerCase() || 'info';
+
+  // Base configuration
+  const config: pino.LoggerOptions = {
+    level: logLevel,
+    
+    // Redact sensitive fields (A-022)
+    redact: {
+      paths: SENSITIVE_FIELDS,
+      censor: (value: unknown) => {
+        if (typeof value === 'string') {
+          return maskSensitiveDataInternal(value);
+        }
+        return '***';
+      },
+    },
+
+    // Add timestamp
+    timestamp: pino.stdTimeFunctions.isoTime,
+
+    // Custom serializers for common objects
+    serializers: {
+      error: pino.stdSerializers.err,
+      req: pino.stdSerializers.req,
+      res: pino.stdSerializers.res,
+    },
+
+    // Base fields added to all logs
+    base: {
+      pid: process.pid,
+      hostname: undefined, // Don't log hostname for privacy
+    },
+  };
+
+  // Add pretty printing for development
+  if (isDevelopment) {
+    return pino({
+      ...config,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'HH:MM:ss.l',
+          ignore: 'pid,hostname',
+          singleLine: false,
+          messageFormat: '[{category}] {msg}',
+        },
+      },
+    });
+  }
+
+  // Production: structured JSON
+  return pino(config);
+}
+
+/**
+ * Root logger instance
+ */
+const rootLogger = createPinoLogger();
+
+/**
+ * Categorized logger wrapper for better UX
+ * Maintains backward compatibility with existing logger API
+ */
+export class CategorizedLogger {
+  private logger: pino.Logger;
+  private categoryName: string;
+
+  constructor(logger: pino.Logger, categoryName?: string) {
+    this.logger = logger;
+    this.categoryName = categoryName || 'general';
+  }
+
+  /**
+   * Create a child logger for a specific category
+   */
+  category(category: LogCategory | string): CategorizedLogger {
+    const childLogger = this.logger.child({ category });
+    return new CategorizedLogger(childLogger, category);
+  }
+
+  /**
+   * Log fatal error (unrecoverable, requires immediate action)
+   */
+  fatal(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.fatal({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Log error (needs investigation)
+   */
+  error(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.error({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Log warning (potential issues)
+   */
+  warn(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.warn({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Log info (normal operations)
+   */
+  info(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.info({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Log debug (detailed debugging)
+   */
+  debug(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.debug({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Log trace (very detailed tracing)
+   */
+  trace(message: string, metadata?: LogMetadata): void {
+    const redacted = metadata ? redactSensitiveFields(metadata) : {};
+    this.logger.trace({ ...redacted, category: this.categoryName }, message);
+  }
+
+  /**
+   * Get underlying Pino logger for advanced use cases
+   */
+  getPinoLogger(): pino.Logger {
+    return this.logger;
+  }
+}
+
+/**
+ * Default logger instance (general category)
+ * Maintains backward compatibility with existing code
+ */
+export const logger = new CategorizedLogger(rootLogger);
+
+/**
+ * Pre-configured category loggers for common use cases
+ * Usage: import { orderFlowLogger } from './utils/logger';
+ */
+export const orderFlowLogger = logger.category(LogCategory.ORDER_FLOW);
+export const marketDataLogger = logger.category(LogCategory.MARKET_DATA);
+export const complianceLogger = logger.category(LogCategory.COMPLIANCE);
+export const systemLogger = logger.category(LogCategory.SYSTEM);
+export const websocketLogger = logger.category(LogCategory.WEBSOCKET);
+export const apiLogger = logger.category(LogCategory.API);
+export const learningLogger = logger.category(LogCategory.LEARNING);
+export const errorLogger = logger.category(LogCategory.ERROR);
+export const databaseLogger = logger.category(LogCategory.DATABASE);
+export const auditLogger = logger.category(LogCategory.AUDIT);
+
+/**
+ * Legacy exports for backward compatibility
+ * Keep the maskSensitiveData function for any code that uses it directly
+ */
+export function maskSensitiveData(value: string): string {
+  if (!value || value.length <= 10) {
+    return '***';
+  }
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+// Re-export LogLevel enum for backward compatibility
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
   INFO = 2,
   DEBUG = 3,
 }
-
-export type LogMetadata = Record<string, unknown>;
-
-/**
- * Mask sensitive data for logging (Audit Finding A-022)
- * 
- * Masks wallet addresses, private keys, and other sensitive strings
- * to prevent privacy leaks in logs.
- * 
- * @param value - The value to mask
- * @returns Masked string (first 6 chars...last 4 chars)
- */
-export function maskSensitiveData(value: string): string {
-  if (!value || value.length <= 10) {
-    // Too short to mask meaningfully, return full mask
-    return '***';
-  }
-  
-  // For Ethereum addresses (0x + 40 hex chars) and similar long strings
-  // Show first 6 chars and last 4 chars
-  return `${value.slice(0, 6)}...${value.slice(-4)}`;
-}
-
-/**
- * Recursively mask sensitive fields in metadata objects
- * 
- * Automatically masks fields named: address, privateKey, private_key, 
- * secret, apiKey, api_key, token, password
- * 
- * @param metadata - Metadata object to sanitize
- * @returns Sanitized metadata with masked sensitive fields
- */
-function maskSensitiveFields(metadata: LogMetadata): LogMetadata {
-  if (!metadata || typeof metadata !== 'object') {
-    return metadata;
-  }
-
-  const sensitiveFieldNames = [
-    'address',
-    'privatekey',  // matches privateKey (camelCase) and private_key (snake_case)
-    'private_key',
-    'secret',
-    'apikey',      // matches apiKey (camelCase) and api_key (snake_case)
-    'api_key',
-    'token',
-    'password',
-    'key',         // Note: Broadly matches any field containing 'key' (e.g., walletKey, userKey)
-  ];
-
-  const masked: LogMetadata = {};
-  
-  for (const [key, value] of Object.entries(metadata)) {
-    const lowerKey = key.toLowerCase();
-    
-    // Check if this is a sensitive field
-    const isSensitive = sensitiveFieldNames.some(sensitive => 
-      lowerKey.includes(sensitive)
-    );
-    
-    if (isSensitive && typeof value === 'string') {
-      masked[key] = maskSensitiveData(value);
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      // Recursively mask nested objects
-      masked[key] = maskSensitiveFields(value as LogMetadata);
-    } else {
-      masked[key] = value;
-    }
-  }
-  
-  return masked;
-}
-
-class Logger {
-  private level: LogLevel;
-
-  constructor(level: string = 'info') {
-    this.level = this.parseLevel(level);
-  }
-
-  private parseLevel(level: string): LogLevel {
-    switch (level.toLowerCase()) {
-      case 'error':
-        return LogLevel.ERROR;
-      case 'warn':
-        return LogLevel.WARN;
-      case 'info':
-        return LogLevel.INFO;
-      case 'debug':
-        return LogLevel.DEBUG;
-      default:
-        return LogLevel.INFO;
-    }
-  }
-
-  private log(level: LogLevel, message: string, metadata?: LogMetadata): void {
-    if (level <= this.level) {
-      // Mask sensitive fields in metadata (A-022)
-      const sanitizedMetadata = metadata ? maskSensitiveFields(metadata) : undefined;
-      
-      const payload = {
-        timestamp: new Date().toISOString(),
-        level: LogLevel[level],
-        message,
-        ...sanitizedMetadata,
-      };
-      console.log(JSON.stringify(payload));
-    }
-  }
-
-  error(message: string, metadata?: LogMetadata): void {
-    this.log(LogLevel.ERROR, message, metadata);
-  }
-
-  warn(message: string, metadata?: LogMetadata): void {
-    this.log(LogLevel.WARN, message, metadata);
-  }
-
-  info(message: string, metadata?: LogMetadata): void {
-    this.log(LogLevel.INFO, message, metadata);
-  }
-
-  debug(message: string, metadata?: LogMetadata): void {
-    this.log(LogLevel.DEBUG, message, metadata);
-  }
-}
-
-export const logger = new Logger(process.env.LOG_LEVEL);
