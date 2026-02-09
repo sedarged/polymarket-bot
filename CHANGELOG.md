@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.30.1](https://github.com/sedarged/polymarket-bot/compare/v1.30.0...v1.30.1) (2026-02-09)
+
+
+### Bug Fixes
+
+* Address PR review feedback - correct imports, error handling, and pagination docs ([67da9a2](https://github.com/sedarged/polymarket-bot/commit/67da9a2328264075317be1e1d55e752283f69c21))
+* Fix userFeed TypeScript errors and update tests for ApiKeyCreds ([16b725b](https://github.com/sedarged/polymarket-bot/commit/16b725bdd4b4d3aaedca6e8cedaa34e3a87bbc1a))
+
 ## [1.30.0](https://github.com/sedarged/polymarket-bot/compare/v1.29.0...v1.30.0) (2026-02-09)
 
 
