@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.31.0](https://github.com/sedarged/polymarket-bot/compare/v1.30.1...v1.31.0) (2026-02-09)
+
+
+### Features
+
+* add automation scripts for verification and quality checks ([4cda91e](https://github.com/sedarged/polymarket-bot/commit/4cda91e06cff6458927985142520be6eef0e2918))
+
+
+### Bug Fixes
+
+* correct API endpoint responses and verification expectations in checklist ([56d2667](https://github.com/sedarged/polymarket-bot/commit/56d2667ef12385efc1fdf2e297f3dbc9b41b3427))
+
 ## [1.30.1](https://github.com/sedarged/polymarket-bot/compare/v1.30.0...v1.30.1) (2026-02-09)
 
 
