@@ -12,6 +12,36 @@ This runbook references the official Polymarket API documentation:
 
 For detailed implementation alignment, see [REPORTS/RESEARCH_REVIEW.md](../REPORTS/RESEARCH_REVIEW.md).
 
+## Deployment Options
+
+### Docker Deployment (Recommended)
+
+For production deployments, we recommend using Docker for consistency and reliability:
+
+```bash
+# Quick start with Docker Compose
+docker-compose up -d
+
+# Or production single container
+docker run -d --name polymarket-bot \
+  -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd)/data:/app/data \
+  polymarket-bot:latest
+```
+
+**See [Docker Deployment Guide](./docker.md) for:**
+- Complete Docker setup and configuration
+- Production deployment best practices
+- Container security hardening
+- Health checks and monitoring
+- CI/CD integration
+- Troubleshooting guide
+
+### Native Deployment
+
+For development or when Docker is not available, see the sections below.
+
 ## Prerequisites
 
 ### Private Key Security

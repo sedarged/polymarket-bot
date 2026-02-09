@@ -103,13 +103,38 @@ For complete environment details, see **[Environment Setup](./docs/environment.m
 
 ## Installation
 
+### Option 1: Docker (Recommended)
+
+Docker provides the fastest way to get started with consistent environment setup:
+
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/polymarket-bot.git
+cd polymarket-bot
+
+# Copy and configure environment file
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start all services with Docker Compose
+docker-compose up --build
+
+# Access services:
+# - Backend API: http://localhost:3000
+# - Frontend Dashboard: http://localhost:8080
+```
+
+See **[Docker Deployment Guide](./docs/docker.md)** for comprehensive Docker documentation.
+
+### Option 2: Local Development
+
 ```bash
 # Clone the repository
 git clone https://github.com/YOUR_USERNAME/polymarket-bot.git
 cd polymarket-bot
 
 # Install dependencies
-npm install
+npm install --legacy-peer-deps
 
 # Copy environment file (optional - uses defaults)
 cp .env.example .env
