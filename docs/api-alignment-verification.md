@@ -98,7 +98,7 @@ These are documented API features that are not currently implemented. They are o
 | Tags endpoint | GET /tags | Low | Not needed for current use case |
 | Series endpoint | GET /series | Low | Advanced grouping |
 | Search endpoint | GET /search | Low | Filtering works |
-| User WebSocket | wss://.../ws/user | Medium* | ✅ Implemented (PR-014) | Real-time order/fill events |
+| User WebSocket | wss://.../ws/user | Medium* | ✅ Implemented (PR-014) - Real-time order/fill events |
 | GTD order type | orderType: 'GTD' | Low | GTC is default and sufficient |
 | FOK order type | orderType: 'FOK' | Low | Advanced strategy feature |
 | FAK order type | orderType: 'FAK' | Low | Advanced strategy feature |

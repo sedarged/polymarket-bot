@@ -9,6 +9,7 @@ import {
 import { config } from '../config';
 import { ethers } from 'ethers';
 import { ClobClient } from '@polymarket/clob-client';
+import { assertLiveTradingEnabled } from '../utils/liveTrading';
 
 /**
  * User Feed WebSocket Client
@@ -70,7 +71,7 @@ export class UserFeedClient extends EventEmitter {
   private wsClient: WebSocketClient | null = null;
   private wallet: ethers.Wallet;
   private clobClient: ClobClient;
-  private marketIds: string[];
+  private marketIds: Set<string>; // Use Set to prevent duplicates
   private reconnectDelay: number;
   private maxReconnectDelay: number;
   // Track authentication state
@@ -81,8 +82,12 @@ export class UserFeedClient extends EventEmitter {
 
   constructor(options: UserFeedOptions) {
     super();
+    
+    // Enforce live trading gate - user feed requires real credentials
+    assertLiveTradingEnabled();
+    
     this.wallet = options.wallet;
-    this.marketIds = options.marketIds || [];
+    this.marketIds = new Set(options.marketIds || []);
     this.reconnectDelay = options.reconnectDelay ?? 1000;
     this.maxReconnectDelay = options.maxReconnectDelay ?? 30000;
 
@@ -95,31 +100,55 @@ export class UserFeedClient extends EventEmitter {
 
     logger.info('UserFeedClient initialized', {
       address: this.wallet.address,
-      marketCount: this.marketIds.length,
+      marketCount: this.marketIds.size,
     });
   }
 
   /**
    * Connect to the user WebSocket channel
+   * Returns a promise that resolves when connected and authenticated
    */
-  async connect(): Promise<void> {
-    if (this.wsClient) {
-      logger.warn('User feed WebSocket already exists');
-      return;
-    }
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.wsClient) {
+        logger.warn('User feed WebSocket already exists');
+        resolve();
+        return;
+      }
 
-    // User WebSocket URL pattern
-    const wsUserUrl = config.wsMarketUrl.replace('/ws/market', '/ws/user');
-    logger.info('Connecting to user feed WebSocket', { url: wsUserUrl });
+      // User WebSocket URL pattern
+      const wsUserUrl = config.wsMarketUrl.replace('/ws/market', '/ws/user');
+      logger.info('Connecting to user feed WebSocket', { url: wsUserUrl });
 
-    this.wsClient = new WebSocketClient({
-      url: wsUserUrl,
-      reconnectDelay: this.reconnectDelay,
-      maxReconnectDelay: this.maxReconnectDelay,
+      this.wsClient = new WebSocketClient({
+        url: wsUserUrl,
+        feedType: 'user', // Specify user feed type for metrics
+        reconnectDelay: this.reconnectDelay,
+        maxReconnectDelay: this.maxReconnectDelay,
+      });
+
+      // Set up one-time handlers for connection result
+      const onConnected = () => {
+        cleanup();
+        resolve();
+      };
+
+      const onError = (error: Error) => {
+        cleanup();
+        reject(error);
+      };
+
+      const cleanup = () => {
+        this.off('connected', onConnected);
+        this.off('error', onError);
+      };
+
+      this.once('connected', onConnected);
+      this.once('error', onError);
+
+      this.setupEventHandlers();
+      this.wsClient.connect();
     });
-
-    this.setupEventHandlers();
-    this.wsClient.connect();
   }
 
   /**
@@ -132,8 +161,20 @@ export class UserFeedClient extends EventEmitter {
 
     this.wsClient.on('open', async () => {
       logger.info('User feed WebSocket opened');
-      await this.authenticate();
-      this.emit('connected');
+      try {
+        await this.authenticate();
+        this.emit('connected');
+      } catch (error) {
+        logger.error('User feed authentication failed on open', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.emit('error', err);
+        // Close the WebSocket to avoid leaving the client in an unclear state
+        if (this.wsClient) {
+          this.wsClient.close();
+        }
+      }
     });
 
     this.wsClient.on('message', (message: unknown) => {
@@ -189,7 +230,7 @@ export class UserFeedClient extends EventEmitter {
         apikey: credentials.apiKey,
         secret: credentials.secret,
         passphrase: credentials.passphrase,
-        markets: this.marketIds.length > 0 ? this.marketIds : undefined,
+        markets: this.marketIds.size > 0 ? Array.from(this.marketIds) : undefined,
       };
 
       this.wsClient.send(authMessage);
@@ -197,7 +238,7 @@ export class UserFeedClient extends EventEmitter {
 
       logger.info('User feed authenticated', {
         address: this.wallet.address,
-        marketCount: this.marketIds.length,
+        marketCount: this.marketIds.size,
       });
     } catch (error) {
       logger.error('Failed to authenticate user feed', {
@@ -215,16 +256,23 @@ export class UserFeedClient extends EventEmitter {
       throw new Error('WebSocket not connected or not authenticated');
     }
 
+    // Filter out already subscribed markets
+    const newMarkets = marketIds.filter((id) => !this.marketIds.has(id));
+    if (newMarkets.length === 0) {
+      logger.debug('All markets already subscribed');
+      return;
+    }
+
     const message: UserSubscriptionMessage = {
       type: 'USER',
       operation: 'subscribe',
-      markets: marketIds,
+      markets: newMarkets,
     };
 
     this.wsClient.send(message);
-    this.marketIds.push(...marketIds);
+    newMarkets.forEach((id) => this.marketIds.add(id));
 
-    logger.info('Subscribed to markets', { marketIds });
+    logger.info('Subscribed to markets', { marketIds: newMarkets });
   }
 
   /**
@@ -242,7 +290,7 @@ export class UserFeedClient extends EventEmitter {
     };
 
     this.wsClient.send(message);
-    this.marketIds = this.marketIds.filter((id) => !marketIds.includes(id));
+    marketIds.forEach((id) => this.marketIds.delete(id));
 
     logger.info('Unsubscribed from markets', { marketIds });
   }
@@ -285,11 +333,14 @@ export class UserFeedClient extends EventEmitter {
 
   /**
    * Generate unique message ID for deduplication
+   * Includes all relevant fields that change between updates to ensure uniqueness
    */
   private getMessageId(message: WSUserMessage): string {
     if (message.event_type === 'order') {
-      return `order-${message.order_id}-${message.status}-${message.created_at}`;
+      // Include size_matched and price to distinguish between legitimate updates
+      return `order-${message.order_id}-${message.status}-${message.size_matched}-${message.price}-${message.created_at}`;
     } else if (message.event_type === 'fill') {
+      // Fill IDs are unique by themselves
       return `fill-${message.fill_id}-${message.timestamp}`;
     }
     return `unknown-${Date.now()}`;

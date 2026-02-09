@@ -21,7 +21,7 @@
  * - User feed requires same security gates as live trading
  */
 
-import { UserFeedClient } from '../apps/backend/src/clients/userFeed';
+import { UserFeedClient } from '../../apps/backend/src/clients/userFeed';
 import { ethers } from 'ethers';
 import { WSUserOrder, WSUserFill } from '@polymarket/shared';
 import dotenv from 'dotenv';
