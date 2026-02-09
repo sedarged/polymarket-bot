@@ -11,6 +11,7 @@ This document provides a contract for AI agents (GitHub Copilot, custom automati
 | 🐛 **Debugging an error** | [docs/ai/decision-trees.md](./docs/ai/decision-trees.md) |
 | 💰 **Implementing trading** | [docs/ai/common-pitfalls.md](./docs/ai/common-pitfalls.md) |
 | 📝 **Creating a PR** | [docs/DEV_WORKFLOW.md](./docs/DEV_WORKFLOW.md) |
+| ✅ **Completing work** | [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./docs/CODESPACES_VERIFICATION_CHECKLIST.md) |
 | 📊 **Tracking your work** | [docs/ai/session-state.md](./docs/ai/session-state.md) |
 | 📚 **Finding any doc** | [docs/README.md](./docs/README.md) |
 
@@ -88,6 +89,46 @@ Work on tasks in this priority order:
 2. **Code builds**: Run `npm run dev` and verify no errors
 3. **Documentation updated**: Reflect any changes in relevant docs
 4. **Security check**: No secrets committed, no new vulnerabilities
+5. **Codespaces verification**: Complete mandatory verification checklist (see below)
+
+### Mandatory Codespaces Verification
+
+**REQUIRED FOR ALL PRs AND ISSUE COMPLETIONS**
+
+Before marking any work as complete, you MUST:
+
+1. **Create a Codespace** from your branch/PR
+2. **Complete the [Codespaces Verification Checklist](./docs/CODESPACES_VERIFICATION_CHECKLIST.md)**
+   - Verify environment setup
+   - Verify build & tests pass
+   - Verify all CLI commands work
+   - Verify backend API endpoints
+   - Verify frontend dashboard (if applicable)
+   - Verify WebSocket connectivity (if applicable)
+   - Verify security (no secrets, npm audit, paper trading mode)
+3. **Collect proof** for all verification steps:
+   - Terminal output for commands
+   - Screenshots for UI changes
+   - Test results and coverage
+4. **Document any gaps** discovered during verification
+5. **Update documentation/scripts** immediately when gaps are found
+6. **Create new CLI commands/tests** if needed for verification
+7. **Add all proof** to your PR description
+
+**⚠️ PRs and issues CANNOT be completed without:**
+- Completed verification checklist
+- Proof provided for all applicable sections
+- Documentation gaps addressed
+- Security verification passed
+
+This ensures:
+- No "works on my machine" problems
+- All documentation is accurate
+- All commands actually work
+- Security practices are followed
+- Continuous improvement of tooling and docs
+
+**Full checklist:** [docs/CODESPACES_VERIFICATION_CHECKLIST.md](./docs/CODESPACES_VERIFICATION_CHECKLIST.md)
 
 ### Finishing the Task
 1. **Update the issue**: Add completion notes and evidence
@@ -100,6 +141,7 @@ Work on tasks in this priority order:
 - Test results showing success
 - Link check results for doc changes
 - Before/after behavior for features
+- **Codespaces verification proof** (MANDATORY)
 
 ## Hard Rules (Non-Negotiable)
 

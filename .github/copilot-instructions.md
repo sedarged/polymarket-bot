@@ -31,6 +31,7 @@ npm test            # Run all tests
 4. **Secrets**: Never commit. Use `.env` + `.env.example`. Frontend must never receive secrets.
 5. **Reliability**: WebSocket reconnect + resync, idempotency, startup reconciliation, circuit breakers
 6. **Testing**: PR complete only when `npm test` passes
+7. **Codespaces Verification**: ALL PRs must complete [Codespaces Verification Checklist](../docs/CODESPACES_VERIFICATION_CHECKLIST.md) with proof
 
 ## Code Style
 - TypeScript strict mode

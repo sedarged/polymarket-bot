@@ -20,6 +20,58 @@
 
 **Skip if:** This is a documentation-only change or no docs need updating
 
+## Codespaces Verification (MANDATORY)
+
+**🚨 REQUIRED FOR ALL PRs - See [Codespaces Verification Checklist](../docs/CODESPACES_VERIFICATION_CHECKLIST.md)**
+
+- [ ] Completed full Codespaces verification checklist
+- [ ] All applicable sections verified (environment, build, CLI, API, frontend, WebSocket, security)
+- [ ] Proof provided below (terminal output, screenshots)
+- [ ] Documentation gaps discovered and addressed
+- [ ] New scripts/tests created if verification tooling was missing
+
+**⚠️ PRs cannot be approved without completing this checklist and providing proof.**
+
+### Verification Proof
+
+**Environment Setup:**
+```
+# Paste: node --version, npm install output, .env verification
+```
+
+**Build & Test:**
+```
+# Paste: npm run build output, npm test summary
+```
+
+**CLI Commands:**
+```
+# Paste: npm run markets, npm run book outputs
+```
+
+**Backend API:**
+```
+# Paste: curl responses from /health, /ready, /status, etc.
+```
+
+**Frontend Dashboard (if applicable):**
+- Screenshot: [Attach or link screenshot showing dashboard]
+
+**WebSocket (if applicable):**
+```
+# Paste: WebSocket connection status
+```
+
+**Security:**
+```
+# Paste: npm audit output, secret scan results, paper trading verification
+```
+
+**Documentation Gaps & Improvements:**
+- List any documentation updated: _______________
+- List any scripts/tests created: _______________
+- Gaps discovered: _______________
+
 ## Testing
 
 **Required:**
