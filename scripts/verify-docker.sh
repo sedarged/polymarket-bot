@@ -42,11 +42,12 @@ echo ""
 echo "2. Checking Docker Compose installation..."
 if docker compose version &> /dev/null; then
     COMPOSE_VERSION=$(docker compose version)
+    COMPOSE_CMD="docker compose"
     success "Docker Compose installed: $COMPOSE_VERSION"
 elif command -v docker-compose &> /dev/null; then
     COMPOSE_VERSION=$(docker-compose --version)
-    warning "Docker Compose V1 found. Consider upgrading to V2."
-    success "Docker Compose installed: $COMPOSE_VERSION"
+    error "Docker Compose V1 found ($COMPOSE_VERSION), but this script requires Docker Compose V2 (docker compose). Please upgrade."
+    exit 1
 else
     error "Docker Compose is not installed"
     exit 1
@@ -59,7 +60,15 @@ if [ -f "Dockerfile" ]; then
     success "Dockerfile exists"
     # Count stages
     STAGES=$(grep -c "^FROM" Dockerfile || echo "0")
-    success "Multi-stage build detected: $STAGES stages"
+    if [ "$STAGES" -ge 2 ]; then
+        success "Multi-stage build detected: $STAGES stages"
+    elif [ "$STAGES" -eq 1 ]; then
+        error "Only a single build stage detected. Multi-stage Dockerfile (2+ FROM instructions) required."
+        exit 1
+    else
+        error "No valid FROM instructions found in Dockerfile."
+        exit 1
+    fi
 else
     error "Dockerfile not found"
     exit 1
@@ -82,12 +91,12 @@ echo "5. Validating docker-compose.yml..."
 if [ -f "docker-compose.yml" ]; then
     success "docker-compose.yml exists"
     # Validate syntax
-    if docker compose config --quiet; then
+    if $COMPOSE_CMD config --quiet; then
         success "docker-compose.yml syntax is valid"
         # Count services
-        SERVICES=$(docker compose config --services | wc -l)
+        SERVICES=$($COMPOSE_CMD config --services | wc -l)
         success "Services defined: $SERVICES"
-        docker compose config --services | while read service; do
+        $COMPOSE_CMD config --services | while read service; do
             echo "  - $service"
         done
     else
@@ -111,9 +120,15 @@ fi
 # Check for non-root user
 echo ""
 echo "7. Checking security configuration..."
-if grep -q "USER" Dockerfile; then
-    USER_LINE=$(grep "USER" Dockerfile | tail -1)
-    success "Non-root user configured: $USER_LINE"
+if grep -q "^[[:space:]]*USER" Dockerfile; then
+    USER_LINE=$(grep "^[[:space:]]*USER" Dockerfile | tail -1)
+    USER_VALUE=$(echo "$USER_LINE" | sed -E 's/^[[:space:]]*USER[[:space:]]+//; s/[[:space:]]+$//')
+    if [[ "$USER_VALUE" == "root" || "$USER_VALUE" == "0" || "$USER_VALUE" == root:* || "$USER_VALUE" == 0:* ]]; then
+        error "Container is configured to run as root user ('$USER_VALUE') (security risk)"
+        exit 1
+    else
+        success "Non-root user configured: $USER_VALUE"
+    fi
 else
     warning "No non-root user configured (security risk)"
 fi

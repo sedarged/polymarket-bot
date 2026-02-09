@@ -45,7 +45,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: polymarket-bot:test
           format: 'sarif'
@@ -60,7 +60,7 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
       - name: Run Trivy vulnerability scanner (table output)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: polymarket-bot:test
           format: 'table'
@@ -68,14 +68,13 @@ jobs:
           exit-code: '0'
 
       - name: Check for critical vulnerabilities
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: polymarket-bot:test
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL'
           exit-code: '1'  # Fail if critical vulnerabilities found
-        continue-on-error: true
 
       - name: Docker image size check
         run: |
@@ -100,25 +99,52 @@ jobs:
 
       - name: Test health check
         run: |
+          # Ensure cleanup even if the health check fails
+          cleanup() {
+            docker stop test-container >/dev/null 2>&1 || true
+            docker rm test-container >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
           # Start container
           docker run -d --name test-container \
             -e LIVE_TRADING=false \
             -e COMPLIANCE_ACCEPTED=false \
             polymarket-bot:test
-          
-          # Wait for startup
-          sleep 10
-          
-          # Check health
-          HEALTH=$(docker inspect --format='{{.State.Health.Status}}' test-container || echo "no-healthcheck")
-          echo "Health status: $HEALTH"
-          
-          # Cleanup
-          docker stop test-container
-          docker rm test-container
+
+          # Wait for container to become healthy
+          MAX_WAIT_SECONDS=60
+          SLEEP_INTERVAL=5
+          ELAPSED=0
+
+          while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
+            HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' test-container 2>/dev/null || echo "no-healthcheck")
+            echo "Health status after ${ELAPSED}s: $HEALTH"
+
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "✓ Container health check passed (healthy)."
+              exit 0
+            fi
+
+            if [ "$HEALTH" = "unhealthy" ]; then
+              echo "::error::Container health check failed (unhealthy)."
+              exit 1
+            fi
+
+            if [ "$HEALTH" = "no-healthcheck" ] || [ -z "$HEALTH" ]; then
+              echo "::error::Container has no HEALTHCHECK defined or health status unavailable."
+              exit 1
+            fi
+
+            sleep "$SLEEP_INTERVAL"
+            ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
+          done
+
+          echo "::error::Container did not become healthy within ${MAX_WAIT_SECONDS}s (last status: $HEALTH)."
+          exit 1
 
       - name: Scan for secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.87.0
         with:
           path: ./
           base: ${{ github.event.repository.default_branch }}

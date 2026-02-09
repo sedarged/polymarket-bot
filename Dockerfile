@@ -33,8 +33,8 @@ COPY . .
 # Build all workspaces
 RUN npm run build
 
-# Remove dev dependencies
-RUN npm prune --production --legacy-peer-deps
+# Keep devDependencies for runtime (tsx is needed for dev mode)
+# Production deployments can override CMD to use compiled artifacts
 
 # =============================================================================
 # Stage 2: Production Stage
@@ -43,7 +43,6 @@ FROM node:20-alpine AS production
 
 # Update package index and install runtime dependencies only
 RUN apk update && apk add --no-cache \
-    dumb-init \
     tini \
     && rm -rf /var/cache/apk/*
 
@@ -79,5 +78,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default command: run backend server
+# Default command: run backend server (uses tsx for development)
+# For production, override with: CMD ["node", "apps/backend/dist/index.js"]
 CMD ["npm", "run", "dev"]
