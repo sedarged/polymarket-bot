@@ -25,7 +25,7 @@ import { assertLiveTradingEnabled } from '../utils/liveTrading';
  * - Subscription management for specific markets
  * 
  * Authentication:
- * User channel requires CLOB API credentials (apiKey, secret, passphrase) which are
+ * User channel requires CLOB API credentials (key, secret, passphrase) which are
  * derived from the wallet's private key using the Polymarket SDK.
  * 
  * Security:
@@ -212,7 +212,7 @@ export class UserFeedClient extends EventEmitter {
    * The Polymarket user WebSocket requires CLOB API credentials which are
    * derived from the wallet's private key using the SDK's createOrDeriveApiKey() method.
    * This method performs L1 authentication (wallet signature) to obtain L2 credentials
-   * (apiKey, secret, passphrase) for WebSocket and API access.
+   * (key, secret, passphrase) for WebSocket and API access.
    */
   private async authenticate(): Promise<void> {
     if (!this.wsClient) {
@@ -230,7 +230,7 @@ export class UserFeedClient extends EventEmitter {
 
       const authMessage: UserAuthMessage = {
         type: 'USER',
-        apikey: credentials.apiKey,
+        apikey: credentials.key,
         secret: credentials.secret,
         passphrase: credentials.passphrase,
         markets: this.marketIds.size > 0 ? Array.from(this.marketIds) : undefined,
@@ -315,7 +315,9 @@ export class UserFeedClient extends EventEmitter {
       if (this.processedMessageIds.size > this.MESSAGE_ID_CACHE_SIZE) {
         // Remove oldest entries (first added)
         const firstId = this.processedMessageIds.values().next().value;
-        this.processedMessageIds.delete(firstId);
+        if (firstId !== undefined) {
+          this.processedMessageIds.delete(firstId);
+        }
       }
 
       // Route message to appropriate handler
