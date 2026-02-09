@@ -44,6 +44,14 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - **Incident response procedures** (SEV-1 to SEV-4)
   - Kill switch usage and monitoring
   - Backup and recovery procedures
+  - Docker and native deployment options
+- **[Docker Deployment Guide](./docker.md)** - 🐳 Container deployment and orchestration
+  - Quick start with Docker and Docker Compose
+  - Production deployment best practices
+  - Security hardening and scanning
+  - Health checks and monitoring
+  - CI/CD integration
+  - Comprehensive troubleshooting guide
 - **[Troubleshooting Guide](./troubleshooting.md)** - 🔧 Comprehensive problem-solving guide
   - **Top 10 common issues with solutions**
   - WebSocket, API, authentication errors

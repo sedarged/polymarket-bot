@@ -13,6 +13,7 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
     "markets": "tsx src/index.ts markets",
     "book": "tsx src/index.ts book",
     "kill": "tsx src/index.ts kill",

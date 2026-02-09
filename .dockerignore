@@ -1,0 +1,69 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist
+build
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.codespaces.example
+
+# Runtime data
+data/
+logs/
+*.log
+.state/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+coverage
+.nyc_output
+*.lcov
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Documentation (not needed in production)
+docs/
+REPORTS/
+archive/
+*.md
+!README.md
+
+# Development files
+.devcontainer
+.codespaces
+scripts/
+examples/
+grafana/
+
+# CI/CD
+.github
+
+# Cache directories
+.cache
+.npm
+.eslintcache

@@ -1504,13 +1504,34 @@ DATA FLOW SUMMARY:
 
 ### Logging & Monitoring
 - **Custom logger** (JSON structured logs)
+- **prom-client** (Prometheus metrics)
 
 ### Testing
 - **Vitest** (unit and integration tests)
+- **@vitest/coverage-v8** (code coverage)
 
 ### Build & Tooling
 - **TypeScript Compiler** (tsc)
 - **npm workspaces** (monorepo management)
+- **eslint** (linting with TypeScript support)
+
+### Deployment & Infrastructure
+- **Docker** - Containerization with multi-stage builds
+  - Base: `node:20-alpine` (minimal footprint)
+  - Init: `tini` (proper signal handling)
+  - Security: Non-root user (`polymarket:1001`)
+- **Docker Compose** - Local orchestration
+- **GitHub Actions** - CI/CD with security scanning
+  - Trivy (vulnerability scanning)
+  - TruffleHog (secret detection)
+- **Kubernetes** - Production orchestration (optional)
+
+**Deployment Options:**
+1. **Docker (Recommended):** `docker-compose up -d`
+2. **Native:** Direct Node.js execution
+3. **Kubernetes:** Production-grade with manifests
+
+**See [Docker Deployment Guide](./docker.md) for details.**
 
 ### Monorepo Structure
 ```
@@ -1518,8 +1539,11 @@ polymarket-bot/
 ├── apps/
 │   ├── backend/          # Node.js + TypeScript
 │   └── frontend/         # React (minimal)
-└── packages/
-    └── shared/           # Shared TypeScript types
+├── packages/
+│   └── shared/           # Shared TypeScript types
+├── Dockerfile            # Production deployment
+├── docker-compose.yml    # Local development
+└── docs/                 # Documentation
 ```
 
 ---

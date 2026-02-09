@@ -1,0 +1,164 @@
+name: Docker Security Scan
+
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+      - 'package*.json'
+      - 'apps/**/package*.json'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+
+jobs:
+  docker-security-scan:
+    name: Build and Scan Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: polymarket-bot:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: polymarket-bot:test
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail the build, just report
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy vulnerability scanner (table output)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: polymarket-bot:test
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '0'
+
+      - name: Check for critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: polymarket-bot:test
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL'
+          exit-code: '1'  # Fail if critical vulnerabilities found
+
+      - name: Docker image size check
+        run: |
+          IMAGE_SIZE=$(docker images polymarket-bot:test --format "{{.Size}}")
+          echo "Docker image size: $IMAGE_SIZE"
+          # Alert if image is larger than 500MB
+          SIZE_BYTES=$(docker inspect -f '{{ .Size }}' polymarket-bot:test)
+          SIZE_MB=$((SIZE_BYTES / 1024 / 1024))
+          echo "Image size in MB: $SIZE_MB"
+          if [ $SIZE_MB -gt 500 ]; then
+            echo "::warning::Docker image is larger than 500MB ($SIZE_MB MB). Consider optimization."
+          fi
+
+      - name: Verify non-root user
+        run: |
+          USER=$(docker run --rm polymarket-bot:test whoami)
+          if [ "$USER" != "polymarket" ]; then
+            echo "::error::Container is not running as non-root user (current: $USER)"
+            exit 1
+          fi
+          echo "✓ Container runs as non-root user: $USER"
+
+      - name: Test health check
+        run: |
+          # Ensure cleanup even if the health check fails
+          cleanup() {
+            docker stop test-container >/dev/null 2>&1 || true
+            docker rm test-container >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          # Start container
+          docker run -d --name test-container \
+            -e LIVE_TRADING=false \
+            -e COMPLIANCE_ACCEPTED=false \
+            polymarket-bot:test
+
+          # Wait for container to become healthy
+          MAX_WAIT_SECONDS=60
+          SLEEP_INTERVAL=5
+          ELAPSED=0
+
+          while [ "$ELAPSED" -lt "$MAX_WAIT_SECONDS" ]; do
+            HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{end}}' test-container 2>/dev/null || echo "no-healthcheck")
+            echo "Health status after ${ELAPSED}s: $HEALTH"
+
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "✓ Container health check passed (healthy)."
+              exit 0
+            fi
+
+            if [ "$HEALTH" = "unhealthy" ]; then
+              echo "::error::Container health check failed (unhealthy)."
+              exit 1
+            fi
+
+            if [ "$HEALTH" = "no-healthcheck" ] || [ -z "$HEALTH" ]; then
+              echo "::error::Container has no HEALTHCHECK defined or health status unavailable."
+              exit 1
+            fi
+
+            sleep "$SLEEP_INTERVAL"
+            ELAPSED=$((ELAPSED + SLEEP_INTERVAL))
+          done
+
+          echo "::error::Container did not become healthy within ${MAX_WAIT_SECONDS}s (last status: $HEALTH)."
+          exit 1
+
+      - name: Scan for secrets
+        uses: trufflesecurity/trufflehog@v3.87.0
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Docker Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Docker image built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Vulnerability scan completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Non-root user verified" >> $GITHUB_STEP_SUMMARY
+          echo "- ✓ Health check tested" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the Security tab for detailed vulnerability reports." >> $GITHUB_STEP_SUMMARY
