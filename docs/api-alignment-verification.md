@@ -80,6 +80,7 @@ This document provides verification that the Polymarket trading bot implementati
 | **DELETE /orders/all** | ✅ Via SDK | TradingClient.cancelAllOrders() | PR-002 |
 | **DELETE /orders/market** | ✅ Via SDK | TradingClient.cancelMarketOrders() | marketCancellation.test.ts (PR-006) |
 | **WS Market Channel** | ✅ Implemented | MarketFeedClient | integration-reconnect.test.ts |
+| **WS User Channel** | ✅ Implemented | UserFeedClient | userFeed.test.ts (PR-014) |
 | **L1/L2 Auth** | ✅ Via SDK | @polymarket/clob-client v5.2.1 | tradingClient.test.ts |
 | **clientOrderId** | ✅ Implemented | UUID v4 for idempotency (A-006) | idempotency.test.ts |
 | **/kill Enhanced** | ✅ Implemented | Selective cancellation with scopes | server/index.ts (PR-006) |
@@ -97,7 +98,7 @@ These are documented API features that are not currently implemented. They are o
 | Tags endpoint | GET /tags | Low | Not needed for current use case |
 | Series endpoint | GET /series | Low | Advanced grouping |
 | Search endpoint | GET /search | Low | Filtering works |
-| User WebSocket | wss://.../ws/user | Medium* | Polling reconciliation works |
+| User WebSocket | wss://.../ws/user | Medium* | ✅ Implemented (PR-014) | Real-time order/fill events |
 | GTD order type | orderType: 'GTD' | Low | GTC is default and sufficient |
 | FOK order type | orderType: 'FOK' | Low | Advanced strategy feature |
 | FAK order type | orderType: 'FAK' | Low | Advanced strategy feature |
