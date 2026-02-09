@@ -54,6 +54,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Development Workflow](./DEV_WORKFLOW.md) - Mandatory documentation maintenance procedures
 - [Codespaces Verification Checklist](./CODESPACES_VERIFICATION_CHECKLIST.md) - 🚨 **MANDATORY** real-world testing checklist for all PRs
+- [Verification Policy Executive Summary](./VERIFICATION_POLICY.md) - Overview of the verification policy and its benefits
 - [Codespaces Setup Guide](./CODESPACES_SETUP.md) - 🚀 Complete guide for GitHub Codespaces testing with all features
 - [Codespaces Maintainer Checklist](./CODESPACES_MAINTAINER_CHECKLIST.md) - Setup guide for repository maintainers
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
