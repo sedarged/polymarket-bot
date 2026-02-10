@@ -12,7 +12,7 @@
 |-------|--------|---------|
 | **npm install** | FAILS | `eslint@10` conflicts with `@typescript-eslint/eslint-plugin@8` (needs `--legacy-peer-deps`) |
 | **npm run build** | FAILS (2 errors) | `ethers` v6 `Wallet` type mismatch with `@polymarket/clob-client` expecting v5 `Wallet` |
-| **npm test** | 1115 pass, 0 fail, 2 skip | All tests passing |
+| **npm test** | 1115 pass, 0 fail, 2 skip | All tests passing (LRU cache test was previously failing but is now fixed) |
 | **npm audit** | 16 low | All from `elliptic` via `@ethersproject/*` (transitive dep of `@polymarket/clob-client`) |
 | **Existing audit reports** | 27 findings | 3 CRITICAL, 8 HIGH, 10 MEDIUM, 6 LOW (in `REPORTS/AUDIT.md`) |
 | **Gap analysis** | 8 categories | 3 FAIL, 2 CONDITIONAL, 2 PASS, 1 N/A (in `REPORTS/GAP_ANALYSIS.md`) |
@@ -193,6 +193,11 @@ Everything else is hardening, competitive features, and polish.
 | `package.json` (root) | eslint peer dep conflict | 0.1 |
 | `apps/backend/src/clients/tradingClient.ts:184` | ethers v5/v6 Wallet mismatch | 0.2 |
 | `apps/backend/src/clients/userFeed.ts:101` | ethers v5/v6 Wallet mismatch | 0.2 |
+| `apps/backend/src/config/index.ts:56` | Plaintext private key | 1.1 |
+| `apps/backend/src/trading/riskManager.ts:27,187-189` | Kill switch not persisted | 1.2 |
+| `apps/backend/src/server/index.ts:22` | Wildcard CORS | 1.3 |
+| `apps/backend/src/server/index.ts:33-35` | Optional admin token | 1.4 |
+| `apps/backend/src/clients/tradingClient.ts:95-96` | @ts-ignore unsafe cast | 1.5 |
 | `apps/backend/src/config/index.ts:104-110` | Plaintext private key support (no encryption enforced) | 1.1 |
 | `apps/backend/src/trading/riskManager.ts:97-131,324-334` | Kill switch persists to local disk — migrate to SQLite for container durability | 1.2 |
 | `apps/backend/src/config/index.ts:182,426-433` | CORS validation exists, blocks wildcard in prod (verify) | 1.3 |
