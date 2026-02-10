@@ -12,10 +12,10 @@ This document tracks the implementation status of all 27 audit findings from the
 - **Critical Issues (3 total):** 2 FIXED ✓, 1 PARTIAL (secret manager stubs exist)
 - **High Priority Issues (8 total):** 7 FIXED ✓, 1 N/A (deduplication resolved)
 - **Medium Priority Issues (10 total):** 3 FIXED ✓, 7 OPEN
-- **Low Priority Issues (6 total):** 2 FIXED ✓, 4 OPEN
+- **Low Priority Issues (6 total):** 4 FIXED ✓, 2 OPEN
 
-**Total Fixed:** 14/27 (52%)  
-**Total Open:** 12/27 (44%)  
+**Total Fixed:** 16/27 (59%)  
+**Total Open:** 10/27 (37%)  
 **Total N/A:** 1/27 (4%)
 
 ---
@@ -401,23 +401,57 @@ CIRCUIT_BREAKER_SUCCESS_THRESHOLD=2      # Close after 2 successes
 
 ## Low Priority Issues (P3)
 
-### ❌ A-022: Logging Exposure [OPEN]
-**Status:** Not yet addressed  
-**File:** `apps/backend/src/clients/tradingClient.ts` (lines 62-65)
+### ✓ A-022: Logging Exposure [FIXED]
+**Status:** Fully implemented with automatic masking  
+**Implementation:** `apps/backend/src/utils/logger.ts` (lines 45-142)
 
-**Issue:** Wallet address logged at startup. Privacy concern in shared logs.
+**What's Done:**
+- ✅ Automatic sensitive data redaction in logger
+- ✅ 'address' field detected as sensitive
+- ✅ Masking shows first 6 chars + last 4 chars (e.g., 0x1234...5678)
+- ✅ Recursive redaction for nested objects
+- ✅ Applied to all log statements automatically
 
-**Recommendation:** Mask or truncate address (e.g., 0x1234...5678)
+**Code Example:**
+```typescript
+// Logger automatically masks address fields (lines 82-87):
+function maskSensitiveDataInternal(value: string): string {
+  if (!value || value.length <= 10) {
+    return '***';
+  }
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+```
 
 ---
 
-### ❌ A-023: No Backoff Jitter [OPEN]
-**Status:** Not yet addressed  
-**File:** `apps/backend/src/utils/retry.ts` (line 33)
+### ✓ A-023: No Backoff Jitter [FIXED]
+**Status:** Fully implemented with configurable jitter  
+**Implementation:** `apps/backend/src/utils/retry.ts` (lines 96, 156-161)
 
-**Issue:** Retry backoff has no jitter, causing thundering herd on service recovery.
+**What's Done:**
+- ✅ Jitter parameter in RetryOptions (default: 0.1 = 10%)
+- ✅ Random variation between -jitter and +jitter
+- ✅ Applied to exponential backoff calculation
+- ✅ Prevents thundering herd effect
+- ✅ Documented in code comments
 
-**Recommendation:** Add random jitter (5-10% of delay)
+**Code Example:**
+```typescript
+// Jitter implementation (lines 156-161):
+const jitterAmount = baseDelay * jitter * (Math.random() * 2 - 1);
+const delayWithJitter = Math.max(0, baseDelay + jitterAmount);
+const waitTime = Math.min(delayWithJitter, maxDelay);
+```
+
+**Configuration:**
+```typescript
+await retry(fn, {
+  jitter: 0.1, // 10% jitter (default)
+  // OR
+  jitter: 0.2, // 20% jitter for more randomness
+});
+```
 
 ---
 
@@ -490,8 +524,8 @@ CIRCUIT_BREAKER_SUCCESS_THRESHOLD=2      # Close after 2 successes
 - ❌ **7 OPEN** (A-012, A-013, A-014, A-015, A-016, A-017, A-019)
 
 ### Low (P3): 6 total
-- ✅ **2 FIXED** (A-024, A-026)
-- ❌ **4 OPEN** (A-022, A-023, A-025, A-027)
+- ✅ **4 FIXED** (A-022, A-023, A-024, A-026)
+- ❌ **2 OPEN** (A-025, A-027)
 
 ---
 
