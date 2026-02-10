@@ -69,6 +69,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - 🔐 Multiple secret management backends (Vault, AWS, Azure, encrypted)
 - 📊 Prometheus metrics and Grafana dashboards
 - 🚨 Telegram alerting for errors and circuit breaker trips
+- 📝 Categorized logging with automatic sensitive data masking
 
 ### Risk Management & Safety
 - ⚖️ Risk management with exposure and drawdown limits
