@@ -278,9 +278,49 @@ await retry(async () => {
 
 ---
 
-### N/A A-010: WebSocket Message Deduplication [RESOLVED]
-**Status:** Architecture decision - not needed  
-**Rationale:** Modern WebSocket implementations and protocols ensure message delivery without duplicates. Additional deduplication adds complexity without proven benefit.
+### ✓ A-010: WebSocket Message Deduplication [FIXED]
+**Status:** Fully implemented  
+**Implementation:** `apps/backend/src/clients/marketFeed.ts`
+
+Message deduplication prevents processing duplicate WebSocket messages that could cause incorrect orderbook state or double-processing of events.
+
+```typescript
+// Message ID generation and deduplication (lines 67, 191-207, 238+):
+private processedMessageIds: Set<string> = new Set();
+
+private async handleMessage(message: WSMarketMessage): Promise<void> {
+  const messageId = this.generateMessageId(message);
+  
+  if (this.processedMessageIds.has(messageId)) {
+    logger.debug('Duplicate message detected, skipping', { messageId });
+    return;
+  }
+  
+  // LRU cache management (max 10,000 message IDs)
+  if (this.processedMessageIds.size >= this.MESSAGE_ID_CACHE_SIZE) {
+    const firstId = this.processedMessageIds.values().next().value;
+    if (firstId) {
+      this.processedMessageIds.delete(firstId);
+    }
+  }
+  
+  this.processedMessageIds.add(messageId);
+  // ... process message
+}
+
+private generateMessageId(message: WSMarketMessage): string {
+  // Generate unique ID from message content
+  return `${message.event_type}-${message.asset_id}-${message.timestamp || Date.now()}`;
+}
+```
+
+**Key features:**
+- Generates unique message IDs based on event type, asset ID, and timestamp
+- Maintains LRU cache of processed message IDs (max 10,000 entries)
+- Logs and skips duplicate messages
+- Prevents duplicate orderbook updates and event emissions
+
+**Tests:** Covered by WebSocket integration tests in `apps/backend/tests/integration/websocket.test.ts`
 
 ---
 
@@ -577,16 +617,13 @@ await retry(fn, {
 1. Address A-012: Trading client initialization error handling
 2. Complete A-013: Stricter order ID validation
 3. Fix A-014: Include partial fills in position calculation
-4. Implement A-015: Cache TTL enforcement
-5. Fix A-016: WebSocket timer cleanup
-6. Fix A-017: Graceful shutdown for market feed
-7. Improve A-019: Realistic partial fill simulation
+4. Fix A-016: WebSocket timer cleanup
+5. Fix A-017: Graceful shutdown for market feed
+6. Improve A-019: Realistic partial fill simulation
 
 ### Long Term (P3)
-1. Add A-022: Wallet address masking in logs
-2. Implement A-023: Jitter in retry backoff
-3. Expand A-025: Test coverage for gaps
-4. Complete A-027: Trading-specific metrics
+1. Expand A-025: Test coverage for gaps
+2. Complete A-027: Trading-specific metrics
 
 ### Optional (Cloud Secrets)
 - Complete A-001 cloud integrations (AWS/Vault/Azure) if cloud deployment is planned
