@@ -36,7 +36,7 @@
 - **npm install** — peer dependency conflict (eslint 10 vs typescript-eslint 8)
 - **No trading strategies** — infrastructure exists but zero strategies implemented
 - **No live trading validated** — paper trading only, never tested with real money
-- **Kill switch not persisted** — lost on server restart (but state can be passed at startup)
+- **Kill switch persistence is local-only** — state is saved to `.state/kill-switch.json` and restored on startup, but relies on local disk persistence which may be lost in containerized/ephemeral environments
 - **Plaintext private keys** — no encrypted storage by default (env var support exists)
 - **CORS restrictions** — defaults to localhost:3000, blocks wildcard in production, but needs explicit configuration
 
@@ -61,8 +61,8 @@
 
 | # | Audit ID | Task | File(s) | Effort |
 |---|----------|------|---------|--------|
-| 1.1 | A-001 | **Encrypt private keys at rest** — Enforce encrypted secret backend by default. Add PBKDF2+AES key encryption with passphrase prompt at startup. Fall back to env var only if `SECRET_BACKEND=env` explicitly set. | `apps/backend/src/secrets/index.ts`, `apps/backend/src/config/index.ts` | 1 day |
-| 1.2 | A-002 | **Persist kill switch state** — Write kill switch state to SQLite (or a file). On startup, read and honor persisted state. Add `killswitch_state` table. Currently state can be passed but not persisted. | `apps/backend/src/trading/riskManager.ts`, `apps/backend/src/utils/database.ts` | 4 hr |
+| 1.1 | A-001 | **Encrypt private keys at rest** — Enforce encrypted secret backend by default. Add PBKDF2+AES key encryption with passphrase prompt at startup. Fall back to env var only if `SECRET_SOURCE=env` explicitly set. | `apps/backend/src/secrets/index.ts`, `apps/backend/src/config/index.ts` | 1 day |
+| 1.2 | A-002 | **Migrate kill switch to durable persistence** — Currently persists to `.state/kill-switch.json` (local disk). Migrate to SQLite for durability in containerized deployments. Add `killswitch_state` table, health checks for state file corruption, and operational documentation. | `apps/backend/src/trading/riskManager.ts`, `apps/backend/src/utils/database.ts`, `apps/backend/src/utils/statePersistence.ts` | 4 hr |
 | 1.3 | A-003 | **Restrict CORS origins** — ✅ PARTIALLY FIXED: Config validation blocks wildcard in production, defaults to localhost:3000. Still marked as "Open" in audit but code has been updated. Verify and document proper production setup. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 30 min |
 | 1.4 | A-004 | **Require admin token** — ✅ PARTIALLY FIXED: Config now requires admin token for production/live trading. Still marked as "Open" in audit but code has been updated. Verify and update audit status. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 30 min |
 | 1.5 | A-005 | **Remove @ts-ignore / unsafe casts** — ✅ PARTIALLY FIXED: @ts-ignore removed from production code (marked as fixed in audit A-026). Still marked as "Open" for A-005 but related to balance fetch validation. Verify proper type guards exist. | `apps/backend/src/clients/tradingClient.ts` | 1 hr |
@@ -193,12 +193,11 @@ Everything else is hardening, competitive features, and polish.
 | `package.json` (root) | eslint peer dep conflict | 0.1 |
 | `apps/backend/src/clients/tradingClient.ts:184` | ethers v5/v6 Wallet mismatch | 0.2 |
 | `apps/backend/src/clients/userFeed.ts:101` | ethers v5/v6 Wallet mismatch | 0.2 |
-
 | `apps/backend/src/config/index.ts:104-110` | Plaintext private key support (no encryption enforced) | 1.1 |
-| `apps/backend/src/trading/riskManager.ts:33,101-102` | Kill switch not persisted (in-memory only) | 1.2 |
+| `apps/backend/src/trading/riskManager.ts:97-131,324-334` | Kill switch persists to local disk — migrate to SQLite for container durability | 1.2 |
 | `apps/backend/src/config/index.ts:182,426-433` | CORS validation exists, blocks wildcard in prod (verify) | 1.3 |
 | `apps/backend/src/config/index.ts:445-460` | Admin token required in prod/live (verify) | 1.4 |
-| `apps/backend/src/clients/tradingClient.ts:95-96` | Balance fetch validation (was @ts-ignore, now removed) | 1.5 |
+| `apps/backend/src/clients/tradingClient.ts` | Balance fetch validation (was @ts-ignore, now removed) | 1.5 |
 | `apps/backend/src/clients/marketFeed.ts:94-98` | Resync race condition | 1.6 |
 | `apps/backend/src/utils/retry.ts:33` | No jitter, no total timeout | 1.8, 2.10 |
 | `apps/backend/src/clients/orderbookCache.ts:5-6,15` | No cache TTL | 2.4 |
