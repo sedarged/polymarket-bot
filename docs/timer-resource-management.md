@@ -76,7 +76,7 @@ The graceful shutdown sequence in `apps/backend/src/server/index.ts` properly cl
 
 ## Testing
 
-Comprehensive timer leak detection tests added in `apps/backend/tests/timer-resource-leak.test.ts`:
+Comprehensive timer leak detection tests added in `apps/backend/tests/unit/timer-resource-leak.test.ts`:
 
 ### Test Coverage
 
@@ -212,4 +212,4 @@ To verify no timer leaks in production:
 - Circuit breaker: `apps/backend/src/utils/circuitBreaker.ts`
 - Periodic reconciliation: `apps/backend/src/clients/tradingClient.ts`
 - Graceful shutdown: `apps/backend/src/server/index.ts`
-- Timer leak tests: `apps/backend/tests/timer-resource-leak.test.ts`
+- Timer leak tests: `apps/backend/tests/unit/timer-resource-leak.test.ts`

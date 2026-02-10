@@ -1,0 +1,158 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { TradingClient } from '../../src/clients/tradingClient';
+import { isLiveTradingEnabled } from '../../src/utils/liveTrading';
+
+// Mock the dependencies
+vi.mock('../../src/config', () => ({
+  config: {
+    liveTrading: false,
+    complianceAccepted: false,
+    privateKey: undefined,
+    clobApiUrl: 'https://clob.polymarket.com',
+    chainId: 137,
+  },
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+describe('TradingClient', () => {
+  let client: TradingClient;
+
+  beforeEach(() => {
+    client = new TradingClient();
+  });
+
+  describe('initialization', () => {
+    it('should not be initialized by default', () => {
+      expect(client.isInitialized()).toBe(false);
+    });
+
+    it('should fail to initialize without live trading enabled', async () => {
+      await expect(client.initialize()).rejects.toThrow(
+        'Live trading is disabled'
+      );
+    });
+
+    it('should return null for wallet address when not initialized', () => {
+      expect(client.getAddress()).toBeNull();
+    });
+  });
+
+  describe('getState', () => {
+    it('should return empty state when not initialized', () => {
+      const state = client.getState();
+      expect(state.orders).toEqual([]);
+      expect(state.fills).toEqual([]);
+      expect(state.positions).toEqual([]);
+      expect(state.balances).toEqual([]);
+    });
+  });
+
+  describe('order operations', () => {
+    it('should fail to create order without initialization', async () => {
+      await expect(
+        client.createOrder('0xtoken', 'BUY', '0.5', '10')
+      ).rejects.toThrow();
+    });
+
+    it('should fail to cancel order without initialization', async () => {
+      await expect(client.cancelOrder('order-123')).rejects.toThrow();
+    });
+
+    it('should fail to cancel all orders without initialization', async () => {
+      await expect(client.cancelAllOrders()).rejects.toThrow();
+    });
+  });
+
+  describe('getUsdcBalance', () => {
+    it('should return null when not initialized', () => {
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when no balances', () => {
+      client._setTestBalances([]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when only non-USDC balances', () => {
+      client._setTestBalances([
+        { currency: 'ETH', available: '1', total: '1' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when USDC available is invalid numeric string', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: 'not-a-number', total: '100' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return finite number for valid USDC balance', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: '123.45', total: '123.45' },
+      ]);
+      const balance = client.getUsdcBalance();
+      expect(balance).toBe(123.45);
+      expect(Number.isFinite(balance)).toBe(true);
+    });
+
+    it('should return null when USDC available is empty string', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: '', total: '0' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+  });
+
+  describe('runBanStatusCheck', () => {
+    it('should resolve without throwing when not initialized', async () => {
+      await expect(client.runBanStatusCheck()).resolves.toBeUndefined();
+    });
+  });
+});
+
+describe('isLiveTradingEnabled', () => {
+  it('should return false when both flags are false', () => {
+    expect(
+      isLiveTradingEnabled({
+        liveTrading: false,
+        complianceAccepted: false,
+      } as any)
+    ).toBe(false);
+  });
+
+  it('should return false when only liveTrading is true', () => {
+    expect(
+      isLiveTradingEnabled({
+        liveTrading: true,
+        complianceAccepted: false,
+      } as any)
+    ).toBe(false);
+  });
+
+  it('should return false when only complianceAccepted is true', () => {
+    expect(
+      isLiveTradingEnabled({
+        liveTrading: false,
+        complianceAccepted: true,
+      } as any)
+    ).toBe(false);
+  });
+
+  it('should return true when both flags are true', () => {
+    expect(
+      isLiveTradingEnabled({
+        liveTrading: true,
+        complianceAccepted: true,
+      } as any)
+    ).toBe(true);
+  });
+});

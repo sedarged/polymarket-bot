@@ -194,7 +194,7 @@ for i in {1..100}; do curl http://localhost:3000/health; done
 - `apps/backend/src/clients/marketFeed.ts`
 - `apps/backend/src/clients/websocket.ts`
 - `package.json` (add uuid)
-- `apps/backend/tests/idempotency.test.ts` (new)
+- `apps/backend/tests/unit/idempotency.test.ts` (new)
 
 **Evidence Required:**
 ```typescript
@@ -260,7 +260,7 @@ describe('Idempotency', () => {
 - `apps/backend/src/clients/tradingClient.ts`
 - `apps/backend/src/config/index.ts`
 - `package.json` (add zod)
-- `apps/backend/tests/validation.test.ts` (new)
+- `apps/backend/tests/unit/validation.test.ts` (new)
 
 **Evidence Required:**
 ```bash
@@ -318,7 +318,7 @@ PRIVATE_KEY=invalid npm run dev
 **Files Modified:**
 - `apps/backend/src/clients/tradingClient.ts`
 - `apps/backend/src/index.ts`
-- `apps/backend/tests/reconciliation.test.ts` (new)
+- `apps/backend/tests/unit/reconciliation.test.ts` (new)
 - `docs/runbook.md`
 
 **Evidence Required:**
@@ -370,7 +370,7 @@ PRIVATE_KEY=invalid npm run dev
 - `apps/backend/src/clients/orderbookCache.ts`
 - `apps/backend/src/clients/websocket.ts`
 - `apps/backend/src/server/index.ts`
-- `apps/backend/tests/websocket-reliability.test.ts` (new)
+- `apps/backend/tests/unit/websocket-reliability.test.ts` (new)
 
 **Evidence Required:**
 ```bash
@@ -425,7 +425,7 @@ npm run dev &
 **Files Modified:**
 - `apps/backend/src/trading/paperTradingEngine.ts`
 - `apps/backend/src/cli/index.ts`
-- `apps/backend/tests/paperTrading.test.ts` (enhanced)
+- `apps/backend/tests/unit/paperTrading.test.ts` (enhanced)
 - `docs/paper-trading.md`
 
 **Evidence Required:**
@@ -480,7 +480,7 @@ npm run replay -- --date 2024-01-01 --market <id>
 - `apps/backend/src/trading/riskManager.ts`
 - `apps/backend/src/server/index.ts`
 - `apps/backend/src/utils/retry.ts`
-- `apps/backend/tests/circuitBreaker.test.ts` (enhanced)
+- `apps/backend/tests/unit/circuitBreaker.test.ts` (enhanced)
 
 **Evidence Required:**
 ```bash
@@ -644,7 +644,7 @@ LOG_LEVEL=debug npm run dev
 - [ ] Test documentation complete
 
 **Files Modified:**
-- `apps/backend/tests/*.test.ts` (many new tests)
+- `apps/backend/tests/unit/*.test.ts` (and integration/ backtest/ as needed)
 - `.github/workflows/test.yml` (new)
 - `docs/testing.md` (new)
 

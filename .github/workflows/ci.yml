@@ -30,10 +30,15 @@ jobs:
       - name: Type check (build)
         run: npm run build
         
-      - name: Run backend tests
-        run: npm test
+      - name: Run backend unit tests
+        run: npm run test:unit
         working-directory: apps/backend
-        
+      - name: Run backend integration tests
+        run: npm run test:integration
+        working-directory: apps/backend
+      - name: Run backend backtest tests
+        run: npm run test:backtest
+        working-directory: apps/backend
       - name: Run test coverage
         run: npm run test:coverage
         working-directory: apps/backend

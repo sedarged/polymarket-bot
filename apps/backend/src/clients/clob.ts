@@ -210,6 +210,41 @@ export class ClobClient {
   }
 
   /**
+   * Get fee rate for a token (Research §1.4). Fee-enabled markets (e.g. 15-min crypto) return feeRateBps.
+   * Use when placing live orders to include correct feeRateBps in order payload. Most markets are 0% fee.
+   *
+   * @param tokenId - The token/asset ID
+   * @returns feeRateBps (basis points) or 0 if not fee-enabled
+   * @see Research §1.4, §12.1 item 4
+   */
+  async getFeeRate(tokenId: string): Promise<number> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching fee rate', { tokenId });
+        const response = await this.client.get<{ feeRateBps?: number }>(
+          '/fee-rate',
+          { params: { token_id: tokenId } }
+        );
+        const bps = response.data?.feeRateBps ?? 0;
+        logger.debug('Retrieved fee rate', { tokenId, feeRateBps: bps });
+        return bps;
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) return false;
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
    * Get the most recent trade for a token
    * 
    * Returns the price, size, and timestamp of the last trade executed on this market.
@@ -452,6 +487,48 @@ export class ClobClient {
         jitter: 0.1,
         maxDelay: 30000,
         timeout: 15000, // Slightly longer timeout for historical data
+        totalTimeout: config.retryTotalTimeout,
+        isRetryable: (error: Error) => {
+          const errorType = classifyError(error);
+          if (errorType === ErrorType.PERMANENT) {
+            return false;
+          }
+          return true;
+        },
+      })
+    );
+  }
+
+  /**
+   * Get ban-status for a wallet address (compliance §10.1, §9.2).
+   * Call on startup and periodically (e.g. every 24h). If cert_required is true,
+   * alert admin (14-day deadline for proof of residence).
+   *
+   * @param polyAddress - Wallet address (POLY_ADDRESS header)
+   * @returns { cert_required: boolean }
+   * @see Research §10.1, §9.2
+   */
+  async getBanStatus(polyAddress: string): Promise<{ cert_required: boolean }> {
+    return this.circuitBreaker.execute(() =>
+      retry(async () => {
+        logger.debug('Fetching ban-status', { polyAddress: `${polyAddress.slice(0, 10)}...` });
+        const response = await this.client.get<{ cert_required?: boolean }>(
+          '/ban-status',
+          {
+            headers: {
+              POLY_ADDRESS: polyAddress,
+            },
+          }
+        );
+        const certRequired = response.data?.cert_required === true;
+        logger.info('Ban-status retrieved', { cert_required: certRequired });
+        return { cert_required: certRequired };
+      }, {
+        attempts: config.retryAttempts,
+        delay: config.retryDelay,
+        jitter: 0.1,
+        maxDelay: 30000,
+        timeout: 10000,
         totalTimeout: config.retryTotalTimeout,
         isRetryable: (error: Error) => {
           const errorType = classifyError(error);

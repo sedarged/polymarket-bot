@@ -524,7 +524,7 @@ All inputs validated before submission:
 - **Issue**: #230 - PR-002 Batch Operations & Kill Switch
 - **Documentation**: `docs/api-missing-endpoints-analysis.md`
 - **Code**: `apps/backend/src/clients/tradingClient.ts`
-- **Tests**: `apps/backend/tests/batchOperations.test.ts`
+- **Tests**: `apps/backend/tests/unit/batchOperations.test.ts`
 - **Polymarket API**: https://docs.polymarket.com/developers/CLOB/orders
 
 ## Changelog

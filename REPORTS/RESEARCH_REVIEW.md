@@ -985,11 +985,11 @@ async getMarketsByTag(tagId: string, limit?: number): Promise<Market[]> {
 ### Test References
 
 #### Configuration Tests
-- **File:** `apps/backend/tests/config.test.ts:8-10`
+- **File:** `apps/backend/tests/unit/config.test.ts:8-10`
 - **Validates:** Default API URLs match official endpoints
 
 #### Trading Client Tests
-- **File:** `apps/backend/tests/tradingClient.test.ts:11`
+- **File:** `apps/backend/tests/unit/tradingClient.test.ts:11`
 - **Validates:** CLOB API URL configuration
 
 ### Documentation References

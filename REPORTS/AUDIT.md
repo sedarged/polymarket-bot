@@ -380,7 +380,7 @@ private generateMessageId(message: WSMarketMessage): string {
 
 **Changes:**
 - ✅ Message deduplication implemented with LRU cache (10,000 message capacity)
-- ✅ Comprehensive tests added (`tests/websocket-deduplication.test.ts`)
+- ✅ Comprehensive tests added (`tests/unit/websocket-deduplication.test.ts`)
 - ✅ ADR-0008 documents design decisions
 - ✅ Architecture documentation updated
 
@@ -393,7 +393,7 @@ private generateMessageId(message: WSMarketMessage): string {
 
 **References:**
 - Implementation: `apps/backend/src/clients/marketFeed.ts`
-- Tests: `apps/backend/tests/websocket-deduplication.test.ts`
+- Tests: `apps/backend/tests/unit/websocket-deduplication.test.ts`
 - ADR: `docs/adr/0008-websocket-message-deduplication.md`
 
 **Recommendation Priority:** P1 - Critical for data integrity ✅ **COMPLETED**
@@ -990,8 +990,8 @@ const orderId = `paper-${uuidv4()}`;
 ```
 
 **Testing:**
-- Added comprehensive tests in `tests/idempotency.test.ts` for live trading client
-- Added comprehensive tests in `tests/paperTradingEngine.test.ts` for paper trading engine
+- Added comprehensive tests in `tests/unit/idempotency.test.ts` for live trading client
+- Added comprehensive tests in `tests/unit/paperTradingEngine.test.ts` for paper trading engine
 - Verified UUID v4 generation and uniqueness
 - Tested 1000+ order creation without collisions
 

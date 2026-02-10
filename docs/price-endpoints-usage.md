@@ -492,7 +492,7 @@ console.log('Successes:', metrics.successes);
 
 ## Testing
 
-See `apps/backend/tests/clob.test.ts` for comprehensive test coverage:
+See `apps/backend/tests/unit/clob.test.ts` for comprehensive test coverage:
 - Success cases for all endpoints
 - Error handling (network, API, empty orderbook)
 - Retry logic and exponential backoff

@@ -712,6 +712,10 @@ export function createServer(): http.Server {
   });
 }
 
+// Used by shutdown to clear periodic timers (Research §9.7, §10.1)
+let banStatusInterval: NodeJS.Timeout | null = null;
+let heartbeatInterval: NodeJS.Timeout | null = null;
+
 export async function startServer(): Promise<http.Server> {
   const server = createServer();
   
@@ -730,6 +734,18 @@ export async function startServer(): Promise<http.Server> {
     logger.info('Alerting service not configured - alerts will only be logged');
   }
   
+  // Heartbeat to external monitor (Research §9.7, §10.6): GET every 1 min; if missed 5 min, external alert
+  if (config.heartbeatUrl) {
+    const HEARTBEAT_MS = 60_000;
+    heartbeatInterval = setInterval(() => {
+      fetch(config.heartbeatUrl!, { method: 'GET', signal: AbortSignal.timeout(10_000) })
+        .then(() => logger.debug('Heartbeat ping OK'))
+        .catch((err) => logger.warn('Heartbeat ping failed', { error: err instanceof Error ? err.message : String(err) }));
+    }, HEARTBEAT_MS);
+    heartbeatInterval.unref();
+    logger.info('Heartbeat started', { intervalMs: HEARTBEAT_MS, research: '§9.7' });
+  }
+
   // Start market feed service
   marketFeedService.start();
   
@@ -776,16 +792,54 @@ export async function startServer(): Promise<http.Server> {
   if (isLiveTradingEnabled()) {
     tradingClient.initialize()
       .then(() => {
+        if (!tradingClient.isInitialized()) return;
+
+        // MIN_BALANCE check at startup (Research §9.1)
+        if (config.minBalanceUsdc > 0) {
+          const balance = tradingClient.getUsdcBalance();
+          if (balance !== null && balance < config.minBalanceUsdc) {
+            logger.error('Startup aborted: USDC balance below MIN_BALANCE_USDC', {
+              balance,
+              minBalanceUsdc: config.minBalanceUsdc,
+              research: '§9.1',
+            });
+            // Invoke graceful shutdown before exit so servers/connections close cleanly
+            shutdown(1);
+            return;
+          }
+        }
+
         // Start periodic reconciliation after successful initialization (Gap RE-001)
-        if (tradingClient.isInitialized()) {
-          tradingClient.startPeriodicReconciliation();
-          logger.info('Periodic reconciliation started', {
-            intervalSeconds: config.reconciliationIntervalSeconds,
-            gap: 'RE-001',
+        tradingClient.startPeriodicReconciliation();
+        logger.info('Periodic reconciliation started', {
+          intervalSeconds: config.reconciliationIntervalSeconds,
+          gap: 'RE-001',
+        });
+
+        // Periodic ban-status check (Research §10.1, §9.2)
+        if (config.banStatusCheckIntervalMs > 0) {
+          banStatusInterval = setInterval(() => {
+            tradingClient.runBanStatusCheck().catch((err) => {
+              logger.warn('Ban-status check interval error', {
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          }, config.banStatusCheckIntervalMs);
+          banStatusInterval.unref();
+          logger.info('Ban-status periodic check scheduled', {
+            intervalMs: config.banStatusCheckIntervalMs,
+            research: '§10.1',
           });
         }
       })
       .catch((error) => {
+        if (error instanceof Error && error.message.includes('Startup aborted')) {
+          logger.error('Startup aborted (ban-status cert_required)', {
+            message: error.message,
+          });
+          shutdown(1);
+          return;
+        }
         logger.error('Failed to initialize trading client', {
           error: error instanceof Error ? error.message : String(error),
         });
@@ -797,9 +851,48 @@ export async function startServer(): Promise<http.Server> {
     logger.info('Server listening', { port: config.port });
   });
 
+  // Dedicated metrics server on METRICS_PORT when different from PORT (Research §7 Day 6, §9.1)
+  let metricsServer: http.Server | null = null;
+  if (config.metricsPort !== config.port) {
+    metricsServer = http.createServer(async (req, res) => {
+      const method = req.method ?? 'GET';
+      const url = req.url ?? '/';
+      if (method === 'GET' && (url === '/metrics' || url === '/')) {
+        try {
+          const metricsOutput = await getMetrics();
+          res.writeHead(200, {
+            'Content-Type': getContentType(),
+            'Content-Length': Buffer.byteLength(metricsOutput),
+          });
+          res.end(metricsOutput);
+        } catch (error) {
+          logger.error('Failed to get metrics (metrics server)', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to get metrics' }));
+        }
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    });
+    metricsServerForTesting = metricsServer;
+    metricsServer.on('error', (err) => {
+      logger.error('Metrics server bind error (degrading to single-port metrics)', {
+        error: err instanceof Error ? err.message : String(err),
+        port: config.metricsPort,
+      });
+      metricsServer = null;
+    });
+    metricsServer.listen(config.metricsPort, () => {
+      logger.info('Metrics server listening', { port: config.metricsPort, research: '§7 Day 6' });
+    });
+  }
+
   // Graceful shutdown handler
   // Addresses Audit Finding A-017: properly await all cleanup operations
-  const shutdown = async () => {
+  const shutdown = async (exitCode?: number) => {
     logger.info('Shutting down server...');
     
     // Create shutdown timeout to prevent hanging (10 seconds)
@@ -818,6 +911,16 @@ export async function startServer(): Promise<http.Server> {
       await marketFeedService.stop();
       logger.info('Market feed service stopped');
       
+      // Stop periodic ban-status check (Research §10.1)
+      if (banStatusInterval) {
+        clearInterval(banStatusInterval);
+        banStatusInterval = null;
+      }
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+
       // Stop periodic reconciliation and clean up (Gap RE-001)
       if (isLiveTradingEnabled() && tradingClient.isInitialized()) {
         tradingClient.stopPeriodicReconciliation();
@@ -842,6 +945,17 @@ export async function startServer(): Promise<http.Server> {
         }
       }
       
+      // Close metrics server first (if running)
+      if (metricsServer) {
+        await new Promise<void>((resolve) => {
+          metricsServer!.close(() => {
+            logger.info('Metrics server stopped');
+            resolve();
+          });
+        });
+        metricsServer = null;
+      }
+
       // Close HTTP server
       await new Promise<void>((resolve) => {
         server.close(() => {
@@ -849,16 +963,16 @@ export async function startServer(): Promise<http.Server> {
           resolve();
         });
       });
-      
+
       // Clear shutdown timeout and exit cleanly
       clearTimeout(shutdownTimeout);
-      process.exit(0);
+      process.exit(exitCode ?? 0);
     } catch (error) {
       logger.error('Error during shutdown', {
         error: error instanceof Error ? error.message : String(error),
       });
       clearTimeout(shutdownTimeout);
-      process.exit(1);
+      process.exit(exitCode ?? 1);
     }
   };
 
@@ -866,4 +980,10 @@ export async function startServer(): Promise<http.Server> {
   process.on('SIGINT', shutdown);
 
   return server;
+}
+
+/** Exposed for tests only: when METRICS_PORT !== PORT, returns the dedicated metrics server so tests can close it. */
+let metricsServerForTesting: http.Server | null = null;
+export function getMetricsServerForTesting(): http.Server | null {
+  return metricsServerForTesting;
 }

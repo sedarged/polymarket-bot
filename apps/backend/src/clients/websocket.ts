@@ -16,6 +16,8 @@ export interface WebSocketClientOptions {
   maxReconnectDelay?: number;
   reconnectBackoffMultiplier?: number;
   reconnectJitter?: number;
+  /** Max reconnect attempts before giving up (Research §9.3). Default 10. After this, "maxReconnectsReached" is emitted and alert sent. */
+  maxReconnectAttempts?: number;
 }
 
 export enum WebSocketState {
@@ -35,6 +37,7 @@ export class WebSocketClient extends EventEmitter {
   private reconnectJitter: number;
   private currentReconnectDelay: number;
   private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number;
   private shouldReconnect: boolean = true;
   private state: WebSocketState = WebSocketState.DISCONNECTED;
   private reconnectTimer: NodeJS.Timeout | null = null;
@@ -49,7 +52,13 @@ export class WebSocketClient extends EventEmitter {
     this.maxReconnectDelay = options.maxReconnectDelay ?? 30000;
     this.reconnectBackoffMultiplier = options.reconnectBackoffMultiplier ?? 2;
     this.reconnectJitter = options.reconnectJitter ?? 0.1;
+    this.maxReconnectAttempts = options.maxReconnectAttempts ?? 10; // Research §9.3
     this.currentReconnectDelay = this.reconnectDelay;
+  }
+
+  /** Exposed for tests: assert maxReconnectAttempts wiring from MarketFeedClient. */
+  getMaxReconnectAttemptsForTesting(): number {
+    return this.maxReconnectAttempts;
   }
 
   /**
@@ -186,6 +195,35 @@ export class WebSocketClient extends EventEmitter {
     // Record reconnection attempt
     websocketReconnects.inc({ feed_type: this.feedType, result: "attempt" });
 
+    // Research §9.3: Max N attempts (strict), then critical alert + optional exit.
+    // Use >= so we enforce exactly maxReconnectAttempts reconnects (count matches message).
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      logger.error("WebSocket max reconnect attempts reached - giving up", {
+        feedType: this.feedType,
+        attempts: this.reconnectAttempts,
+        maxAttempts: this.maxReconnectAttempts,
+        research: "§9.3",
+      });
+      this.shouldReconnect = false;
+      this.updateStateMetrics(WebSocketState.DISCONNECTED);
+      this.emit("maxReconnectsReached", { feedType: this.feedType, attempts: this.reconnectAttempts });
+      // Fire-and-forget critical alert
+      import("../utils/alerting").then(({ getAlertingService }) => {
+        const alerting = getAlertingService();
+        if (alerting) {
+          alerting.sendAlert({
+            severity: "critical",
+            title: "WebSocket max reconnects reached",
+            message: `Feed ${this.feedType} failed to reconnect after ${this.maxReconnectAttempts} attempts. Bot may need restart.`,
+            context: { feedType: this.feedType, attempts: this.reconnectAttempts },
+            timestamp: new Date().toISOString(),
+            dedupeKey: `ws-max-reconnects-${this.feedType}`,
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+      return;
+    }
+
     // Calculate delay with exponential backoff and jitter
     const jitter = 1 + (Math.random() * 2 - 1) * this.reconnectJitter;
     const delay = Math.min(
@@ -195,6 +233,7 @@ export class WebSocketClient extends EventEmitter {
 
     logger.info("Scheduling reconnect", {
       attempt: this.reconnectAttempts,
+      maxAttempts: this.maxReconnectAttempts,
       delay: Math.round(delay),
     });
 

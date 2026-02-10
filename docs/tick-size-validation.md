@@ -164,7 +164,7 @@ Order size 0.5 is below the minimum.
 
 ## Testing
 
-Comprehensive tests in `apps/backend/tests/orderValidationConstraints.test.ts`:
+Comprehensive tests in `apps/backend/tests/unit/orderValidationConstraints.test.ts`:
 
 - **Tick Size Tests** (37 test cases):
   - Valid prices for each tick size (0.1, 0.01, 0.001, 0.0001)
@@ -230,5 +230,5 @@ This validation addresses **Issue #75** and provides several security benefits:
 
 - Issue: [#75 - Enforce tick size and minimum order size for all orders](https://github.com/sedarged/polymarket-bot/issues/75)
 - Implementation: `apps/backend/src/utils/orderValidation.ts`
-- Tests: `apps/backend/tests/orderValidationConstraints.test.ts`
+- Tests: `apps/backend/tests/unit/orderValidationConstraints.test.ts`
 - Polymarket Docs: [CLOB API - Tick Size](https://docs.polymarket.com/developers/CLOB/clients/methods-public)

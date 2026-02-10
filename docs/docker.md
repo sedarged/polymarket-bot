@@ -129,6 +129,7 @@ docker-compose exec backend npm run book
 
 # Run tests
 docker-compose exec backend npm test
+# Or run by category: npm run test:unit, test:integration, test:backtest
 
 # Access container shell
 docker-compose exec backend sh

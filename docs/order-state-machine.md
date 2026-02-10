@@ -283,7 +283,7 @@ recalculatePositions(): void {
 
 ## Testing
 
-Comprehensive test coverage in `apps/backend/tests/partialFills.test.ts`:
+Comprehensive test coverage in `apps/backend/tests/unit/partialFills.test.ts`:
 
 1. **Basic Transitions**: OPEN → PARTIALLY_FILLED → MATCHED
 2. **Multi-Step Fills**: Multiple partial fills per order
@@ -315,6 +315,6 @@ Comprehensive test coverage in `apps/backend/tests/partialFills.test.ts`:
 
 - `apps/backend/src/clients/tradingClient.ts` - Live implementation
 - `apps/backend/src/trading/paperTradingEngine.ts` - Paper implementation
-- `apps/backend/tests/partialFills.test.ts` - Comprehensive tests
+- `apps/backend/tests/unit/partialFills.test.ts` - Comprehensive tests
 - `docs/adr/0006-partial-fill-tracking.md` - Architecture decision
 - `REPORTS/GAP_ANALYSIS.md` - EE-001 gap description

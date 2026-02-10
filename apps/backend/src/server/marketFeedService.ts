@@ -26,6 +26,7 @@ class MarketFeedService {
     this.client = new MarketFeedClient({
       url: config.wsMarketUrl,
       tokenIds: config.tokenIds,
+      maxReconnectAttempts: config.wsMaxReconnectAttempts,
     });
 
     this.setupEventHandlers();

@@ -457,7 +457,7 @@ async function calibrateStrategy(marketId: string) {
 - [API Alignment Verification](../api-alignment-verification.md) - Complete API coverage
 - [User Feed WebSocket Example](./user-feed-websocket.ts) - Real-time order/fill events
 - [Gamma Client Source](../../apps/backend/src/clients/gamma.ts) - Full implementation
-- [Gamma Tests](../../apps/backend/tests/gamma.test.ts) - 37 comprehensive tests
+- [Gamma Tests](../../apps/backend/tests/unit/gamma.test.ts) - 37 comprehensive tests
 
 ---
 
@@ -465,5 +465,5 @@ async function calibrateStrategy(marketId: string) {
 
 For issues or questions about the Gamma API integration:
 1. Check [api-alignment-verification.md](../api-alignment-verification.md) for verification status
-2. Review test examples in `apps/backend/tests/gamma.test.ts`
+2. Review test examples in `apps/backend/tests/unit/gamma.test.ts`
 3. See [Official Gamma API Docs](https://docs.polymarket.com/developers/gamma-markets-api/overview)

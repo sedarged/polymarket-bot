@@ -45,6 +45,9 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - Kill switch usage and monitoring
   - Backup and recovery procedures
   - Docker and native deployment options
+- **[Pre-deployment verification](./pre-deployment-verification.md)** - Checklist and script (Research §12.2)
+- **[Deploy](./deploy.md)** - Deployment options and CI/CD (Research §6.1)
+- **[Cost scenarios](./cost-scenarios.md)** - Monthly cost estimates (Research §3)
 - **[Docker Deployment Guide](./docker.md)** - 🐳 Container deployment and orchestration
   - Quick start with Docker and Docker Compose
   - Production deployment best practices
@@ -118,6 +121,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Demo: Price Endpoints](./examples/price-endpoints-demo.ts) - Working code example
 
 ### Reference
+- [Environment Variable Reference](./ENV_VARIABLE_REFERENCE.md) - Complete list of env vars (reference: .env.example)
 - [CHANGELOG](../CHANGELOG.md) - Release history and notable changes
 - [Open Questions](./open-questions.md) - Unresolved questions and discussions
 - [API Documentation Alignment](../REPORTS/RESEARCH_REVIEW.md) - Comprehensive review of Polymarket API implementation
@@ -199,7 +203,7 @@ polymarket-bot/
 ### When to Update Documentation
 - **Code changes**: Update relevant technical docs
 - **New features**: Add to examples and update system overview
-- **Environment variables**: Update .env.example and docs/environment.md
+- **Environment variables**: Update .env.example, docs/environment.md, and docs/ENV_VARIABLE_REFERENCE.md
 - **API endpoints**: Update README.md and docs/runbook.md
 - **Architecture changes**: Update architecture docs and create ADRs
 - **Operational changes**: Update runbook and environment guide

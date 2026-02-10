@@ -19,7 +19,7 @@ polymarket-bot/
 │   │   │   ├── trading/      # Trading logic (PaperEngine, RiskManager, AuditTrail)
 │   │   │   ├── types/        # TypeScript type definitions
 │   │   │   └── utils/        # Utilities (logger, retry, circuitBreaker, metrics, alerting)
-│   │   ├── tests/            # Vitest test files
+│   │   ├── tests/            # Vitest: unit/, integration/, backtest/, fixtures/, setup.ts
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
@@ -106,8 +106,10 @@ The main application code. This is where most development happens.
 - `src/utils/alerting.ts` - Telegram alerting service
 
 **Test files:**
-- `tests/*.test.ts` - Unit tests (vitest)
-- Test files mirror source structure
+- `tests/unit/` - Unit tests (mocked deps)
+- `tests/integration/` - Integration tests (real server/DB/WS)
+- `tests/backtest/` - Backtest engine tests
+- `tests/setup.ts`, `tests/fixtures/` - Shared setup and helpers
 
 ### `/packages/shared/`
 Shared code used by both frontend and backend.
@@ -173,21 +175,21 @@ GitHub-specific configuration.
 1. Add types to `packages/shared/src/types/`
 2. Add constants to `packages/shared/src/constants/`
 3. Implement client in `apps/backend/src/api/`
-4. Add tests in `apps/backend/tests/api/`
+4. Add tests in `apps/backend/tests/unit/` (or `tests/integration/` if needed)
 5. Update `docs/ARCHITECTURE.md` if significant
 
 ### Adding a trading strategy
 1. Create module in `apps/backend/src/trading/strategies/`
 2. Add types to `packages/shared/src/types/trading.ts`
 3. Update `apps/backend/src/trading/index.ts`
-4. Add tests in `apps/backend/tests/trading/`
+4. Add tests in `apps/backend/tests/unit/` (or `tests/integration/` for full-stack)
 5. Document in `docs/ARCHITECTURE.md`
 
 ### Adding WebSocket functionality
 1. Update `apps/backend/src/websocket/manager.ts`
 2. Add handlers in `apps/backend/src/websocket/handlers/`
 3. Update reconnection logic if needed
-4. Add tests in `apps/backend/tests/websocket/`
+4. Add tests in `apps/backend/tests/unit/` (or `tests/integration/` for reconnect tests)
 5. Update `docs/runbook.md` if affects operations
 
 ### Adding documentation
@@ -242,7 +244,7 @@ npm run test:watch   # Run tests in watch mode
 - **Logging**: `apps/backend/src/utils/logger.ts`
 - **Configuration**: `.env.example`, `packages/shared/src/constants/`
 - **Types**: `packages/shared/src/types/`, `apps/backend/src/types/`
-- **Tests**: `apps/backend/tests/` (mirrors src structure)
+- **Tests**: `apps/backend/tests/unit/`, `tests/integration/`, `tests/backtest/`
 
 ## Navigation Tips
 

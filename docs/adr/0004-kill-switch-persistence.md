@@ -84,8 +84,8 @@ We will persist the kill switch state to disk using a file-based approach:
 - `apps/backend/src/utils/statePersistence.ts` - New persistence utility
 - `apps/backend/src/trading/riskManager.ts` - Modified to use persistence
 - `apps/backend/src/server/index.ts` - Call restoreState() on startup
-- `apps/backend/tests/statePersistence.test.ts` - Comprehensive tests
-- `apps/backend/tests/riskManager.test.ts` - Added persistence tests
+- `apps/backend/tests/unit/statePersistence.test.ts` - Comprehensive tests
+- `apps/backend/tests/unit/riskManager.test.ts` - Added persistence tests
 - `.gitignore` - Exclude `.state/` directory
 - `docs/runbook.md` - Updated kill switch documentation
 

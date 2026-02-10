@@ -206,9 +206,9 @@ Run the test suite to verify all components:
 npm test
 
 # Run specific test suites
-npm test -- tests/paperTradingEngine.test.ts
-npm test -- tests/riskManager.test.ts
-npm test -- tests/integration-reconnect.test.ts
+npm test -- tests/unit/paperTradingEngine.test.ts
+npm test -- tests/unit/riskManager.test.ts
+npm test -- tests/integration/integration-reconnect.test.ts
 ```
 
 ## Security Considerations

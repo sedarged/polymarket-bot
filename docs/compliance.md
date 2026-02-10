@@ -81,12 +81,19 @@ COMPLIANCE_ACCEPTED=false
 
 **Code Reference:**
 - [apps/backend/src/utils/liveTrading.ts](../apps/backend/src/utils/liveTrading.ts) - Trading gate implementation
-- [apps/backend/tests/gating.test.ts](../apps/backend/tests/gating.test.ts) - Compliance gate tests
+- [apps/backend/tests/unit/gating.test.ts](../apps/backend/tests/unit/gating.test.ts) - Compliance gate tests
 
 If either variable is false or unset, the bot will:
 - Execute all trades in paper trading mode only
 - NOT submit orders to the Polymarket CLOB
 - Simulate order execution with realistic fills and slippage
+
+### Before going live (Research §10)
+
+- **Paper trade 7+ days** before enabling live trading.
+- **Start with micro capital** ($5–20 USDC) for the first 30 days of live trading.
+
+See [Pre-deployment verification](./pre-deployment-verification.md) for the full checklist.
 
 ---
 

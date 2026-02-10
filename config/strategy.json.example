@@ -1,0 +1,5 @@
+{
+  "spread": 0.02,
+  "maxPositionSize": 100,
+  "inventorySkew": true
+}

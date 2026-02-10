@@ -40,6 +40,7 @@ export interface MarketFeedOptions {
   tokenIds: string[];
   reconnectDelay?: number;
   maxReconnectDelay?: number;
+  maxReconnectAttempts?: number; // Research §9.3
 }
 
 export class MarketFeedClient extends EventEmitter {
@@ -63,11 +64,18 @@ export class MarketFeedClient extends EventEmitter {
 
     this.wsClient = new WebSocketClient({
       url: options.url,
+      feedType: 'market',
       reconnectDelay: options.reconnectDelay,
       maxReconnectDelay: options.maxReconnectDelay,
+      maxReconnectAttempts: options.maxReconnectAttempts,
     });
 
     this.setupEventHandlers();
+  }
+
+  /** Exposed for tests: assert maxReconnectAttempts wiring to WebSocketClient. */
+  getWsClientForTesting(): WebSocketClient {
+    return this.wsClient;
   }
 
   private setupEventHandlers(): void {
