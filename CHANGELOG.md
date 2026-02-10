@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.33.1](https://github.com/sedarged/polymarket-bot/compare/v1.33.0...v1.33.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* add @ethersproject/wallet as direct dependency and use type-only import ([9bb827a](https://github.com/sedarged/polymarket-bot/commit/9bb827a46a57f295e63a37a7991b37c52fe8e82f))
+* correct kill switch persistence status and env var names in PLAN.md ([945d903](https://github.com/sedarged/polymarket-bot/commit/945d90309694860de3e71289dff9af39933b63e8))
+* correct PLAN.md with accurate current state from code verification ([f5013a0](https://github.com/sedarged/polymarket-bot/commit/f5013a0326f5f37936757c36eb38a37d559351db))
+* resolve TypeScript build errors by using correct Wallet import from ethers v5 ([92f414f](https://github.com/sedarged/polymarket-bot/commit/92f414f7eb77e19c7e9f3aec4d3a8b31ddeb42d0))
+
 ## [1.33.0](https://github.com/sedarged/polymarket-bot/compare/v1.32.0...v1.33.0) (2026-02-10)
 
 
