@@ -12,7 +12,7 @@
 |-------|--------|---------|
 | **npm install** | FAILS | `eslint@10` conflicts with `@typescript-eslint/eslint-plugin@8` (needs `--legacy-peer-deps`) |
 | **npm run build** | FAILS (2 errors) | `ethers` v6 `Wallet` type mismatch with `@polymarket/clob-client` expecting v5 `Wallet` |
-| **npm test** | 1114 pass, 1 fail, 2 skip | `websocket-deduplication.test.ts` LRU cache eviction test fails |
+| **npm test** | 1115 pass, 0 fail, 2 skip | All tests passing (LRU cache test was previously failing but is now fixed) |
 | **npm audit** | 16 low | All from `elliptic` via `@ethersproject/*` (transitive dep of `@polymarket/clob-client`) |
 | **Existing audit reports** | 27 findings | 3 CRITICAL, 8 HIGH, 10 MEDIUM, 6 LOW (in `REPORTS/AUDIT.md`) |
 | **Gap analysis** | 8 categories | 2 FAIL, 2 CONDITIONAL, 2 PASS (in `REPORTS/GAP_ANALYSIS.md`) |
@@ -28,12 +28,11 @@
 - HTTP server with admin endpoints
 - Dashboard UI (5 tabs, kill switch, responsive)
 - Learning system (event store, backtest engine, bandit allocator)
-- 1114 passing tests across 57 test files
+- 1115 passing tests across 58 test files
 - Comprehensive documentation (100+ files)
 
 ### What Does NOT Work
 - **Build fails** — 2 TypeScript errors (ethers v5/v6 `Wallet` type mismatch)
-- **1 test fails** — LRU cache eviction assertion in deduplication tests
 - **npm install** — peer dependency conflict (eslint 10 vs typescript-eslint 8)
 - **No trading strategies** — infrastructure exists but zero strategies implemented
 - **No live trading validated** — paper trading only, never tested with real money
@@ -51,7 +50,6 @@
 |---|------|---------|--------|
 | 0.1 | **Fix peer dependency conflict** — Downgrade `eslint` to `^9.0.0` OR upgrade `@typescript-eslint/*` to v9+ to match | `package.json` (root) | 15 min |
 | 0.2 | **Fix ethers Wallet type mismatch** — The `@polymarket/clob-client` expects ethers v5 `Wallet`. Cast or create adapter where `new Wallet()` from ethers v6 is passed to CLOB client methods. Two call sites. | `apps/backend/src/clients/tradingClient.ts:184`, `apps/backend/src/clients/userFeed.ts:101` | 30 min |
-| 0.3 | **Fix failing LRU cache test** — `websocket-deduplication.test.ts:360` expects 10003 processed messages but gets 1134. Either fix the LRU eviction logic or correct the test expectation. | `apps/backend/tests/unit/websocket-deduplication.test.ts` | 30 min |
 
 **Exit criteria:** `npm ci && npm run build && npm test` all exit 0.
 
@@ -193,7 +191,6 @@ Everything else is hardening, competitive features, and polish.
 | `package.json` (root) | eslint peer dep conflict | 0.1 |
 | `apps/backend/src/clients/tradingClient.ts:184` | ethers v5/v6 Wallet mismatch | 0.2 |
 | `apps/backend/src/clients/userFeed.ts:101` | ethers v5/v6 Wallet mismatch | 0.2 |
-| `apps/backend/tests/unit/websocket-deduplication.test.ts:360` | LRU test assertion wrong | 0.3 |
 | `apps/backend/src/config/index.ts:56` | Plaintext private key | 1.1 |
 | `apps/backend/src/trading/riskManager.ts:27,187-189` | Kill switch not persisted | 1.2 |
 | `apps/backend/src/server/index.ts:22` | Wildcard CORS | 1.3 |
