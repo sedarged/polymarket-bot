@@ -6,8 +6,32 @@ export interface CachedOrderbook {
   lastUpdate: number;
 }
 
+/**
+ * Configuration for orderbook cache TTL
+ * Addresses Audit Finding A-015: Cache Staleness
+ */
+export interface OrderbookCacheConfig {
+  /** Time-to-live in milliseconds. Default: 5000 (5 seconds) */
+  ttl?: number;
+  /** Whether to automatically invalidate stale entries. Default: true */
+  autoInvalidate?: boolean;
+}
+
 export class OrderbookCache {
   private cache: Map<string, CachedOrderbook> = new Map();
+  private ttl: number;
+  private autoInvalidate: boolean;
+
+  constructor(config: OrderbookCacheConfig = {}) {
+    this.ttl = config.ttl ?? 5000; // Default: 5 seconds
+    this.autoInvalidate = config.autoInvalidate ?? true;
+    
+    logger.debug('Orderbook cache initialized', {
+      ttl: this.ttl,
+      autoInvalidate: this.autoInvalidate,
+      audit: 'A-015',
+    });
+  }
 
   set(assetId: string, orderbook: Orderbook): void {
     const cached: CachedOrderbook = {
@@ -22,11 +46,40 @@ export class OrderbookCache {
     });
   }
 
+  /**
+   * Get cached orderbook for an asset
+   * Addresses Audit Finding A-015: Automatically checks TTL and invalidates stale data
+   * 
+   * @param assetId - The asset ID to retrieve
+   * @returns Orderbook if cached and fresh, null if not cached or stale
+   */
   get(assetId: string): Orderbook | null {
     const cached = this.cache.get(assetId);
     if (!cached) {
       return null;
     }
+    
+    // Check TTL (Audit Finding A-015)
+    if (this.isStale(assetId)) {
+      if (this.autoInvalidate) {
+        logger.debug('Orderbook cache expired, invalidating', {
+          assetId,
+          age: Date.now() - cached.lastUpdate,
+          ttl: this.ttl,
+          audit: 'A-015',
+        });
+        this.cache.delete(assetId);
+        return null;
+      } else {
+        logger.warn('Orderbook cache is stale but autoInvalidate is disabled', {
+          assetId,
+          age: Date.now() - cached.lastUpdate,
+          ttl: this.ttl,
+          audit: 'A-015',
+        });
+      }
+    }
+    
     return { ...cached.orderbook };
   }
 
@@ -100,5 +153,65 @@ export class OrderbookCache {
 
   size(): number {
     return this.cache.size;
+  }
+
+  /**
+   * Check if a cached orderbook is stale
+   * Addresses Audit Finding A-015: TTL enforcement
+   * 
+   * @param assetId - The asset ID to check
+   * @returns true if the cached data is older than TTL, false otherwise
+   */
+  isStale(assetId: string): boolean {
+    const cached = this.cache.get(assetId);
+    if (!cached) {
+      return true; // Not cached = stale
+    }
+    
+    const age = Date.now() - cached.lastUpdate;
+    return age > this.ttl;
+  }
+
+  /**
+   * Get cache configuration
+   */
+  getConfig(): { ttl: number; autoInvalidate: boolean } {
+    return {
+      ttl: this.ttl,
+      autoInvalidate: this.autoInvalidate,
+    };
+  }
+
+  /**
+   * Get cache statistics including freshness
+   */
+  getStats(): {
+    total: number;
+    fresh: number;
+    stale: number;
+    avgAge: number;
+  } {
+    const now = Date.now();
+    let totalAge = 0;
+    let fresh = 0;
+    let stale = 0;
+
+    for (const cached of this.cache.values()) {
+      const age = now - cached.lastUpdate;
+      totalAge += age;
+      
+      if (age <= this.ttl) {
+        fresh++;
+      } else {
+        stale++;
+      }
+    }
+
+    return {
+      total: this.cache.size,
+      fresh,
+      stale,
+      avgAge: this.cache.size > 0 ? totalAge / this.cache.size : 0,
+    };
   }
 }

@@ -41,6 +41,8 @@ export interface MarketFeedOptions {
   reconnectDelay?: number;
   maxReconnectDelay?: number;
   maxReconnectAttempts?: number; // Research §9.3
+  /** Cache TTL in milliseconds. Default: 5000 (5 seconds). Addresses A-015 */
+  cacheTtl?: number;
 }
 
 export class MarketFeedClient extends EventEmitter {
@@ -59,7 +61,10 @@ export class MarketFeedClient extends EventEmitter {
   constructor(options: MarketFeedOptions) {
     super();
     this.tokenIds = options.tokenIds;
-    this.cache = new OrderbookCache();
+    this.cache = new OrderbookCache({
+      ttl: options.cacheTtl ?? 5000, // Default: 5 seconds (A-015)
+      autoInvalidate: true,
+    });
     this.clobClient = new ClobClient();
 
     this.wsClient = new WebSocketClient({
