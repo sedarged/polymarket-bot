@@ -10,11 +10,11 @@ This document tracks the implementation status of all 27 audit findings from the
 
 **Overall Progress:**
 - **Critical Issues (3 total):** 2 FIXED ✓, 1 PARTIAL (secret manager stubs exist)
-- **High Priority Issues (8 total):** 8 FIXED ✓, 1 N/A (A-011 - integrated with A-005)
+- **High Priority Issues (8 total):** 7 FIXED ✓, 1 N/A (A-011 - integrated with A-005)
 - **Medium Priority Issues (10 total):** 4 FIXED ✓, 6 OPEN
 - **Low Priority Issues (6 total):** 4 FIXED ✓, 2 OPEN
 
-**Total Fixed:** 18/27 (67%)  
+**Total Fixed:** 17/27 (63%)  
 **Total Open:** 8/27 (30%)  
 **Total N/A:** 1/27 (4%)
 **Total Partial:** 1/27 (4%)
@@ -285,21 +285,22 @@ await retry(async () => {
 Message deduplication prevents processing duplicate WebSocket messages that could cause incorrect orderbook state or double-processing of events.
 
 ```typescript
-// Message ID generation and deduplication (lines 67, 191-207, 238+):
+// Message ID generation and deduplication (lines 67, 187-207, 238-260):
 private processedMessageIds: Set<string> = new Set();
 
-private async handleMessage(message: WSMarketMessage): Promise<void> {
+private handleMessage(message: WSMarketMessage): void {
+  // Generate a unique message ID based on event type, asset, and timestamp
   const messageId = this.generateMessageId(message);
   
   if (this.processedMessageIds.has(messageId)) {
-    logger.debug('Duplicate message detected, skipping', { messageId });
+    logger.debug('Duplicate message ignored', { messageId, event_type: message.event_type });
     return;
   }
   
   // LRU cache management (max 10,000 message IDs)
   if (this.processedMessageIds.size >= this.MESSAGE_ID_CACHE_SIZE) {
     const firstId = this.processedMessageIds.values().next().value;
-    if (firstId) {
+    if (firstId !== undefined) {
       this.processedMessageIds.delete(firstId);
     }
   }
@@ -309,18 +310,34 @@ private async handleMessage(message: WSMarketMessage): Promise<void> {
 }
 
 private generateMessageId(message: WSMarketMessage): string {
-  // Generate unique ID from message content
-  return `${message.event_type}-${message.asset_id}-${message.timestamp || Date.now()}`;
+  const baseId = `${message.event_type}-${message.asset_id}-${message.timestamp}`;
+  
+  // Add specific data based on message type to ensure uniqueness
+  switch (message.event_type) {
+    case 'price_change': {
+      const priceChange = message as WSPriceChange;
+      return `${baseId}-${priceChange.side}-${priceChange.price}-${priceChange.size}`;
+    }
+    case 'book': {
+      // For snapshots, include hash of bid/ask data
+      const snapshot = message as WSOrderbookSnapshot;
+      const bidsHash = snapshot.bids.slice(0, 3).map(b => `${b.price}:${b.size}`).join(',');
+      const asksHash = snapshot.asks.slice(0, 3).map(a => `${a.price}:${a.size}`).join(',');
+      return `${baseId}-${bidsHash}-${asksHash}`;
+    }
+    default:
+      return baseId;
+  }
 }
 ```
 
 **Key features:**
-- Generates unique message IDs based on event type, asset ID, and timestamp
+- Generates unique message IDs based on event type, asset ID, timestamp, and message-specific data
 - Maintains LRU cache of processed message IDs (max 10,000 entries)
 - Logs and skips duplicate messages
 - Prevents duplicate orderbook updates and event emissions
 
-**Tests:** Covered by WebSocket integration tests in `apps/backend/tests/integration/websocket.test.ts`
+**Tests:** `apps/backend/tests/unit/websocket-deduplication.test.ts`
 
 ---
 

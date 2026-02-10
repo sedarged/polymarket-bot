@@ -7,7 +7,10 @@ describe('OrderbookCache', () => {
 
   beforeEach(() => {
     cache = new OrderbookCache();
-    vi.useRealTimers(); // Reset to real timers by default
+  });
+
+  afterEach(() => {
+    vi.useRealTimers(); // Ensure timers are always reset after each test
   });
 
   describe('set and get', () => {
@@ -255,8 +258,6 @@ describe('OrderbookCache', () => {
       
       expect(cache.get(mockTokenId)).toBeNull();
       expect(cache.has(mockTokenId)).toBe(false);
-      
-      vi.useRealTimers();
     });
 
     it('should not auto-invalidate when disabled', () => {
@@ -274,8 +275,6 @@ describe('OrderbookCache', () => {
       const retrieved = cache.get(mockTokenId);
       expect(retrieved).not.toBeNull();
       expect(cache.has(mockTokenId)).toBe(true);
-      
-      vi.useRealTimers();
     });
 
     it('should identify stale entries correctly', () => {
@@ -293,8 +292,6 @@ describe('OrderbookCache', () => {
       // Advance time past TTL
       vi.advanceTimersByTime(501);
       expect(cache.isStale(mockTokenId)).toBe(true);
-      
-      vi.useRealTimers();
     });
 
     it('should return true for non-existent entries in isStale', () => {
@@ -348,8 +345,6 @@ describe('OrderbookCache', () => {
       expect(stats.fresh).toBe(2); // token2 and token3
       expect(stats.stale).toBe(1); // token1
       expect(stats.avgAge).toBeGreaterThan(0);
-      
-      vi.useRealTimers();
     });
 
     it('should calculate average age correctly', () => {
@@ -364,8 +359,6 @@ describe('OrderbookCache', () => {
       const stats = cache.getStats();
       // token1: 2000ms old, token2: 1000ms old, avg: 1500ms
       expect(stats.avgAge).toBeCloseTo(1500, -2);
-      
-      vi.useRealTimers();
     });
 
     it('should update stats after invalidation', () => {
@@ -385,8 +378,6 @@ describe('OrderbookCache', () => {
       
       stats = cache.getStats();
       expect(stats.total).toBe(1); // Only token2 remains
-      
-      vi.useRealTimers();
     });
   });
 });
