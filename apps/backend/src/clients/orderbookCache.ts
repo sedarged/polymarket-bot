@@ -11,11 +11,21 @@ export interface CachedOrderbook {
  * Addresses Audit Finding A-015: Cache Staleness
  */
 export interface OrderbookCacheConfig {
-  /** Time-to-live in milliseconds. Default: 5000 (5 seconds) */
+  /**
+   * Time-to-live for cached orderbooks in milliseconds.
+   * Must be a positive number; non-positive values will be clamped to minimum.
+   * Default: 5000 (5 seconds)
+   */
   ttl?: number;
   /** Whether to automatically invalidate stale entries. Default: true */
   autoInvalidate?: boolean;
 }
+
+/** Default TTL for orderbook cache in milliseconds (5 seconds) */
+export const DEFAULT_CACHE_TTL_MS = 5000;
+
+/** Minimum TTL for orderbook cache in milliseconds (guard against misconfiguration) */
+export const MIN_CACHE_TTL_MS = 100; // 100ms minimum
 
 export class OrderbookCache {
   private cache: Map<string, CachedOrderbook> = new Map();
@@ -23,8 +33,18 @@ export class OrderbookCache {
   private autoInvalidate: boolean;
 
   constructor(config: OrderbookCacheConfig = {}) {
-    this.ttl = config.ttl ?? 5000; // Default: 5 seconds
+    // Validate and clamp TTL to prevent misconfiguration (Sourcery review comment)
+    const rawTtl = config.ttl ?? DEFAULT_CACHE_TTL_MS;
+    this.ttl = Math.max(rawTtl, MIN_CACHE_TTL_MS);
     this.autoInvalidate = config.autoInvalidate ?? true;
+    
+    if (rawTtl < MIN_CACHE_TTL_MS) {
+      logger.warn('Cache TTL too low, clamped to minimum', {
+        requested: rawTtl,
+        clamped: this.ttl,
+        minimum: MIN_CACHE_TTL_MS,
+      });
+    }
     
     logger.debug('Orderbook cache initialized', {
       ttl: this.ttl,
@@ -33,9 +53,21 @@ export class OrderbookCache {
     });
   }
 
+  /**
+   * Cache an orderbook for an asset
+   * Addresses Copilot review: Deep clones orderbook to prevent mutation
+   * 
+   * @param assetId - The asset ID to cache
+   * @param orderbook - The orderbook to cache
+   */
   set(assetId: string, orderbook: Orderbook): void {
+    // Deep clone to prevent mutations to cached data (Copilot review comment)
     const cached: CachedOrderbook = {
-      orderbook: { ...orderbook },
+      orderbook: {
+        ...orderbook,
+        bids: orderbook.bids.map(level => ({ ...level })),
+        asks: orderbook.asks.map(level => ({ ...level })),
+      },
       lastUpdate: Date.now(),
     };
     this.cache.set(assetId, cached);
@@ -49,9 +81,12 @@ export class OrderbookCache {
   /**
    * Get cached orderbook for an asset
    * Addresses Audit Finding A-015: Automatically checks TTL and invalidates stale data
+   * Addresses Sourcery review: Updated JSDoc to reflect autoInvalidate behavior
    * 
    * @param assetId - The asset ID to retrieve
-   * @returns Orderbook if cached and fresh, null if not cached or stale
+   * @returns Orderbook if cached and fresh, null if not cached. 
+   *          If autoInvalidate is false, may return stale data with a warning.
+   *          Returns deep clone to prevent caller mutations (Copilot review).
    */
   get(assetId: string): Orderbook | null {
     const cached = this.cache.get(assetId);
@@ -80,7 +115,12 @@ export class OrderbookCache {
       }
     }
     
-    return { ...cached.orderbook };
+    // Deep clone to prevent mutations to cached data (Copilot review comment)
+    return {
+      ...cached.orderbook,
+      bids: cached.orderbook.bids.map(level => ({ ...level })),
+      asks: cached.orderbook.asks.map(level => ({ ...level })),
+    };
   }
 
   has(assetId: string): boolean {

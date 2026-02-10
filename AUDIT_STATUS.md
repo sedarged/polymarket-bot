@@ -10,13 +10,14 @@ This document tracks the implementation status of all 27 audit findings from the
 
 **Overall Progress:**
 - **Critical Issues (3 total):** 2 FIXED ✓, 1 PARTIAL (secret manager stubs exist)
-- **High Priority Issues (8 total):** 7 FIXED ✓, 1 N/A (deduplication resolved)
+- **High Priority Issues (8 total):** 7 FIXED ✓, 2 N/A (A-010, A-011 - resolved/integrated)
 - **Medium Priority Issues (10 total):** 4 FIXED ✓, 6 OPEN
 - **Low Priority Issues (6 total):** 4 FIXED ✓, 2 OPEN
 
 **Total Fixed:** 17/27 (63%)  
 **Total Open:** 9/27 (33%)  
-**Total N/A:** 1/27 (4%)
+**Total N/A:** 2/27 (7%) - Addressed Sourcery review: Fixed count inconsistency
+**Total Partial:** 1/27 (4%)
 
 ---
 
@@ -540,7 +541,8 @@ await retry(fn, {
 
 ### High (P1): 8 total
 - ✅ **7 FIXED** (A-004, A-005, A-006, A-007, A-008, A-009, A-018)
-- ℹ️ **1 N/A** (A-010, A-011 - resolved or integrated)
+- ℹ️ **2 N/A** (A-010, A-011 - resolved or integrated)
+- **Note:** Sourcery review identified this count was previously incorrect (1 N/A vs 2 items listed)
 
 ### Medium (P2): 10 total
 - ✅ **4 FIXED** (A-015, A-018, A-020, A-021)
