@@ -77,6 +77,34 @@ This directory contains formal audit reports, security analyses, and compliance 
 
 ---
 
+### [COMPETITIVE_AUDIT.md](./COMPETITIVE_AUDIT.md) - Evidence-Based Trading Bot Competitive Review
+**Date:** 2026-02-10  
+**Status:** Complete  
+**Scope:** Comprehensive competitive analysis vs. 30+ public Polymarket trading bot repositories
+
+**Summary:**
+- **Repositories Analyzed:** 5 deep dives (discountry, lorine93s, voicegn, marwinsteiner, official SDK) + 30+ market survey
+- **Overall Assessment:** World-class infrastructure but no trading strategies implemented
+- **10 gaps identified** with evidence (GAP-001 through GAP-010)
+- **10 actionable recommendations** with code examples (REC-001 through REC-010)
+- **Market distribution:** 70% copy trading, 20% 15-min crypto, 7% arbitrage, 3% LLM
+
+**Key Findings:**
+- ✅ **Strengths:** 1,100+ tests (12x best competitor), unique ML learning system, production observability
+- ❌ **Critical gaps:** No trading strategies, plaintext keys by default, no copy trading (70% market)
+- ⚠️ **High-priority gaps:** No 15-min market support (20% market), no LLM integration, no Python client (40% market)
+
+**Recommendations (Phased):**
+- **Phase 1 (1-2 weeks):** Implement flash crash strategy, enforce encrypted keys, add copy trading
+- **Phase 2 (3-4 weeks):** Add 15-min market discovery, Kelly criterion, Python client, LLM sentiment
+- **Phase 3 (1-2 weeks):** Terminal UI, arbitrage detection, beginner quickstart
+
+**Quick Reference:** [COMPETITIVE_AUDIT_SUMMARY.md](./COMPETITIVE_AUDIT_SUMMARY.md) - One-page summary with tables and metrics
+
+**Recommendation:** Implement Phase 1 recommendations to enable immediate trading use while maintaining infrastructure advantages.
+
+---
+
 ### [LEARNING_SYSTEM.md](./LEARNING_SYSTEM.md) - Evidence-Based Learning System Design
 **Date:** 2026-02-01  
 **Status:** Draft (Design Complete, Implementation Pending)  
