@@ -12,10 +12,10 @@
 |-------|--------|---------|
 | **npm install** | FAILS | `eslint@10` conflicts with `@typescript-eslint/eslint-plugin@8` (needs `--legacy-peer-deps`) |
 | **npm run build** | FAILS (2 errors) | `ethers` v6 `Wallet` type mismatch with `@polymarket/clob-client` expecting v5 `Wallet` |
-| **npm test** | 1114 pass, 1 fail, 2 skip | `websocket-deduplication.test.ts` LRU cache eviction test fails |
+| **npm test** | 1115 pass, 0 fail, 2 skip | All tests passing |
 | **npm audit** | 16 low | All from `elliptic` via `@ethersproject/*` (transitive dep of `@polymarket/clob-client`) |
 | **Existing audit reports** | 27 findings | 3 CRITICAL, 8 HIGH, 10 MEDIUM, 6 LOW (in `REPORTS/AUDIT.md`) |
-| **Gap analysis** | 8 categories | 2 FAIL, 2 CONDITIONAL, 2 PASS (in `REPORTS/GAP_ANALYSIS.md`) |
+| **Gap analysis** | 8 categories | 3 FAIL, 2 CONDITIONAL, 2 PASS, 1 N/A (in `REPORTS/GAP_ANALYSIS.md`) |
 | **Competitive audit** | 10 gaps | No strategies, no copy-trading, no LLM integration |
 
 ### What Works Today
@@ -28,18 +28,17 @@
 - HTTP server with admin endpoints
 - Dashboard UI (5 tabs, kill switch, responsive)
 - Learning system (event store, backtest engine, bandit allocator)
-- 1114 passing tests across 57 test files
+- 1115 passing tests across 58 test files
 - Comprehensive documentation (100+ files)
 
 ### What Does NOT Work
 - **Build fails** — 2 TypeScript errors (ethers v5/v6 `Wallet` type mismatch)
-- **1 test fails** — LRU cache eviction assertion in deduplication tests
 - **npm install** — peer dependency conflict (eslint 10 vs typescript-eslint 8)
 - **No trading strategies** — infrastructure exists but zero strategies implemented
 - **No live trading validated** — paper trading only, never tested with real money
-- **Kill switch not persisted** — lost on server restart
-- **Plaintext private keys** — no encrypted storage by default
-- **Wildcard CORS** — `*` origin in production server
+- **Kill switch not persisted** — lost on server restart (but state can be passed at startup)
+- **Plaintext private keys** — no encrypted storage by default (env var support exists)
+- **CORS restrictions** — defaults to localhost:3000, blocks wildcard in production, but needs explicit configuration
 
 ---
 
@@ -51,7 +50,6 @@
 |---|------|---------|--------|
 | 0.1 | **Fix peer dependency conflict** — Downgrade `eslint` to `^9.0.0` OR upgrade `@typescript-eslint/*` to v9+ to match | `package.json` (root) | 15 min |
 | 0.2 | **Fix ethers Wallet type mismatch** — The `@polymarket/clob-client` expects ethers v5 `Wallet`. Cast or create adapter where `new Wallet()` from ethers v6 is passed to CLOB client methods. Two call sites. | `apps/backend/src/clients/tradingClient.ts:184`, `apps/backend/src/clients/userFeed.ts:101` | 30 min |
-| 0.3 | **Fix failing LRU cache test** — `websocket-deduplication.test.ts:360` expects 10003 processed messages but gets 1134. Either fix the LRU eviction logic or correct the test expectation. | `apps/backend/tests/unit/websocket-deduplication.test.ts` | 30 min |
 
 **Exit criteria:** `npm ci && npm run build && npm test` all exit 0.
 
@@ -64,12 +62,12 @@
 | # | Audit ID | Task | File(s) | Effort |
 |---|----------|------|---------|--------|
 | 1.1 | A-001 | **Encrypt private keys at rest** — Enforce encrypted secret backend by default. Add PBKDF2+AES key encryption with passphrase prompt at startup. Fall back to env var only if `SECRET_BACKEND=env` explicitly set. | `apps/backend/src/secrets/index.ts`, `apps/backend/src/config/index.ts` | 1 day |
-| 1.2 | A-002 | **Persist kill switch state** — Write kill switch state to SQLite (or a file). On startup, read and honor persisted state. Add `killswitch_state` table. | `apps/backend/src/trading/riskManager.ts`, `apps/backend/src/utils/database.ts` | 4 hr |
-| 1.3 | A-003 | **Restrict CORS origins** — Replace `*` with configurable `ALLOWED_ORIGINS` env var. Default to `http://localhost:8080` in dev. Require explicit config in production. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 1 hr |
-| 1.4 | A-004 | **Require admin token** — Fail server startup if `ADMIN_TOKEN` is not set. Remove optional fallback. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 30 min |
-| 1.5 | A-005 | **Remove @ts-ignore / unsafe casts** — Replace `@ts-ignore` in `tradingClient.ts` with proper type guards. Validate CLOB SDK responses with Zod schemas. | `apps/backend/src/clients/tradingClient.ts` | 2 hr |
+| 1.2 | A-002 | **Persist kill switch state** — Write kill switch state to SQLite (or a file). On startup, read and honor persisted state. Add `killswitch_state` table. Currently state can be passed but not persisted. | `apps/backend/src/trading/riskManager.ts`, `apps/backend/src/utils/database.ts` | 4 hr |
+| 1.3 | A-003 | **Restrict CORS origins** — ✅ PARTIALLY FIXED: Config validation blocks wildcard in production, defaults to localhost:3000. Still marked as "Open" in audit but code has been updated. Verify and document proper production setup. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 30 min |
+| 1.4 | A-004 | **Require admin token** — ✅ PARTIALLY FIXED: Config now requires admin token for production/live trading. Still marked as "Open" in audit but code has been updated. Verify and update audit status. | `apps/backend/src/server/index.ts`, `apps/backend/src/config/index.ts` | 30 min |
+| 1.5 | A-005 | **Remove @ts-ignore / unsafe casts** — ✅ PARTIALLY FIXED: @ts-ignore removed from production code (marked as fixed in audit A-026). Still marked as "Open" for A-005 but related to balance fetch validation. Verify proper type guards exist. | `apps/backend/src/clients/tradingClient.ts` | 1 hr |
 | 1.6 | A-007 | **Fix orderbook resync race** — Add per-token mutex/flag to prevent concurrent resyncs in `marketFeed.ts`. | `apps/backend/src/clients/marketFeed.ts` | 2 hr |
-| 1.7 | A-008 | **Add server rate limiting** — Add IP-based rate limiting middleware (already have `rateLimiter.ts`). Wire it into server routes. Default 100 req/min for public, 30 req/min for admin. | `apps/backend/src/server/index.ts`, `apps/backend/src/utils/rateLimiter.ts` | 2 hr |
+| 1.7 | A-008 | **Add server rate limiting** — ✅ IMPLEMENTED: Rate limiting middleware exists and is wired into server. Still marked as "Open" in audit. Verify configuration and coverage. | `apps/backend/src/server/index.ts`, `apps/backend/src/utils/rateLimiter.ts` | 30 min |
 | 1.8 | A-009 | **Add retry total timeout** — Add `maxTotalDuration` parameter to retry function. Abort retries after this threshold. | `apps/backend/src/utils/retry.ts` | 1 hr |
 
 **Exit criteria:** All 3 CRITICAL and all HIGH findings addressed. No plaintext keys, persistent kill switch, restricted CORS.
@@ -175,12 +173,14 @@ WEEK 6:   Phase 5 (competitive features - pick top 2-3)
 WEEK 7:   Phase 6 (polish)
 ```
 
-### Minimum Viable Trading Bot (MVTB)
+### Minimum Viable Trading Bot (MVTB) — Requirements to Complete
 To have a *working* bot that can actually trade, you need at minimum:
-1. Phase 0 (build passes) ✓
-2. Items 1.1-1.3 from Phase 1 (security basics) ✓
-3. Items 3.1-3.3 from Phase 3 (one strategy) ✓
-4. Item 3.6 — 7 days of paper trading ✓
+1. Phase 0 (build passes) — NOT DONE
+2. Items 1.1-1.2 from Phase 1 (security basics: encrypted keys, persistent kill switch) — NOT DONE
+3. Items 3.1-3.3 from Phase 3 (one strategy) — NOT DONE
+4. Item 3.6 — 7 days of paper trading validation — NOT DONE
+
+Note: Items 1.3-1.4 (CORS, admin token) are partially completed in code but need verification.
 
 Everything else is hardening, competitive features, and polish.
 
@@ -193,12 +193,12 @@ Everything else is hardening, competitive features, and polish.
 | `package.json` (root) | eslint peer dep conflict | 0.1 |
 | `apps/backend/src/clients/tradingClient.ts:184` | ethers v5/v6 Wallet mismatch | 0.2 |
 | `apps/backend/src/clients/userFeed.ts:101` | ethers v5/v6 Wallet mismatch | 0.2 |
-| `apps/backend/tests/unit/websocket-deduplication.test.ts:360` | LRU test assertion wrong | 0.3 |
-| `apps/backend/src/config/index.ts:56` | Plaintext private key | 1.1 |
-| `apps/backend/src/trading/riskManager.ts:27,187-189` | Kill switch not persisted | 1.2 |
-| `apps/backend/src/server/index.ts:22` | Wildcard CORS | 1.3 |
-| `apps/backend/src/server/index.ts:33-35` | Optional admin token | 1.4 |
-| `apps/backend/src/clients/tradingClient.ts:95-96` | @ts-ignore unsafe cast | 1.5 |
+
+| `apps/backend/src/config/index.ts:104-110` | Plaintext private key support (no encryption enforced) | 1.1 |
+| `apps/backend/src/trading/riskManager.ts:33,101-102` | Kill switch not persisted (in-memory only) | 1.2 |
+| `apps/backend/src/config/index.ts:182,426-433` | CORS validation exists, blocks wildcard in prod (verify) | 1.3 |
+| `apps/backend/src/config/index.ts:445-460` | Admin token required in prod/live (verify) | 1.4 |
+| `apps/backend/src/clients/tradingClient.ts:95-96` | Balance fetch validation (was @ts-ignore, now removed) | 1.5 |
 | `apps/backend/src/clients/marketFeed.ts:94-98` | Resync race condition | 1.6 |
 | `apps/backend/src/utils/retry.ts:33` | No jitter, no total timeout | 1.8, 2.10 |
 | `apps/backend/src/clients/orderbookCache.ts:5-6,15` | No cache TTL | 2.4 |
