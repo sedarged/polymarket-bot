@@ -1,5 +1,5 @@
 import { ClobClient, Side, BalanceAllowanceResponse, OpenOrdersResponse, UserOrder, PostOrdersArgs, OrderType } from '@polymarket/clob-client';
-import { ethers } from 'ethers';
+import { Wallet } from '@ethersproject/wallet';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { logger } from '../utils/logger';
@@ -130,7 +130,7 @@ interface ClobOrder {
 
 export class TradingClient {
   private client: ClobClient | null = null;
-  private wallet: ethers.Wallet | null = null;
+  private wallet: Wallet | null = null;
   private clobRestClient: ClobRestClient;
   private state: TradingState = {
     orders: [],
@@ -174,8 +174,8 @@ export class TradingClient {
         // Don't log the key itself
       });
       
-      // Create wallet
-      this.wallet = new ethers.Wallet(privateKey);
+      // Create wallet (using ethers v5 Wallet for ClobClient compatibility)
+      this.wallet = new Wallet(privateKey);
       
       // Initialize CLOB client
       this.client = new ClobClient(
