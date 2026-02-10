@@ -7,7 +7,7 @@ import {
   WSUserFill,
 } from '@polymarket/shared';
 import { config } from '../config';
-import { ethers } from 'ethers';
+import type { Wallet } from '@ethersproject/wallet';
 import { ClobClient } from '@polymarket/clob-client';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
 
@@ -41,7 +41,7 @@ import { assertLiveTradingEnabled } from '../utils/liveTrading';
  * @see {@link https://docs.polymarket.com/developers/CLOB/websocket/wss-auth}
  */
 export interface UserFeedOptions {
-  wallet: ethers.Wallet;
+  wallet: Wallet;
   marketIds?: string[]; // Optional: specific markets to subscribe to
   reconnectDelay?: number;
   maxReconnectDelay?: number;
@@ -70,7 +70,7 @@ interface UserSubscriptionMessage {
 
 export class UserFeedClient extends EventEmitter {
   private wsClient: WebSocketClient | null = null;
-  private wallet: ethers.Wallet;
+  private wallet: Wallet;
   private clobClient: ClobClient;
   private marketIds: Set<string>; // Use Set to prevent duplicates
   private reconnectDelay: number;
