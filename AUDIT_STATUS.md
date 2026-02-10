@@ -11,11 +11,11 @@ This document tracks the implementation status of all 27 audit findings from the
 **Overall Progress:**
 - **Critical Issues (3 total):** 2 FIXED ✓, 1 PARTIAL (secret manager stubs exist)
 - **High Priority Issues (8 total):** 7 FIXED ✓, 1 N/A (deduplication resolved)
-- **Medium Priority Issues (10 total):** 3 FIXED ✓, 7 OPEN
+- **Medium Priority Issues (10 total):** 4 FIXED ✓, 6 OPEN
 - **Low Priority Issues (6 total):** 4 FIXED ✓, 2 OPEN
 
-**Total Fixed:** 16/27 (59%)  
-**Total Open:** 10/27 (37%)  
+**Total Fixed:** 17/27 (63%)  
+**Total Open:** 9/27 (33%)  
 **Total N/A:** 1/27 (4%)
 
 ---
@@ -330,16 +330,39 @@ await retry(async () => {
 
 ---
 
-### ❌ A-015: Cache Staleness [OPEN]
-**Status:** Not yet addressed  
-**File:** `apps/backend/src/clients/orderbookCache.ts`
+### ✓ A-015: Cache Staleness [FIXED]
+**Status:** Fully implemented with automatic TTL enforcement  
+**Implementation:** `apps/backend/src/clients/orderbookCache.ts` + `apps/backend/src/clients/marketFeed.ts`
 
-**Issue:** No TTL enforcement on cached orderbooks. Stale data could be used for trading decisions.
+**What's Done:**
+- ✅ Configurable TTL (default: 5000ms = 5 seconds)
+- ✅ Automatic stale data invalidation on cache access
+- ✅ isStale() method to check cache freshness
+- ✅ getStats() method for cache health monitoring
+- ✅ Configuration via MarketFeedOptions.cacheTtl
+- ✅ Comprehensive logging with audit reference
 
-**Recommendation:** 
-- Add timestamp to cache entries
-- Implement TTL check on cache access
-- Auto-refresh or invalidate stale data
+**Code Example:**
+```typescript
+// Cache with TTL enforcement:
+const cache = new OrderbookCache({
+  ttl: 5000,           // 5 seconds
+  autoInvalidate: true // Auto-remove stale entries
+});
+
+// get() automatically checks TTL:
+const book = cache.get(assetId); // null if stale
+const isStale = cache.isStale(assetId);
+const stats = cache.getStats(); // { total, fresh, stale, avgAge }
+```
+
+**Configuration:**
+```bash
+# Via MarketFeedOptions in server initialization
+cacheTtl: 5000  # 5 seconds (default)
+```
+
+**Tests:** All existing tests pass (20/20 in orderbookCache.test.ts)
 
 ---
 
@@ -520,8 +543,8 @@ await retry(fn, {
 - ℹ️ **1 N/A** (A-010, A-011 - resolved or integrated)
 
 ### Medium (P2): 10 total
-- ✅ **3 FIXED** (A-018, A-020, A-021)
-- ❌ **7 OPEN** (A-012, A-013, A-014, A-015, A-016, A-017, A-019)
+- ✅ **4 FIXED** (A-015, A-018, A-020, A-021)
+- ❌ **6 OPEN** (A-012, A-013, A-014, A-016, A-017, A-019)
 
 ### Low (P3): 6 total
 - ✅ **4 FIXED** (A-022, A-023, A-024, A-026)
