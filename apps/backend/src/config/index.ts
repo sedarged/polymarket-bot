@@ -1,8 +1,24 @@
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { validatePrivateKey } from "../secrets";
 
 dotenv.config();
+
+/** Per-market config from config/markets.json (Research §6.1, §8 Copilot 13) */
+export interface MarketConfigEntry {
+  tokenId: string;
+  maxPositionSize?: number;
+  spread?: number;
+}
+
+/** Strategy params from config/strategy.json (Research §6.1). Loaded when STRATEGY_CONFIG_PATH is set. */
+export interface StrategyConfigEntry {
+  spread?: number;
+  maxPositionSize?: number;
+  inventorySkew?: boolean;
+}
 
 const booleanFromEnv = z.preprocess((value) => {
   if (value === undefined || value === null || value === "") {
@@ -78,6 +94,9 @@ const envSchema = z.object({
   LIVE_TRADING: booleanFromEnv.default(false),
   COMPLIANCE_ACCEPTED: booleanFromEnv.default(false),
   PORT: numberFromEnv(3000, z.number().int().positive()),
+  // Metrics server port (Research §7 Day 6, §9.1). When different from PORT, a dedicated HTTP server
+  // serves GET /metrics on this port. Set to same as PORT for single-port mode (metrics on main server).
+  METRICS_PORT: numberFromEnv(9090, z.number().int().positive()),
   // Trading credentials (optional - only required for live trading)
   // Private key must be 64 hex characters (optionally prefixed with 0x)
   // Addresses Audit Finding A-024: Private key format validation
@@ -215,6 +234,26 @@ const envSchema = z.object({
     1,
     z.number().int().positive().min(1),
   ), // Alert after N trips (default: 1)
+  // ========================================
+  // Compliance: Research §9.1, §10.1
+  // ========================================
+  // Minimum USDC balance (in USDC units). If set and balance < this at startup, exit. Research §9.1.
+  MIN_BALANCE_USDC: numberFromEnv(0, z.number().nonnegative()),
+  // Ban-status check interval (ms). Research §10.1: every 24 hours; §9.2: optionally every 1 hour.
+  BAN_STATUS_CHECK_INTERVAL_MS: numberFromEnv(
+    86400000,
+    z.number().int().positive().min(3600000),
+  ), // default 24h, min 1h
+  // If true, exit on startup when ban-status returns cert_required. Research §10.1: alert admin (14-day deadline).
+  BAN_STATUS_EXIT_IF_CERT_REQUIRED: booleanFromEnv.default(false),
+  // Optional path to config/markets.json (Research §6.1, §8). If set, tokenIds and per-market limits loaded from file.
+  MARKETS_CONFIG_PATH: optionalStringFromEnv(z.string().optional()),
+  // Optional path to config/strategy.json (Research §6.1). If set, strategy params loaded from file.
+  STRATEGY_CONFIG_PATH: optionalStringFromEnv(z.string().optional()),
+  // WebSocket max reconnect attempts before giving up (Research §9.3). Default 10.
+  WS_MAX_RECONNECT_ATTEMPTS: numberFromEnv(10, z.number().int().positive().max(100)),
+  // Heartbeat URL (e.g. healthchecks.io ping URL). GET every 1 min (Research §9.7, §10.6). If missed 5 min, external alert.
+  HEARTBEAT_URL: optionalStringFromEnv(z.string().url().optional()),
 });
 
 const configSchema = envSchema
@@ -239,13 +278,54 @@ const configSchema = envSchema
       path: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
     },
   )
-  .transform((env) => ({
+  .transform((env) => {
+    let tokenIds: string[] = env.TOKEN_IDS.split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    let markets: MarketConfigEntry[] | undefined;
+    if (env.MARKETS_CONFIG_PATH) {
+      try {
+        const resolved = path.isAbsolute(env.MARKETS_CONFIG_PATH)
+          ? env.MARKETS_CONFIG_PATH
+          : path.resolve(process.cwd(), env.MARKETS_CONFIG_PATH);
+        if (fs.existsSync(resolved)) {
+          const raw = fs.readFileSync(resolved, "utf-8");
+          const parsed = JSON.parse(raw) as MarketConfigEntry[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            markets = parsed;
+            tokenIds = parsed.map((m) => m.tokenId).filter(Boolean);
+          }
+        }
+      } catch {
+        // Non-fatal: fall back to TOKEN_IDS
+      }
+    }
+    let strategy: StrategyConfigEntry | undefined;
+    if (env.STRATEGY_CONFIG_PATH) {
+      try {
+        const resolved = path.isAbsolute(env.STRATEGY_CONFIG_PATH)
+          ? env.STRATEGY_CONFIG_PATH
+          : path.resolve(process.cwd(), env.STRATEGY_CONFIG_PATH);
+        if (fs.existsSync(resolved)) {
+          const raw = fs.readFileSync(resolved, "utf-8");
+          const parsed = JSON.parse(raw) as StrategyConfigEntry;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            strategy = parsed;
+          }
+        }
+      } catch {
+        // Non-fatal: strategy remains undefined
+      }
+    }
+    return {
     gammaApiUrl: env.GAMMA_API_URL.replace(/\/$/, ""),
     clobApiUrl: env.CLOB_API_URL.replace(/\/$/, ""),
     wsMarketUrl: env.WS_MARKET_URL,
-    tokenIds: env.TOKEN_IDS.split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0),
+    tokenIds,
+    markets,
+    strategy,
+    wsMaxReconnectAttempts: env.WS_MAX_RECONNECT_ATTEMPTS,
+    heartbeatUrl: env.HEARTBEAT_URL,
     logLevel: env.LOG_LEVEL,
     retryAttempts: env.RETRY_ATTEMPTS,
     retryDelay: env.RETRY_DELAY,
@@ -253,6 +333,7 @@ const configSchema = envSchema
     liveTrading: env.LIVE_TRADING,
     complianceAccepted: env.COMPLIANCE_ACCEPTED,
     port: env.PORT,
+    metricsPort: env.METRICS_PORT,
     privateKey: env.PRIVATE_KEY,
     secretSource: env.SECRET_SOURCE,
     encryptionKey: env.ENCRYPTION_KEY,
@@ -292,7 +373,11 @@ const configSchema = envSchema
     telegramChatId: env.TELEGRAM_CHAT_ID,
     alertErrorRateThreshold: env.ALERT_ERROR_RATE_THRESHOLD,
     alertCircuitBreakerTrips: env.ALERT_CIRCUIT_BREAKER_TRIPS,
-  }));
+    minBalanceUsdc: env.MIN_BALANCE_USDC,
+    banStatusCheckIntervalMs: env.BAN_STATUS_CHECK_INTERVAL_MS,
+    banStatusExitIfCertRequired: env.BAN_STATUS_EXIT_IF_CERT_REQUIRED,
+  };
+  });
 
 export type Config = z.infer<typeof configSchema>;
 

@@ -13,6 +13,7 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+      - "9090:9090"
     environment:
       # API Configuration
       - GAMMA_API_URL=${GAMMA_API_URL:-https://gamma-api.polymarket.com}
@@ -39,8 +40,9 @@ services:
       # Blockchain
       - CHAIN_ID=${CHAIN_ID:-137}
       
-      # Server
+      # Server (API on 3000; metrics on 9090 per Research §7 Day 6)
       - PORT=3000
+      - METRICS_PORT=9090
       
       # Retry Configuration
       - RETRY_ATTEMPTS=${RETRY_ATTEMPTS:-3}
@@ -147,38 +149,39 @@ services:
     
     command: npm run --workspace @polymarket/frontend start
 
-  # Optional: Prometheus for metrics (uncomment to enable)
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: polymarket-prometheus
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9090:9090"
-  #   volumes:
-  #     - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml
-  #     - prometheus-data:/prometheus
-  #   command:
-  #     - '--config.file=/etc/prometheus/prometheus.yml'
-  #     - '--storage.tsdb.path=/prometheus'
-  #   networks:
-  #     - polymarket-network
+  # Prometheus for metrics (Research §7 Day 6). Enable for out-of-box observability.
+  # Mapped to 9092 on host so backend metrics can use 9090 (Research §9.1).
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: polymarket-prometheus
+    restart: unless-stopped
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - polymarket-network
 
-  # Optional: Grafana for dashboards (uncomment to enable)
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: polymarket-grafana
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3001:3000"
-  #   environment:
-  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
-  #   volumes:
-  #     - ./grafana:/etc/grafana/provisioning
-  #     - grafana-data:/var/lib/grafana
-  #   depends_on:
-  #     - prometheus
-  #   networks:
-  #     - polymarket-network
+  # Grafana for dashboards (Research §7 Day 6). Import grafana/polymarket-dashboard.json.
+  grafana:
+    image: grafana/grafana:latest
+    container_name: polymarket-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - polymarket-network
 
 networks:
   polymarket-network:
@@ -186,5 +189,5 @@ networks:
 
 volumes:
   frontend-static:
-  # prometheus-data:
-  # grafana-data:
+  prometheus-data:
+  grafana-data:

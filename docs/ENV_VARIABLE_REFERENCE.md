@@ -3,8 +3,8 @@
 ## Overview
 This document provides an overview of environment variables used by the Polymarket bot at runtime, plus variables reserved for future use that are not yet wired into the codebase, organized by category.
 
-**Total Variables (including planned):** 50  
-**Last Updated:** 2026-02-08  
+**Total Variables (including planned):** 57  
+**Last Updated:** 2026-02-10  
 **Reference:** `.env.example`
 
 ---
@@ -51,11 +51,40 @@ This document provides an overview of environment variables used by the Polymark
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `PORT` | `3000` | No | HTTP server port |
+| `METRICS_PORT` | `9090` | No | Dedicated metrics server port (Research §7 Day 6). When different from PORT, GET /metrics is served on this port. Set to same as PORT for single-port mode. |
 | `CHAIN_ID` | `137` | No | Blockchain chain ID (137 = Polygon Mainnet) |
 
 ---
 
-## 6. Secret Management (11 variables - 3 functional, 8 stubbed)
+## 6. Startup & Compliance (Research §9, §10) (3 variables)
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `MIN_BALANCE_USDC` | `0` | No | Minimum USDC balance (in USDC units). At startup, if balance &lt; this and LIVE_TRADING=true, process exits. Set to 0 to disable. |
+| `BAN_STATUS_CHECK_INTERVAL_MS` | `86400000` | No | Ban-status check interval in ms (default 24h). Research §10.1: 24h; §9.2: optionally 1h (3600000). |
+| `BAN_STATUS_EXIT_IF_CERT_REQUIRED` | `false` | No | If true, exit on startup when GET /ban-status returns cert_required (proof of residence within 14 days). If false, only log and send Telegram alert. |
+
+---
+
+## 7. Config Paths (2 variables)
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `MARKETS_CONFIG_PATH` | (empty) | No | Optional path to config/markets.json (e.g. `config/markets.json`). If set, tokenIds and per-market limits loaded from file. Copy from config/markets.json.example. |
+| `STRATEGY_CONFIG_PATH` | (empty) | No | Optional path to config/strategy.json (Research §6.1). Copy from config/strategy.json.example. Env exists; loader not yet wired. |
+
+---
+
+## 8. Heartbeat & WebSocket Limits (2 variables)
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `HEARTBEAT_URL` | (empty) | No | If set, GET request sent every 1 min (e.g. healthchecks.io). Alert if 5 min missed (Research §9.7, §10.6). Example: `https://hc-ping.com/your-uuid`. |
+| `WS_MAX_RECONNECT_ATTEMPTS` | `10` | No | Max WebSocket reconnect attempts before giving up; then critical alert and optional exit (Research §9.3). |
+
+---
+
+## 9. Secret Management (11 variables – 3 functional, 8 stubbed)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -83,7 +112,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 7. Retry Configuration (3 variables)
+## 10. Retry Configuration (3 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -93,7 +122,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 8. Paper Trading Configuration (6 variables)
+## 11. Paper Trading Configuration (6 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -106,7 +135,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 9. Risk Management (5 variables)
+## 12. Risk Management (5 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -118,7 +147,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 10. Circuit Breaker (3 variables)
+## 13. Circuit Breaker (3 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -128,7 +157,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 11. Admin Authentication (1 variable)
+## 14. Admin Authentication (1 variable)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -136,7 +165,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 12. CORS Configuration (1 variable)
+## 15. CORS Configuration (1 variable)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -144,7 +173,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 13. Reconciliation (1 variable)
+## 16. Reconciliation (1 variable)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -152,7 +181,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 14. Rate Limiting (3 variables)
+## 17. Rate Limiting (3 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -162,7 +191,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 15. Alerting Configuration (4 variables)
+## 18. Alerting Configuration (4 variables)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -173,7 +202,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 16. Learning System (4 variables functional, 4 planned)
+## 19. Learning System (4 variables functional, 4 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -188,7 +217,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 17. Metrics Configuration (0 variables functional, 2 planned)
+## 20. Metrics Configuration (0 variables functional, 2 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -199,15 +228,14 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 18. WebSocket Configuration (0 variables functional, 3 planned)
+## 21. WebSocket Configuration (2 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `WS_RECONNECT_DELAY` | `1000` | No | **(Planned)** Initial reconnection delay in ms. Not yet wired into config. |
-| `WS_MAX_RECONNECT_ATTEMPTS` | `Infinity` | No | **(Planned)** Maximum reconnection attempts. Not yet wired into config. |
 | `WS_HEARTBEAT_INTERVAL` | `30000` | No | **(Planned)** Heartbeat interval in ms. Not yet wired into config. |
 
-**Note:** WebSocket reconnection logic exists in the code but uses hardcoded defaults; these env vars are reserved for future configurability.
+**Note:** `WS_MAX_RECONNECT_ATTEMPTS` is implemented and documented in [§8. Heartbeat & WebSocket Limits](#8-heartbeat--websocket-limits-2-variables). The variables above are reserved for future configurability.
 
 ---
 
@@ -220,6 +248,9 @@ This document provides an overview of environment variables used by the Polymark
 | Logging | 1 | Application logging |
 | Trading Gates | 2 | Safety controls |
 | Server | 2 | HTTP server settings |
+| Startup & Compliance | 3 | MIN_BALANCE, ban-status (Research §9, §10) |
+| Config Paths | 2 | markets.json, strategy.json paths |
+| Heartbeat & WebSocket Limits | 2 | HEARTBEAT_URL, WS_MAX_RECONNECT_ATTEMPTS |
 | Secret Management | 11 | 2 functional methods (env, encrypted), 3 stubbed (AWS, Vault, Azure) |
 | Retry | 3 | Retry logic configuration |
 | Paper Trading | 6 | Simulation settings |
@@ -232,8 +263,8 @@ This document provides an overview of environment variables used by the Polymark
 | Alerting | 4 | Telegram notifications |
 | Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
 | Metrics | 2 | Planned - not yet wired into config |
-| WebSocket | 3 | Planned - not yet wired into config |
-| **TOTAL** | **50** | **~37 functional, ~13 planned/stubbed** |
+| WebSocket | 2 | Planned - WS_RECONNECT_DELAY, WS_HEARTBEAT_INTERVAL (WS_MAX_RECONNECT_ATTEMPTS in §8) |
+| **TOTAL** | **57** | **~44 functional, ~13 planned/stubbed** |
 
 ---
 

@@ -96,9 +96,13 @@ The dashboard can be customized to:
 
 ## Metrics Endpoint
 
-The bot exposes metrics at `GET /metrics` in Prometheus text format:
+The bot exposes metrics at `GET /metrics` on a dedicated port (default 9090, Research §7 Day 6). When running with Docker Compose, backend metrics are on port 9090; the main API is on port 3000.
 
 ```bash
+# Dedicated metrics port (default)
+curl http://localhost:9090/metrics
+
+# Metrics are also on the API port when METRICS_PORT differs from PORT
 curl http://localhost:3000/metrics
 ```
 
@@ -106,14 +110,14 @@ curl http://localhost:3000/metrics
 
 ### No Data in Dashboard
 
-1. Verify Prometheus is scraping the bot:
+1. Verify Prometheus is scraping the bot (Prometheus UI is on port 9092 when using Docker Compose):
    ```bash
-   curl http://localhost:9090/api/v1/targets
+   curl http://localhost:9092/api/v1/targets
    ```
 
 2. Check metrics endpoint is accessible:
    ```bash
-   curl http://localhost:3000/metrics
+   curl http://localhost:9090/metrics
    ```
 
 3. Verify Grafana datasource is configured correctly

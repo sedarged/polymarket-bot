@@ -1,0 +1,7 @@
+[
+  {
+    "tokenId": "0x...",
+    "maxPositionSize": 100,
+    "spread": 0.02
+  }
+]

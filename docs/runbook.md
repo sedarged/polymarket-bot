@@ -95,6 +95,16 @@ LOG_LEVEL=info
 RECONCILIATION_INTERVAL_SECONDS=300  # 5 minutes (default)
 ```
 
+### Fee-enabled markets (Research §1.4)
+
+Most Polymarket markets have **0% fees**. Some (e.g. 15-minute crypto markets) are fee-enabled: the CLOB returns `GET /fee-rate?token_id={id}` as `feeRateBps`. Order payloads must include `feeRateBps` (Research §1.2). The backend CLOB client exposes `getFeeRate(tokenId)` for this. If you only trade 0%-fee markets, you do not need to call it; otherwise use it when placing live orders and pass the value into the order payload. See [REPORTS/RESEARCH_VS_REPO_COMPARISON.md](../REPORTS/RESEARCH_VS_REPO_COMPARISON.md) and Research §1.4, §12.1.
+
+### Cancel policy, bucket_index, resolution (Research §5.2)
+
+- **Cancel policy:** Use wider cancel thresholds to avoid excessive gas; aggressive cancel/replace can waste ~95% of gas (Research §4.1, §5.2 #4).
+- **Multi-part trades:** Group orders by `bucket_index` where applicable; not grouping can cause incorrect matching (Research §5.2 #8).
+- **Resolution delays:** Do not assume instant redemption; allow for challenge window and possible UMA disputes (Research §5.2 #9). See [UMA resolution and redemption](#uma-resolution-and-redemption-research-16) below.
+
 ### Environment Validation Script
 
 Run this script before starting the bot to validate your environment:
@@ -385,19 +395,27 @@ LIVE_TRADING=true COMPLIANCE_ACCEPTED=true ALLOWED_ORIGINS=https://dashboard.exa
    - Test wallet can sign transactions on Polygon
    - Confirm sufficient USDC balance in wallet
 
-3. **Launch sequence**
+3. **Startup compliance checks (Research §9.1, §10.1)**  
+   The server runs these automatically at startup; configure via env vars (see [ENV_VARIABLE_REFERENCE.md](./ENV_VARIABLE_REFERENCE.md)):
+   - **MIN_BALANCE_USDC**: If `LIVE_TRADING=true` and wallet USDC &lt; this value, the process **exits** (set to `0` to disable). Ensures you do not trade with insufficient funds.
+   - **Ban-status**: On startup the server calls GET /ban-status. If `cert_required: true`, it logs and may send a Telegram alert; if `BAN_STATUS_EXIT_IF_CERT_REQUIRED=true`, the process exits. The check repeats every `BAN_STATUS_CHECK_INTERVAL_MS` (default 24h).
+   - **Heartbeat**: If `HEARTBEAT_URL` is set (e.g. a healthchecks.io URL), the server sends a GET request every 1 minute. If the bot stops, your monitoring service can alert after ~5 minutes of missed pings.
+
+4. **Launch sequence**
    ```bash
    # Start backend server
    npm run dev
    
    # Verify startup logs show:
    # - "Trading client initialized" with wallet address
+   # - Ban-status check result (if enabled)
+   # - Balance check passed or exit if below MIN_BALANCE_USDC
    # - "Starting reconciliation"
    # - "Reconciliation complete" with counts
    # - "Server listening"
    ```
 
-4. **Verify initialization**
+5. **Verify initialization**
    ```bash
    # Check trading status
    curl http://localhost:3000/status
@@ -409,19 +427,19 @@ LIVE_TRADING=true COMPLIANCE_ACCEPTED=true ALLOWED_ORIGINS=https://dashboard.exa
    # - marketFeedConnected: true
    ```
 
-5. **State reconciliation (automatic)**
+6. **State reconciliation (automatic)**
    - Trading client fetches all open orders from CLOB
    - Fetches wallet balance and allowances
    - Recalculates positions from order history
    - Logs reconciliation summary
 
-6. **Market data connection**
+7. **Market data connection**
    - WebSocket connects to market feed
    - Subscribes to TOKEN_IDS if configured
    - Begins caching orderbook snapshots
    - Verify with: `curl http://localhost:3000/feed/status`
 
-7. **Dashboard access**
+8. **Dashboard access**
    ```bash
    # In separate terminal
    cd apps/frontend
@@ -1238,7 +1256,14 @@ curl http://localhost:3000/ready
 ---
 
 #### Metrics Endpoint
+
+By default the backend exposes a **dedicated metrics server on port 9090** (Research §7 Day 6, §9.1). The main API server (PORT, default 3000) also serves GET `/metrics` for backward compatibility. To use a single port for both API and metrics, set `METRICS_PORT` to the same value as `PORT` (e.g. `METRICS_PORT=3000`); then only the main server runs and `/metrics` is available on that port only.
+
 ```bash
+# Default: dedicated metrics port 9090
+curl http://localhost:9090/metrics
+
+# Metrics are also available on the API port
 curl http://localhost:3000/metrics
 ```
 
@@ -1967,7 +1992,29 @@ lsof -i :8080
    - Update architecture docs
 ```
 
+## UMA resolution and redemption (Research §1.6)
+
+Markets resolve via the UMA Optimistic Oracle. After resolution, winning shares can be redeemed for $1.00 USDC.
+
+- **Typical resolution:** Proposal → 2-hour challenge period → settlement. If disputed, UMA DVM can take ~48–96 hours.
+- **Auto-redemption:** Winning positions are typically redeemable via the Polymarket UI or API after settlement. The bot does not auto-redeem; plan to redeem manually or add a monitor that triggers redemption.
+- **Settlement buffer:** If you hold positions to resolution, allow for dispute delays (up to ~96 hours) before treating value as final.
+
 ## Backup and Recovery
+
+### Daily DB backup (Research §9.8)
+
+For production, back up SQLite (or Postgres) daily. **Note:** Research §11 suggests Postgres for production at scale; the current implementation uses SQLite. If you migrate to Postgres, use equivalent backup (e.g. `pg_dump`) and document the connection string in your runbook.
+
+Example (SQLite):
+
+```bash
+# Daily at 00:00 UTC; retain 30 days
+0 0 * * * sqlite3 /path/to/data/audit.db ".dump" | gzip > /path/to/backups/audit-$(date +\%Y\%m\%d).sql.gz
+# Prune: find /path/to/backups -name 'audit-*.sql.gz' -mtime +30 -delete
+```
+
+Optionally push backups to S3/Backblaze for off-host retention.
 
 ### State Backup
 ```bash

@@ -1,0 +1,11 @@
+# Prometheus config for Polymarket bot (Research §7 Day 6)
+# Scrapes backend /metrics on dedicated port 9090. Used when docker-compose Prometheus is enabled.
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'polymarket-backend'
+    static_configs:
+      - targets: ['backend:9090']
+    metrics_path: /metrics

@@ -1,0 +1,30 @@
+# Deploy workflow (Research §6.1, §9)
+# Extend this to build and push the Docker image, or trigger deployment on your VM.
+# By default, runs only on manual trigger (workflow_dispatch).
+
+name: Deploy
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target (e.g. staging, production)'
+        required: true
+        default: 'staging'
+
+jobs:
+  deploy:
+    name: Build and report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: |
+          docker build -t polymarket-bot:${{ github.sha }} --target production .
+          echo "Image built. Add steps to push to registry and deploy (e.g. ECR, Docker Hub, SSH to VM)."
+          echo "See docs/deploy.md for deployment options."

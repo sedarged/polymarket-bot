@@ -61,12 +61,14 @@ export interface TradingState {
 }
 
 /**
- * Extended UserOrder interface to include clientOrderId for idempotency.
+ * Extended UserOrder interface to include clientOrderId for idempotency and feeRateBps for fee-enabled markets.
  * The official SDK doesn't include clientOrderId in types, but accepts it
  * as an extension point for order tracking (Audit Finding A-006).
+ * feeRateBps is required for fee-enabled markets (Research §1.2, §1.4); GET /fee-rate supplies the value.
  */
 interface UserOrderWithClientId extends UserOrder {
   clientOrderId: string; // UUID v4 for idempotency
+  feeRateBps?: number; // Basis points; from GET /fee-rate for fee-enabled markets
 }
 
 /**
@@ -183,6 +185,42 @@ export class TradingClient {
         address: this.wallet.address,
         chainId: config.chainId,
       });
+
+      // Ban-status check on startup (Research §10.1, §9.2)
+      try {
+        const banStatus = await this.clobRestClient.getBanStatus(this.wallet.address);
+        if (banStatus.cert_required) {
+          logger.error('CRITICAL: Ban-status cert_required - proof of residence required within 14 days', {
+            address: this.wallet.address,
+            research: '§10.1',
+          });
+          const { getAlertingService } = await import('../utils/alerting');
+          const alerting = getAlertingService();
+          if (alerting) {
+            await alerting.sendAlert({
+              severity: 'critical',
+              title: 'Ban status: cert required',
+              message:
+                'Proof of residence required within 14 days. Trading may be restricted. See compliance docs.',
+              context: { address: `${this.wallet.address.slice(0, 10)}...` },
+              timestamp: new Date().toISOString(),
+              dedupeKey: 'ban-status-cert-required',
+            });
+          }
+          if (config.banStatusExitIfCertRequired) {
+            throw new Error(
+              'Startup aborted: ban-status cert_required (proof of residence within 14 days). Set BAN_STATUS_EXIT_IF_CERT_REQUIRED=false to continue with alert only.'
+            );
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('Startup aborted')) {
+          throw err;
+        }
+        logger.warn('Ban-status check failed (non-fatal)', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
 
       // Perform startup reconciliation
       await this.reconcile(true);
@@ -666,6 +704,9 @@ export class TradingClient {
     try {
       logger.info('Creating order', { tokenId: validated.tokenId, side: validated.side, price: validated.price, size: validated.size, clientOrderId: orderId });
 
+      // Fee-enabled markets require feeRateBps in order payload (Research §1.2, §1.4)
+      const feeRateBps = await this.clobRestClient.getFeeRate(validated.tokenId);
+
       // Create order via CLOB client using validated parameters with clientOrderId for idempotency
       const orderParams: UserOrderWithClientId = {
         tokenID: validated.tokenId,
@@ -673,6 +714,7 @@ export class TradingClient {
         price: Number(validated.price),
         size: Number(validated.size),
         clientOrderId: orderId, // UUID v4 for idempotency (Audit Finding A-006)
+        feeRateBps,
       };
       
       // Pass order with clientOrderId to SDK using type-safe helper
@@ -778,6 +820,16 @@ export class TradingClient {
     });
 
     try {
+      // Fee rates per token for batch (Research §1.2, §1.4): fetch once per unique tokenId
+      const uniqueTokenIds = [...new Set(orders.map((o) => o.tokenId))];
+      const feeRateByToken = new Map<string, number>();
+      await Promise.all(
+        uniqueTokenIds.map(async (tokenId) => {
+          const bps = await this.clobRestClient.getFeeRate(tokenId);
+          feeRateByToken.set(tokenId, bps);
+        })
+      );
+
       // Validate and prepare all orders
       const preparedOrders: Array<{
         params: UserOrderWithClientId;
@@ -816,12 +868,14 @@ export class TradingClient {
           // Track order ID
           this.submittedOrderIds.add(orderId);
 
+          const feeRateBps = feeRateByToken.get(validated.tokenId) ?? 0;
           const orderParams: UserOrderWithClientId = {
             tokenID: validated.tokenId,
             side: validated.side === 'BUY' ? Side.BUY : Side.SELL,
             price: Number(validated.price),
             size: Number(validated.size),
             clientOrderId: orderId,
+            feeRateBps,
           };
 
           preparedOrders.push({
@@ -1174,6 +1228,51 @@ export class TradingClient {
       positions: [...this.state.positions],
       balances: [...this.state.balances],
     };
+  }
+
+  /**
+   * Get current USDC balance in USDC units (for MIN_BALANCE check, Research §9.1).
+   * Returns null if no balance data or not initialized.
+   */
+  getUsdcBalance(): number | null {
+    const usdc = this.state.balances.find((b) => b.currency === 'USDC');
+    if (!usdc?.available) return null;
+    const n = parseFloat(usdc.available);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Run ban-status check (Research §10.1, §9.2). Call periodically (e.g. every 24h).
+   * If cert_required, logs critical and sends Telegram alert.
+   */
+  async runBanStatusCheck(): Promise<void> {
+    if (!this.wallet) return;
+    try {
+      const banStatus = await this.clobRestClient.getBanStatus(this.wallet.address);
+      if (banStatus.cert_required) {
+        logger.error('CRITICAL: Ban-status cert_required - proof of residence required within 14 days', {
+          address: this.wallet.address,
+          research: '§10.1',
+        });
+        const { getAlertingService } = await import('../utils/alerting');
+        const alerting = getAlertingService();
+        if (alerting) {
+          await alerting.sendAlert({
+            severity: 'critical',
+            title: 'Ban status: cert required',
+            message:
+              'Proof of residence required within 14 days. Trading may be restricted. See compliance docs.',
+            context: { address: `${this.wallet.address.slice(0, 10)}...` },
+            timestamp: new Date().toISOString(),
+            dedupeKey: 'ban-status-cert-required',
+          });
+        }
+      }
+    } catch (err) {
+      logger.warn('Periodic ban-status check failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   /**
