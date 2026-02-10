@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { validatePrivateKey } from "../secrets";
+import { logger } from "../utils/logger";
 
 dotenv.config();
 
@@ -239,16 +240,22 @@ const envSchema = z.object({
   // ========================================
   // Minimum USDC balance (in USDC units). If set and balance < this at startup, exit. Research §9.1.
   MIN_BALANCE_USDC: numberFromEnv(0, z.number().nonnegative()),
-  // Ban-status check interval (ms). Research §10.1: every 24 hours; §9.2: optionally every 1 hour.
+  // Ban-status check interval (ms). Research §10.1: every 24 hours; §9.2: optionally every 1 hour. Use 0 to disable.
   BAN_STATUS_CHECK_INTERVAL_MS: numberFromEnv(
     86400000,
-    z.number().int().positive().min(3600000),
-  ), // default 24h, min 1h
+    z
+      .number()
+      .int()
+      .nonnegative()
+      .refine((value) => value === 0 || value >= 3600000, {
+        message: 'Must be 0 (to disable) or at least 3600000 ms (1 hour)',
+      }),
+  ), // default 24h, min 1h when enabled; 0 disables
   // If true, exit on startup when ban-status returns cert_required. Research §10.1: alert admin (14-day deadline).
   BAN_STATUS_EXIT_IF_CERT_REQUIRED: booleanFromEnv.default(false),
-  // Optional path to config/markets.json (Research §6.1, §8). If set, tokenIds and per-market limits loaded from file.
+  // Optional path to config/markets.json (Research §6.1, §8). If set, tokenIds and per-market limits loaded from file. Resolved relative to process.cwd() (e.g. when running from apps/backend, use ../../config/markets.json for repo-root config).
   MARKETS_CONFIG_PATH: optionalStringFromEnv(z.string().optional()),
-  // Optional path to config/strategy.json (Research §6.1). If set, strategy params loaded from file.
+  // Optional path to config/strategy.json (Research §6.1). If set, strategy params loaded from file. Resolved relative to process.cwd().
   STRATEGY_CONFIG_PATH: optionalStringFromEnv(z.string().optional()),
   // WebSocket max reconnect attempts before giving up (Research §9.3). Default 10.
   WS_MAX_RECONNECT_ATTEMPTS: numberFromEnv(10, z.number().int().positive().max(100)),
@@ -296,8 +303,13 @@ const configSchema = envSchema
             tokenIds = parsed.map((m) => m.tokenId).filter(Boolean);
           }
         }
-      } catch {
-        // Non-fatal: fall back to TOKEN_IDS
+      } catch (err) {
+        logger.warn("Failed to load markets config, falling back to TOKEN_IDS", {
+          path: path.isAbsolute(env.MARKETS_CONFIG_PATH)
+            ? env.MARKETS_CONFIG_PATH
+            : path.resolve(process.cwd(), env.MARKETS_CONFIG_PATH),
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
     let strategy: StrategyConfigEntry | undefined;
@@ -313,8 +325,13 @@ const configSchema = envSchema
             strategy = parsed;
           }
         }
-      } catch {
-        // Non-fatal: strategy remains undefined
+      } catch (err) {
+        logger.warn("Failed to load strategy config", {
+          path: path.isAbsolute(env.STRATEGY_CONFIG_PATH)
+            ? env.STRATEGY_CONFIG_PATH
+            : path.resolve(process.cwd(), env.STRATEGY_CONFIG_PATH),
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
     return {

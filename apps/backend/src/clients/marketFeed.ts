@@ -73,6 +73,11 @@ export class MarketFeedClient extends EventEmitter {
     this.setupEventHandlers();
   }
 
+  /** Exposed for tests: assert maxReconnectAttempts wiring to WebSocketClient. */
+  getWsClientForTesting(): WebSocketClient {
+    return this.wsClient;
+  }
+
   private setupEventHandlers(): void {
     this.wsClient.on('open', () => {
       logger.info('Market feed WebSocket opened');

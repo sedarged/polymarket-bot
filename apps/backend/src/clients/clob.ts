@@ -226,7 +226,7 @@ export class ClobClient {
           { params: { token_id: tokenId } }
         );
         const bps = response.data?.feeRateBps ?? 0;
-        logger.info('Retrieved fee rate', { tokenId, feeRateBps: bps });
+        logger.debug('Retrieved fee rate', { tokenId, feeRateBps: bps });
         return bps;
       }, {
         attempts: config.retryAttempts,

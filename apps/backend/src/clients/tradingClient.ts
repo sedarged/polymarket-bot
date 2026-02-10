@@ -141,6 +141,9 @@ export class TradingClient {
   private submittedOrderIds: Set<string> = new Set(); // Track submitted clientOrderIds for idempotency (A-006)
   private processedFillIds: Set<string> = new Set(); // Track processed fills for idempotency
   private marketConstraintsCache: Map<string, MarketConstraints> = new Map(); // Cache for market constraints (Issue #75)
+  /** Fee rate cache per tokenId (bps) to avoid per-order GET /fee-rate on the critical path. TTL 5 min. */
+  private static readonly FEE_RATE_CACHE_TTL_MS = 5 * 60 * 1000;
+  private feeRateCache: Map<string, { bps: number; expiresAt: number }> = new Map();
   private reconciliationInterval: NodeJS.Timeout | null = null; // Periodic reconciliation timer (Gap RE-001)
   private lastReconciliationTime: number = 0; // Track last reconciliation timestamp
   private lastBalanceFetchTime: number = 0; // Track when balances were last successfully fetched (A-011)
@@ -607,6 +610,24 @@ export class TradingClient {
   }
 
   /**
+   * Get fee rate (bps) for a token with in-memory cache to avoid per-order GET /fee-rate on the critical path.
+   * Cache TTL 5 minutes per tokenId.
+   */
+  private async getFeeRateCached(tokenId: string): Promise<number> {
+    const now = Date.now();
+    const entry = this.feeRateCache.get(tokenId);
+    if (entry && entry.expiresAt > now) {
+      return entry.bps;
+    }
+    const bps = await this.clobRestClient.getFeeRate(tokenId);
+    this.feeRateCache.set(tokenId, {
+      bps,
+      expiresAt: now + TradingClient.FEE_RATE_CACHE_TTL_MS,
+    });
+    return bps;
+  }
+
+  /**
    * Validate that balance data is available and not stale (Audit Finding A-011)
    * 
    * Ensures we have fresh balance data before allowing trading operations.
@@ -704,8 +725,8 @@ export class TradingClient {
     try {
       logger.info('Creating order', { tokenId: validated.tokenId, side: validated.side, price: validated.price, size: validated.size, clientOrderId: orderId });
 
-      // Fee-enabled markets require feeRateBps in order payload (Research §1.2, §1.4)
-      const feeRateBps = await this.clobRestClient.getFeeRate(validated.tokenId);
+      // Fee-enabled markets require feeRateBps in order payload (Research §1.2, §1.4). Cached per tokenId to avoid extra network call per order.
+      const feeRateBps = await this.getFeeRateCached(validated.tokenId);
 
       // Create order via CLOB client using validated parameters with clientOrderId for idempotency
       const orderParams: UserOrderWithClientId = {
@@ -820,15 +841,22 @@ export class TradingClient {
     });
 
     try {
-      // Fee rates per token for batch (Research §1.2, §1.4): fetch once per unique tokenId
+      // Fee rates per token for batch (Research §1.2, §1.4): fetch once per unique tokenId.
+      // Per-token try/catch so one failed getFeeRate does not abort the whole batch (preserves partial success).
       const uniqueTokenIds = [...new Set(orders.map((o) => o.tokenId))];
       const feeRateByToken = new Map<string, number>();
-      await Promise.all(
-        uniqueTokenIds.map(async (tokenId) => {
-          const bps = await this.clobRestClient.getFeeRate(tokenId);
+      for (const tokenId of uniqueTokenIds) {
+        try {
+          const bps = await this.getFeeRateCached(tokenId);
           feeRateByToken.set(tokenId, bps);
-        })
-      );
+        } catch (err) {
+          logger.warn('Fee rate fetch failed for token, using 0 for batch', {
+            tokenId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          feeRateByToken.set(tokenId, 0);
+        }
+      }
 
       // Validate and prepare all orders
       const preparedOrders: Array<{
@@ -1308,6 +1336,7 @@ export class TradingClient {
    * Call this when shutting down the trading client
    */
   destroy(): void {
+    this.feeRateCache.clear();
     this.clobRestClient.destroy();
     logger.info('Trading client resources cleaned up');
   }
@@ -1318,6 +1347,14 @@ export class TradingClient {
    */
   _addTestOrder(order: Order): void {
     this.state.orders.push(order);
+  }
+
+  /**
+   * Set balances for testing getUsdcBalance and MIN_BALANCE behavior (testing only).
+   * @internal
+   */
+  _setTestBalances(balances: Balance[]): void {
+    this.state.balances = balances;
   }
 
   /**

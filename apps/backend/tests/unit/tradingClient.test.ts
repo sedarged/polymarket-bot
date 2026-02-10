@@ -70,6 +70,53 @@ describe('TradingClient', () => {
       await expect(client.cancelAllOrders()).rejects.toThrow();
     });
   });
+
+  describe('getUsdcBalance', () => {
+    it('should return null when not initialized', () => {
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when no balances', () => {
+      client._setTestBalances([]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when only non-USDC balances', () => {
+      client._setTestBalances([
+        { currency: 'ETH', available: '1', total: '1' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return null when USDC available is invalid numeric string', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: 'not-a-number', total: '100' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+
+    it('should return finite number for valid USDC balance', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: '123.45', total: '123.45' },
+      ]);
+      const balance = client.getUsdcBalance();
+      expect(balance).toBe(123.45);
+      expect(Number.isFinite(balance)).toBe(true);
+    });
+
+    it('should return null when USDC available is empty string', () => {
+      client._setTestBalances([
+        { currency: 'USDC', available: '', total: '0' },
+      ]);
+      expect(client.getUsdcBalance()).toBeNull();
+    });
+  });
+
+  describe('runBanStatusCheck', () => {
+    it('should resolve without throwing when not initialized', async () => {
+      await expect(client.runBanStatusCheck()).resolves.toBeUndefined();
+    });
+  });
 });
 
 describe('isLiveTradingEnabled', () => {

@@ -1,5 +1,7 @@
 # Research vs Repository: Deep Comparison Report
 
+**Note:** This document contains no secrets or credentials; any references to keys, tokens, or API keys are to configuration or feature names only.
+
 **Source of truth:** POLYMARKET_BOT_RESEARCH_COMPLETE (1).md  
 **Repository evaluated:** polymarket-bot (this workspace)  
 **Date:** 2026-02-10

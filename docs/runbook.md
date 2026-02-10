@@ -97,7 +97,7 @@ RECONCILIATION_INTERVAL_SECONDS=300  # 5 minutes (default)
 
 ### Fee-enabled markets (Research §1.4)
 
-Most Polymarket markets have **0% fees**. Some (e.g. 15-minute crypto markets) are fee-enabled: the CLOB returns `GET /fee-rate?token_id={id}` as `feeRateBps`. Order payloads must include `feeRateBps` (Research §1.2). The backend CLOB client exposes `getFeeRate(tokenId)` for this. If you only trade 0%-fee markets, you do not need to call it; otherwise use it when placing live orders and pass the value into the order payload. See [REPORTS/RESEARCH_VS_REPO_COMPARISON.md](../REPORTS/RESEARCH_VS_REPO_COMPARISON.md) and Research §1.4, §12.1.
+Most Polymarket markets have **0% fees**. Some (e.g. 15-minute crypto markets) are fee-enabled: the CLOB returns `GET /fee-rate?token_id={id}` as `feeRateBps`. Order payloads must include `feeRateBps` (Research §1.2). The backend fetches fee rate per token (cached 5 min) for every live order and batch order and passes it into the order payload. See [archive/RESEARCH_VS_REPO_COMPARISON.md](../archive/RESEARCH_VS_REPO_COMPARISON.md) and Research §1.4, §12.1.
 
 ### Cancel policy, bucket_index, resolution (Research §5.2)
 

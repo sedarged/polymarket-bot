@@ -56,6 +56,11 @@ export class WebSocketClient extends EventEmitter {
     this.currentReconnectDelay = this.reconnectDelay;
   }
 
+  /** Exposed for tests: assert maxReconnectAttempts wiring from MarketFeedClient. */
+  getMaxReconnectAttemptsForTesting(): number {
+    return this.maxReconnectAttempts;
+  }
+
   /**
    * Update metrics when state changes
    */
@@ -190,8 +195,9 @@ export class WebSocketClient extends EventEmitter {
     // Record reconnection attempt
     websocketReconnects.inc({ feed_type: this.feedType, result: "attempt" });
 
-    // Research §9.3: Max 10 attempts, then critical alert + optional exit
-    if (this.reconnectAttempts > this.maxReconnectAttempts) {
+    // Research §9.3: Max N attempts (strict), then critical alert + optional exit.
+    // Use >= so we enforce exactly maxReconnectAttempts reconnects (count matches message).
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       logger.error("WebSocket max reconnect attempts reached - giving up", {
         feedType: this.feedType,
         attempts: this.reconnectAttempts,
@@ -208,7 +214,7 @@ export class WebSocketClient extends EventEmitter {
           alerting.sendAlert({
             severity: "critical",
             title: "WebSocket max reconnects reached",
-            message: `Feed ${this.feedType} failed to reconnect after ${this.reconnectAttempts} attempts. Bot may need restart.`,
+            message: `Feed ${this.feedType} failed to reconnect after ${this.maxReconnectAttempts} attempts. Bot may need restart.`,
             context: { feedType: this.feedType, attempts: this.reconnectAttempts },
             timestamp: new Date().toISOString(),
             dedupeKey: `ws-max-reconnects-${this.feedType}`,

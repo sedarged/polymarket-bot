@@ -74,7 +74,7 @@ Work on tasks in this priority order:
   - **Use it to**: Ensure you update docs with code changes, follow PR checklist, prevent documentation drift
 
 **Research vs repo:**
-- For work tied to the research document or comparison report, read [REPORTS/RESEARCH_VS_REPO_COMPARISON.md](./REPORTS/RESEARCH_VS_REPO_COMPARISON.md) and the current research double-check plan (in `.cursor/plans/`) for implementation status and remaining todos.
+- For work tied to the research document or comparison report, read [archive/RESEARCH_VS_REPO_COMPARISON.md](./archive/RESEARCH_VS_REPO_COMPARISON.md) and the current research double-check plan (in `.cursor/plans/`) for implementation status and remaining todos.
 
 ### Development Workflow
 1. **Read the docs**: Check relevant documentation before coding
@@ -351,7 +351,7 @@ If stuck or unsure:
 1. Check [docs/ai/decision-trees.md](./docs/ai/) for common scenarios
 2. Review [docs/ai/common-pitfalls.md](./docs/ai/) for known issues
 3. Look at [docs/README.md](./docs/README.md) for relevant documentation
-4. For research-alignment work: [REPORTS/RESEARCH_VS_REPO_COMPARISON.md](./REPORTS/RESEARCH_VS_REPO_COMPARISON.md) and the research double-check plan in `.cursor/plans/`
+4. For research-alignment work: [archive/RESEARCH_VS_REPO_COMPARISON.md](./archive/RESEARCH_VS_REPO_COMPARISON.md) and the research double-check plan in `.cursor/plans/`
 5. Ask in the issue comments with specific questions
 
 ## Links

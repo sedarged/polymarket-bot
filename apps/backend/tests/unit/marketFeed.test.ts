@@ -394,4 +394,17 @@ describe('MarketFeedClient', () => {
       expect(client.isConnected()).toBe(true);
     });
   });
+
+  describe('maxReconnectAttempts wiring', () => {
+    it('should pass maxReconnectAttempts from MarketFeedClient to WebSocketClient', () => {
+      const feedClient = new MarketFeedClient({
+        url: `ws://localhost:${port}`,
+        tokenIds: [mockTokenId],
+        maxReconnectAttempts: 7,
+      });
+      const wsClient = feedClient.getWsClientForTesting();
+      expect(wsClient.getMaxReconnectAttemptsForTesting()).toBe(7);
+      feedClient.close();
+    });
+  });
 });

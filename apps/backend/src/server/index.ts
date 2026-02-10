@@ -803,7 +803,9 @@ export async function startServer(): Promise<http.Server> {
               minBalanceUsdc: config.minBalanceUsdc,
               research: '§9.1',
             });
-            process.exit(1);
+            // Invoke graceful shutdown before exit so servers/connections close cleanly
+            shutdown(1);
+            return;
           }
         }
 
@@ -831,6 +833,13 @@ export async function startServer(): Promise<http.Server> {
         }
       })
       .catch((error) => {
+        if (error instanceof Error && error.message.includes('Startup aborted')) {
+          logger.error('Startup aborted (ban-status cert_required)', {
+            message: error.message,
+          });
+          shutdown(1);
+          return;
+        }
         logger.error('Failed to initialize trading client', {
           error: error instanceof Error ? error.message : String(error),
         });
@@ -868,6 +877,14 @@ export async function startServer(): Promise<http.Server> {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not Found' }));
     });
+    metricsServerForTesting = metricsServer;
+    metricsServer.on('error', (err) => {
+      logger.error('Metrics server bind error (degrading to single-port metrics)', {
+        error: err instanceof Error ? err.message : String(err),
+        port: config.metricsPort,
+      });
+      metricsServer = null;
+    });
     metricsServer.listen(config.metricsPort, () => {
       logger.info('Metrics server listening', { port: config.metricsPort, research: '§7 Day 6' });
     });
@@ -875,7 +892,7 @@ export async function startServer(): Promise<http.Server> {
 
   // Graceful shutdown handler
   // Addresses Audit Finding A-017: properly await all cleanup operations
-  const shutdown = async () => {
+  const shutdown = async (exitCode?: number) => {
     logger.info('Shutting down server...');
     
     // Create shutdown timeout to prevent hanging (10 seconds)
@@ -949,13 +966,13 @@ export async function startServer(): Promise<http.Server> {
 
       // Clear shutdown timeout and exit cleanly
       clearTimeout(shutdownTimeout);
-      process.exit(0);
+      process.exit(exitCode ?? 0);
     } catch (error) {
       logger.error('Error during shutdown', {
         error: error instanceof Error ? error.message : String(error),
       });
       clearTimeout(shutdownTimeout);
-      process.exit(1);
+      process.exit(exitCode ?? 1);
     }
   };
 
@@ -963,4 +980,10 @@ export async function startServer(): Promise<http.Server> {
   process.on('SIGINT', shutdown);
 
   return server;
+}
+
+/** Exposed for tests only: when METRICS_PORT !== PORT, returns the dedicated metrics server so tests can close it. */
+let metricsServerForTesting: http.Server | null = null;
+export function getMetricsServerForTesting(): http.Server | null {
+  return metricsServerForTesting;
 }

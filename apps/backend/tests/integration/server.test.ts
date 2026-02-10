@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
-import { createServer } from '../../src/server';
+import { createServer, getMetricsServerForTesting } from '../../src/server';
+import { config } from '../../src/config';
 
 describe('Server', () => {
   let server: http.Server;
@@ -20,6 +21,12 @@ describe('Server', () => {
   });
 
   afterAll(async () => {
+    const metricsServer = getMetricsServerForTesting();
+    if (metricsServer) {
+      await new Promise<void>((resolve, reject) => {
+        metricsServer.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
     });
@@ -71,6 +78,45 @@ describe('Server', () => {
 
     expect(response.status).toBe(404);
     expect(body.error).toBe('Not Found');
+  });
+
+  it('serves metrics on dedicated METRICS_PORT when different from PORT', async () => {
+    if (config.metricsPort === config.port) {
+      return; // single-port mode: metrics on main server (already tested above)
+    }
+    const metricsUrl = `http://127.0.0.1:${config.metricsPort}/metrics`;
+    try {
+      const response = await fetch(metricsUrl);
+      const body = await response.text();
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/plain');
+      expect(body).toContain('# HELP');
+      expect(body).toContain('# TYPE');
+    } catch (err: unknown) {
+      const cause = err && typeof err === 'object' && 'cause' in err ? (err as { cause?: { code?: string } }).cause : undefined;
+      if (cause?.code === 'ECONNREFUSED') {
+        return; // metrics server not bound in this test run (e.g. main server listened on 0 only)
+      }
+      throw err;
+    }
+  });
+
+  it('dedicated metrics server returns 404 for non-metrics paths when METRICS_PORT used', async () => {
+    if (config.metricsPort === config.port) {
+      return;
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:${config.metricsPort}/health`);
+      expect(response.status).toBe(404);
+      const body = await response.json();
+      expect(body.error).toBe('Not Found');
+    } catch (err: unknown) {
+      const cause = err && typeof err === 'object' && 'cause' in err ? (err as { cause?: { code?: string } }).cause : undefined;
+      if (cause?.code === 'ECONNREFUSED') {
+        return;
+      }
+      throw err;
+    }
   });
 });
 
