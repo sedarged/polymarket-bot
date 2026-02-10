@@ -35,8 +35,9 @@ Analyzed **30+ Polymarket trading bot repositories** with deep dive into 5 repre
 
 **Evidence:**
 ```bash
-$ find apps/backend/src -name "*strategy*"
-# 0 results
+$ find apps/backend/src -name "*strategy*" -o -name "*Strategy*"
+apps/backend/src/utils/strategyErrorLogging.ts
+# Only infrastructure/helper files found; no concrete trading strategy implementations
 ```
 
 **Competitor Evidence:**
@@ -52,8 +53,18 @@ $ find apps/backend/src -name "*strategy*"
 
 **Evidence:**
 ```typescript
-// apps/backend/src/config/index.ts:56
-PRIVATE_KEY: z.string().optional(), // plaintext!
+// apps/backend/src/config/index.ts:104-117
+PRIVATE_KEY: optionalStringFromEnv(
+  z.string().optional()
+    .refine((key) => !key || validatePrivateKey(key), {
+      message: "PRIVATE_KEY must be 64 hexadecimal characters (optionally prefixed with 0x)",
+    }),
+),
+SECRET_SOURCE: z.enum(["env", "encrypted", "aws", "vault", "azure"]).default("env"),
+ENCRYPTION_KEY: z.string().optional(),
+ENCRYPTED_PRIVATE_KEY: z.string().optional(),
+// Note: Default source is 'env' but format validation is enforced;
+// encrypted/managed-secret sources are available
 ```
 
 **Competitor Evidence:**

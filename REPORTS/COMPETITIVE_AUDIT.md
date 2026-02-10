@@ -107,11 +107,12 @@ polymarket-trading-bot/
 
 **Code Sample - Flash Crash Strategy:**
 ```python
-# strategies/flash_crash.py (lines 1-40)
+# Paraphrased from discountry-bot strategies/flash_crash.py
+# (See: https://github.com/discountry/polymarket-trading-bot)
 """
 Flash Crash Strategy - Volatility Trading for 15-Minute Markets
 
-Strategy Logic:
+Strategy Logic (Pseudocode):
 1. Auto-discover current 15-minute market for selected coin
 2. Monitor orderbook prices in real-time via WebSocket
 3. When either "Up" or "Down" probability drops by threshold:
@@ -119,16 +120,12 @@ Strategy Logic:
 4. Exit conditions:
    - Take profit: configurable (default +10 cents)
    - Stop loss: configurable (default -5 cents)
+
+Configuration parameters:
+- drop_threshold: Absolute probability drop (default 0.30)
+- Entry: Market buy when price crashes
+- Position sizing: Configurable per market
 """
-
-@dataclass
-class FlashCrashConfig(StrategyConfig):
-    drop_threshold: float = 0.30  # Absolute probability drop
-
-class FlashCrashStrategy(BaseStrategy):
-    def __init__(self, bot: TradingBot, config: FlashCrashConfig):
-        super().__init__(bot, config)
-        self.flash_config = config
 ```
 
 **Comparison:**
@@ -339,13 +336,11 @@ impl DynamicPositionManager {
 
 #### Our Repository: **NONE** ❌
 
-**Evidence:** Searched `apps/backend/src/` for strategy implementations:
+**Evidence:** Manual inspection of `apps/backend/src/` shows only strategy-related infrastructure and utilities:
 ```bash
-$ grep -r "class.*Strategy" apps/backend/src/
-# No results found
-
-$ find apps/backend/src -name "*strategy*"
-# No files found
+$ find apps/backend/src -name "*strategy*" -o -name "*Strategy*"
+apps/backend/src/utils/strategyErrorLogging.ts
+# Only infrastructure/helper files found; no concrete, runnable trading strategy modules
 ```
 
 **Gap:** The repository has infrastructure for strategies (learning system, backtesting) but **no actual trading strategies implemented**.
@@ -358,7 +353,8 @@ $ find apps/backend/src -name "*strategy*"
 
 **Implementation:**
 ```python
-# strategies/flash_crash.py
+# Paraphrased from discountry-bot strategies/flash_crash.py
+# (See: https://github.com/discountry/polymarket-trading-bot)
 class FlashCrashStrategy(BaseStrategy):
     """
     Monitors 15-minute markets for sudden price drops.
@@ -536,8 +532,16 @@ impl DynamicPositionManager {
 
 #### Our Repository
 ```typescript
-// apps/backend/src/config/index.ts:56
-PRIVATE_KEY: z.string().optional(),
+// apps/backend/src/config/index.ts:104-112
+PRIVATE_KEY: optionalStringFromEnv(
+  z.string().optional()
+    .refine((key) => !key || validatePrivateKey(key), {
+      message: "PRIVATE_KEY must be 64 hexadecimal characters (optionally prefixed with 0x)",
+    }),
+),
+SECRET_SOURCE: z.enum(["env", "encrypted", "aws", "vault", "azure"]).default("env"),
+ENCRYPTION_KEY: z.string().optional(),
+ENCRYPTED_PRIVATE_KEY: z.string().optional(),
 ```
 
 **Storage:** Plaintext environment variable
@@ -609,22 +613,37 @@ class KeyManager:
 
 **CORS:**
 ```typescript
-// apps/backend/src/server/index.ts:22
-'Access-Control-Allow-Origin': '*',
+// apps/backend/src/server/index.ts:40-51
+const getCorsHeaders = (req: http.IncomingMessage): Record<string, string> => {
+  const origin = req.headers.origin || '';
+  const allowedOrigins = config.allowedOrigins;
+  
+  // Check if wildcard is configured (only allowed in dev)
+  if (allowedOrigins.includes('*')) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      // ... other headers
+    };
+  }
+  // ... validates origin against allowedOrigins list
+};
 ```
 
-**Issue:** Wildcard CORS allows any origin
+**Issue:** Wildcard CORS only when explicitly configured with `*` in `ALLOWED_ORIGINS`; otherwise validates against specific allowed origins list
 
 **Admin Token:**
 ```typescript
-// apps/backend/src/server/index.ts:33-35
-const adminToken = config.ADMIN_TOKEN;
-if (adminToken && req.headers.authorization !== `Bearer ${adminToken}`) {
-  return respondJson(res, 401, { error: 'Unauthorized' }, req);
-}
+// apps/backend/src/server/index.ts:110-114
+const validateAdminToken = (req: http.IncomingMessage): boolean => {
+  if (!config.adminToken || config.adminToken.trim() === '') {
+    logger.error('ADMIN_TOKEN is not configured; admin endpoints are disabled');
+    return false;
+  }
+  // ... validates authorization header
+};
 ```
 
-**Issue:** Optional token (endpoints unprotected if not configured)
+**Issue:** Admin endpoints are denied (effectively disabled) when ADMIN_TOKEN is not configured, rather than being unprotected
 
 **Evidence:** REPORTS/AUDIT.md findings A-003 and A-004.
 
@@ -647,17 +666,23 @@ if (adminToken && req.headers.authorization !== `Bearer ${adminToken}`) {
 ```typescript
 // Uses Zod for config validation
 const envSchema = z.object({
-  PRIVATE_KEY: z.string().optional(),
-  PORT: z.string().default('3000'),
+  PORT: numberFromEnv(3000, z.number().int().positive()),
+  PRIVATE_KEY: optionalStringFromEnv(
+    z.string().optional()
+      .refine((key) => !key || validatePrivateKey(key), {
+        message: "PRIVATE_KEY must be 64 hexadecimal characters (optionally prefixed with 0x)",
+      }),
+  ),
   // ... more fields
 });
 ```
 
-**Evidence:** `apps/backend/src/config/index.ts`
+**Evidence:** `apps/backend/src/config/index.ts:97-112`
 
-**Gaps (from AUDIT.md A-024):**
-- ⚠️ No validation that PRIVATE_KEY is valid hex format
-- ⚠️ No validation for order parameters in some paths
+**Strengths:**
+- ✅ PORT is validated as a positive integer
+- ✅ PRIVATE_KEY has hex format validation via `validatePrivateKey(...)`
+- ✅ Validation for order parameters in most paths
 
 ---
 
@@ -665,7 +690,8 @@ const envSchema = z.object({
 
 **discountry-bot:**
 ```python
-# Basic validation in bot.py
+# Paraphrased from discountry-bot src/bot.py
+# (See: https://github.com/discountry/polymarket-trading-bot)
 if not isinstance(price, (int, float)) or not 0 <= price <= 1:
     raise ValueError(f"Price must be between 0 and 1, got {price}")
 ```
@@ -1086,7 +1112,8 @@ $ grep -r "class.*Strategy" /workspace/apps/backend/src/
   - Spread calculation
 
 ```python
-# lib/console.py (discountry-bot)
+# Paraphrased from discountry-bot lib/console.py
+# (See: https://github.com/discountry/polymarket-trading-bot)
 class OrderbookDisplay:
     def render(self, snapshot: OrderbookSnapshot):
         # Clear screen and render orderbook in place
@@ -1157,7 +1184,8 @@ class OrderbookDisplay:
 
 **Evidence from Competitor (discountry-bot):**
 ```python
-# strategies/flash_crash.py
+# Paraphrased from discountry-bot strategies/flash_crash.py
+# (See: https://github.com/discountry/polymarket-trading-bot)
 class FlashCrashStrategy(BaseStrategy):
     """
     Entry: Probability drops by 0.30+ in 10 seconds
@@ -1379,7 +1407,7 @@ pub fn kelly_position_size(
 1. Create `clients/python/` directory
 2. Implement `PolymarketClient` class wrapping HTTP API
 3. Add examples mirroring discountry-bot simplicity
-4. Publish to PyPI as `@polymarket/client-py`
+4. Publish to PyPI as `polymarket-client-py`
 5. Document in README
 
 **Effort:** 1 week
