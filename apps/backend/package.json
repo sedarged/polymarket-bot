@@ -25,6 +25,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@ethersproject/wallet": "^5.8.0",
     "@polymarket/clob-client": "^5.2.1",
     "@polymarket/shared": "file:../../packages/shared",
     "@types/ws": "^8.18.1",

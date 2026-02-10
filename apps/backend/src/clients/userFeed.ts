@@ -7,7 +7,7 @@ import {
   WSUserFill,
 } from '@polymarket/shared';
 import { config } from '../config';
-import { Wallet } from '@ethersproject/wallet';
+import type { Wallet } from '@ethersproject/wallet';
 import { ClobClient } from '@polymarket/clob-client';
 import { assertLiveTradingEnabled } from '../utils/liveTrading';
 
