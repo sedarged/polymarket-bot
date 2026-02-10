@@ -115,23 +115,37 @@ function redactSensitiveFields(obj: any): any {
     'api_key',
     'api_secret',
     'secret',
-    'token',
     'password',
     'passphrase',
     'mnemonic',
     'seed',
   ];
 
+  // Patterns that should match exact key names only (not substrings)
+  const exactMatchPatterns = ['token'];
+
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase();
     
-    // Check if this key is sensitive
-    const isSensitive = sensitiveKeyPatterns.some(pattern => 
+    // Check if this key is sensitive (substring match)
+    const isSensitiveSubstring = sensitiveKeyPatterns.some(pattern => 
       lowerKey.includes(pattern)
     );
 
+    // Check if this key is sensitive (exact match)
+    const isSensitiveExact = exactMatchPatterns.some(pattern =>
+      lowerKey === pattern
+    );
+
+    const isSensitive = isSensitiveSubstring || isSensitiveExact;
+
     if (isSensitive && typeof value === 'string') {
       result[key] = maskSensitiveDataInternal(value);
+    } else if (isSensitive && Array.isArray(value)) {
+      // Mask array of sensitive strings
+      result[key] = value.map(item => 
+        typeof item === 'string' ? maskSensitiveDataInternal(item) : item
+      );
     } else if (typeof value === 'object' && value !== null) {
       // Recursively redact nested objects
       result[key] = redactSensitiveFields(value);
@@ -147,7 +161,7 @@ function redactSensitiveFields(obj: any): any {
  * Configure Pino logger with appropriate settings for environment
  */
 function createPinoLogger() {
-  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const isDevelopment = process.env.NODE_ENV === 'development';
   const logLevel = process.env.LOG_LEVEL?.toLowerCase() || 'info';
 
   // Base configuration

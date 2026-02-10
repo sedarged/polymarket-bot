@@ -143,7 +143,7 @@ export class RiskManager {
   }
   
   checkRiskLimits(position: Position): boolean {
-    const utilizatio = position.value / this.maxPositionSize;
+    const utilization = position.value / this.maxPositionSize;
     
     if (utilization > 0.9) {
       logger.warn('Risk limit approaching', {

@@ -231,13 +231,12 @@ orderFlowLogger.info('Order with credentials', {
 
 ## ⚠️ Known Issues / Limitations
 
-1. **Unrelated test failures**: Some auth/killSwitch tests failing (pre-existing, not related to logging changes)
-2. **UserFeed timeout**: One userFeed test timeout (pre-existing)
-3. **Network errors in tests**: Expected in sandboxed environment, not a bug
+1. **Network errors in tests**: Expected in sandboxed environment, not a bug
+2. **Some pre-existing test failures unrelated to logging**: Auth/killSwitch/UserFeed tests have pre-existing issues that are not related to the logging changes
 
 ## 📊 Test Coverage
 
-**Logger Tests:** 23/23 passing (100%)
+**Logger Tests:** 25/25 passing (100%)
 - maskSensitiveData function
 - Automatic field masking
 - Nested object redaction

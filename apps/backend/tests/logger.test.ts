@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   logger, 
   maskSensitiveData, 
-  LogLevel, 
   orderFlowLogger, 
   marketDataLogger, 
   complianceLogger 
@@ -10,7 +9,6 @@ import {
 
 describe('Logger - Sensitive Data Masking (A-022)', () => {
   // Mock pino to capture log calls
-  let mockPinoInstance: any;
   let logCalls: any[] = [];
 
   beforeEach(() => {
@@ -120,6 +118,22 @@ describe('Logger - Sensitive Data Masking (A-022)', () => {
       expect(logData.market).toBe('BTC');
     });
 
+    it('should not mask tokenId or tokenIds (regression test)', () => {
+      const data = { 
+        tokenId: '21742633143463906290569050155826241533067272736897614950488156847949938836455',
+        tokenIds: ['token-1', 'token-2'],
+        orderId: 'order-123'
+      };
+      logger.info('Test message', data);
+
+      expect(logCalls.length).toBeGreaterThan(0);
+      const lastCall = logCalls[logCalls.length - 1];
+      const logData = lastCall.args[0];
+      expect(logData.tokenId).toBe('21742633143463906290569050155826241533067272736897614950488156847949938836455');
+      expect(logData.tokenIds).toEqual(['token-1', 'token-2']);
+      expect(logData.orderId).toBe('order-123');
+    });
+
     it('should handle mixed sensitive and non-sensitive fields', () => {
       const address = '0x1234567890abcdef1234567890abcdef12345678';
       const data = { userId: '12345', address, balance: 1000 };
@@ -143,6 +157,21 @@ describe('Logger - Sensitive Data Masking (A-022)', () => {
       const logData = lastCall.args[0];
       expect(logData.user.address).toBe('0x1234...5678');
       expect(logData.user.balance).toBe(1000);
+    });
+
+    it('should mask arrays of sensitive strings', () => {
+      const addresses = [
+        '0x1234567890abcdef1234567890abcdef12345678',
+        '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+      ];
+      const data = { addresses, count: 2 };
+      logger.info('Test message', data);
+
+      expect(logCalls.length).toBeGreaterThan(0);
+      const lastCall = logCalls[logCalls.length - 1];
+      const logData = lastCall.args[0];
+      expect(logData.addresses).toEqual(['0x1234...5678', '0xabcd...abcd']);
+      expect(logData.count).toBe(2);
     });
 
     it('should handle arrays without masking', () => {

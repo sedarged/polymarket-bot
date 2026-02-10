@@ -57,6 +57,8 @@ We will adopt **Pino** as the logging library with the following configuration:
    - `api`: API calls, rate limiting, circuit breakers
    - `learning`: ML/learning system events, backtesting
    - `error`: All errors and exceptions
+   - `database`: Database operations, persistence
+   - `audit`: Audit trail, compliance logging
 
 2. **Log Levels**:
    - `fatal`: Unrecoverable errors requiring immediate action
