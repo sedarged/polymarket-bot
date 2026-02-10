@@ -274,7 +274,9 @@ pub fn kelly_position_size(
 ```bash
 $ cd /workspace
 $ find apps/backend/src -name "*strategy*" -o -name "*Strategy*"
-# Expected: 0 results (confirmed)
+apps/backend/src/utils/strategyErrorLogging.ts
+# Inspect the results and confirm there are no concrete trading strategy
+# implementations (it's OK to see infra/helper files like utils/strategyErrorLogging.ts).
 ```
 
 **To verify our test count:**
@@ -312,7 +314,7 @@ $ gh search repos "polymarket 15 minute" --limit 30 | grep -c "15"
 3. ✅ `.github/ISSUE_220_UPDATE.md` - This file
 
 ### Modified:
-- None (new files only)
+1. ✅ `REPORTS/README.md` - Updated to reference new competitive audit reports
 
 ---
 
