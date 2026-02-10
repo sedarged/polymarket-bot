@@ -337,31 +337,45 @@ await retry(async () => {
 
 **What's Done:**
 - ✅ Configurable TTL (default: 5000ms = 5 seconds)
+- ✅ TTL validation with MIN_CACHE_TTL_MS (100ms) guard (Sourcery review)
 - ✅ Automatic stale data invalidation on cache access
+- ✅ Deep cloning prevents mutation bugs (Copilot review)
 - ✅ isStale() method to check cache freshness
 - ✅ getStats() method for cache health monitoring
-- ✅ Configuration via MarketFeedOptions.cacheTtl
+- ✅ Configuration via MarketFeedOptions.cacheTtl + cacheAutoInvalidate
+- ✅ Single source of truth for default TTL (Sourcery review)
 - ✅ Comprehensive logging with audit reference
 
 **Code Example:**
 ```typescript
-// Cache with TTL enforcement:
+// Cache with TTL enforcement and validation (Sourcery review):
 const cache = new OrderbookCache({
-  ttl: 5000,           // 5 seconds
+  ttl: 5000,           // 5 seconds (clamped to MIN_CACHE_TTL_MS if too low)
   autoInvalidate: true // Auto-remove stale entries
 });
 
-// get() automatically checks TTL:
-const book = cache.get(assetId); // null if stale
+// get() automatically checks TTL and returns deep clone (Copilot review):
+const book = cache.get(assetId); // null if stale and autoInvalidate=true
 const isStale = cache.isStale(assetId);
 const stats = cache.getStats(); // { total, fresh, stale, avgAge }
+
+// Constants for configuration:
+DEFAULT_CACHE_TTL_MS = 5000  // Single source of truth (Sourcery review)
+MIN_CACHE_TTL_MS = 100       // Minimum to prevent misconfiguration
 ```
 
 **Configuration:**
 ```bash
 # Via MarketFeedOptions in server initialization
-cacheTtl: 5000  # 5 seconds (default)
+cacheTtl: 5000           # 5 seconds (default)
+cacheAutoInvalidate: true # Exposed for clarity (Sourcery review)
 ```
+
+**PR Review Improvements:**
+- TTL validation prevents misconfiguration
+- Deep cloning prevents mutation bugs
+- Single default prevents value drift
+- Enhanced documentation accuracy
 
 **Tests:** All existing tests pass (20/20 in orderbookCache.test.ts)
 
