@@ -96,5 +96,6 @@ Add any manual notes, context, or important information below this line. The aut
 - [Release History](./CHANGELOG.md)
 - [Agent Guidelines](./AGENTS.md)
 - [Audit Report](./REPORTS/AUDIT.md)
+- **[Audit Status Tracker](./AUDIT_STATUS.md)** - Implementation status of all 27 audit findings (17/27 fixed - 63%)
 - [Gap Analysis](./REPORTS/GAP_ANALYSIS.md)
 - [PR Implementation Plan](./docs/small-pr-plan.md)
