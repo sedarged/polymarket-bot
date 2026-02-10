@@ -16,7 +16,7 @@ This PR implements a comprehensive categorized logging system using Pino, replac
 
 - `apps/backend/package.json` - Added pino and pino-pretty dependencies
 - `apps/backend/src/utils/logger.ts` - Replaced custom logger with Pino-based implementation
-- `apps/backend/tests/logger.test.ts` - Updated tests for new logger
+- `apps/backend/tests/unit/logger.test.ts` - Updated tests for new logger
 - `docs/adr/0009-categorized-logging-with-pino.md` - Architecture decision record
 - `docs/LOGGING.md` - Comprehensive logging guide
 - `docs/LOGGING_MIGRATION.md` - Migration examples
@@ -50,8 +50,8 @@ $ npm run build
 # Compiled without errors
 
 # Logger tests pass
-$ npm test -- logger.test.ts
-✓ tests/logger.test.ts (23 tests) 15ms
+$ npm test -- tests/unit/logger.test.ts
+✓ tests/unit/logger.test.ts (23 tests) 15ms
 Test Files  1 passed (1)
 Tests  23 passed (23)
 ```

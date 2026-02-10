@@ -21,7 +21,7 @@ npm install          # Install dependencies
 npm run dev         # Run backend
 npm run markets     # Fetch markets
 npm run book        # Display order book
-npm test            # Run all tests
+npm test            # Run all tests (or test:unit, test:integration, test:backtest from apps/backend)
 ```
 
 ## Hard Rules (Non-Negotiable)
@@ -139,7 +139,7 @@ Migration guide: Divide old integer prices by 1e6 for new format.
 **Test & Build Job:**
 - `npm ci` - Install dependencies
 - `npm run build` - Type check entire codebase
-- `npm test` - Run backend unit tests
+- `npm test` (or `npm run test:unit`, `test:integration`, `test:backtest` in apps/backend) - Run backend tests
 - `npm run test:coverage` - Generate coverage report
 
 **Security Check Job:**

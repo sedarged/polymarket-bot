@@ -778,12 +778,12 @@ See `dataApiIntegration.test.ts` for complete integration test suite (9 tests, a
 - apps/backend/src/clients/websocket.ts - WebSocket base client
 
 ### Test Files
-- apps/backend/tests/api-alignment.test.ts - Alignment verification suite (71 tests)
-- apps/backend/tests/clob.test.ts - CLOB client tests
-- apps/backend/tests/gamma.test.ts - Gamma client tests (37 tests, PR-014)
-- apps/backend/tests/userFeed.test.ts - User feed tests (16 tests, PR-014)
-- apps/backend/tests/dataApi.test.ts - Data API tests (PR-001)
-- apps/backend/tests/tradingClient.test.ts - Trading client tests
+- apps/backend/tests/unit/api-alignment.test.ts - Alignment verification suite (71 tests)
+- apps/backend/tests/unit/clob.test.ts - CLOB client tests
+- apps/backend/tests/unit/gamma.test.ts - Gamma client tests (37 tests, PR-014)
+- apps/backend/tests/unit/userFeed.test.ts - User feed tests (16 tests, PR-014)
+- apps/backend/tests/unit/dataApi.test.ts - Data API tests (PR-001)
+- apps/backend/tests/unit/tradingClient.test.ts - Trading client tests
 
 ---
 

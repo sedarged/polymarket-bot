@@ -18,6 +18,9 @@
     "book": "tsx src/index.ts book",
     "kill": "tsx src/index.ts kill",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:backtest": "vitest run tests/backtest",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
@@ -28,6 +31,7 @@
     "axios": "^1.13.5",
     "better-sqlite3": "^12.6.2",
     "dotenv": "^17.2.4",
+    "ethers": "^5.7.2",
     "pino": "^10.3.0",
     "pino-pretty": "^13.1.3",
     "prom-client": "^15.1.3",

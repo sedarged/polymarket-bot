@@ -216,6 +216,6 @@ Created comprehensive test suite (`partialFills.test.ts`) covering:
 - Issue sedarged/polymarket-bot#231 - PR-003 Partial Fill Tracking & Position Logic
 - apps/backend/src/clients/tradingClient.ts
 - apps/backend/src/trading/paperTradingEngine.ts
-- apps/backend/tests/partialFills.test.ts (848 lines, 21 tests)
-- apps/backend/tests/orderIdValidation.test.ts (12 tests for A-013)
+- apps/backend/tests/unit/partialFills.test.ts (848 lines, 21 tests)
+- apps/backend/tests/unit/orderIdValidation.test.ts (12 tests for A-013)
 - packages/shared/src/index.ts (Order and Fill interfaces)

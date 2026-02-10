@@ -56,7 +56,8 @@ polymarket-bot/
   - Configuration: `apps/backend/vitest.config.ts`
   - Coverage provider: V8
   - Reporters: text, JSON, HTML
-  - Test files: `apps/backend/tests/*.test.ts`
+  - Test layout: `apps/backend/tests/unit/`, `tests/integration/`, `tests/backtest/` (§6.3)
+  - Setup: `tests/setup.ts`; shared fixtures: `tests/fixtures/`
 
 ### Core Dependencies
 
@@ -201,7 +202,7 @@ npm test
 
 **What it does**:
 - Executes vitest in run mode (not watch)
-- Runs all test files in `apps/backend/tests/`
+- Runs all tests in `tests/unit/`, `tests/integration/`, and `tests/backtest/`
 - Reports test results and failures
 
 **Current status**: ✅ All tests currently passing; see CI for the latest status.
@@ -251,7 +252,10 @@ npm run <command>
 - **markets**: `tsx src/index.ts markets` - List markets
 - **book**: `tsx src/index.ts book` - Fetch orderbook
 - **kill**: `tsx src/index.ts kill` - Emergency kill switch (cancel all orders)
-- **test**: `vitest run` - Run tests once
+- **test**: `vitest run` - Run all tests once
+- **test:unit**: `vitest run tests/unit` - Run unit tests only
+- **test:integration**: `vitest run tests/integration` - Run integration tests only
+- **test:backtest**: `vitest run tests/backtest` - Run backtest tests only
 - **test:watch**: `vitest` - Run tests in watch mode
 - **test:coverage**: `vitest run --coverage` - Run tests with coverage
 
@@ -283,7 +287,7 @@ Execute these from `packages/shared/`:
 
 ## Environment Variables
 
-Configuration is managed via `.env` file. See `.env.example` for all available options.
+Configuration is managed via `.env` file. See [.env.example](../.env.example) for all available options and [ENV_VARIABLE_REFERENCE.md](./ENV_VARIABLE_REFERENCE.md) for the complete variable reference.
 
 ### Core Configuration
 
@@ -306,6 +310,19 @@ COMPLIANCE_ACCEPTED=false           # Confirm compliance understanding
 # Trading Credentials (only for live trading)
 # PRIVATE_KEY=0x...                 # Wallet private key
 CHAIN_ID=137                        # Polygon Mainnet
+
+# Startup & Compliance (Research §9, §10)
+MIN_BALANCE_USDC=0                  # Min USDC at startup; exit if below when LIVE_TRADING=true (0 = disabled)
+BAN_STATUS_CHECK_INTERVAL_MS=86400000   # Ban-status check interval (ms; default 24h)
+BAN_STATUS_EXIT_IF_CERT_REQUIRED=false  # Exit on startup if cert_required (proof of residence)
+
+# Config paths (optional)
+# MARKETS_CONFIG_PATH=config/markets.json   # Per-market config; copy from config/markets.json.example
+# STRATEGY_CONFIG_PATH=config/strategy.json
+
+# WebSocket & heartbeat
+# WS_MAX_RECONNECT_ATTEMPTS=10     # Max reconnect attempts before alert/exit (Research §9.3)
+# HEARTBEAT_URL=                   # e.g. https://hc-ping.com/your-uuid (GET every 1 min; Research §9.7)
 
 # Server
 PORT=3000                           # HTTP server port

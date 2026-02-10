@@ -66,7 +66,7 @@ We have implemented a layered security approach that provides multiple options f
 - **Module:** `apps/backend/src/secrets/index.ts`
 - **Config Integration:** `apps/backend/src/config/index.ts`
 - **Trading Client:** `apps/backend/src/clients/tradingClient.ts`
-- **Test Coverage:** `apps/backend/tests/secrets.test.ts`, `apps/backend/tests/config.test.ts`
+- **Test Coverage:** `apps/backend/tests/unit/secrets.test.ts`, `apps/backend/tests/unit/config.test.ts`
 
 The secrets module provides:
 - `validatePrivateKey()` - Validates private key format

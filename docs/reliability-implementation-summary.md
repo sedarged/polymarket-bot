@@ -226,8 +226,8 @@ curl http://localhost:3000/metrics
 ### 5. Comprehensive Testing ✅
 
 **New Test Files**:
-- `apps/backend/tests/circuitBreaker.test.ts`: 20 tests
-- `apps/backend/tests/retry.test.ts`: 12 enhanced tests
+- `apps/backend/tests/unit/circuitBreaker.test.ts`: 20 tests
+- `apps/backend/tests/unit/retry.test.ts`: 12 enhanced tests
 
 **Test Coverage**:
 - Circuit breaker state transitions (closed → open → half-open → closed)
@@ -446,7 +446,7 @@ logger.info('Reconciliation: position size changed', {
 - **RE-002 (HIGH)**: No missing order detection
 - **RE-003 (HIGH)**: No drift detection
 
-**Tests**: `apps/backend/tests/periodicReconciliation.test.ts` (12 tests, all passing)
+**Tests**: `apps/backend/tests/unit/periodicReconciliation.test.ts` (12 tests, all passing)
 
 ---
 

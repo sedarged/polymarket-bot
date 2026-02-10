@@ -34,10 +34,10 @@ The codebase already has:
 ```bash
 $ npm test -- partialFills orderIdValidation tradingClient paperTradingEngine
 
- ✓ tests/partialFills.test.ts (21 tests) 28ms
- ✓ tests/orderIdValidation.test.ts (12 tests) 21ms
- ✓ tests/tradingClient.test.ts (11 tests) 8ms
- ✓ tests/paperTradingEngine.test.ts (37 tests) 135ms
+ ✓ tests/unit/partialFills.test.ts (21 tests) 28ms
+ ✓ tests/unit/orderIdValidation.test.ts (12 tests) 21ms
+ ✓ tests/unit/tradingClient.test.ts (11 tests) 8ms
+ ✓ tests/unit/paperTradingEngine.test.ts (37 tests) 135ms
 
 Test Files  4 passed (4)
 Tests  81 passed (81)
@@ -236,10 +236,10 @@ if (currentFilledSize > previousFilledSize) {
 #### ✅ Integration tests verify end-to-end accuracy
 
 **Test Files:**
-- `apps/backend/tests/partialFills.test.ts` - 21 tests, 848 lines
-- `apps/backend/tests/orderIdValidation.test.ts` - 12 tests, 287 lines
-- `apps/backend/tests/tradingClient.test.ts` - 11 tests
-- `apps/backend/tests/paperTradingEngine.test.ts` - 37 tests
+- `apps/backend/tests/unit/partialFills.test.ts` - 21 tests, 848 lines
+- `apps/backend/tests/unit/orderIdValidation.test.ts` - 12 tests, 287 lines
+- `apps/backend/tests/unit/tradingClient.test.ts` - 11 tests
+- `apps/backend/tests/unit/paperTradingEngine.test.ts` - 37 tests
 
 **Integration Test Scenarios:**
 1. Order placement → partial fill → position update
@@ -260,7 +260,7 @@ if (currentFilledSize > previousFilledSize) {
    - Added clear error messages with audit finding references
    - Lines changed: ~50 lines (validation logic)
 
-2. **apps/backend/tests/orderIdValidation.test.ts** (NEW)
+2. **apps/backend/tests/unit/orderIdValidation.test.ts** (NEW)
    - 12 comprehensive tests for order ID validation
    - 287 lines of test code
    - Covers undefined, null, empty, whitespace-only IDs

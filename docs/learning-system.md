@@ -440,7 +440,7 @@ eventStore.writeEvent('ExecutionOutcomeEvent', marketId, 'simulation', outcome);
 
 ## Examples
 
-See `apps/backend/tests/` for comprehensive examples:
+See `apps/backend/tests/unit/` and `apps/backend/tests/backtest/` for comprehensive examples:
 - `eventStore.test.ts` - Event storage and querying
 - `signalCatalog.test.ts` - Signal management
 - `backtestEngine.test.ts` - Backtest execution

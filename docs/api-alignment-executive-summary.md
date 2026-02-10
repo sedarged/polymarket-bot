@@ -274,7 +274,7 @@ All comprehensive documentation in `/docs/`:
 - `api-alignment-quick-summary.md` - Quick reference (4KB)
 - `api-alignment-executive-summary.md` - This file
 
-All tests in `/apps/backend/tests/`:
+All tests in `apps/backend/tests/unit/`, `tests/integration/`, and `tests/backtest/`:
 - `api-alignment.test.ts` - 71 alignment tests
 - `gamma.test.ts` - Enhanced with circuit breaker tests
 

@@ -9,7 +9,7 @@
 ## What Was Done
 
 ### 1. Created Comprehensive Test Suite ✅
-- **File:** `apps/backend/tests/api-alignment.test.ts`
+- **File:** `apps/backend/tests/unit/api-alignment.test.ts`
 - **Tests:** 71 alignment verification tests
 - **Result:** All 71 tests passing
 - **Coverage:** CLOB API, Gamma API, WebSocket, Authentication, Security, Reliability
@@ -108,7 +108,7 @@ CodeQL Security:     0 vulnerabilities ✅
 ## Files Changed
 
 ### New Files
-1. `apps/backend/tests/api-alignment.test.ts` - 71 verification tests
+1. `apps/backend/tests/unit/api-alignment.test.ts` - 71 verification tests
 2. `docs/api-alignment-verification.md` - Comprehensive report
 3. `docs/api-alignment-quick-summary.md` - This file
 

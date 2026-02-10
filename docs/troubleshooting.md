@@ -258,7 +258,7 @@ npm run markets | jq '.[] | {id, min_size, max_size, tick_size}'
 # Note: There is no /api/orders/validate endpoint currently.
 # Order validation happens automatically when placing orders.
 # To test order validation, see the validation tests:
-# apps/backend/tests/orderValidation.test.ts
+# apps/backend/tests/unit/orderValidation.test.ts
 ```
 
 **Related:**
@@ -414,7 +414,7 @@ curl -X POST http://localhost:3000/kill-switch \
 **Related:**
 - [Server Authentication](../apps/backend/src/server/index.ts)
 - Audit Finding **A-004 (HIGH)**: Admin token optional (allows auth bypass)
-- [Authentication Tests](../apps/backend/tests/auth.test.ts)
+- [Authentication Tests](../apps/backend/tests/integration/auth.test.ts)
 
 **Severity:** 🟡 MODERATE - Security issue if misconfigured
 

@@ -4,48 +4,57 @@ This document describes the testing strategy, infrastructure, and best practices
 
 ## Overview
 
-The project uses [Vitest](https://vitest.dev/) as the testing framework. All tests are located in the `apps/backend/tests/` directory.
+The project uses [Vitest](https://vitest.dev/) as the testing framework. Tests are organized under `apps/backend/tests/` in **unit**, **integration**, and **backtest** directories (Research §6.3).
 
 ## Test Coverage
 
 ### Current Status
 
-- **Total test files:** 41 test files
-- **Total tests:** 712+ tests (704 passing + 8 pre-existing failures)
+- **Total test files:** 58 (48 unit, 9 integration, 1 backtest)
+- **Total tests:** 1100+ tests
 - **Target coverage:** >80% code coverage
 - **Test framework:** Vitest 4.0.18
 - **Coverage provider:** V8
 
 ### Test Categories
 
-#### Unit Tests
-- Individual component testing
-- Mock external dependencies
-- Fast execution (<100ms per test)
+#### Unit Tests (`tests/unit/`)
+- Individual component testing with mocked dependencies
+- No real server, database, or network
+- Fast execution
 
-#### Integration Tests
-- Multiple component interactions
-- Real dependencies where appropriate
-- WebSocket reconnection scenarios
-- Database operations
+#### Integration Tests (`tests/integration/`)
+- Real HTTP server, database, or WebSocket server
+- Multi-component interactions (e.g. server + auth, database, market feed reconnect)
 
-#### Error Scenario Tests
-- Network failures
-- Timeout handling
-- Circuit breaker behavior
-- Rate limiting
-- Invalid inputs
+#### Backtest Tests (`tests/backtest/`)
+- Historical replay and backtest engine
+- Event store and metrics computation
+
+#### Shared
+- **Setup:** `tests/setup.ts` (runs before each file; e.g. sets `ADMIN_TOKEN`)
+- **Fixtures:** `tests/fixtures/` (e.g. `websocket.ts` for mock orderbook helpers)
 
 ## Running Tests
+
+Run from `apps/backend/` (or use `npm run --workspace @polymarket/backend <script>` from root).
 
 ### All Tests
 ```bash
 npm test
 ```
 
+### By Directory (CI runs these separately)
+```bash
+npm run test:unit          # tests/unit/**/*.test.ts
+npm run test:integration   # tests/integration/**/*.test.ts
+npm run test:backtest      # tests/backtest/**/*.test.ts
+```
+
 ### Specific Test File
 ```bash
-npm test -- database.test.ts
+npm test -- tests/unit/config.test.ts
+npm test -- tests/integration/server.test.ts
 ```
 
 ### Watch Mode (for development)
@@ -67,24 +76,33 @@ Coverage reports are generated in:
 
 ### Naming Convention
 - Test files: `*.test.ts`
-- Location: `apps/backend/tests/`
-- Mirror source structure when possible
+- Location: `apps/backend/tests/` with subdirs `unit/`, `integration/`, `backtest/`
 
-### Example Structure
+### Directory Structure
 ```
 apps/backend/
 ├── src/
 │   ├── clients/
-│   │   ├── clob.ts
-│   │   └── gamma.ts
-│   └── utils/
-│       ├── database.ts
-│       └── liveTrading.ts
+│   ├── server/
+│   ├── trading/
+│   └── ...
 └── tests/
-    ├── clob.test.ts         # Tests for src/clients/clob.ts
-    ├── gamma.test.ts        # Tests for src/clients/gamma.ts
-    ├── database.test.ts     # Tests for src/utils/database.ts
-    └── liveTrading.test.ts  # Tests for src/utils/liveTrading.ts
+    ├── setup.ts              # Global setup (e.g. ADMIN_TOKEN)
+    ├── fixtures/              # Shared test helpers (e.g. websocket.ts)
+    ├── unit/                 # Unit tests (mocked deps)
+    │   ├── clob.test.ts
+    │   ├── gamma.test.ts
+    │   ├── config.test.ts
+    │   ├── paperTradingEngine.test.ts
+    │   └── ...
+    ├── integration/          # Integration tests (real server/DB/WS)
+    │   ├── server.test.ts
+    │   ├── auth.test.ts
+    │   ├── database.test.ts
+    │   ├── integration-reconnect.test.ts
+    │   └── ...
+    └── backtest/             # Backtest engine tests
+        └── backtestEngine.test.ts
 ```
 
 ## Critical Components Tested
@@ -94,7 +112,7 @@ apps/backend/
 The following critical components now have comprehensive test coverage:
 
 #### Database Layer (`src/utils/database.ts`)
-- **18 tests** covering:
+- **18 tests** in `tests/integration/database.test.ts` covering:
   - Database initialization and schema creation
   - CRUD operations for orders, fills, positions, balances
   - Foreign key constraints
@@ -306,13 +324,18 @@ Tests run automatically on:
 
 ### GitHub Actions Workflow
 
-Current CI configuration (`.github/workflows/ci.yml`):
+CI runs tests by directory (`.github/workflows/ci.yml`):
 
 ```yaml
-- name: Run backend tests
-  run: npm test
+- name: Run backend unit tests
+  run: npm run test:unit
   working-directory: apps/backend
-
+- name: Run backend integration tests
+  run: npm run test:integration
+  working-directory: apps/backend
+- name: Run backend backtest tests
+  run: npm run test:backtest
+  working-directory: apps/backend
 - name: Run test coverage
   run: npm run test:coverage
   working-directory: apps/backend
@@ -367,12 +390,10 @@ If tests fail due to memory:
 3. Clear timers and intervals
 4. Dispose of event listeners
 
-### Pre-existing Test Failures
+### Flaky or Slow Tests
 
-As of the test coverage expansion (A-025):
-- 8 pre-existing test failures in `auth.test.ts` and `websocket.test.ts`
-- These are unrelated to the new test coverage
-- They are tracked separately and will be fixed in future PRs
+- Integration and persistence tests use real I/O; default `testTimeout` is 15s in `vitest.config.ts`.
+- If a test is slow under load, add a per-test timeout: `it('...', { timeout: 15000 }, () => { ... });`
 
 ## Coverage Goals
 
@@ -432,6 +453,7 @@ When adding new features:
 
 ---
 
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-10
 **Audit Finding:** A-025 (LOW severity)
 **Related PR:** #106
+**Note:** Tests reorganized into `tests/unit/`, `tests/integration/`, `tests/backtest/` per Research §6.3; CI runs by directory.

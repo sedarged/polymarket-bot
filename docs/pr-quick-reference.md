@@ -191,7 +191,7 @@ Quick reference card for the [Small PR Implementation Plan](./small-pr-plan.md).
 
 ## PR-011: Test Coverage Expansion
 **Status:** 🟡 QUALITY ASSURANCE  
-**Files:** `tests/*.test.ts` (many new tests)
+**Files:** `tests/unit/`, `tests/integration/`, `tests/backtest/*.test.ts`
 
 **Must Do:**
 - ✅ >80% code coverage
@@ -321,7 +321,7 @@ npm test && npm run lint && npm run build
 npm run dev
 
 # Run specific test
-npm test -- tests/specific.test.ts
+npm test -- tests/unit/specific.test.ts
 
 # Check coverage
 npm test -- --coverage

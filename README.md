@@ -88,7 +88,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - 🎯 REST API for learning system integration
 
 ### Development & Quality
-- 🧪 100+ unit tests with vitest
+- 🧪 1100+ tests (unit, integration, backtest) with Vitest
 - ⚡ TypeScript strict mode
 - 📝 Structured logging with privacy masking
 - 🛠️ Easy-to-use CLI commands
@@ -394,20 +394,30 @@ apps/backend/src/
 └── index.ts          # Entry point
 
 tests/
-├── *.test.ts         # 100+ unit tests (vitest)
-└── [mirrors src/]    # Test structure matches source
+├── setup.ts          # Global setup (e.g. ADMIN_TOKEN)
+├── fixtures/        # Shared helpers (e.g. websocket mocks)
+├── unit/            # Unit tests (mocked deps)
+├── integration/     # Integration tests (real server/DB/WS)
+└── backtest/        # Backtest engine tests
 ```
 
 ## Testing
+
+Run from `apps/backend/` (or use `npm run --workspace @polymarket/backend <script>` from root).
 
 ```bash
 # Run all tests
 npm test
 
-# Run tests in watch mode
+# Run by category (CI runs these separately)
+npm run test:unit
+npm run test:integration
+npm run test:backtest
+
+# Watch mode
 npm run test:watch
 
-# Run tests with coverage
+# With coverage
 npm run test:coverage
 ```
 

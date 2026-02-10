@@ -21,12 +21,12 @@ This document describes the implementation of comprehensive input validation for
    - Validation functions with detailed error messages
    - Type definitions for validated parameters
 
-2. **`apps/backend/tests/orderValidation.test.ts`** - Unit tests (47 tests)
+2. **`apps/backend/tests/unit/orderValidation.test.ts`** - Unit tests (47 tests)
    - Schema validation tests
    - Edge case tests
    - Security scenario tests
 
-3. **`apps/backend/tests/orderValidationIntegration.test.ts`** - Integration tests (24 tests)
+3. **`apps/backend/tests/unit/orderValidationIntegration.test.ts`** - Order parameter validation (24 tests)
    - PaperTradingEngine integration
    - End-to-end validation flow
    - Error handling verification
@@ -247,8 +247,8 @@ Potential improvements for future iterations:
 ## References
 
 - **Implementation:** `apps/backend/src/utils/orderValidation.ts`
-- **Unit Tests:** `apps/backend/tests/orderValidation.test.ts`
-- **Integration Tests:** `apps/backend/tests/orderValidationIntegration.test.ts`
+- **Unit Tests:** `apps/backend/tests/unit/orderValidation.test.ts`
+- **Integration Tests:** `apps/backend/tests/unit/orderValidationIntegration.test.ts`
 - **Zod Documentation:** https://zod.dev
 - **Issue:** GitHub Issue #131
 - **PR Plan:** docs/small-pr-plan.md - PR-004: Type Safety & Validation

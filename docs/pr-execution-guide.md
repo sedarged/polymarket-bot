@@ -68,7 +68,8 @@ Follow the **Changes** section for your PR from the plan:
 npm test
 
 # Run specific test file
-npm test -- tests/specific.test.ts
+npm test -- tests/unit/specific.test.ts
+# Or: tests/integration/... or tests/backtest/...
 
 # Run with coverage
 npm test -- --coverage

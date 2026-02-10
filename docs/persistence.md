@@ -12,7 +12,8 @@ The persistence layer provides database-backed storage for all trading state, en
 
 ### Database Technology
 
-- **SQLite** for development and MVP deployment
+- **SQLite** for development and MVP deployment (current implementation)
+- **Research §11** suggests Postgres for production at scale; the codebase uses SQLite only today
 - **Schema design** supports future migration to PostgreSQL
 - **better-sqlite3** library for synchronous operations
 
@@ -440,4 +441,4 @@ process.env.LOG_LEVEL = 'debug';
 - Gap Analysis: PA-001 (No persistence layer)
 - Issue: #103
 - Implementation: PR #[number]
-- Tests: `tests/persistence.test.ts`
+- Tests: `tests/unit/persistence.test.ts`

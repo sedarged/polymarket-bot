@@ -104,7 +104,7 @@ We have implemented message deduplication in the `MarketFeedClient` using an LRU
 **Rejected**: Polymarket API doesn't provide sequence numbers. Could be adopted if they become available.
 
 ## Testing
-Comprehensive tests added in `tests/websocket-deduplication.test.ts`:
+Comprehensive tests added in `tests/unit/websocket-deduplication.test.ts`:
 - ✅ Duplicate message rejection (same snapshot, same price change)
 - ✅ Reconnect scenarios with message replay
 - ✅ Rapid message replay (catchup scenarios)
@@ -116,7 +116,7 @@ All tests pass successfully.
 ## References
 - **Audit Finding**: [REPORTS/AUDIT.md - A-010](../../REPORTS/AUDIT.md#a-010-high---no-websocket-message-deduplication)
 - **Implementation**: `apps/backend/src/clients/marketFeed.ts`
-- **Tests**: `apps/backend/tests/websocket-deduplication.test.ts`
+- **Tests**: `apps/backend/tests/unit/websocket-deduplication.test.ts`
 - **Related**: ADR-0007 (WebSocket Resync Race Fix)
 
 ## Author

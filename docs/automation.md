@@ -27,7 +27,7 @@ Runs automatically on **every push** and **every pull request** to ensure code q
 1. **Test & Build Job:**
    - Installs dependencies (`npm ci`)
    - Type checks the entire codebase (`npm run build`)
-   - Runs backend unit tests (`npm test`)
+   - Runs backend tests by category: unit, integration, backtest (`npm run test:unit`, `test:integration`, `test:backtest`)
    - Generates test coverage report (optional)
 
 2. **Security Check Job:**
