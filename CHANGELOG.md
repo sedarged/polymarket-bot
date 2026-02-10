@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.33.0](https://github.com/sedarged/polymarket-bot/compare/v1.32.0...v1.33.0) (2026-02-10)
+
+
+### Features
+
+* implement categorized logging with Pino ([#323](https://github.com/sedarged/polymarket-bot/issues/323)) ([33f769b](https://github.com/sedarged/polymarket-bot/commit/33f769b1bd3ce7b9fe09b78fee9930b2ffdeb706))
+* implement categorized logging with Pino ([#323](https://github.com/sedarged/polymarket-bot/issues/323)) ([96908d0](https://github.com/sedarged/polymarket-bot/commit/96908d0a49d521793f17dff09e1a91288fe6d3de))
+
+
+### Bug Fixes
+
+* address PR review feedback for logger ([#327](https://github.com/sedarged/polymarket-bot/issues/327)) ([b5ffbfc](https://github.com/sedarged/polymarket-bot/commit/b5ffbfcf484847fdb6822b351a4cf1844c799434))
+
 ## [1.32.0](https://github.com/sedarged/polymarket-bot/compare/v1.31.0...v1.32.0) (2026-02-09)
 
 
