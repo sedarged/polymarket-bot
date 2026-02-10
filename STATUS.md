@@ -35,12 +35,8 @@ To update this status:
 - [P2] #243 [PR-015] DevOps & Deployment - Docker production and local setup
 - [P2] #242 [PR-014] Gamma API & Platform - Complete advanced Polymarket integration
 - [P1] #241 [PR-013] Documentation, Compliance & Troubleshooting Guides
-- [P2] #240 [PR-012] Dashboard Authentication & Learning System Tab
-- [P2] #239 [PR-011] Dashboard Core Tabs - Overview, Controls, Alerts & Logs
-- [P2] #238 [PR-010] Observability Stack - Prometheus metrics, alerting, error logging
-- [P1] #237 [PR-009] Learning System Allocation & Governance - Bandit algorithms and promotion workflow
 
-*Last updated: 2026-02-10T13:13:13.497Z*
+*Last updated: 2026-02-10T19:04:51.848Z*
 
 <!-- STATUS_SYNC_END -->
 
