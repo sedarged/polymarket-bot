@@ -928,9 +928,11 @@ export async function startServer(): Promise<http.Server> {
         rateLimiter.stop();
       }
       
-      // Await market feed service stop (A-017: proper WebSocket cleanup)
+      // A-017: Await market feed service stop for proper WebSocket cleanup
+      // This ensures WebSocket connections are fully closed before server shutdown
+      // marketFeedService.stop() awaits client.close() which properly cleans up timers (A-016)
       await marketFeedService.stop();
-      logger.info('Market feed service stopped');
+      logger.info('Market feed service stopped', { audit: 'A-017' });
       
       // Stop periodic ban-status check (Research §10.1)
       if (banStatusInterval) {
