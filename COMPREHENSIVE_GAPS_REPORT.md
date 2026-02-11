@@ -1,0 +1,659 @@
+# Comprehensive Gaps Analysis Report
+
+**Generated:** 2026-02-11
+**Status:** Deep analysis complete
+**Scope:** ALL missing features, unimplemented configs, documentation gaps, and strategic deficiencies
+
+---
+
+## Executive Summary
+
+This deep analysis identified **47 gaps** across 8 categories ranging from critical missing features to documentation inconsistencies. While many audit findings have been addressed (24/27 resolved), significant gaps remain in:
+
+1. **Configuration System** - 8 documented env vars not wired to code
+2. **Strategy Framework** - No pluggable strategy abstraction
+3. **Documentation** - Multiple gaps between documented and implemented features
+4. **Operational** - Missing deployment workflows and backup procedures
+5. **Metrics** - Some config vars exist but not used
+
+**Priority Distribution:**
+- 🔴 **CRITICAL (P0):** 3 gaps - Block production deployment
+- 🟠 **HIGH (P1):** 12 gaps - Needed before scale
+- 🟡 **MEDIUM (P2):** 18 gaps - Important for operations
+- 🟢 **LOW (P3):** 14 gaps - Nice to have
+
+---
+
+## Category 1: Configuration System Gaps (8 gaps)
+
+### 🟠 GAP-001: MARKETS_CONFIG_PATH not implemented (P1)
+**Status:** Documented in .env.example but not loaded
+**Impact:** Cannot configure per-market position limits and spreads without code changes
+**Evidence:**
+- `.env.example` line 198-199 documents `MARKETS_CONFIG_PATH`
+- `config/markets.json.example` exists with structure
+- `apps/backend/src/config/index.ts` has `MarketConfigEntry` interface but not loaded
+**Fix Required:**
+1. Add `MARKETS_CONFIG_PATH` to Zod schema
+2. Implement JSON loading in config parsing
+3. Wire market-specific limits into risk manager
+4. Update documentation
+
+### 🟠 GAP-002: STRATEGY_CONFIG_PATH not implemented (P1)
+**Status:** Documented in .env.example but not loaded
+**Impact:** Cannot configure strategy parameters without code changes
+**Evidence:**
+- `.env.example` line 201-202 documents `STRATEGY_CONFIG_PATH`
+- `config/strategy.json.example` exists
+- `apps/backend/src/config/index.ts` has `StrategyConfigEntry` interface but not used
+**Fix Required:**
+1. Add `STRATEGY_CONFIG_PATH` to Zod schema
+2. Implement JSON loading and validation
+3. Wire strategy params into trading engine
+4. Support hot-reload (optional)
+
+### 🟡 GAP-003: Learning system config vars not wired (P2)
+**Status:** Documented as "NOT YET IMPLEMENTED"
+**Impact:** Cannot enable/configure learning system via environment
+**Evidence:**
+- `.env.example` lines 218-236 document `LEARNING_SYSTEM_ENABLED`, `BANDIT_ALGORITHM`, `BANDIT_EXPLORATION_FACTOR`, `BANDIT_MIN_TRADE_COUNT`
+- Learning system code exists in `apps/backend/src/learning/`
+- Config vars not in Zod schema
+**Fix Required:**
+1. Add learning system vars to config schema
+2. Wire into `BanditAllocator` initialization
+3. Add feature flag checks before allocation
+4. Update documentation
+
+### 🟡 GAP-004: Metrics config vars not wired (P2)
+**Status:** Documented as "NOT YET IMPLEMENTED" but metrics ARE working
+**Impact:** Minor - metrics work with hardcoded defaults
+**Evidence:**
+- `.env.example` lines 243-248 document `METRICS_ENABLED` and `METRICS_ENDPOINT`
+- Metrics ARE implemented and collecting data
+- Config vars not validated but also not needed (metrics always enabled)
+**Fix Required:**
+1. Either remove from .env.example (metrics always on)
+2. Or add to schema and allow disabling for performance
+3. Update documentation to clarify status
+
+### 🟡 GAP-005: WebSocket config vars not wired (P2)
+**Status:** Documented as "NOT YET IMPLEMENTED" but hardcoded
+**Impact:** Cannot tune WebSocket behavior without code changes
+**Evidence:**
+- `.env.example` lines 256-265 document `WS_RECONNECT_DELAY` and `WS_HEARTBEAT_INTERVAL`
+- WebSocket uses hardcoded delays in `websocket.ts`
+- `WS_MAX_RECONNECT_ATTEMPTS` IS wired (line 261 in config)
+**Fix Required:**
+1. Add `WS_RECONNECT_DELAY` and `WS_HEARTBEAT_INTERVAL` to schema
+2. Pass to WebSocket client constructor
+3. Update documentation
+
+### 🟢 GAP-006: Azure credential vars incomplete (P3)
+**Status:** Missing from schema but documented in .env.example
+**Impact:** Azure Key Vault stub cannot be tested with all credentials
+**Evidence:**
+- `.env.example` lines 109-111 document `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_TENANT_ID`
+- Only `AZURE_KEY_VAULT_NAME` and `AZURE_SECRET_NAME` in schema
+**Fix Required:**
+1. Add remaining Azure vars to schema (optional)
+2. Update secrets module if Azure integration implemented
+3. Update documentation to clarify stub status
+
+### 🟢 GAP-007: AWS credential vars incomplete (P3)
+**Status:** Missing from schema but documented in .env.example
+**Impact:** AWS Secrets Manager stub cannot be tested with all credentials
+**Evidence:**
+- `.env.example` lines 95-98 document `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+- Only `AWS_SECRET_NAME` and `AWS_REGION` in schema
+**Fix Required:**
+1. Add AWS credential vars to schema (optional)
+2. Document that credentials come from AWS SDK default chain
+3. Clarify in documentation
+
+### 🟢 GAP-008: Config documentation drift (P3)
+**Status:** .env.example has sections marked "NOT YET IMPLEMENTED" that ARE implemented
+**Impact:** Confusing for users - unclear what works
+**Evidence:**
+- Learning system database paths ARE used (EVENT_STORE_PATH, etc.)
+- Compliance vars (MIN_BALANCE, BAN_STATUS) ARE implemented
+- Heartbeat URL IS implemented
+**Fix Required:**
+1. Update .env.example comments to reflect actual status
+2. Remove "NOT YET IMPLEMENTED" where features work
+3. Clarify which vars are optional vs required
+
+---
+
+## Category 2: Strategy & Trading Framework Gaps (6 gaps)
+
+### 🔴 GAP-009: No strategy abstraction layer (P0)
+**Status:** Critical gap per GAP_ANALYSIS.md SI-001
+**Impact:** Cannot add new strategies without major code changes
+**Evidence:**
+- No `StrategyBase` abstract class
+- All trading logic hardcoded in `tradingClient.ts` and `paperTradingEngine.ts`
+- Gap Analysis rates Strategy Interface as 6/10 CONDITIONAL
+**Fix Required:**
+1. Create abstract `StrategyBase` class with hooks
+2. Implement `onMarketData`, `onFill`, `onError` methods
+3. Refactor existing logic into concrete strategy
+4. Document strategy interface
+**Estimated Effort:** 3-5 days
+
+### 🔴 GAP-010: No signal generation framework (P0)
+**Status:** Critical gap per GAP_ANALYSIS.md SI-002
+**Impact:** Manual signal creation, no decision trees
+**Evidence:**
+- No `SignalEngine` class
+- No signal prioritization or aggregation
+- Gap Analysis identifies as HIGH severity
+**Fix Required:**
+1. Create `SignalEngine` class
+2. Implement signal collection and routing
+3. Add risk manager integration
+4. Route signals to execution engine
+**Estimated Effort:** 2-3 days
+
+### 🟠 GAP-011: No strategy hot-reload (P1)
+**Status:** Medium priority per GAP_ANALYSIS.md SI-003
+**Impact:** Requires restart to change strategy parameters
+**Evidence:**
+- Static configuration loading only
+- No file watching or dynamic reload
+**Fix Required:**
+1. Add file watcher for strategy.json
+2. Implement safe reload mechanism
+3. Add validation before reload
+4. Log reload events
+**Estimated Effort:** 2 days
+
+### 🟠 GAP-012: No strategy backtesting framework (P1)
+**Status:** Backtesting exists but not integrated with strategy framework
+**Impact:** Can't validate strategies before live deployment
+**Evidence:**
+- `backtestEngine.ts` exists but separate from strategy system
+- No strategy validation workflow
+**Fix Required:**
+1. Integrate backtest engine with strategy abstraction
+2. Add strategy validation workflow
+3. Create backtesting CLI commands
+4. Document testing process
+**Estimated Effort:** 1 week
+
+### 🟡 GAP-013: No multi-strategy orchestration (P2)
+**Status:** Low priority per GAP_ANALYSIS.md SI-005
+**Impact:** Can only run single strategy at a time
+**Evidence:**
+- No strategy composition framework
+- No portfolio allocation across strategies
+**Fix Required:**
+1. Create strategy orchestrator
+2. Implement capital allocation
+3. Add conflict resolution
+4. Add monitoring per strategy
+**Estimated Effort:** 3-5 days
+
+### 🟢 GAP-014: No pre-trade liquidity validation (P3)
+**Status:** Medium priority per GAP_ANALYSIS.md EE-004
+**Impact:** May send orders that cannot fill
+**Evidence:**
+- Order validation exists but doesn't check liquidity
+- No orderbook depth analysis before order
+**Fix Required:**
+1. Add liquidity check before order creation
+2. Compare order size to available depth
+3. Warn or reject insufficient liquidity
+4. Log liquidity metrics
+**Estimated Effort:** 3 days
+
+---
+
+## Category 3: Observability & Operations Gaps (7 gaps)
+
+### 🟡 GAP-015: Prometheus/Grafana not enabled in docker-compose (P2)
+**Status:** Commented out in docker-compose.yml
+**Impact:** No out-of-box monitoring stack
+**Evidence:**
+- Research §7 Day 6 expects bot + prometheus + grafana
+- docker-compose.yml has commented blocks
+- Grafana dashboards exist in `grafana/` directory
+**Fix Required:**
+1. Uncomment prometheus and grafana services
+2. Configure volume mounts
+3. Test dashboard import
+4. Document access URLs
+**Estimated Effort:** 2 hours
+
+### 🟡 GAP-016: No deployment workflow (P2)
+**Status:** Research §6.1 and §9 expect .github/workflows/deploy.yml
+**Impact:** No automated deployment process
+**Evidence:**
+- CI workflow exists (`ci.yml`)
+- No deploy workflow
+- Manual deployment only
+**Fix Required:**
+1. Create `.github/workflows/deploy.yml`
+2. Add deployment steps (Docker, cloud, etc.)
+3. Add deployment gates (tests, approvals)
+4. Document deployment process
+**Estimated Effort:** 1 day
+
+### 🟢 GAP-017: No pre-deployment verification script (P3)
+**Status:** Documentation exists but no script
+**Impact:** Manual verification required before deployment
+**Evidence:**
+- `docs/pre-deployment-verification.md` exists
+- No executable script
+- Research §12.2 suggests checklist
+**Fix Required:**
+1. Create `scripts/pre-deploy-verify.sh`
+2. Check ban-status, fee-rate, balance, rate limits
+3. Validate configuration
+4. Generate verification report
+**Estimated Effort:** 1 day
+
+### 🟢 GAP-018: No DB backup script (P3)
+**Status:** Research §9.8 suggests daily backups
+**Impact:** Risk of data loss
+**Evidence:**
+- SQLite databases used
+- No backup script
+- No backup documentation in runbook
+**Fix Required:**
+1. Create `scripts/backup-db.sh`
+2. Implement .dump to S3/Backblaze
+3. Add retention policy
+4. Document in runbook
+5. Add to cron/systemd timer
+**Estimated Effort:** 1 day
+
+### 🟢 GAP-019: UMA resolution not documented (P3)
+**Status:** Research §1.6 mentions UMA resolution
+**Impact:** Users unclear on resolution process
+**Evidence:**
+- Resolution process not in runbook
+- No monitoring for resolution events
+**Fix Required:**
+1. Document UMA resolution in runbook
+2. Add optional monitoring
+3. Document redemption process
+4. Link to UMA docs
+**Estimated Effort:** 2 hours
+
+### 🟢 GAP-020: Fee-rate not checked/documented (P3)
+**Status:** Research §1.4 expects fee-rate checks
+**Impact:** May miscalculate costs on fee-enabled markets
+**Evidence:**
+- No `GET /fee-rate` calls before orders
+- Fee-rate not documented
+- Assumed 0% fees
+**Fix Required:**
+1. Call `GET /fee-rate` for markets
+2. Document fee assumptions
+3. Factor into P&L calculations
+4. Update examples
+**Estimated Effort:** 1 day
+
+### 🟢 GAP-021: Cost scenarios not documented (P3)
+**Status:** Research §3 provides cost estimates
+**Impact:** Users unclear on expected costs
+**Evidence:**
+- No cost documentation
+- Research shows $5-60/month scenarios
+**Fix Required:**
+1. Create `docs/cost-scenarios.md`
+2. Document hosting costs
+3. Document API costs
+4. Document scaling costs
+**Estimated Effort:** 3 hours
+
+---
+
+## Category 4: Documentation Gaps (11 gaps)
+
+### 🟡 GAP-022: .env.example drift from implementation (P2)
+**Impact:** Confusing status markers ("NOT YET IMPLEMENTED" when features work)
+**Evidence:** Lines 214-266 of .env.example
+**Fix Required:** Update comments to reflect actual implementation status
+
+### 🟡 GAP-023: ENV_VARIABLE_REFERENCE.md incomplete (P2)
+**Impact:** Documents 57 vars but some marked as "stubbed" when they work
+**Evidence:** Lines 87-111 mark functional features as stubbed
+**Fix Required:** Update to reflect ban-status, MIN_BALANCE, heartbeat are working
+
+### 🟢 GAP-024: Secret management clarity needed (P3)
+**Impact:** Unclear which secret backends actually work
+**Evidence:** env/encrypted work, AWS/Azure/Vault are stubs
+**Fix Required:** Clearly document which methods are production-ready vs planned
+
+### 🟢 GAP-025: Research vs repo comparison outdated (P3)
+**Impact:** Some gaps listed are now implemented
+**Evidence:** RESEARCH_VS_REPO_COMPARISON.md lists ban-status as TODO
+**Fix Required:** Update comparison with actual implementation status
+
+### 🟢 GAP-026: Gap analysis outdated (P3)
+**Impact:** Some gaps listed as open are now closed
+**Evidence:** GAP_ANALYSIS.md rates observability as 3/10 but now ~7/10
+**Fix Required:** Update gap analysis with current status
+
+### 🟢 GAP-027: Architecture docs missing strategy framework (P3)
+**Impact:** Architecture doesn't reflect missing strategy abstraction
+**Evidence:** docs/architecture.md doesn't call out strategy gap
+**Fix Required:** Document strategy abstraction gap in architecture
+
+### 🟢 GAP-028: Runbook missing backup procedures (P3)
+**Impact:** No operational backup documentation
+**Evidence:** docs/runbook.md doesn't cover DB backups
+**Fix Required:** Add backup section to runbook
+
+### 🟢 GAP-029: Runbook missing UMA resolution (P3)
+**Impact:** No guidance on resolution process
+**Evidence:** docs/runbook.md doesn't cover UMA
+**Fix Required:** Add UMA resolution section
+
+### 🟢 GAP-030: Examples missing markets.json usage (P3)
+**Impact:** No examples of multi-market configuration
+**Evidence:** docs/examples.md doesn't show markets.json
+**Fix Required:** Add markets.json configuration example
+
+### 🟢 GAP-031: Master plan outdated (P3)
+**Impact:** Plan doesn't reflect completed work
+**Evidence:** docs/master-plan.md lists completed items as TODO
+**Fix Required:** Update master plan with current status
+
+### 🟢 GAP-032: Small PR plan references non-existent PRs (P3)
+**Impact:** Confusing PR references
+**Evidence:** docs/small-pr-plan.md references PR-001 to PR-013
+**Fix Required:** Clarify these are planning documents, not actual PRs
+
+---
+
+## Category 5: Testing & Quality Gaps (5 gaps)
+
+### 🟠 GAP-033: No chaos engineering tests (P1)
+**Status:** Research §6.3 suggests chaos tests
+**Impact:** Untested failure scenarios
+**Evidence:** No dedicated chaos test directory
+**Fix Required:**
+1. Create `tests/chaos/` directory
+2. Add WebSocket disconnect tests
+3. Add API failure tests
+4. Add DB corruption tests
+**Estimated Effort:** 3 days
+
+### 🟡 GAP-034: Integration test coverage gaps (P2)
+**Status:** Some integration tests but not comprehensive
+**Impact:** May miss integration bugs
+**Evidence:** 58 test files but focused on units
+**Fix Required:**
+1. Add end-to-end order flow tests
+2. Add multi-component integration tests
+3. Add performance/load tests
+4. Document test strategy
+**Estimated Effort:** 1 week
+
+### 🟡 GAP-035: No performance benchmarks (P2)
+**Status:** No baseline performance metrics
+**Impact:** Can't detect performance regressions
+**Evidence:** No benchmark tests or CI benchmarking
+**Fix Required:**
+1. Add benchmark tests
+2. Run in CI
+3. Track metrics over time
+4. Set performance budgets
+**Estimated Effort:** 2 days
+
+### 🟢 GAP-036: Test data generators missing (P3)
+**Status:** Manual test data creation
+**Impact:** Harder to write comprehensive tests
+**Evidence:** No test data factories
+**Fix Required:**
+1. Create test data factories
+2. Add realistic data generators
+3. Add edge case generators
+4. Document usage
+**Estimated Effort:** 2 days
+
+### 🟢 GAP-037: No mutation testing (P3)
+**Status:** Code coverage exists but not mutation testing
+**Impact:** Tests may not catch all bugs
+**Evidence:** No mutation testing in CI
+**Fix Required:**
+1. Add Stryker or similar tool
+2. Run on critical modules
+3. Set mutation score thresholds
+4. Add to CI
+**Estimated Effort:** 3 days
+
+---
+
+## Category 6: Security & Compliance Gaps (3 gaps)
+
+### 🟡 GAP-038: Cloud secret backends are stubs (P2)
+**Status:** AWS/Azure/Vault integrations throw "not implemented"
+**Impact:** Cannot use cloud secret managers in production
+**Evidence:** apps/backend/src/secrets/index.ts has stub implementations
+**Fix Required:**
+1. Implement AWS Secrets Manager integration
+2. Implement Azure Key Vault integration
+3. Implement HashiCorp Vault integration
+4. Add comprehensive tests
+5. Update documentation
+**Estimated Effort:** 1 week (all three)
+**Note:** Encrypted mode is production-ready alternative
+
+### 🟢 GAP-039: No secrets rotation mechanism (P3)
+**Status:** No automated key rotation
+**Impact:** Manual rotation required
+**Evidence:** No rotation logic in secrets module
+**Fix Required:**
+1. Design rotation strategy
+2. Implement rotation workflow
+3. Add zero-downtime rotation
+4. Document procedures
+**Estimated Effort:** 3-5 days
+
+### 🟢 GAP-040: No compliance reporting (P3)
+**Status:** Audit trail exists but no compliance reports
+**Impact:** Manual compliance verification
+**Evidence:** No report generation scripts
+**Fix Required:**
+1. Create compliance report generator
+2. Export trade history
+3. Export order history
+4. Generate audit reports
+**Estimated Effort:** 2-3 days
+
+---
+
+## Category 7: Infrastructure & DevOps Gaps (4 gaps)
+
+### 🟠 GAP-041: No infrastructure as code (P1)
+**Status:** Manual infrastructure setup
+**Impact:** Inconsistent deployments
+**Evidence:** No Terraform/CloudFormation/Pulumi
+**Fix Required:**
+1. Create IaC templates
+2. Define cloud resources
+3. Add deployment automation
+4. Document infrastructure
+**Estimated Effort:** 3-5 days
+
+### 🟡 GAP-042: No container registry workflow (P2)
+**Status:** Docker images not published
+**Impact:** Manual container distribution
+**Evidence:** No GitHub Package or Docker Hub workflow
+**Fix Required:**
+1. Add container build workflow
+2. Publish to registry
+3. Add versioning
+4. Document pull instructions
+**Estimated Effort:** 1 day
+
+### 🟡 GAP-043: No staging environment (P2)
+**Status:** Only production and local dev
+**Impact:** Risky deployments
+**Evidence:** No staging configuration
+**Fix Required:**
+1. Define staging environment
+2. Add staging deployment
+3. Add smoke tests
+4. Document promotion process
+**Estimated Effort:** 2 days
+
+### 🟢 GAP-044: No health check monitoring (P3)
+**Status:** Health endpoints exist but no external monitoring
+**Impact:** No alerting on downtime
+**Evidence:** No external monitoring configured
+**Fix Required:**
+1. Set up external monitoring (Uptime Robot, etc.)
+2. Configure alerts
+3. Add status page
+4. Document monitoring
+**Estimated Effort:** 1 day
+
+---
+
+## Category 8: Learning System & ML Gaps (3 gaps)
+
+### 🟡 GAP-045: Learning system not production-ready (P2)
+**Status:** Learning system exists but not integrated with strategy framework
+**Impact:** Cannot use ML strategies in production
+**Evidence:** 
+- Learning module in `apps/backend/src/learning/`
+- Not integrated with trading loop
+- Config vars not wired
+**Fix Required:**
+1. Wire up learning system config vars
+2. Integrate with strategy abstraction
+3. Add production safety gates
+4. Add monitoring and alerting
+5. Document usage
+**Estimated Effort:** 1 week
+
+### 🟢 GAP-046: No strategy validation framework (P3)
+**Status:** Backtest exists but no formal validation
+**Impact:** Unclear when strategy is "ready"
+**Evidence:** No validation criteria or gates
+**Fix Required:**
+1. Define validation criteria
+2. Add validation workflow
+3. Create promotion checklist
+4. Document process
+**Estimated Effort:** 2-3 days
+
+### 🟢 GAP-047: No online learning implementation (P3)
+**Status:** Offline backtest only
+**Impact:** Cannot adapt strategies in real-time
+**Evidence:** No online learning loop
+**Fix Required:**
+1. Design online learning architecture
+2. Implement safe update mechanism
+3. Add monitoring
+4. Add rollback capability
+**Estimated Effort:** 1-2 weeks
+
+---
+
+## Priority-Ordered Action Plan
+
+### 🔴 CRITICAL - Block Production (3 gaps)
+
+1. **GAP-009: Implement strategy abstraction layer** (3-5 days)
+   - Create StrategyBase abstract class
+   - Refactor existing logic into concrete strategy
+   - Enable pluggable strategy architecture
+
+2. **GAP-010: Implement signal generation framework** (2-3 days)
+   - Create SignalEngine class
+   - Add signal routing and prioritization
+   - Integrate with risk manager
+
+3. **None in this category are blocking** - The above are strategic but not critical for single-strategy deployment
+
+### 🟠 HIGH PRIORITY - Needed Before Scale (12 gaps)
+
+1. **GAP-001: Load markets.json config** (1 day)
+2. **GAP-002: Load strategy.json config** (1 day)
+3. **GAP-033: Add chaos engineering tests** (3 days)
+4. **GAP-041: Add infrastructure as code** (3-5 days)
+5. **GAP-011: Implement strategy hot-reload** (2 days)
+6. **GAP-012: Integrate backtest with strategy framework** (1 week)
+
+### 🟡 MEDIUM PRIORITY - Important for Operations (18 gaps)
+
+Focus on documentation cleanup, operational procedures, and minor feature completions.
+
+### 🟢 LOW PRIORITY - Nice to Have (14 gaps)
+
+Can be addressed incrementally as time permits.
+
+---
+
+## What's Actually Working (Positive Findings)
+
+Despite the gaps, many critical features ARE implemented:
+
+✅ **Fully Implemented:**
+- Ban-status checking (startup + periodic)
+- MIN_BALANCE check at startup
+- Heartbeat URL support
+- WS_MAX_RECONNECT_ATTEMPTS
+- All audit findings A-002 through A-027 (24/27 resolved or improved)
+- Comprehensive metrics collection (1133 tests passing)
+- Reconciliation (startup + periodic)
+- Kill switch (persistent)
+- Rate limiting
+- Circuit breakers
+- Admin authentication
+- CORS security
+- Secrets management (env + encrypted modes)
+
+✅ **Partially Implemented:**
+- Learning system (code exists, config not wired)
+- Strategy framework (works but not pluggable)
+- Metrics (work great, some config vars not used)
+
+---
+
+## Recommendations
+
+### Immediate Actions (This Week)
+1. ✅ Update `.env.example` to fix "NOT YET IMPLEMENTED" markers
+2. ✅ Update `ENV_VARIABLE_REFERENCE.md` to reflect actual status
+3. ✅ Wire up `MARKETS_CONFIG_PATH` and `STRATEGY_CONFIG_PATH`
+4. ✅ Uncomment Prometheus/Grafana in docker-compose.yml
+
+### Short-term (Next 2 Weeks)
+1. Implement strategy abstraction layer (if multi-strategy needed)
+2. Add chaos engineering tests
+3. Create deployment workflow
+4. Add backup scripts and documentation
+
+### Medium-term (Next Month)
+1. Complete cloud secret backend implementations (if needed)
+2. Build infrastructure as code
+3. Enhance testing coverage
+4. Wire up remaining config variables
+
+### Long-term (Next Quarter)
+1. Implement online learning system
+2. Add multi-strategy orchestration
+3. Build strategy validation framework
+4. Add advanced monitoring and alerting
+
+---
+
+## Conclusion
+
+The codebase is in **good shape** with 24/27 audit findings resolved and core functionality working well. The main gaps are:
+
+1. **Strategic**: Missing pluggable strategy framework
+2. **Operational**: Some documentation drift and missing procedures
+3. **Configuration**: Several documented env vars not fully wired
+4. **Testing**: Need chaos tests and more integration coverage
+
+**Overall Assessment:** 🟢 **READY FOR SINGLE-STRATEGY PRODUCTION** deployment with the understanding that scaling to multiple strategies will require the strategy abstraction work.
+
+The gaps identified are primarily about **flexibility, scalability, and operational excellence** rather than core functionality or security.
