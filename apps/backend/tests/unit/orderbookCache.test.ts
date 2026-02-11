@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { OrderbookCache } from '../../src/clients/orderbookCache';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { OrderbookCache, DEFAULT_CACHE_TTL_MS, MIN_CACHE_TTL_MS } from '../../src/clients/orderbookCache';
 import { createMockOrderbook, mockTokenId } from '../fixtures/websocket';
 
 describe('OrderbookCache', () => {
@@ -7,6 +7,10 @@ describe('OrderbookCache', () => {
 
   beforeEach(() => {
     cache = new OrderbookCache();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers(); // Ensure timers are always reset after each test
   });
 
   describe('set and get', () => {
@@ -212,6 +216,168 @@ describe('OrderbookCache', () => {
 
       cache.clear();
       expect(cache.size()).toBe(0);
+    });
+  });
+
+  describe('TTL enforcement (A-015)', () => {
+    it('should use default TTL when not specified', () => {
+      const cache = new OrderbookCache();
+      const config = cache.getConfig();
+      expect(config.ttl).toBe(DEFAULT_CACHE_TTL_MS);
+    });
+
+    it('should use custom TTL when specified', () => {
+      const customTtl = 10000;
+      const cache = new OrderbookCache({ ttl: customTtl });
+      const config = cache.getConfig();
+      expect(config.ttl).toBe(customTtl);
+    });
+
+    it('should clamp TTL to minimum when too low', () => {
+      const cache = new OrderbookCache({ ttl: 50 });
+      const config = cache.getConfig();
+      expect(config.ttl).toBe(MIN_CACHE_TTL_MS);
+    });
+
+    it('should clamp negative TTL to minimum', () => {
+      const cache = new OrderbookCache({ ttl: -100 });
+      const config = cache.getConfig();
+      expect(config.ttl).toBe(MIN_CACHE_TTL_MS);
+    });
+
+    it('should auto-invalidate stale entries by default', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 1000 });
+      const orderbook = createMockOrderbook();
+      
+      cache.set(mockTokenId, orderbook);
+      expect(cache.get(mockTokenId)).not.toBeNull();
+      
+      // Advance time past TTL
+      vi.advanceTimersByTime(1001);
+      
+      expect(cache.get(mockTokenId)).toBeNull();
+      expect(cache.has(mockTokenId)).toBe(false);
+    });
+
+    it('should not auto-invalidate when disabled', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 1000, autoInvalidate: false });
+      const orderbook = createMockOrderbook();
+      
+      cache.set(mockTokenId, orderbook);
+      expect(cache.get(mockTokenId)).not.toBeNull();
+      
+      // Advance time past TTL
+      vi.advanceTimersByTime(1001);
+      
+      // Should still return stale data with warning
+      const retrieved = cache.get(mockTokenId);
+      expect(retrieved).not.toBeNull();
+      expect(cache.has(mockTokenId)).toBe(true);
+    });
+
+    it('should identify stale entries correctly', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 1000 });
+      const orderbook = createMockOrderbook();
+      
+      cache.set(mockTokenId, orderbook);
+      expect(cache.isStale(mockTokenId)).toBe(false);
+      
+      // Advance time but not past TTL
+      vi.advanceTimersByTime(500);
+      expect(cache.isStale(mockTokenId)).toBe(false);
+      
+      // Advance time past TTL
+      vi.advanceTimersByTime(501);
+      expect(cache.isStale(mockTokenId)).toBe(true);
+    });
+
+    it('should return true for non-existent entries in isStale', () => {
+      const cache = new OrderbookCache();
+      expect(cache.isStale('non-existent')).toBe(true);
+    });
+  });
+
+  describe('getConfig', () => {
+    it('should return current configuration', () => {
+      const cache = new OrderbookCache({ ttl: 3000, autoInvalidate: false });
+      const config = cache.getConfig();
+      
+      expect(config.ttl).toBe(3000);
+      expect(config.autoInvalidate).toBe(false);
+    });
+
+    it('should return default values when not specified', () => {
+      const cache = new OrderbookCache();
+      const config = cache.getConfig();
+      
+      expect(config.ttl).toBe(DEFAULT_CACHE_TTL_MS);
+      expect(config.autoInvalidate).toBe(true);
+    });
+  });
+
+  describe('getStats', () => {
+    it('should return empty stats for empty cache', () => {
+      const cache = new OrderbookCache();
+      const stats = cache.getStats();
+      
+      expect(stats.total).toBe(0);
+      expect(stats.fresh).toBe(0);
+      expect(stats.stale).toBe(0);
+      expect(stats.avgAge).toBe(0);
+    });
+
+    it('should count fresh and stale entries correctly', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 1000, autoInvalidate: false });
+      
+      // Add three entries
+      cache.set('token1', createMockOrderbook({ asset_id: 'token1' }));
+      vi.advanceTimersByTime(500);
+      cache.set('token2', createMockOrderbook({ asset_id: 'token2' }));
+      vi.advanceTimersByTime(600); // token1 is now stale (1100ms old)
+      cache.set('token3', createMockOrderbook({ asset_id: 'token3' }));
+      
+      const stats = cache.getStats();
+      expect(stats.total).toBe(3);
+      expect(stats.fresh).toBe(2); // token2 and token3
+      expect(stats.stale).toBe(1); // token1
+      expect(stats.avgAge).toBeGreaterThan(0);
+    });
+
+    it('should calculate average age correctly', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 10000 });
+      
+      cache.set('token1', createMockOrderbook({ asset_id: 'token1' }));
+      vi.advanceTimersByTime(1000);
+      cache.set('token2', createMockOrderbook({ asset_id: 'token2' }));
+      vi.advanceTimersByTime(1000);
+      
+      const stats = cache.getStats();
+      // token1: 2000ms old, token2: 1000ms old, avg: 1500ms
+      expect(stats.avgAge).toBeCloseTo(1500, -2);
+    });
+
+    it('should update stats after invalidation', () => {
+      vi.useFakeTimers();
+      const cache = new OrderbookCache({ ttl: 1000 });
+      
+      cache.set('token1', createMockOrderbook({ asset_id: 'token1' }));
+      cache.set('token2', createMockOrderbook({ asset_id: 'token2' }));
+      
+      let stats = cache.getStats();
+      expect(stats.total).toBe(2);
+      expect(stats.fresh).toBe(2);
+      
+      // Make one entry stale and access it (should auto-invalidate)
+      vi.advanceTimersByTime(1001);
+      cache.get('token1'); // This should invalidate token1
+      
+      stats = cache.getStats();
+      expect(stats.total).toBe(1); // Only token2 remains
     });
   });
 });

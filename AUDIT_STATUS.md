@@ -10,13 +10,13 @@ This document tracks the implementation status of all 27 audit findings from the
 
 **Overall Progress:**
 - **Critical Issues (3 total):** 2 FIXED ✓, 1 PARTIAL (secret manager stubs exist)
-- **High Priority Issues (8 total):** 7 FIXED ✓, 2 N/A (A-010, A-011 - resolved/integrated)
+- **High Priority Issues (8 total):** 7 FIXED ✓, 1 N/A (A-011 - integrated with A-005)
 - **Medium Priority Issues (10 total):** 4 FIXED ✓, 6 OPEN
 - **Low Priority Issues (6 total):** 4 FIXED ✓, 2 OPEN
 
 **Total Fixed:** 17/27 (63%)  
-**Total Open:** 9/27 (33%)  
-**Total N/A:** 2/27 (7%) - Addressed Sourcery review: Fixed count inconsistency
+**Total Open:** 8/27 (30%)  
+**Total N/A:** 1/27 (4%)
 **Total Partial:** 1/27 (4%)
 
 ---
@@ -278,9 +278,66 @@ await retry(async () => {
 
 ---
 
-### N/A A-010: WebSocket Message Deduplication [RESOLVED]
-**Status:** Architecture decision - not needed  
-**Rationale:** Modern WebSocket implementations and protocols ensure message delivery without duplicates. Additional deduplication adds complexity without proven benefit.
+### ✓ A-010: WebSocket Message Deduplication [FIXED]
+**Status:** Fully implemented  
+**Implementation:** `apps/backend/src/clients/marketFeed.ts`
+
+Message deduplication prevents processing duplicate WebSocket messages that could cause incorrect orderbook state or double-processing of events.
+
+```typescript
+// Message ID generation and deduplication (lines 67, 187-207, 238-260):
+private processedMessageIds: Set<string> = new Set();
+
+private handleMessage(message: WSMarketMessage): void {
+  // Generate a unique message ID based on event type, asset, and timestamp
+  const messageId = this.generateMessageId(message);
+  
+  if (this.processedMessageIds.has(messageId)) {
+    logger.debug('Duplicate message ignored', { messageId, event_type: message.event_type });
+    return;
+  }
+  
+  // LRU cache management (max 10,000 message IDs)
+  if (this.processedMessageIds.size >= this.MESSAGE_ID_CACHE_SIZE) {
+    const firstId = this.processedMessageIds.values().next().value;
+    if (firstId !== undefined) {
+      this.processedMessageIds.delete(firstId);
+    }
+  }
+  
+  this.processedMessageIds.add(messageId);
+  // ... process message
+}
+
+private generateMessageId(message: WSMarketMessage): string {
+  const baseId = `${message.event_type}-${message.asset_id}-${message.timestamp}`;
+  
+  // Add specific data based on message type to ensure uniqueness
+  switch (message.event_type) {
+    case 'price_change': {
+      const priceChange = message as WSPriceChange;
+      return `${baseId}-${priceChange.side}-${priceChange.price}-${priceChange.size}`;
+    }
+    case 'book': {
+      // For snapshots, include hash of bid/ask data
+      const snapshot = message as WSOrderbookSnapshot;
+      const bidsHash = snapshot.bids.slice(0, 3).map(b => `${b.price}:${b.size}`).join(',');
+      const asksHash = snapshot.asks.slice(0, 3).map(a => `${a.price}:${a.size}`).join(',');
+      return `${baseId}-${bidsHash}-${asksHash}`;
+    }
+    default:
+      return baseId;
+  }
+}
+```
+
+**Key features:**
+- Generates unique message IDs based on event type, asset ID, timestamp, and message-specific data
+- Maintains LRU cache of processed message IDs (max 10,000 entries)
+- Logs and skips duplicate messages
+- Prevents duplicate orderbook updates and event emissions
+
+**Tests:** `apps/backend/tests/unit/websocket-deduplication.test.ts`
 
 ---
 
@@ -577,16 +634,13 @@ await retry(fn, {
 1. Address A-012: Trading client initialization error handling
 2. Complete A-013: Stricter order ID validation
 3. Fix A-014: Include partial fills in position calculation
-4. Implement A-015: Cache TTL enforcement
-5. Fix A-016: WebSocket timer cleanup
-6. Fix A-017: Graceful shutdown for market feed
-7. Improve A-019: Realistic partial fill simulation
+4. Fix A-016: WebSocket timer cleanup
+5. Fix A-017: Graceful shutdown for market feed
+6. Improve A-019: Realistic partial fill simulation
 
 ### Long Term (P3)
-1. Add A-022: Wallet address masking in logs
-2. Implement A-023: Jitter in retry backoff
-3. Expand A-025: Test coverage for gaps
-4. Complete A-027: Trading-specific metrics
+1. Expand A-025: Test coverage for gaps
+2. Complete A-027: Trading-specific metrics
 
 ### Optional (Cloud Secrets)
 - Complete A-001 cloud integrations (AWS/Vault/Azure) if cloud deployment is planned
