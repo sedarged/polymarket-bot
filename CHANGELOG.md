@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.33.2](https://github.com/sedarged/polymarket-bot/compare/v1.33.1...v1.33.2) (2026-02-11)
+
+
+### Bug Fixes
+
+* address all PR review feedback from Sourcery and Copilot ([31f8700](https://github.com/sedarged/polymarket-bot/commit/31f8700426d31c50fefc8a40fc53dbaefa75faaf))
+* address PR review feedback - test cleanup, audit math, and A-010 docs ([b7b26a0](https://github.com/sedarged/polymarket-bot/commit/b7b26a030a123958656a916ce38cce66fdd9eff0))
+* address PR review feedback - update A-010 status and add TTL tests ([8245d2f](https://github.com/sedarged/polymarket-bot/commit/8245d2f247592a3e7cc8dc46f967975a29688970))
+* address review feedback - timer cleanup, math, and A-010 docs ([cd4543a](https://github.com/sedarged/polymarket-bot/commit/cd4543a7cec6736f5a9d46cc94b98da215a1635b))
+* implement cache TTL enforcement for orderbook cache (A-015) ([49197cf](https://github.com/sedarged/polymarket-bot/commit/49197cfc273c1dfb224baba34c9617943bf35db1))
+
 ## [1.33.1](https://github.com/sedarged/polymarket-bot/compare/v1.33.0...v1.33.1) (2026-02-10)
 
 
