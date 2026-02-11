@@ -848,6 +848,7 @@ export async function startServer(): Promise<http.Server> {
         
         // A-012: In production, fail startup on trading client init failure
         // This prevents the server from running in a degraded state without clear indication
+        // Note: We're already inside isLiveTradingEnabled() block, so only need to check NODE_ENV
         if (process.env.NODE_ENV === 'production') {
           logger.error('CRITICAL: Trading client initialization failed in production mode', {
             nodeEnv: process.env.NODE_ENV,

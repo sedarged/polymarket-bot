@@ -299,13 +299,13 @@ describe('Order ID Validation (A-013)', () => {
    * to what's tested above in mapOrder(), ensuring consistent behavior across
    * all order creation paths.
    * 
-   * Key validation points in createOrder() (lines 745-777):
-   * 1. Check response.orderID is not empty/null/whitespace (line 748-755)
-   * 2. Double-check order.orderId before adding to state (line 771-777)
+   * Key validation points in createOrder():
+   * 1. Validates response.orderID is not empty/null/whitespace
+   * 2. Double-checks order.orderId before adding to state
    * 
-   * Key validation points in createOrdersBatch() (lines 1001-1040):
-   * 1. Check each response.orderIDs[i] is not empty/null/whitespace (line 1003-1014)
-   * 2. Clean up submittedOrderIds on validation failure (line 1015)
-   * 3. Double-check order.orderId before adding to state (line 1030-1040)
+   * Key validation points in createOrdersBatch():
+   * 1. Validates each response.orderIDs[i] is not empty/null/whitespace
+   * 2. Cleans up submittedOrderIds on validation failure
+   * 3. Double-checks order.orderId before adding to state
    */
 });
