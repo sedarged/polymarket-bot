@@ -22,13 +22,13 @@ After completing the initial 6 medium-priority audit findings, conducted additio
 **New Metrics Added:**
 - `polymarket_usdc_balance` - Current USDC balance gauge
 - `polymarket_realized_pnl` - Realized profit and loss
-- `polymarket_unrealized_pnl` - Unrealized profit and loss
 - `polymarket_position_value` - Total position value per token
 - `polymarket_position_size` - Position size per token and side (LONG/SHORT)
-- `polymarket_order_fill_rate_percent` - Percentage of orders filled
-- `polymarket_order_success_rate_percent` - Order submission success rate
 - `polymarket_partial_fills_total` - Counter for partial fills
 - `polymarket_fill_size_ratio` - Histogram of fill sizes
+
+**Metrics Defined (Not Yet Implemented):**
+- `polymarket_unrealized_pnl` - Unrealized profit and loss (requires periodic calculation with orderbook data)
 
 **Integration:**
 - Integrated into paper trading engine

@@ -1010,7 +1010,7 @@ export class TradingClient {
                 index: prepared.originalIndex,
                 error: 'Server returned invalid orderID - order creation failed',
               });
-              continue; // Skip this order
+              continue; // Skip this order - cleanup happens in finally block
             }
             
             const order: Order = {

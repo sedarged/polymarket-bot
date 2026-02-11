@@ -7,7 +7,6 @@ import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, Ma
 import { 
   usdcBalance, 
   realizedPnl as realizedPnlMetric, 
-  unrealizedPnl as unrealizedPnlMetric,
   positionSize as positionSizeMetric,
   positionValue as positionValueMetric,
   partialFills,
