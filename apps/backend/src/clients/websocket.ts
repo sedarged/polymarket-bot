@@ -169,6 +169,14 @@ export class WebSocketClient extends EventEmitter {
 
       this.ws = null;
 
+      // A-016: Clear any existing reconnect timer before potentially scheduling a new one
+      // This ensures no timer leaks even if close event fires unexpectedly
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+        logger.debug("Cleared reconnect timer on close", { audit: 'A-016' });
+      }
+
       if (this.shouldReconnect && this.state !== WebSocketState.CLOSED) {
         this.scheduleReconnect();
       } else {
@@ -277,17 +285,19 @@ export class WebSocketClient extends EventEmitter {
   /**
    * Close the WebSocket connection gracefully
    * Returns a Promise that resolves when the connection is fully closed
-   * Implements proper cleanup for Audit Finding A-017
+   * Implements proper cleanup for Audit Finding A-016 and A-017
    */
   async close(): Promise<void> {
     logger.info("Closing WebSocket client");
     this.shouldReconnect = false;
     this.updateStateMetrics(WebSocketState.CLOSED);
 
-    // Clear reconnect timer first
+    // A-016: Clear reconnect timer to prevent memory leak
+    // Must be done before closing connection to prevent timer firing after close
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
+      logger.debug("Cleared reconnect timer on explicit close", { audit: 'A-016' });
     }
 
     // If no active connection, nothing to close
