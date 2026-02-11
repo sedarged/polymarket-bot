@@ -1010,6 +1010,8 @@ export class TradingClient {
                 index: prepared.originalIndex,
                 error: 'Server returned invalid orderID - order creation failed',
               });
+              // Ensure we do not permanently block this clientOrderId
+              this.submittedOrderIds.delete(prepared.orderId);
               continue; // Skip this order
             }
             

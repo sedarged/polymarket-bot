@@ -197,6 +197,8 @@ export const realizedPnl = new promClient.Gauge({
 
 /**
  * Gauge for unrealized PnL (profit and loss)
+ * NOTE: Currently not implemented - requires periodic calculation with orderbook data
+ * TODO: Implement unrealized PnL tracking if needed for monitoring
  */
 export const unrealizedPnl = new promClient.Gauge({
   name: 'polymarket_unrealized_pnl',
@@ -222,28 +224,6 @@ export const positionSize = new promClient.Gauge({
   name: 'polymarket_position_size',
   help: 'Number of contracts/shares held in position',
   labelNames: ['mode', 'token_id', 'side'], // side: LONG/SHORT
-  registers: [register],
-});
-
-/**
- * Gauge for order fill rate (percentage of orders filled)
- * Calculate as: (orderFills / ordersTotal) * 100
- */
-export const orderFillRate = new promClient.Gauge({
-  name: 'polymarket_order_fill_rate_percent',
-  help: 'Percentage of orders that get filled',
-  labelNames: ['mode'], // mode: live/paper
-  registers: [register],
-});
-
-/**
- * Gauge for order success rate (percentage of successful order submissions)
- * Calculate as: (successful orders / total attempts) * 100
- */
-export const orderSuccessRate = new promClient.Gauge({
-  name: 'polymarket_order_success_rate_percent',
-  help: 'Percentage of successful order submissions',
-  labelNames: ['mode'], // mode: live/paper
   registers: [register],
 });
 
