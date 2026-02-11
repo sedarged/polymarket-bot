@@ -1,5 +1,6 @@
 import { Orderbook } from '@polymarket/shared';
 import { logger } from '../utils/logger';
+import { cachedOrderbooks } from '../utils/metrics';
 
 export interface CachedOrderbook {
   orderbook: Orderbook;
@@ -71,6 +72,10 @@ export class OrderbookCache {
       lastUpdate: Date.now(),
     };
     this.cache.set(assetId, cached);
+    
+    // A-027: Update cached orderbooks metric
+    cachedOrderbooks.set(this.cache.size);
+    
     logger.debug('Orderbook cached', {
       assetId,
       bids: orderbook.bids.length,
@@ -104,6 +109,10 @@ export class OrderbookCache {
           audit: 'A-015',
         });
         this.cache.delete(assetId);
+        
+        // A-027: Update cached orderbooks metric
+        cachedOrderbooks.set(this.cache.size);
+        
         return null;
       } else {
         logger.warn('Orderbook cache is stale but autoInvalidate is disabled', {
@@ -185,6 +194,9 @@ export class OrderbookCache {
       this.cache.clear();
       logger.debug('Cleared all orderbook caches');
     }
+    
+    // A-027: Update cached orderbooks metric
+    cachedOrderbooks.set(this.cache.size);
   }
 
   getAll(): Map<string, CachedOrderbook> {

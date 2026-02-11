@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PaperTradingEngine } from '../../src/trading/paperTradingEngine';
 import { Orderbook } from '@polymarket/shared';
 import { validate as isUUID, version as uuidVersion } from 'uuid';
+import * as metrics from '../../src/utils/metrics';
 
 describe('PaperTradingEngine', () => {
   let engine: PaperTradingEngine;
@@ -713,6 +714,134 @@ describe('PaperTradingEngine', () => {
         expect(parts[2][0]).toBe('4'); // Version 4
         expect(['8', '9', 'a', 'b']).toContain(parts[3][0]); // Valid variant bits
       });
+    });
+  });
+
+  describe('updatePnlMetrics (A-027)', () => {
+    it('should update unrealized PnL metric based on current market prices', () => {
+      // Spy on the unrealizedPnl metric
+      const metricSetSpy = vi.spyOn(metrics.unrealizedPnl, 'set');
+      
+      // Create and fill a buy order to establish a position
+      const buyOrder = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      engine.tryFillOrder(buyOrder.orderId, mockOrderbook);
+      
+      // Verify position exists
+      const positions = engine.getPositions();
+      expect(positions).toHaveLength(1);
+      expect(Number(positions[0].size)).toBeGreaterThan(0); // Positive size = LONG
+      
+      // Create orderbooks map with current market prices
+      const orderbooks = new Map<string, Orderbook>();
+      
+      // Market moved up: best bid = 0.60, best ask = 0.61
+      const updatedOrderbook: Orderbook = {
+        market: 'test-market',
+        asset_id: '0xtoken123',
+        bids: [{ price: '0.60', size: '100' }],
+        asks: [{ price: '0.61', size: '100' }],
+        timestamp: Date.now(),
+      };
+      orderbooks.set('0xtoken123', updatedOrderbook);
+      
+      // Call updatePnlMetrics
+      engine.updatePnlMetrics(orderbooks);
+      
+      // Verify metric was updated
+      expect(metricSetSpy).toHaveBeenCalled();
+      
+      // Get the call arguments
+      const calls = metricSetSpy.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      
+      // Last call should have the unrealized PnL
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toEqual({ mode: 'paper' });
+      
+      // Calculate expected unrealized PnL
+      // Position: 10 contracts bought at ~0.51 (best ask)
+      // Current mid price: (0.60 + 0.61) / 2 = 0.605
+      // Unrealized PnL should be positive (price went up)
+      const unrealizedPnl = lastCall[1] as number;
+      expect(unrealizedPnl).toBeGreaterThan(0);
+      
+      metricSetSpy.mockRestore();
+    });
+
+    it('should calculate negative unrealized PnL when market moves against position', () => {
+      // Spy on the unrealizedPnl metric
+      const metricSetSpy = vi.spyOn(metrics.unrealizedPnl, 'set');
+      
+      // Create and fill a buy order
+      const buyOrder = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      engine.tryFillOrder(buyOrder.orderId, mockOrderbook);
+      
+      // Market moved down: best bid = 0.40, best ask = 0.41
+      const downOrderbook: Orderbook = {
+        market: 'test-market',
+        asset_id: '0xtoken123',
+        bids: [{ price: '0.40', size: '100' }],
+        asks: [{ price: '0.41', size: '100' }],
+        timestamp: Date.now(),
+      };
+      
+      const orderbooks = new Map<string, Orderbook>();
+      orderbooks.set('0xtoken123', downOrderbook);
+      
+      // Call updatePnlMetrics
+      engine.updatePnlMetrics(orderbooks);
+      
+      // Verify unrealized PnL is negative (market went down)
+      const calls = metricSetSpy.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const unrealizedPnl = lastCall[1] as number;
+      expect(unrealizedPnl).toBeLessThan(0);
+      
+      metricSetSpy.mockRestore();
+    });
+
+    it('should return zero unrealized PnL when no positions exist', () => {
+      const metricSetSpy = vi.spyOn(metrics.unrealizedPnl, 'set');
+      
+      // No positions yet
+      expect(engine.getPositions()).toHaveLength(0);
+      
+      const orderbooks = new Map<string, Orderbook>();
+      orderbooks.set('0xtoken123', mockOrderbook);
+      
+      // Call updatePnlMetrics
+      engine.updatePnlMetrics(orderbooks);
+      
+      // Verify unrealized PnL is zero
+      const calls = metricSetSpy.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const unrealizedPnl = lastCall[1] as number;
+      expect(unrealizedPnl).toBe(0);
+      
+      metricSetSpy.mockRestore();
+    });
+
+    it('should skip positions when orderbook is missing', () => {
+      const metricSetSpy = vi.spyOn(metrics.unrealizedPnl, 'set');
+      
+      // Create a position
+      const buyOrder = engine.createOrder('0xtoken123', 'BUY', '0.55', '10');
+      engine.tryFillOrder(buyOrder.orderId, mockOrderbook);
+      
+      // Empty orderbooks map (missing the orderbook for our position)
+      const orderbooks = new Map<string, Orderbook>();
+      
+      // Call updatePnlMetrics
+      engine.updatePnlMetrics(orderbooks);
+      
+      // Should still update metric (with zero since no prices available)
+      expect(metricSetSpy).toHaveBeenCalled();
+      const calls = metricSetSpy.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const unrealizedPnl = lastCall[1] as number;
+      expect(unrealizedPnl).toBe(0);
+      
+      metricSetSpy.mockRestore();
     });
   });
 });

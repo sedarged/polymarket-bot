@@ -7,6 +7,7 @@ import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, Ma
 import { 
   usdcBalance, 
   realizedPnl as realizedPnlMetric, 
+  unrealizedPnl as unrealizedPnlMetric,
   positionSize as positionSizeMetric,
   positionValue as positionValueMetric,
   partialFills,
@@ -444,6 +445,26 @@ export class PaperTradingEngine {
    */
   getTotalPnl(orderbooks: Map<string, Orderbook>): number {
     return this.state.realizedPnl + this.getUnrealizedPnl(orderbooks);
+  }
+
+  /**
+   * Update PnL metrics (A-027: Trading-specific metrics)
+   * 
+   * This method updates the unrealizedPnl metric based on current market prices.
+   * Should be called periodically or when positions change and orderbooks are available.
+   * 
+   * @param orderbooks - Map of token IDs to current orderbooks with market prices
+   */
+  updatePnlMetrics(orderbooks: Map<string, Orderbook>): void {
+    const unrealizedPnl = this.getUnrealizedPnl(orderbooks);
+    unrealizedPnlMetric.set({ mode: 'paper' }, unrealizedPnl);
+    
+    logger.debug('Updated PnL metrics', {
+      category: 'metrics',
+      realizedPnl: this.state.realizedPnl,
+      unrealizedPnl,
+      totalPnl: this.state.realizedPnl + unrealizedPnl,
+    });
   }
 
   /**
