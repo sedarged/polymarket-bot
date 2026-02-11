@@ -43,6 +43,12 @@ export class WebSocketClient extends EventEmitter {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private connectedAt: number | null = null;
   private feedType: string = "market"; // default feed type for metrics
+  
+  // DI-002: Heartbeat/ping-pong to detect silent connection loss
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private heartbeatTimeout: NodeJS.Timeout | null = null;
+  private readonly HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+  private readonly HEARTBEAT_TIMEOUT_MS = 5000; // 5 seconds
 
   constructor(options: WebSocketClientOptions) {
     super();
@@ -119,6 +125,9 @@ export class WebSocketClient extends EventEmitter {
           result: "success",
         });
       }
+      
+      // DI-002: Start heartbeat monitoring after connection
+      this.startHeartbeat();
 
       this.emit("open");
     });
@@ -146,6 +155,16 @@ export class WebSocketClient extends EventEmitter {
         });
       }
     });
+    
+    // DI-002: Listen for pong responses to reset heartbeat timeout
+    this.ws.on("pong", () => {
+      logger.debug("WebSocket pong received", { feedType: this.feedType });
+      // Clear timeout - connection is alive
+      if (this.heartbeatTimeout) {
+        clearTimeout(this.heartbeatTimeout);
+        this.heartbeatTimeout = null;
+      }
+    });
 
     this.ws.on("error", (error: Error) => {
       logger.error("WebSocket error", {
@@ -168,6 +187,9 @@ export class WebSocketClient extends EventEmitter {
       });
 
       this.ws = null;
+      
+      // DI-002: Stop heartbeat monitoring when connection closes
+      this.stopHeartbeat();
 
       // A-016: Clear any existing reconnect timer before potentially scheduling a new one
       // This ensures no timer leaks even if close event fires unexpectedly
@@ -384,5 +406,69 @@ export class WebSocketClient extends EventEmitter {
 
   isConnected(): boolean {
     return this.state === WebSocketState.CONNECTED;
+  }
+  
+  /**
+   * Start heartbeat monitoring (DI-002: Gap Analysis)
+   * Sends periodic ping messages and expects pong responses
+   * Reconnects if pong timeout occurs
+   */
+  private startHeartbeat(): void {
+    // Clear any existing heartbeat first
+    this.stopHeartbeat();
+    
+    logger.debug("Starting WebSocket heartbeat", { 
+      feedType: this.feedType,
+      intervalMs: this.HEARTBEAT_INTERVAL_MS,
+      timeoutMs: this.HEARTBEAT_TIMEOUT_MS,
+      gap: 'DI-002'
+    });
+    
+    this.heartbeatInterval = setInterval(() => {
+      if (!this.ws || this.state !== WebSocketState.CONNECTED) {
+        return;
+      }
+      
+      // Send ping
+      logger.debug("Sending WebSocket ping", { feedType: this.feedType });
+      this.ws.ping();
+      
+      // Set timeout for pong response
+      this.heartbeatTimeout = setTimeout(() => {
+        logger.warn("WebSocket pong timeout - connection may be dead", {
+          feedType: this.feedType,
+          timeoutMs: this.HEARTBEAT_TIMEOUT_MS,
+          gap: 'DI-002'
+        });
+        
+        // Force reconnect on pong timeout
+        if (this.ws) {
+          this.ws.terminate();
+        }
+      }, this.HEARTBEAT_TIMEOUT_MS);
+    }, this.HEARTBEAT_INTERVAL_MS);
+    
+    // Unref to prevent keeping process alive
+    this.heartbeatInterval.unref();
+  }
+  
+  /**
+   * Stop heartbeat monitoring
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    
+    if (this.heartbeatTimeout) {
+      clearTimeout(this.heartbeatTimeout);
+      this.heartbeatTimeout = null;
+    }
+    
+    logger.debug("Stopped WebSocket heartbeat", { 
+      feedType: this.feedType,
+      gap: 'DI-002'
+    });
   }
 }
