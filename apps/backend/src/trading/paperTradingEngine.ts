@@ -456,9 +456,11 @@ export class PaperTradingEngine {
    * Calculate the actual fill size for an order
    * Simulates partial fills based on configuration to match realistic CLOB behavior
    * 
+   * A-019: Implements realistic partial fill simulation
    * Partial fills occur based on:
    * 1. Configured base probability (partialFillRate)
    * 2. Available liquidity (larger orders relative to liquidity more likely to be partial)
+   * 3. Random fill size between minFillRatio and maxFillRatio
    * 
    * The actual probability is: baseRate + (1 - baseRate) * liquidityRatio
    * This means:
