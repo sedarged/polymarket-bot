@@ -840,10 +840,31 @@ export async function startServer(): Promise<http.Server> {
           shutdown(1);
           return;
         }
+        
         logger.error('Failed to initialize trading client', {
           error: error instanceof Error ? error.message : String(error),
+          audit: 'A-012',
         });
-        logger.warn('Server will continue without trading capabilities');
+        
+        // A-012: In production or live trading mode, fail startup on trading client init failure
+        // This prevents the server from running in a degraded state without clear indication
+        if (config.nodeEnv === 'production' || isLiveTradingEnabled()) {
+          logger.error('CRITICAL: Trading client initialization failed in production/live mode', {
+            nodeEnv: config.nodeEnv,
+            liveTradingEnabled: isLiveTradingEnabled(),
+            audit: 'A-012',
+          });
+          logger.error('Server cannot start without trading capabilities in production/live mode');
+          shutdown(1);
+          return;
+        }
+        
+        // In development mode, continue with degraded state but log clear warning
+        logger.warn('WARNING: Server will continue in DEGRADED MODE without trading capabilities', {
+          nodeEnv: config.nodeEnv,
+          audit: 'A-012',
+        });
+        logger.warn('This is only acceptable for local development/testing');
       });
   }
   
