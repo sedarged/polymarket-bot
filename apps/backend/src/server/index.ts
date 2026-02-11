@@ -846,25 +846,17 @@ export async function startServer(): Promise<http.Server> {
           audit: 'A-012',
         });
         
-        // A-012: In production, fail startup on trading client init failure
+        // A-012: Fail startup when trading client init fails with live trading enabled
         // This prevents the server from running in a degraded state without clear indication
-        // Note: We're already inside isLiveTradingEnabled() block, so only need to check NODE_ENV
-        if (process.env.NODE_ENV === 'production') {
-          logger.error('CRITICAL: Trading client initialization failed in production mode', {
-            nodeEnv: process.env.NODE_ENV,
-            audit: 'A-012',
-          });
-          logger.error('Server cannot start without trading capabilities in production mode');
-          shutdown(1);
-          return;
-        }
-        
-        // In development mode, continue with degraded state but log clear warning
-        logger.warn('WARNING: Server will continue in DEGRADED MODE without trading capabilities', {
+        // Since we're inside isLiveTradingEnabled() block, always fail in this context
+        logger.error('CRITICAL: Trading client initialization failed with live trading enabled', {
           nodeEnv: process.env.NODE_ENV,
+          liveTradingEnabled: true,
           audit: 'A-012',
         });
-        logger.warn('This is only acceptable for local development/testing');
+        logger.error('Server cannot start without trading capabilities when live trading is enabled');
+        shutdown(1);
+        return;
       });
   }
   

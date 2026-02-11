@@ -197,8 +197,8 @@ export const realizedPnl = new promClient.Gauge({
 
 /**
  * Gauge for unrealized PnL (profit and loss)
- * NOTE: Currently not implemented - requires periodic calculation with orderbook data
- * TODO: Implement unrealized PnL tracking if needed for monitoring
+ * NOTE: Currently not implemented - requires periodic calculation with orderbook data.
+ * Implementation would need access to current market prices for open positions.
  */
 export const unrealizedPnl = new promClient.Gauge({
   name: 'polymarket_unrealized_pnl',
