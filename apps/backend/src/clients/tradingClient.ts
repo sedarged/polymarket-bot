@@ -1511,10 +1511,30 @@ export class TradingClient {
     // Group orders by token ID and track net position and cost basis
     const positionMap = new Map<string, { netSize: number; avgPrice: number }>();
 
-    // Process orders with non-zero filled size (including cancelled), in chronological order
+    // A-014: Process ALL orders with non-zero filled size, regardless of status
+    // This includes:
+    // - MATCHED orders (fully filled)
+    // - PARTIALLY_FILLED orders (partially filled)
+    // - OPEN orders with filledSize > 0 (partially filled but still active)
+    // - CANCELLED orders with filledSize > 0 (partially filled before cancellation)
+    // Process in chronological order to maintain accurate cost basis
     const ordersWithFills = this.state.orders
       .filter((order) => Number(order.filledSize || 0) !== 0)
       .sort((a, b) => a.createdAt - b.createdAt);
+    
+    // Log for verification (A-014)
+    const statusBreakdown = ordersWithFills.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    if (ordersWithFills.length > 0) {
+      logger.debug('Recalculating positions from orders with fills', {
+        totalOrders: ordersWithFills.length,
+        statusBreakdown,
+        audit: 'A-014',
+      });
+    }
 
     for (const order of ordersWithFills) {
       const filledSize = Number(order.filledSize || 0);
