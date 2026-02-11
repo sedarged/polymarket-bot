@@ -742,8 +742,20 @@ export class TradingClient {
       // See toUserOrder() for documentation on why this is safe
       const response = await this.client.createOrder(toUserOrder(orderParams));
 
+      // A-013: Strict validation that response contains a valid orderID
+      // Reject orders without valid IDs before adding to state
+      const serverOrderId = response.orderID;
+      if (!serverOrderId || (typeof serverOrderId === 'string' && serverOrderId.trim() === '')) {
+        logger.error('Order creation returned invalid orderID from server', {
+          response,
+          clientOrderId: orderId,
+          audit: 'A-013',
+        });
+        throw new Error('Server returned invalid orderID - order creation failed');
+      }
+
       const order: Order = {
-        orderId: String(response.orderID || orderId),
+        orderId: String(serverOrderId),
         clientOrderId: orderId,
         tokenId: validated.tokenId,
         side: validated.side,
@@ -754,6 +766,15 @@ export class TradingClient {
         filledSize: '0',
         remainingSize: validated.size,
       };
+      
+      // A-013: Final validation before adding to state
+      if (!order.orderId || order.orderId.trim() === '') {
+        logger.error('Attempted to add order with invalid ID to state', {
+          order,
+          audit: 'A-013',
+        });
+        throw new Error('Cannot track order with invalid ID');
+      }
 
       this.state.orders.push(order);
       
@@ -977,8 +998,23 @@ export class TradingClient {
           const prepared = successfullySigned[i];
           
           try {
+            // A-013: Strict validation that response contains a valid orderID
+            const serverOrderId = response?.orderIDs?.[i];
+            if (!serverOrderId || (typeof serverOrderId === 'string' && serverOrderId.trim() === '')) {
+              logger.error('Batch order creation returned invalid orderID from server', {
+                index: i,
+                clientOrderId: prepared.orderId,
+                audit: 'A-013',
+              });
+              failed.push({
+                index: prepared.originalIndex,
+                error: 'Server returned invalid orderID - order creation failed',
+              });
+              continue; // Skip this order - cleanup happens in finally block
+            }
+            
             const order: Order = {
-              orderId: String(response?.orderIDs?.[i] || prepared.orderId),
+              orderId: String(serverOrderId),
               clientOrderId: prepared.orderId,
               tokenId: prepared.validated.tokenId,
               side: prepared.validated.side,
@@ -989,6 +1025,19 @@ export class TradingClient {
               filledSize: '0',
               remainingSize: prepared.validated.size,
             };
+            
+            // A-013: Final validation before adding to state
+            if (!order.orderId || order.orderId.trim() === '') {
+              logger.error('Attempted to add batch order with invalid ID to state', {
+                order,
+                audit: 'A-013',
+              });
+              failed.push({
+                index: prepared.originalIndex,
+                error: 'Cannot track order with invalid ID',
+              });
+              continue; // Skip this order
+            }
 
             this.state.orders.push(order);
             successful.push(order);
@@ -1462,10 +1511,30 @@ export class TradingClient {
     // Group orders by token ID and track net position and cost basis
     const positionMap = new Map<string, { netSize: number; avgPrice: number }>();
 
-    // Process orders with non-zero filled size (including cancelled), in chronological order
+    // A-014: Process ALL orders with non-zero filled size, regardless of status
+    // This includes:
+    // - MATCHED orders (fully filled)
+    // - PARTIALLY_FILLED orders (partially filled)
+    // - OPEN orders with filledSize > 0 (partially filled but still active)
+    // - CANCELLED orders with filledSize > 0 (partially filled before cancellation)
+    // Process in chronological order to maintain accurate cost basis
     const ordersWithFills = this.state.orders
       .filter((order) => Number(order.filledSize || 0) !== 0)
       .sort((a, b) => a.createdAt - b.createdAt);
+    
+    // Log for verification (A-014)
+    const statusBreakdown = ordersWithFills.reduce((acc, order) => {
+      acc[order.status] = (acc[order.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    if (ordersWithFills.length > 0) {
+      logger.debug('Recalculating positions from orders with fills', {
+        totalOrders: ordersWithFills.length,
+        statusBreakdown,
+        audit: 'A-014',
+      });
+    }
 
     for (const order of ordersWithFills) {
       const filledSize = Number(order.filledSize || 0);

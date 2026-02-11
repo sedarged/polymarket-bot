@@ -840,10 +840,23 @@ export async function startServer(): Promise<http.Server> {
           shutdown(1);
           return;
         }
+        
         logger.error('Failed to initialize trading client', {
           error: error instanceof Error ? error.message : String(error),
+          audit: 'A-012',
         });
-        logger.warn('Server will continue without trading capabilities');
+        
+        // A-012: Fail startup when trading client init fails with live trading enabled
+        // This prevents the server from running in a degraded state without clear indication
+        // Since we're inside isLiveTradingEnabled() block, always fail in this context
+        logger.error('CRITICAL: Trading client initialization failed with live trading enabled', {
+          nodeEnv: process.env.NODE_ENV,
+          liveTradingEnabled: true,
+          audit: 'A-012',
+        });
+        logger.error('Server cannot start without trading capabilities when live trading is enabled');
+        shutdown(1);
+        return;
       });
   }
   
@@ -907,9 +920,11 @@ export async function startServer(): Promise<http.Server> {
         rateLimiter.stop();
       }
       
-      // Await market feed service stop (A-017: proper WebSocket cleanup)
+      // A-017: Await market feed service stop for proper WebSocket cleanup
+      // This ensures WebSocket connections are fully closed before server shutdown
+      // marketFeedService.stop() awaits client.close() which properly cleans up timers (A-016)
       await marketFeedService.stop();
-      logger.info('Market feed service stopped');
+      logger.info('Market feed service stopped', { audit: 'A-017' });
       
       // Stop periodic ban-status check (Research §10.1)
       if (banStatusInterval) {

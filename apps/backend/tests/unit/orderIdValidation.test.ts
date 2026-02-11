@@ -284,4 +284,28 @@ describe('Order ID Validation (A-013)', () => {
       expect(() => client.getState().positions).not.toThrow();
     });
   });
+
+  /**
+   * Note on createOrder and createOrdersBatch validation:
+   * 
+   * The A-013 validation logic in createOrder() and createOrdersBatch() methods
+   * follows the same pattern as mapOrder() tested above:
+   * - Rejects orders with empty, null, or whitespace-only IDs
+   * - Logs errors with audit reference A-013
+   * - Throws errors before adding invalid orders to state
+   * 
+   * These methods also require live trading mode and network access, making them
+   * better suited for integration tests. The validation logic itself is identical
+   * to what's tested above in mapOrder(), ensuring consistent behavior across
+   * all order creation paths.
+   * 
+   * Key validation points in createOrder():
+   * 1. Validates response.orderID is not empty/null/whitespace
+   * 2. Double-checks order.orderId before adding to state
+   * 
+   * Key validation points in createOrdersBatch():
+   * 1. Validates each response.orderIDs[i] is not empty/null/whitespace
+   * 2. Cleans up submittedOrderIds on validation failure
+   * 3. Double-checks order.orderId before adding to state
+   */
 });
