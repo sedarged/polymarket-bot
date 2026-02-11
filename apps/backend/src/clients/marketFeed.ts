@@ -41,6 +41,17 @@ export interface MarketFeedOptions {
   reconnectDelay?: number;
   maxReconnectDelay?: number;
   maxReconnectAttempts?: number; // Research §9.3
+  /**
+   * Cache TTL in milliseconds. Addresses A-015.
+   * Uses OrderbookCache default (5000ms) if not specified.
+   * Will be clamped to minimum (100ms) if too low.
+   */
+  cacheTtl?: number;
+  /**
+   * Whether to automatically invalidate stale cache entries. Default: true.
+   * Addresses Sourcery review: Expose autoInvalidate for clarity.
+   */
+  cacheAutoInvalidate?: boolean;
 }
 
 export class MarketFeedClient extends EventEmitter {
@@ -59,7 +70,11 @@ export class MarketFeedClient extends EventEmitter {
   constructor(options: MarketFeedOptions) {
     super();
     this.tokenIds = options.tokenIds;
-    this.cache = new OrderbookCache();
+    // Use single source of truth for default TTL (Sourcery review comment)
+    this.cache = new OrderbookCache({
+      ttl: options.cacheTtl, // Let OrderbookCache apply DEFAULT_CACHE_TTL_MS if undefined
+      autoInvalidate: options.cacheAutoInvalidate ?? true, // Expose for clarity (Sourcery review)
+    });
     this.clobClient = new ClobClient();
 
     this.wsClient = new WebSocketClient({
