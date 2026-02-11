@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.34.0](https://github.com/sedarged/polymarket-bot/compare/v1.33.2...v1.34.0) (2026-02-11)
+
+
+### Features
+
+* add WebSocket heartbeat validation (DI-002) ([c22055c](https://github.com/sedarged/polymarket-bot/commit/c22055c154047072cf60bb3a45506a97b7ec699b))
+* expand trading-specific Prometheus metrics (A-027) ([18c28cf](https://github.com/sedarged/polymarket-bot/commit/18c28cfb0d69354e501ff67c87ba70ffd41c7ef8))
+
+
+### Bug Fixes
+
+* add strict order ID validation at creation time (A-013) ([f2ca321](https://github.com/sedarged/polymarket-bot/commit/f2ca321a691460c4d38fe67ec940b23574f0b914))
+* address follow-up review comments - remove redundancy, fix fail-fast, remove TODO ([24ae187](https://github.com/sedarged/polymarket-bot/commit/24ae187ad4c41b4d2a940929226bbf1444673869))
+* address PR review comments - cleanup, metrics, and logic fixes ([0d88faa](https://github.com/sedarged/polymarket-bot/commit/0d88faa5d99b8c969afa85a0361468c0f2a59c64))
+* ensure reconnect timer cleanup in all close paths (A-016) ([be5174f](https://github.com/sedarged/polymarket-bot/commit/be5174f8eb7093c01330e786bc8cce54736faffd))
+* fail startup on trading client init failure in production (A-012) ([2517c62](https://github.com/sedarged/polymarket-bot/commit/2517c62d55408f2835c5f948fc0c2a6bce233d1b))
+* resolve ESLint peer dependency conflict ([672ae5e](https://github.com/sedarged/polymarket-bot/commit/672ae5efb358cb3430622689aceff82e9b79cf9a))
+
 ## [1.33.2](https://github.com/sedarged/polymarket-bot/compare/v1.33.1...v1.33.2) (2026-02-11)
 
 
