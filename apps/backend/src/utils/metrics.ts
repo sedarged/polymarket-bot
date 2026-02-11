@@ -162,7 +162,7 @@ export const circuitBreakerSuccesses = new promClient.Counter({
 });
 
 // ============================================================================
-// Trading Metrics
+// Trading Metrics (A-027: Trading-specific metrics)
 // ============================================================================
 
 /**
@@ -172,6 +172,99 @@ export const openOrders = new promClient.Gauge({
   name: 'polymarket_open_orders',
   help: 'Current number of open orders',
   labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Gauge for current USDC balance
+ */
+export const usdcBalance = new promClient.Gauge({
+  name: 'polymarket_usdc_balance',
+  help: 'Current USDC balance',
+  labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Gauge for realized PnL (profit and loss)
+ */
+export const realizedPnl = new promClient.Gauge({
+  name: 'polymarket_realized_pnl',
+  help: 'Realized profit and loss in USDC',
+  labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Gauge for unrealized PnL (profit and loss)
+ */
+export const unrealizedPnl = new promClient.Gauge({
+  name: 'polymarket_unrealized_pnl',
+  help: 'Unrealized profit and loss in USDC',
+  labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Gauge for total position value
+ */
+export const positionValue = new promClient.Gauge({
+  name: 'polymarket_position_value',
+  help: 'Total value of all positions in USDC',
+  labelNames: ['mode', 'token_id'], // mode: live/paper, token_id: asset token
+  registers: [register],
+});
+
+/**
+ * Gauge for position size (contracts/shares held)
+ */
+export const positionSize = new promClient.Gauge({
+  name: 'polymarket_position_size',
+  help: 'Number of contracts/shares held in position',
+  labelNames: ['mode', 'token_id', 'side'], // side: LONG/SHORT
+  registers: [register],
+});
+
+/**
+ * Gauge for order fill rate (percentage of orders filled)
+ * Calculate as: (orderFills / ordersTotal) * 100
+ */
+export const orderFillRate = new promClient.Gauge({
+  name: 'polymarket_order_fill_rate_percent',
+  help: 'Percentage of orders that get filled',
+  labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Gauge for order success rate (percentage of successful order submissions)
+ * Calculate as: (successful orders / total attempts) * 100
+ */
+export const orderSuccessRate = new promClient.Gauge({
+  name: 'polymarket_order_success_rate_percent',
+  help: 'Percentage of successful order submissions',
+  labelNames: ['mode'], // mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Counter for partial fills
+ */
+export const partialFills = new promClient.Counter({
+  name: 'polymarket_partial_fills_total',
+  help: 'Total number of partial fills',
+  labelNames: ['side', 'mode'], // side: BUY/SELL, mode: live/paper
+  registers: [register],
+});
+
+/**
+ * Histogram for fill sizes (as percentage of order size)
+ */
+export const fillSizeRatio = new promClient.Histogram({
+  name: 'polymarket_fill_size_ratio',
+  help: 'Ratio of fill size to order size (0.0 to 1.0)',
+  labelNames: ['side', 'mode'],
+  buckets: [0.1, 0.25, 0.5, 0.75, 0.9, 1.0], // 10% to 100% fill
   registers: [register],
 });
 

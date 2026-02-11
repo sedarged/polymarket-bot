@@ -4,6 +4,15 @@ import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
 import { PersistenceService } from './persistenceService';
 import { validateOrderParametersOrThrow, validateOrderWithConstraintsOrThrow, MarketConstraints } from '../utils/orderValidation';
+import { 
+  usdcBalance, 
+  realizedPnl as realizedPnlMetric, 
+  unrealizedPnl as unrealizedPnlMetric,
+  positionSize as positionSizeMetric,
+  positionValue as positionValueMetric,
+  partialFills,
+  fillSizeRatio
+} from '../utils/metrics';
 
 export interface PaperTradingEngineConfig {
   slippage: number; // Base slippage for small orders
@@ -288,6 +297,19 @@ export class PaperTradingEngine {
     if (this.persistenceService) {
       this.persistenceService.saveBalance(this.state.balance, this.state.initialBalance, this.state.realizedPnl);
     }
+
+    // A-027: Update trading metrics
+    usdcBalance.set({ mode: 'paper' }, this.state.balance);
+    realizedPnlMetric.set({ mode: 'paper' }, this.state.realizedPnl);
+    
+    // Track partial fills
+    if (newFilledSize < orderSize) {
+      partialFills.inc({ side: order.side, mode: 'paper' });
+    }
+    
+    // Track fill size ratio
+    const fillRatio = fillSize / orderSize;
+    fillSizeRatio.observe({ side: order.side, mode: 'paper' }, fillRatio);
 
     logger.info('Paper order filled', {
       orderId,
@@ -663,6 +685,27 @@ export class PaperTradingEngine {
       // Also persist balance and PnL changes
       this.persistenceService.saveBalance(this.state.balance, this.state.initialBalance, this.state.realizedPnl);
     }
+    
+    // A-027: Update position metrics after position change
+    this.updatePositionMetrics();
+  }
+  
+  /**
+   * Update position-related metrics (A-027)
+   */
+  private updatePositionMetrics(): void {
+    // Update individual position metrics
+    for (const [tokenId, position] of this.state.positions) {
+      const size = Number(position.size);
+      const avgPrice = Number(position.averagePrice);
+      const side = size > 0 ? 'LONG' : 'SHORT';
+      
+      positionSizeMetric.set({ mode: 'paper', token_id: tokenId, side }, Math.abs(size));
+      positionValueMetric.set({ mode: 'paper', token_id: tokenId }, Math.abs(size) * avgPrice);
+    }
+    
+    // Update realized PnL metric
+    realizedPnlMetric.set({ mode: 'paper' }, this.state.realizedPnl);
   }
 
   /**
