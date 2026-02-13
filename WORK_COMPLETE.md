@@ -521,7 +521,7 @@ npm run lint
 - A-027: ✅ SIGNIFICANTLY IMPROVED (89% → 93%)
 - Documentation: ✅ Accurate
 - Gap awareness: ✅ Complete (46 gaps documented)
-- Implementation plans: ✅ Complete for all 47
+- Implementation plans: ✅ Complete for all 46
 
 ### Audit Findings Status
 - **Critical (P0):** 2 fixed, 1 partial (encrypted mode works)

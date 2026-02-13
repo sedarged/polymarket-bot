@@ -3971,7 +3971,7 @@ a ping, you'll receive an email/SMS alert.
 - Promotion workflow
 - Dashboard integration
 
-#### GAP-047: Online Learning 🟢
+#### GAP-046: Online Learning 🟢
 **Effort:** 1-2 weeks
 
 **Step 1: Design Online Learning Loop (3 days)**
@@ -4114,14 +4114,14 @@ All are straightforward documentation updates:
 | GAP-013 | Multi-Strategy Orchestration | P2 | 3-5 days | 3 | Detailed plan above |
 | GAP-014 | Liquidity Validation | P3 | 3 days | 4 | Detailed plan above |
 | GAP-015 | Deployment Workflow | P2 | 1 day | 3 | Detailed plan above |
-| GAP-015 | Pre-Deploy Script | P3 | 1 day | 4 | Detailed plan above |
-| GAP-016 | DB Backup Script | P3 | 1 day | 4 | Detailed plan above |
-| GAP-017 | UMA Resolution Docs | P3 | 2 hours | 4 | Detailed plan above |
-| GAP-018 | Fee-Rate Checking | P3 | 1 day | 4 | Detailed plan above |
-| GAP-019 | Cost Scenarios | P3 | ✅ DONE | - | Detailed plan above |
-| GAP-020 | .env.example Drift | P2 | ✅ DONE | - | Completed |
-| GAP-021 | ENV_VARIABLE_REF | P2 | ✅ DONE | - | Completed |
-| GAP-022-031 | Documentation Updates | P3 | 2-3 days | 4 | Bulk doc updates |
+| GAP-016 | Pre-Deploy Script | P3 | 1 day | 4 | Detailed plan above |
+| GAP-017 | DB Backup Script | P3 | 1 day | 4 | Detailed plan above |
+| GAP-018 | UMA Resolution Docs | P3 | 2 hours | 4 | Detailed plan above |
+| GAP-019 | Fee-Rate Checking | P3 | 1 day | 4 | Detailed plan above |
+| GAP-020 | Cost Scenarios | P3 | ✅ DONE | - | Detailed plan above |
+| GAP-021 | .env.example Drift | P2 | ✅ DONE | - | Completed |
+| GAP-022 | ENV_VARIABLE_REF | P2 | ✅ DONE | - | Completed |
+| GAP-023-031 | Documentation Updates | P3 | 2-3 days | 4 | Bulk doc updates |
 | GAP-032 | Chaos Tests | P1 | 3 days | 2 | Detailed plan above |
 | GAP-033 | Integration Tests | P2 | 1 week | 3 | Detailed plan above |
 | GAP-034 | Performance Benchmarks | P2 | 2 days | 3 | Detailed plan above |
@@ -4136,7 +4136,7 @@ All are straightforward documentation updates:
 | GAP-043 | Health Monitoring | P3 | 1 day | 4 | Detailed plan above |
 | GAP-044 | Learning System Prod | P2 | 1 week | 3 | Detailed plan above |
 | GAP-045 | Strategy Validation | P3 | 2-3 days | 4 | Detailed plan above |
-| GAP-047 | Online Learning | P3 | 1-2 weeks | 4 | Detailed plan above |
+| GAP-046 | Online Learning | P3 | 1-2 weeks | 4 | Detailed plan above |
 
 **Total:** 46 gaps with complete implementation plans
 
@@ -4264,7 +4264,7 @@ All are straightforward documentation updates:
 **Week 16: Advanced Features**
 - Day 1: GAP-043 - External monitoring
 - Day 2-3: GAP-045 - Strategy validation
-- Day 4-5: GAP-047 - Online learning (initial impl)
+- Day 4-5: GAP-046 - Online learning (initial impl)
 
 **Deliverables:**
 - ✅ All operational scripts
@@ -4867,10 +4867,10 @@ Unit (1200+)                ← Fast, cheap, comprehensive
 | GAP-013 | Multi-Strategy Orchestration | P2 | 3-5 days | GAP-009 | 3 |
 | GAP-014 | Pre-Trade Liquidity Validation | P3 | 3 days | None | 4 |
 | GAP-015 | Deployment Workflow | P2 | 1 day | None | 3 |
-| GAP-015 | Pre-Deployment Script | P3 | 1 day | None | 4 |
-| GAP-016 | DB Backup Script | P3 | 1 day | None | 4 |
-| GAP-017 | UMA Resolution Docs | P3 | 2 hours | None | 4 |
-| GAP-018 | Fee-Rate Checking | P3 | 1 day | None | 4 |
+| GAP-016 | Pre-Deployment Script | P3 | 1 day | None | 4 |
+| GAP-017 | DB Backup Script | P3 | 1 day | None | 4 |
+| GAP-018 | UMA Resolution Docs | P3 | 2 hours | None | 4 |
+| GAP-019 | Fee-Rate Checking | P3 | 1 day | None | 4 |
 | GAP-020 | Cost Scenarios Docs | P3 | 3 hours | None | 4 |
 | GAP-021 | .env.example Drift | P2 | ✅ DONE | None | - |
 | GAP-022 | ENV_VARIABLE_REFERENCE | P2 | ✅ DONE | None | - |
@@ -4897,7 +4897,7 @@ Unit (1200+)                ← Fast, cheap, comprehensive
 | GAP-043 | Health Check Monitoring | P3 | 1 day | None | 4 |
 | GAP-044 | Learning System Production | P2 | 1 week | GAP-003,009 | 3 |
 | GAP-045 | Strategy Validation | P3 | 2-3 days | GAP-012 | 4 |
-| GAP-047 | Online Learning | P3 | 1-2 weeks | GAP-044 | 4 |
+| GAP-046 | Online Learning | P3 | 1-2 weeks | GAP-044 | 4 |
 
 ---
 
@@ -5091,7 +5091,7 @@ For questions or blockers during implementation, consult:
 
 - **GAP-036:** Mutation testing - Nice to have but time-consuming
 - **GAP-038:** Secret rotation - Manual rotation acceptable initially
-- **GAP-047:** Online learning - Advanced feature, not needed initially
+- **GAP-046:** Online learning - Advanced feature, not needed initially
 - **GAP-045:** Strategy validation - Can validate manually initially
 - **GAP-043:** External monitoring - HEARTBEAT_URL already works
 
@@ -5162,7 +5162,7 @@ For questions or blockers during implementation, consult:
 | GAP-001/002 | 2 days | High | ⭐⭐⭐⭐⭐ | Do immediately |
 | GAP-032 | 3 days | High | ⭐⭐⭐⭐⭐ | Do immediately |
 | GAP-015 | 1 day | High | ⭐⭐⭐⭐⭐ | Do immediately |
-| GAP-016/018 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
+| GAP-016/017 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
 | GAP-003/004/005 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
 | GAP-009/010 | 8 days | Very High | ⭐⭐⭐ | Only if multi-strategy |
 | GAP-040 | 5 days | High | ⭐⭐⭐ | If scaling |
@@ -5174,7 +5174,7 @@ For questions or blockers during implementation, consult:
 |-----|--------|--------|-----|----------------|
 | GAP-036 | 3 days | Low | ⭐ | Defer indefinitely |
 | GAP-038 | 5 days | Low | ⭐⭐ | Manual rotation OK |
-| GAP-047 | 2 weeks | Medium | ⭐ | Research project |
+| GAP-046 | 2 weeks | Medium | ⭐ | Research project |
 | GAP-039 | 3 days | Low | ⭐⭐ | Manual reports OK |
 
 ---
@@ -5267,7 +5267,7 @@ This implementation plan provides:
 
 Choose your implementation path based on your needs:
 - **MVP/Single Strategy:** Already done! Maybe add GAP-001/002 for easier config
-- **Small Production:** Add operational gaps (GAP-015, 017, 018, 033)
+- **Small Production:** Add operational gaps (GAP-015, 016, 017, 032)
 - **Enterprise Scale:** Full implementation (all phases)
 
 ---
