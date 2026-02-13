@@ -715,6 +715,7 @@ export function createServer(): http.Server {
 // Used by shutdown to clear periodic timers (Research §9.7, §10.1)
 let banStatusInterval: NodeJS.Timeout | null = null;
 let heartbeatInterval: NodeJS.Timeout | null = null;
+let metricsUpdateInterval: NodeJS.Timeout | null = null;
 
 export async function startServer(): Promise<http.Server> {
   const server = createServer();
@@ -761,6 +762,23 @@ export async function startServer(): Promise<http.Server> {
     });
 
     logger.info('Paper trading mode enabled');
+    
+    // A-027: Start periodic unrealized PnL metric updates for paper trading
+    // Update every 60 seconds with current market prices
+    const METRICS_UPDATE_INTERVAL_MS = 60_000; // 1 minute
+    metricsUpdateInterval = setInterval(() => {
+      if (paperEngine) {
+        const orderbooks = marketFeedService.getAllOrderbooks();
+        if (orderbooks.size > 0) {
+          paperEngine.updatePnlMetrics(orderbooks);
+        }
+      }
+    }, METRICS_UPDATE_INTERVAL_MS);
+    metricsUpdateInterval.unref(); // Don't prevent process exit
+    logger.info('Paper trading metrics update scheduled', {
+      intervalMs: METRICS_UPDATE_INTERVAL_MS,
+      audit: 'A-027',
+    });
   }
 
   // Initialize risk manager (applies to both paper and live trading)
@@ -934,6 +952,11 @@ export async function startServer(): Promise<http.Server> {
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
+      }
+      // Stop metrics update interval (A-027)
+      if (metricsUpdateInterval) {
+        clearInterval(metricsUpdateInterval);
+        metricsUpdateInterval = null;
       }
 
       // Stop periodic reconciliation and clean up (Gap RE-001)

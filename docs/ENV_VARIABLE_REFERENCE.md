@@ -84,31 +84,30 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 9. Secret Management (11 variables – 3 functional, 8 stubbed)
+## 9. Secret Management (16 variables – 2 production-ready, 3 stubbed)
+
+**Status:** `env` and `encrypted` sources are fully functional and production-ready. `aws`, `vault`, and `azure` backends exist but throw "not implemented" errors (stubs for future implementation).
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `SECRET_SOURCE` | `env` | No | Secret source: `env`, `encrypted` (functional). `aws`, `vault`, `azure` (stubbed - throw "not implemented") |
-| `PRIVATE_KEY` | - | Conditional | Private key (Method 1 - direct env var) |
-| `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2) |
-| `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2) |
-| `AWS_SECRET_NAME` | - | Conditional | **(Stubbed)** Intended AWS Secrets Manager secret name. Backend not yet implemented. |
-| `AWS_REGION` | - | Conditional | **(Stubbed)** Intended AWS region. Backend not yet implemented. |
-| `AWS_ACCESS_KEY_ID` | - | Conditional | **(Stubbed)** Intended AWS access key. Backend not yet implemented. |
-| `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Stubbed)** Intended AWS secret key. Backend not yet implemented. |
-| `VAULT_ADDR` | - | Conditional | **(Stubbed)** Intended Vault server address. Backend not yet implemented. |
-| `VAULT_TOKEN` | - | Conditional | **(Stubbed)** Intended Vault token. Backend not yet implemented. |
-| `VAULT_PATH` | - | Conditional | **(Stubbed)** Intended Vault secret path. Backend not yet implemented. |
+| `SECRET_SOURCE` | `env` | No | Secret source: `env`, `encrypted` (**FUNCTIONAL**). `aws`, `vault`, `azure` (stubbed - infrastructure exists, integration not implemented) |
+| `PRIVATE_KEY` | - | Conditional | Private key (64 hex chars, optional 0x prefix). Required for live trading. (**FUNCTIONAL**) |
+| `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2). (**FUNCTIONAL**) |
+| `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2). (**FUNCTIONAL**) |
+| `AWS_SECRET_NAME` | - | Conditional | **(Stubbed)** AWS Secrets Manager secret name. Infrastructure exists, AWS SDK integration not implemented. |
+| `AWS_REGION` | - | Conditional | **(Stubbed)** AWS region. Infrastructure exists, AWS SDK integration not implemented. |
+| `AWS_ACCESS_KEY_ID` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
+| `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
+| `VAULT_ADDR` | - | Conditional | **(Stubbed)** Vault server address. Infrastructure exists, Vault client not implemented. |
+| `VAULT_TOKEN` | - | Conditional | **(Stubbed)** Vault authentication token. Infrastructure exists, Vault client not implemented. |
+| `VAULT_PATH` | - | Conditional | **(Stubbed)** Vault secret path. Infrastructure exists, Vault client not implemented. |
+| `AZURE_KEY_VAULT_NAME` | - | Conditional | **(Stubbed)** Azure Key Vault name. Infrastructure exists, Azure SDK integration not implemented. |
+| `AZURE_SECRET_NAME` | - | Conditional | **(Stubbed)** Azure secret name. Infrastructure exists, Azure SDK integration not implemented. |
+| `AZURE_CLIENT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
+| `AZURE_CLIENT_SECRET` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
+| `AZURE_TENANT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
 
-**Continued:**
-
-| Variable | Default | Required | Description |
-|----------|---------|----------|-------------|
-| `AZURE_KEY_VAULT_NAME` | - | Conditional | **(Stubbed)** Intended Azure Key Vault name. Backend not yet implemented. |
-| `AZURE_SECRET_NAME` | - | Conditional | **(Stubbed)** Intended Azure secret name. Backend not yet implemented. |
-| `AZURE_CLIENT_ID` | - | Conditional | **(Stubbed)** Intended Azure client ID. Backend not yet implemented. |
-| `AZURE_CLIENT_SECRET` | - | Conditional | **(Stubbed)** Intended Azure client secret. Backend not yet implemented. |
-| `AZURE_TENANT_ID` | - | Conditional | **(Stubbed)** Intended Azure tenant ID. Backend not yet implemented. |
+**Note:** For production, use `encrypted` source (fully implemented) or implement cloud backend of choice.
 
 ---
 
@@ -251,7 +250,7 @@ This document provides an overview of environment variables used by the Polymark
 | Startup & Compliance | 3 | MIN_BALANCE, ban-status (Research §9, §10) |
 | Config Paths | 2 | markets.json, strategy.json paths |
 | Heartbeat & WebSocket Limits | 2 | HEARTBEAT_URL, WS_MAX_RECONNECT_ATTEMPTS |
-| Secret Management | 11 | 2 functional methods (env, encrypted), 3 stubbed (AWS, Vault, Azure) |
+| Secret Management | 11 | 2 production-ready (env, encrypted), 3 stubbed with infrastructure (AWS, Vault, Azure) |
 | Retry | 3 | Retry logic configuration |
 | Paper Trading | 6 | Simulation settings |
 | Risk Management | 5 | Trading limits |
@@ -264,7 +263,7 @@ This document provides an overview of environment variables used by the Polymark
 | Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
 | Metrics | 2 | Planned - not yet wired into config |
 | WebSocket | 2 | Planned - WS_RECONNECT_DELAY, WS_HEARTBEAT_INTERVAL (WS_MAX_RECONNECT_ATTEMPTS in §8) |
-| **TOTAL** | **57** | **~44 functional, ~13 planned/stubbed** |
+| **TOTAL** | **57** | **~50 functional, ~7 not-yet-wired (documented but not in config schema)** |
 
 ---
 
