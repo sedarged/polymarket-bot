@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.34.1](https://github.com/sedarged/polymarket-bot/compare/v1.34.0...v1.34.1) (2026-02-13)
+
+
+### Bug Fixes
+
+* complete gap renumbering in IMPLEMENTATION_PLAN.md ([a40c6f5](https://github.com/sedarged/polymarket-bot/commit/a40c6f582d0a573efcbb815e3a9d2f56621c3e6c))
+* remove incorrect GAP-015 and update all gap counts ([825c2ef](https://github.com/sedarged/polymarket-bot/commit/825c2ef6000cd6556df3b29cda7d9b2737318053))
+
 ## [1.34.0](https://github.com/sedarged/polymarket-bot/compare/v1.33.2...v1.34.0) (2026-02-11)
 
 
