@@ -1152,7 +1152,7 @@ Similar to GAP-001 but for strategy.json. Key differences:
 
 ---
 
-### GAP-033: Add Chaos Engineering Tests 🟠
+### GAP-032: Add Chaos Engineering Tests 🟠
 **Priority:** P1 (High)  
 **Effort:** 3 days  
 **Dependencies:** None
@@ -1371,7 +1371,7 @@ describe('API Chaos Tests', () => {
 
 ---
 
-### GAP-041: Infrastructure as Code 🟠
+### GAP-040: Infrastructure as Code 🟠
 **Priority:** P1 (High)  
 **Effort:** 3-5 days  
 **Dependencies:** None
@@ -2211,11 +2211,11 @@ export function registerValidateStrategy(program: Command): void {
 
 ---
 
-### GAP-033 Details Already Covered Above
+### GAP-032 Details Already Covered Above
 
 ---
 
-### GAP-041 Details Already Covered Above
+### GAP-040 Details Already Covered Above
 
 ---
 
@@ -2525,7 +2525,7 @@ export class PortfolioAllocator {
 
 ---
 
-### GAP-016: Deployment Workflow 🟡
+### GAP-015: Deployment Workflow 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 1 day
 
@@ -2678,7 +2678,7 @@ echo "Deployment complete!"
 
 ---
 
-### GAP-034: Integration Test Coverage 🟡
+### GAP-033: Integration Test Coverage 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 1 week
 
@@ -2799,7 +2799,7 @@ describe('Performance Tests', () => {
 
 ---
 
-### GAP-035: Performance Benchmarks 🟡
+### GAP-034: Performance Benchmarks 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 2 days
 
@@ -2890,7 +2890,7 @@ jobs:
 
 ---
 
-### GAP-038: Implement Cloud Secret Backends 🟡
+### GAP-037: Implement Cloud Secret Backends 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 1 week (3 days per backend)
 
@@ -3019,7 +3019,7 @@ describe('AWS Secrets Manager Integration', () => {
 
 ---
 
-### GAP-042: Container Registry Workflow 🟡
+### GAP-041: Container Registry Workflow 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 1 day
 
@@ -3124,10 +3124,10 @@ docker run -d \\
 
 ---
 
-### GAP-043: Staging Environment 🟡
+### GAP-042: Staging Environment 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 2 days  
-**Dependencies:** GAP-041 (IaC)
+**Dependencies:** GAP-040 (IaC)
 
 #### Step-by-Step Implementation
 
@@ -3179,7 +3179,7 @@ describe('Staging Smoke Tests', () => {
 
 ---
 
-### GAP-045: Learning System Production-Ready 🟡
+### GAP-044: Learning System Production-Ready 🟡
 **Priority:** P2 (Medium)  
 **Effort:** 1 week  
 **Dependencies:** GAP-003, GAP-009
@@ -3258,7 +3258,7 @@ Remaining work:
 - Update any remaining "NOT YET IMPLEMENTED" markers
 - Cross-reference with config schema
 
-#### GAP-019: UMA Resolution Documentation 🟢
+#### GAP-018: UMA Resolution Documentation 🟢
 **Effort:** 2 hours
 
 **Step 1: Research UMA Process**
@@ -3295,7 +3295,7 @@ const redeemed = await clobClient.redeemWinnings(conditionId);
 - Track unredeemed value in metrics
 ```
 
-#### GAP-020: Fee-Rate Checking 🟢
+#### GAP-019: Fee-Rate Checking 🟢
 **Effort:** 1 day
 
 **Step 1: Add Fee-Rate Endpoint Call (4 hours)**
@@ -3369,7 +3369,7 @@ const redeemed = await clobClient.redeemWinnings(conditionId);
 - ✅ Documentation updated
 - ✅ Tests pass
 
-#### GAP-021: Cost Scenarios Documentation 🟢
+#### GAP-020: Cost Scenarios Documentation 🟢
 **Effort:** 3 hours
 
 **Step 1: Create Cost Document (3 hours)**
@@ -3445,7 +3445,7 @@ Based on Research §3
 - ✅ All scenarios documented
 - ✅ Linked from main README
 
-#### GAP-017: Pre-Deployment Verification Script 🟢
+#### GAP-016: Pre-Deployment Verification Script 🟢
 **Effort:** 1 day
 
 **Step 1: Create Script (0.5 days)**
@@ -3559,7 +3559,7 @@ Update docs/deploy.md with pre-deployment checklist
 - ✅ Warnings for non-critical
 - ✅ Documentation updated
 
-#### GAP-018: DB Backup Script 🟢
+#### GAP-017: DB Backup Script 🟢
 **Effort:** 1 day
 
 **Step 1: Create Backup Script (0.5 days)**
@@ -3661,24 +3661,24 @@ Document crontab setup:
 - ✅ Runbook updated
 - ✅ Cron example provided
 
-#### GAP-024 through GAP-032: Documentation Updates 🟢
+#### GAP-023 through GAP-031: Documentation Updates 🟢
 **Total Effort:** 1-2 days
 
 These are all documentation-only updates:
 
-1. **GAP-024:** Clarify secret management status
-2. **GAP-025:** Update research comparison
-3. **GAP-026:** Update gap analysis
-4. **GAP-027:** Update architecture docs
-5. **GAP-028:** Add backup procedures to runbook
-6. **GAP-029:** Add UMA resolution to runbook
-7. **GAP-030:** Add markets.json examples
-8. **GAP-031:** Update master plan
-9. **GAP-032:** Clarify PR plan
+1. **GAP-023:** Clarify secret management status
+2. **GAP-024:** Update research comparison
+3. **GAP-025:** Update gap analysis
+4. **GAP-026:** Update architecture docs
+5. **GAP-027:** Add backup procedures to runbook
+6. **GAP-028:** Add UMA resolution to runbook
+7. **GAP-029:** Add markets.json examples
+8. **GAP-030:** Update master plan
+9. **GAP-031:** Clarify PR plan
 
 **Implementation:** Systematic doc review and updates
 
-#### GAP-036: Test Data Generators 🟢
+#### GAP-035: Test Data Generators 🟢
 **Effort:** 2 days
 
 **Step 1: Create Factory Module (1 day)**
@@ -3798,7 +3798,7 @@ export class TestDataFactory {
 - ✅ Existing tests refactored
 - ✅ Documentation added
 
-#### GAP-037: Mutation Testing 🟢
+#### GAP-036: Mutation Testing 🟢
 **Effort:** 3 days
 
 **Step 1: Install Stryker (0.5 days)**
@@ -3850,7 +3850,7 @@ npm run mutation-test
 - ✅ CI integration (optional)
 - ✅ Documentation added
 
-#### GAP-039: Secrets Rotation 🟢
+#### GAP-038: Secrets Rotation 🟢
 **Effort:** 3-5 days
 
 **Step 1: Design Rotation Strategy (1 day)**
@@ -3888,7 +3888,7 @@ npm run mutation-test
 - ✅ Tool implemented
 - ✅ Tests pass
 
-#### GAP-040: Compliance Reporting 🟢
+#### GAP-039: Compliance Reporting 🟢
 **Effort:** 2-3 days
 
 **Step 1: Create Report Generator (2 days)**
@@ -3923,7 +3923,7 @@ export class ComplianceReporter {
 - ✅ CLI commands
 - ✅ Documentation
 
-#### GAP-044: External Health Check Monitoring 🟢
+#### GAP-043: External Health Check Monitoring 🟢
 **Effort:** 1 day
 
 **Step 1: Setup External Monitoring (0.5 days)**
@@ -3961,7 +3961,7 @@ a ping, you'll receive an email/SMS alert.
 - ✅ Status page available
 - ✅ Alerting configured
 
-#### GAP-046: Strategy Validation Framework 🟢
+#### GAP-045: Strategy Validation Framework 🟢
 **Effort:** 2-3 days  
 **Dependencies:** GAP-012
 
@@ -3971,7 +3971,7 @@ a ping, you'll receive an email/SMS alert.
 - Promotion workflow
 - Dashboard integration
 
-#### GAP-047: Online Learning 🟢
+#### GAP-046: Online Learning 🟢
 **Effort:** 1-2 weeks
 
 **Step 1: Design Online Learning Loop (3 days)**
@@ -4084,7 +4084,7 @@ export class LiquidityChecker {
 
 **Step 3: Tests and Documentation (0.5 days)**
 
-### GAP-023 through GAP-032: Documentation Cleanup
+### GAP-022 through GAP-031: Documentation Cleanup
 **Effort:** 2-3 days total
 
 All are straightforward documentation updates:
@@ -4113,33 +4113,32 @@ All are straightforward documentation updates:
 | GAP-012 | Strategy Backtesting | P1 | 1 week | 2 | Detailed plan above |
 | GAP-013 | Multi-Strategy Orchestration | P2 | 3-5 days | 3 | Detailed plan above |
 | GAP-014 | Liquidity Validation | P3 | 3 days | 4 | Detailed plan above |
-| GAP-015 | Prometheus/Grafana | P2 | ✅ DONE | - | Already enabled |
-| GAP-016 | Deployment Workflow | P2 | 1 day | 3 | Detailed plan above |
-| GAP-017 | Pre-Deploy Script | P3 | 1 day | 4 | Detailed plan above |
-| GAP-018 | DB Backup Script | P3 | 1 day | 4 | Detailed plan above |
-| GAP-019 | UMA Resolution Docs | P3 | 2 hours | 4 | Detailed plan above |
-| GAP-020 | Fee-Rate Checking | P3 | 1 day | 4 | Detailed plan above |
-| GAP-021 | Cost Scenarios | P3 | ✅ DONE | - | Detailed plan above |
-| GAP-022 | .env.example Drift | P2 | ✅ DONE | - | Completed |
-| GAP-023 | ENV_VARIABLE_REF | P2 | ✅ DONE | - | Completed |
-| GAP-024-032 | Documentation Updates | P3 | 2-3 days | 4 | Bulk doc updates |
-| GAP-033 | Chaos Tests | P1 | 3 days | 2 | Detailed plan above |
-| GAP-034 | Integration Tests | P2 | 1 week | 3 | Detailed plan above |
-| GAP-035 | Performance Benchmarks | P2 | 2 days | 3 | Detailed plan above |
-| GAP-036 | Test Data Factories | P3 | 2 days | 4 | Detailed plan above |
-| GAP-037 | Mutation Testing | P3 | 3 days | 4 | Detailed plan above |
-| GAP-038 | Cloud Secret Backends | P2 | 1 week | 3 | Detailed plan above |
-| GAP-039 | Secrets Rotation | P3 | 3-5 days | 4 | Detailed plan above |
-| GAP-040 | Compliance Reporting | P3 | 2-3 days | 4 | Detailed plan above |
-| GAP-041 | Infrastructure as Code | P1 | 3-5 days | 2 | Detailed plan above |
-| GAP-042 | Container Registry | P2 | 1 day | 3 | Detailed plan above |
-| GAP-043 | Staging Environment | P2 | 2 days | 3 | Detailed plan above |
-| GAP-044 | Health Monitoring | P3 | 1 day | 4 | Detailed plan above |
-| GAP-045 | Learning System Prod | P2 | 1 week | 3 | Detailed plan above |
-| GAP-046 | Strategy Validation | P3 | 2-3 days | 4 | Detailed plan above |
-| GAP-047 | Online Learning | P3 | 1-2 weeks | 4 | Detailed plan above |
+| GAP-015 | Deployment Workflow | P2 | 1 day | 3 | Detailed plan above |
+| GAP-016 | Pre-Deploy Script | P3 | 1 day | 4 | Detailed plan above |
+| GAP-017 | DB Backup Script | P3 | 1 day | 4 | Detailed plan above |
+| GAP-018 | UMA Resolution Docs | P3 | 2 hours | 4 | Detailed plan above |
+| GAP-019 | Fee-Rate Checking | P3 | 1 day | 4 | Detailed plan above |
+| GAP-020 | Cost Scenarios | P3 | ✅ DONE | - | Detailed plan above |
+| GAP-021 | .env.example Drift | P2 | ✅ DONE | - | Completed |
+| GAP-022 | ENV_VARIABLE_REF | P2 | ✅ DONE | - | Completed |
+| GAP-023-031 | Documentation Updates | P3 | 2-3 days | 4 | Bulk doc updates |
+| GAP-032 | Chaos Tests | P1 | 3 days | 2 | Detailed plan above |
+| GAP-033 | Integration Tests | P2 | 1 week | 3 | Detailed plan above |
+| GAP-034 | Performance Benchmarks | P2 | 2 days | 3 | Detailed plan above |
+| GAP-035 | Test Data Factories | P3 | 2 days | 4 | Detailed plan above |
+| GAP-036 | Mutation Testing | P3 | 3 days | 4 | Detailed plan above |
+| GAP-037 | Cloud Secret Backends | P2 | 1 week | 3 | Detailed plan above |
+| GAP-038 | Secrets Rotation | P3 | 3-5 days | 4 | Detailed plan above |
+| GAP-039 | Compliance Reporting | P3 | 2-3 days | 4 | Detailed plan above |
+| GAP-040 | Infrastructure as Code | P1 | 3-5 days | 2 | Detailed plan above |
+| GAP-041 | Container Registry | P2 | 1 day | 3 | Detailed plan above |
+| GAP-042 | Staging Environment | P2 | 2 days | 3 | Detailed plan above |
+| GAP-043 | Health Monitoring | P3 | 1 day | 4 | Detailed plan above |
+| GAP-044 | Learning System Prod | P2 | 1 week | 3 | Detailed plan above |
+| GAP-045 | Strategy Validation | P3 | 2-3 days | 4 | Detailed plan above |
+| GAP-046 | Online Learning | P3 | 1-2 weeks | 4 | Detailed plan above |
 
-**Total:** 47 gaps with complete implementation plans
+**Total:** 46 gaps with complete implementation plans
 
 ---
 
@@ -4178,14 +4177,14 @@ All are straightforward documentation updates:
 **Week 3:**
 - Day 1: GAP-001 - Markets config loading
 - Day 2: GAP-002 - Strategy config loading
-- Day 3-5: GAP-033 - Chaos engineering tests (WebSocket)
+- Day 3-5: GAP-032 - Chaos engineering tests (WebSocket)
 
 **Week 4:**
-- Day 1-2: GAP-033 - Chaos tests (API failures, DB)
-- Day 3-5: GAP-041 - Terraform infrastructure (AWS)
+- Day 1-2: GAP-032 - Chaos tests (API failures, DB)
+- Day 3-5: GAP-040 - Terraform infrastructure (AWS)
 
 **Week 5:**
-- Day 1-2: GAP-041 - Terraform complete (monitoring, alarms)
+- Day 1-2: GAP-040 - Terraform complete (monitoring, alarms)
 - Day 3-4: GAP-011 - Strategy hot-reload
 - Day 5: Testing and integration
 
@@ -4212,26 +4211,26 @@ All are straightforward documentation updates:
 - Day 4-5: Testing and validation
 
 **Week 8: Deployment & Operations**
-- Day 1: GAP-016 - Deployment workflow
-- Day 2: GAP-042 - Container registry workflow
-- Day 3-4: GAP-043 - Staging environment
+- Day 1: GAP-015 - Deployment workflow
+- Day 2: GAP-041 - Container registry workflow
+- Day 3-4: GAP-042 - Staging environment
 - Day 5: Testing deployment pipeline
 
 **Week 9: Integration Testing**
-- Day 1-5: GAP-034 - E2E and integration tests
+- Day 1-5: GAP-033 - E2E and integration tests
 
 **Week 10: Cloud Secrets**
-- Day 1-2: GAP-038 - AWS Secrets Manager
-- Day 3-4: GAP-038 - Azure Key Vault
-- Day 5: GAP-038 - HashiCorp Vault
+- Day 1-2: GAP-037 - AWS Secrets Manager
+- Day 3-4: GAP-037 - Azure Key Vault
+- Day 5: GAP-037 - HashiCorp Vault
 
 **Week 11: Portfolio & Learning**
 - Day 1-3: GAP-013 - Multi-strategy orchestration
-- Day 4-5: GAP-045 - Learning system production prep
+- Day 4-5: GAP-044 - Learning system production prep
 
 **Week 12: Performance & Monitoring**
-- Day 1-2: GAP-035 - Performance benchmarks
-- Day 3: GAP-045 - Learning system completion
+- Day 1-2: GAP-034 - Performance benchmarks
+- Day 3: GAP-044 - Learning system completion
 - Day 4-5: Integration and testing
 
 **Deliverables:**
@@ -4248,24 +4247,24 @@ All are straightforward documentation updates:
 **Objective:** Complete nice-to-haves, polish documentation
 
 **Week 13: Documentation & Scripts**
-- Day 1: GAP-017 - Pre-deployment script
-- Day 2: GAP-018 - Backup/restore scripts
-- Day 3: GAP-019, GAP-020, GAP-021 - Documentation
-- Day 4: GAP-024-032 - Bulk doc updates
+- Day 1: GAP-016 - Pre-deployment script
+- Day 2: GAP-017 - Backup/restore scripts
+- Day 3: GAP-018, GAP-019, GAP-020 - Documentation
+- Day 4: GAP-023-032 - Bulk doc updates
 - Day 5: Review and polish
 
 **Week 14: Testing Enhancements**
-- Day 1-2: GAP-036 - Test data factories
-- Day 3-5: GAP-037 - Mutation testing
+- Day 1-2: GAP-035 - Test data factories
+- Day 3-5: GAP-036 - Mutation testing
 
 **Week 15: Security & Compliance**
-- Day 1-3: GAP-039 - Secrets rotation
-- Day 4-5: GAP-040 - Compliance reporting
+- Day 1-3: GAP-038 - Secrets rotation
+- Day 4-5: GAP-039 - Compliance reporting
 
 **Week 16: Advanced Features**
-- Day 1: GAP-044 - External monitoring
-- Day 2-3: GAP-046 - Strategy validation
-- Day 4-5: GAP-047 - Online learning (initial impl)
+- Day 1: GAP-043 - External monitoring
+- Day 2-3: GAP-045 - Strategy validation
+- Day 4-5: GAP-046 - Online learning (initial impl)
 
 **Deliverables:**
 - ✅ All operational scripts
@@ -4291,22 +4290,22 @@ Some gaps can be worked on in parallel:
 - Quick wins
 
 ### Workstream C: Testing (Can Parallelize)
-- GAP-033, GAP-034, GAP-035, GAP-036, GAP-037
+- GAP-032, GAP-033, GAP-034, GAP-035, GAP-036
 - Can be done independently
 - High value for quality
 
 ### Workstream D: Operations (Can Parallelize)
-- GAP-016, GAP-017, GAP-018, GAP-041, GAP-042, GAP-043
+- GAP-015, GAP-016, GAP-017, GAP-040, GAP-041, GAP-042
 - Infrastructure and deployment
 - Can work alongside development
 
 ### Workstream E: Documentation (Can Parallelize)
-- GAP-019, GAP-020, GAP-021, GAP-024-032
+- GAP-018, GAP-019, GAP-020, GAP-023-032
 - Pure documentation
 - Quick wins, no code changes
 
 ### Workstream F: Security (Semi-Independent)
-- GAP-038, GAP-039, GAP-040
+- GAP-037, GAP-038, GAP-039
 - Important but not blocking
 - Can be done while other work continues
 
@@ -4867,39 +4866,38 @@ Unit (1200+)                ← Fast, cheap, comprehensive
 | GAP-012 | Strategy Backtesting | P1 | 1 week | GAP-009 | 2 |
 | GAP-013 | Multi-Strategy Orchestration | P2 | 3-5 days | GAP-009 | 3 |
 | GAP-014 | Pre-Trade Liquidity Validation | P3 | 3 days | None | 4 |
-| GAP-015 | Prometheus/Grafana Enabled | P2 | ✅ DONE | None | - |
-| GAP-016 | Deployment Workflow | P2 | 1 day | None | 3 |
-| GAP-017 | Pre-Deployment Script | P3 | 1 day | None | 4 |
-| GAP-018 | DB Backup Script | P3 | 1 day | None | 4 |
-| GAP-019 | UMA Resolution Docs | P3 | 2 hours | None | 4 |
-| GAP-020 | Fee-Rate Checking | P3 | 1 day | None | 4 |
-| GAP-021 | Cost Scenarios Docs | P3 | 3 hours | None | 4 |
-| GAP-022 | .env.example Drift | P2 | ✅ DONE | None | - |
-| GAP-023 | ENV_VARIABLE_REFERENCE | P2 | ✅ DONE | None | - |
-| GAP-024 | Secret Management Clarity | P3 | 1 hour | None | 4 |
-| GAP-025 | Research Comparison Update | P3 | 2 hours | None | 4 |
-| GAP-026 | Gap Analysis Update | P3 | 2 hours | None | 4 |
-| GAP-027 | Architecture Docs Update | P3 | 3 hours | None | 4 |
-| GAP-028 | Runbook Backup Procedures | P3 | 2 hours | GAP-018 | 4 |
-| GAP-029 | Runbook UMA Resolution | P3 | 1 hour | GAP-019 | 4 |
-| GAP-030 | Examples markets.json | P3 | 1 hour | GAP-001 | 4 |
-| GAP-031 | Master Plan Update | P3 | 1 hour | None | 4 |
-| GAP-032 | Small PR Plan Clarification | P3 | 0.5 hours | None | 4 |
-| GAP-033 | Chaos Engineering Tests | P1 | 3 days | None | 2 |
-| GAP-034 | Integration Test Coverage | P2 | 1 week | None | 3 |
-| GAP-035 | Performance Benchmarks | P2 | 2 days | None | 3 |
-| GAP-036 | Test Data Generators | P3 | 2 days | None | 4 |
-| GAP-037 | Mutation Testing | P3 | 3 days | None | 4 |
-| GAP-038 | Cloud Secret Backends | P2 | 1 week | None | 3 |
-| GAP-039 | Secrets Rotation | P3 | 3-5 days | GAP-038 | 4 |
-| GAP-040 | Compliance Reporting | P3 | 2-3 days | None | 4 |
-| GAP-041 | Infrastructure as Code | P1 | 3-5 days | None | 2 |
-| GAP-042 | Container Registry | P2 | 1 day | None | 3 |
-| GAP-043 | Staging Environment | P2 | 2 days | GAP-041 | 3 |
-| GAP-044 | Health Check Monitoring | P3 | 1 day | None | 4 |
-| GAP-045 | Learning System Production | P2 | 1 week | GAP-003,009 | 3 |
-| GAP-046 | Strategy Validation | P3 | 2-3 days | GAP-012 | 4 |
-| GAP-047 | Online Learning | P3 | 1-2 weeks | GAP-045 | 4 |
+| GAP-015 | Deployment Workflow | P2 | 1 day | None | 3 |
+| GAP-016 | Pre-Deployment Script | P3 | 1 day | None | 4 |
+| GAP-017 | DB Backup Script | P3 | 1 day | None | 4 |
+| GAP-018 | UMA Resolution Docs | P3 | 2 hours | None | 4 |
+| GAP-019 | Fee-Rate Checking | P3 | 1 day | None | 4 |
+| GAP-020 | Cost Scenarios Docs | P3 | 3 hours | None | 4 |
+| GAP-021 | .env.example Drift | P2 | ✅ DONE | None | - |
+| GAP-022 | ENV_VARIABLE_REFERENCE | P2 | ✅ DONE | None | - |
+| GAP-023 | Secret Management Clarity | P3 | 1 hour | None | 4 |
+| GAP-024 | Research Comparison Update | P3 | 2 hours | None | 4 |
+| GAP-025 | Gap Analysis Update | P3 | 2 hours | None | 4 |
+| GAP-026 | Architecture Docs Update | P3 | 3 hours | None | 4 |
+| GAP-027 | Runbook Backup Procedures | P3 | 2 hours | GAP-017 | 4 |
+| GAP-028 | Runbook UMA Resolution | P3 | 1 hour | GAP-018 | 4 |
+| GAP-029 | Examples markets.json | P3 | 1 hour | GAP-001 | 4 |
+| GAP-030 | Master Plan Update | P3 | 1 hour | None | 4 |
+| GAP-031 | Small PR Plan Clarification | P3 | 0.5 hours | None | 4 |
+| GAP-032 | Chaos Engineering Tests | P1 | 3 days | None | 2 |
+| GAP-033 | Integration Test Coverage | P2 | 1 week | None | 3 |
+| GAP-034 | Performance Benchmarks | P2 | 2 days | None | 3 |
+| GAP-035 | Test Data Generators | P3 | 2 days | None | 4 |
+| GAP-036 | Mutation Testing | P3 | 3 days | None | 4 |
+| GAP-037 | Cloud Secret Backends | P2 | 1 week | None | 3 |
+| GAP-038 | Secrets Rotation | P3 | 3-5 days | GAP-037 | 4 |
+| GAP-039 | Compliance Reporting | P3 | 2-3 days | None | 4 |
+| GAP-040 | Infrastructure as Code | P1 | 3-5 days | None | 2 |
+| GAP-041 | Container Registry | P2 | 1 day | None | 3 |
+| GAP-042 | Staging Environment | P2 | 2 days | GAP-040 | 3 |
+| GAP-043 | Health Check Monitoring | P3 | 1 day | None | 4 |
+| GAP-044 | Learning System Production | P2 | 1 week | GAP-003,009 | 3 |
+| GAP-045 | Strategy Validation | P3 | 2-3 days | GAP-012 | 4 |
+| GAP-046 | Online Learning | P3 | 1-2 weeks | GAP-044 | 4 |
 
 ---
 
@@ -4913,8 +4911,8 @@ Unit (1200+)                ← Fast, cheap, comprehensive
 ### Week 3-5: Phase 2 (High Priority) - Part 1
 - GAP-001: Markets Config (1 day)
 - GAP-002: Strategy Config (1 day)
-- GAP-033: Chaos Tests (3 days)
-- GAP-041: Infrastructure as Code (5 days)
+- GAP-032: Chaos Tests (3 days)
+- GAP-040: Infrastructure as Code (5 days)
 - GAP-011: Strategy Hot-Reload (2 days)
 
 ### Week 6-8: Phase 2 (High Priority) - Part 2
@@ -5040,17 +5038,17 @@ For questions or blockers during implementation, consult:
    - Quick win with high impact
    - Already have example files
 
-2. **GAP-033:** Add chaos engineering tests (3 days)
+2. **GAP-032:** Add chaos engineering tests (3 days)
    - Critical for production confidence
    - Tests real failure scenarios
    - Prevents costly outages
 
-3. **GAP-016:** Add deployment workflow (1 day)
+3. **GAP-015:** Add deployment workflow (1 day)
    - Automates deployment
    - Reduces human error
    - Enables CI/CD
 
-4. **GAP-017 + GAP-018:** Pre-deploy script and backups (2 days)
+4. **GAP-016 + GAP-017:** Pre-deploy script and backups (2 days)
    - Prevents bad deployments
    - Protects data
    - Quick operational wins
@@ -5073,12 +5071,12 @@ For questions or blockers during implementation, consult:
    - Makes system extensible
    - Required for competitive edge
 
-2. **GAP-041:** Infrastructure as Code (3-5 days)
+2. **GAP-040:** Infrastructure as Code (3-5 days)
    - Reproducible deployments
    - Version-controlled infrastructure
    - Enables multi-environment
 
-3. **GAP-038:** Cloud secret backends (1 week)
+3. **GAP-037:** Cloud secret backends (1 week)
    - Production-grade security
    - Enables enterprise deployment
    - Compliance requirement
@@ -5091,11 +5089,11 @@ For questions or blockers during implementation, consult:
 
 **Safe to defer or skip entirely:**
 
-- **GAP-037:** Mutation testing - Nice to have but time-consuming
-- **GAP-039:** Secret rotation - Manual rotation acceptable initially
-- **GAP-047:** Online learning - Advanced feature, not needed initially
-- **GAP-046:** Strategy validation - Can validate manually initially
-- **GAP-044:** External monitoring - HEARTBEAT_URL already works
+- **GAP-036:** Mutation testing - Nice to have but time-consuming
+- **GAP-038:** Secret rotation - Manual rotation acceptable initially
+- **GAP-046:** Online learning - Advanced feature, not needed initially
+- **GAP-045:** Strategy validation - Can validate manually initially
+- **GAP-043:** External monitoring - HEARTBEAT_URL already works
 
 **These gaps don't block production deployment.**
 
@@ -5162,22 +5160,22 @@ For questions or blockers during implementation, consult:
 | Gap | Effort | Impact | ROI | Recommendation |
 |-----|--------|--------|-----|----------------|
 | GAP-001/002 | 2 days | High | ⭐⭐⭐⭐⭐ | Do immediately |
-| GAP-033 | 3 days | High | ⭐⭐⭐⭐⭐ | Do immediately |
-| GAP-016 | 1 day | High | ⭐⭐⭐⭐⭐ | Do immediately |
-| GAP-017/018 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
+| GAP-032 | 3 days | High | ⭐⭐⭐⭐⭐ | Do immediately |
+| GAP-015 | 1 day | High | ⭐⭐⭐⭐⭐ | Do immediately |
+| GAP-016/017 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
 | GAP-003/004/005 | 2 days | Medium | ⭐⭐⭐⭐ | Do soon |
 | GAP-009/010 | 8 days | Very High | ⭐⭐⭐ | Only if multi-strategy |
-| GAP-041 | 5 days | High | ⭐⭐⭐ | If scaling |
-| GAP-038 | 1 week | Medium | ⭐⭐ | If cloud deployment |
+| GAP-040 | 5 days | High | ⭐⭐⭐ | If scaling |
+| GAP-037 | 1 week | Medium | ⭐⭐ | If cloud deployment |
 
 ### Low ROI Gaps (Can Skip or Defer)
 
 | Gap | Effort | Impact | ROI | Recommendation |
 |-----|--------|--------|-----|----------------|
-| GAP-037 | 3 days | Low | ⭐ | Defer indefinitely |
-| GAP-039 | 5 days | Low | ⭐⭐ | Manual rotation OK |
-| GAP-047 | 2 weeks | Medium | ⭐ | Research project |
-| GAP-040 | 3 days | Low | ⭐⭐ | Manual reports OK |
+| GAP-036 | 3 days | Low | ⭐ | Defer indefinitely |
+| GAP-038 | 5 days | Low | ⭐⭐ | Manual rotation OK |
+| GAP-046 | 2 weeks | Medium | ⭐ | Research project |
+| GAP-039 | 3 days | Low | ⭐⭐ | Manual reports OK |
 
 ---
 
@@ -5190,8 +5188,8 @@ If you only have 1 week, do this:
 **Day 1:** Documentation fixes (✅ already done)
 **Day 2:** GAP-001 - Markets config
 **Day 3:** GAP-002 - Strategy config  
-**Day 4-5:** GAP-016 - Deployment workflow + testing
-**Day 6-7:** GAP-017 - Pre-deploy script + GAP-018 - Backups
+**Day 4-5:** GAP-015 - Deployment workflow + testing
+**Day 6-7:** GAP-016 - Pre-deploy script + GAP-017 - Backups
 
 **Result:** Massively improved ops without changing core functionality
 
@@ -5202,9 +5200,9 @@ If you only have 1 week, do this:
 If you have 1 month:
 
 **Week 1:** Documentation + Config (GAP-001, 002, 003, 004, 005)
-**Week 2:** Chaos tests (GAP-033) + Deployment (GAP-016)
-**Week 3:** IaC (GAP-041) + Staging (GAP-043)
-**Week 4:** Integration tests (GAP-034) + Scripts (GAP-017, 018)
+**Week 2:** Chaos tests (GAP-032) + Deployment (GAP-015)
+**Week 3:** IaC (GAP-040) + Staging (GAP-042)
+**Week 4:** Integration tests (GAP-033) + Scripts (GAP-016, 018)
 
 **Result:** Production-ready with excellent testing and automation
 
@@ -5216,7 +5214,7 @@ If you have 3 months:
 
 **Month 1:** Config + Testing + Operations (Weeks 1-4 above)
 **Month 2:** Strategy framework (GAP-009, 010, 011, 012)
-**Month 3:** Cloud features (GAP-038) + Learning system (GAP-045) + Polish
+**Month 3:** Cloud features (GAP-037) + Learning system (GAP-044) + Polish
 
 **Result:** Fully extensible, production-grade, multi-strategy system
 
@@ -5228,16 +5226,16 @@ If you have 3 months:
 1. ✅ **DONE:** Fix documentation drift
 2. **GAP-001:** Wire markets.json (1 day)
 3. **GAP-002:** Wire strategy.json (1 day)
-4. **GAP-016:** Add deployment workflow (1 day)
-5. **GAP-017:** Create pre-deploy script (0.5 days)
+4. **GAP-015:** Add deployment workflow (1 day)
+5. **GAP-016:** Create pre-deploy script (0.5 days)
 
 **Estimated:** 3.5 days for significant operational improvement
 
 ### Next Steps (Weeks 2-3):
-1. **GAP-033:** Chaos engineering tests (3 days)
-2. **GAP-018:** Backup scripts (1 day)
+1. **GAP-032:** Chaos engineering tests (3 days)
+2. **GAP-017:** Backup scripts (1 day)
 3. **GAP-003-005:** Wire remaining config vars (2 days)
-4. **GAP-041:** Start IaC (5 days)
+4. **GAP-040:** Start IaC (5 days)
 
 **Estimated:** 11 days to reach production-grade operations
 
@@ -5253,7 +5251,7 @@ If you have 3 months:
 
 This implementation plan provides:
 
-✅ **Complete coverage:** All 47 gaps addressed  
+✅ **Complete coverage:** All 46 gaps addressed  
 ✅ **Detailed steps:** Down to specific file edits  
 ✅ **Code examples:** Copy-paste ready implementations  
 ✅ **Flexible execution:** Choose your priority  
@@ -5269,7 +5267,7 @@ This implementation plan provides:
 
 Choose your implementation path based on your needs:
 - **MVP/Single Strategy:** Already done! Maybe add GAP-001/002 for easier config
-- **Small Production:** Add operational gaps (GAP-016, 017, 018, 033)
+- **Small Production:** Add operational gaps (GAP-015, 016, 017, 032)
 - **Enterprise Scale:** Full implementation (all phases)
 
 ---
