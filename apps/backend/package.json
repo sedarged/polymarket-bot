@@ -31,7 +31,7 @@
     "@types/ws": "^8.18.1",
     "axios": "^1.13.5",
     "better-sqlite3": "^12.6.2",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.3.1",
     "ethers": "^6.16.0",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
