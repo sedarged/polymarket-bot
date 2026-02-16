@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.36.0](https://github.com/sedarged/polymarket-bot/compare/v1.35.0...v1.36.0) (2026-02-16)
+
+
+### Features
+
+* add deployment verification script ([ca50fe1](https://github.com/sedarged/polymarket-bot/commit/ca50fe1fec7e7c46da5eb98331dd6018e1ccaa9f))
+* enhance deployment workflow with staging/production support ([af694a9](https://github.com/sedarged/polymarket-bot/commit/af694a959332434b7059c1303e1975b2e0875d20))
+
 ## [1.35.0](https://github.com/sedarged/polymarket-bot/compare/v1.34.1...v1.35.0) (2026-02-16)
 
 
