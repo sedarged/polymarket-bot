@@ -99,8 +99,6 @@ export interface BackupResult {
   error?: string;
 }
 
-export type { BackupConfig };
-
 export class BackupService {
   private config: BackupConfig;
   private alerting?: AlertingService;
@@ -189,10 +187,13 @@ export class BackupService {
 
         // Send alert on failure
         if (this.alerting) {
-          await this.alerting.sendAlert(
-            `Database backup failed for ${database.name}: ${errorMessage}`,
-            'error'
-          );
+          await this.alerting.sendAlert({
+            severity: 'critical',
+            title: 'Database Backup Failed',
+            message: `Backup failed for ${database.name}: ${errorMessage}`,
+            timestamp: new Date().toISOString(),
+            dedupeKey: `backup-failure-${database.name}`,
+          });
         }
       }
     }
@@ -419,7 +420,8 @@ export class BackupService {
   private async uploadToS3(filePath: string, backupName: string): Promise<string> {
     // Import AWS SDK dynamically (only if needed)
     try {
-      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3') as any;
       
       const s3Config = this.config.s3!;
       const client = new S3Client({
@@ -469,7 +471,8 @@ export class BackupService {
    */
   private async uploadToGCS(filePath: string, backupName: string): Promise<string> {
     try {
-      const { Storage } = await import('@google-cloud/storage');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { Storage } = await import('@google-cloud/storage') as any;
       
       const gcsConfig = this.config.gcs!;
       const storage = new Storage({
@@ -507,7 +510,8 @@ export class BackupService {
    */
   private async uploadToAzure(filePath: string, backupName: string): Promise<string> {
     try {
-      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob') as any;
       
       const azureConfig = this.config.azure!;
       let blobServiceClient: any;
@@ -691,7 +695,8 @@ export class BackupService {
    */
   private async cleanupS3Backups(): Promise<void> {
     try {
-      const { S3Client, ListObjectsV2Command, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { S3Client, ListObjectsV2Command, DeleteObjectCommand } = await import('@aws-sdk/client-s3') as any;
       
       const s3Config = this.config.s3!;
       const client = new S3Client({
@@ -709,7 +714,7 @@ export class BackupService {
       let continuationToken: string | undefined = undefined;
 
       do {
-        const listResponse = await client.send(
+        const listResponse: any = await client.send(
           new ListObjectsV2Command({
             Bucket: s3Config.bucket,
             Prefix: s3Config.prefix || '',
@@ -768,7 +773,8 @@ export class BackupService {
    */
   private async cleanupGCSBackups(): Promise<void> {
     try {
-      const { Storage } = await import('@google-cloud/storage');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { Storage } = await import('@google-cloud/storage') as any;
       
       const gcsConfig = this.config.gcs!;
       const storage = new Storage({
@@ -782,15 +788,15 @@ export class BackupService {
       });
 
       const backups = files
-        .filter((file) => file.name.endsWith('.db') || file.name.endsWith('.db.gz'))
-        .sort((a, b) => {
+        .filter((file: any) => file.name.endsWith('.db') || file.name.endsWith('.db.gz'))
+        .sort((a: any, b: any) => {
           const aTime = a.metadata.updated ? new Date(a.metadata.updated).getTime() : 0;
           const bTime = b.metadata.updated ? new Date(b.metadata.updated).getTime() : 0;
           return bTime - aTime;
         });
 
       // Group backups by database name for per-database retention
-      const backupsByDb = this.groupBackupsByDatabase(backups.map(f => f.name));
+      const backupsByDb = this.groupBackupsByDatabase(backups.map((f: any) => f.name));
       
       const maxAge = this.config.retention!.maxAgeDays! * 24 * 60 * 60 * 1000;
       const now = Date.now();
@@ -827,7 +833,8 @@ export class BackupService {
    */
   private async cleanupAzureBackups(): Promise<void> {
     try {
-      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob') as any;
       
       const azureConfig = this.config.azure!;
       let blobServiceClient: any;
@@ -942,7 +949,8 @@ export class BackupService {
 
   private async listS3Backups(): Promise<Array<{ name: string; size: number; date: Date }>> {
     try {
-      const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3') as any;
       
       const s3Config = this.config.s3!;
       const client = new S3Client({
@@ -960,7 +968,7 @@ export class BackupService {
       let continuationToken: string | undefined = undefined;
 
       do {
-        const response = await client.send(
+        const response: any = await client.send(
           new ListObjectsV2Command({
             Bucket: s3Config.bucket,
             Prefix: s3Config.prefix || '',
@@ -993,7 +1001,8 @@ export class BackupService {
 
   private async listGCSBackups(): Promise<Array<{ name: string; size: number; date: Date }>> {
     try {
-      const { Storage } = await import('@google-cloud/storage');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { Storage } = await import('@google-cloud/storage') as any;
       
       const gcsConfig = this.config.gcs!;
       const storage = new Storage({
@@ -1007,13 +1016,13 @@ export class BackupService {
       });
 
       return files
-        .filter((file) => file.name.endsWith('.db') || file.name.endsWith('.db.gz'))
-        .map((file) => ({
+        .filter((file: any) => file.name.endsWith('.db') || file.name.endsWith('.db.gz'))
+        .map((file: any) => ({
           name: file.name,
           size: parseInt(file.metadata.size || '0', 10),
           date: file.metadata.updated ? new Date(file.metadata.updated) : new Date(),
         }))
-        .sort((a, b) => b.date.getTime() - a.date.getTime());
+        .sort((a: any, b: any) => b.date.getTime() - a.date.getTime());
     } catch (error) {
       logger.error('Failed to list GCS backups', {
         error: error instanceof Error ? error.message : String(error),
@@ -1024,7 +1033,8 @@ export class BackupService {
 
   private async listAzureBackups(): Promise<Array<{ name: string; size: number; date: Date }>> {
     try {
-      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob');
+      // @ts-expect-error - Optional dependency, imported dynamically
+      const { BlobServiceClient, StorageSharedKeyCredential } = await import('@azure/storage-blob') as any;
       
       const azureConfig = this.config.azure!;
       let blobServiceClient: any;

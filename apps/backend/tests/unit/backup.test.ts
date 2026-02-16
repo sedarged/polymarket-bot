@@ -335,8 +335,12 @@ describe('BackupService - Issue #406 [GAP-017]', () => {
       await backupService.backup();
 
       expect(mockAlertingService.sendAlert).toHaveBeenCalledWith(
-        expect.stringContaining('Database backup failed for missing'),
-        'error'
+        expect.objectContaining({
+          severity: 'critical',
+          title: 'Database Backup Failed',
+          message: expect.stringContaining('Backup failed for missing'),
+          dedupeKey: 'backup-failure-missing',
+        })
       );
     });
 
