@@ -22,7 +22,6 @@ To update this status:
 ## Next — P1 (High Priority)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
 - [P1] #408 [GAP-019] Fee-Rate Checking
-- [P1] #406 [GAP-017] DB Backup Script
 - [P1] #404 [GAP-015] Deployment Workflow
 - [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
@@ -35,13 +34,14 @@ To update this status:
 - [P2] #400 [GAP-021] Data Pipeline Enhancement
 
 ## Recently Closed (Last 14 Days)
+- [P1] #406 [GAP-017] DB Backup Script
 - [P1] #323 Implement User-Friendly, Categorized Logging for Project Transparency
 - [P0] #316 [Enforce Codespaces Real-World Testing & Doc Improvement Policy]
 - #304 Setup Codespaces and Environment for Full Agent/App Testing
 - [P0] #301 URGENT: Deep code & documentation audit - FIX EVERYTHING, NO REPORTS
 - #283 Redesign the Polymarket Trading Bot dashboard UI to be more modern
 
-*Last updated: 2026-02-16T16:40:49.424Z*
+*Last updated: 2026-02-16T18:42:50.769Z*
 
 <!-- STATUS_SYNC_END -->
 
