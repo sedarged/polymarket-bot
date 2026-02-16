@@ -124,6 +124,11 @@ resource "aws_security_group" "polymarket_bot" {
   }
 
   # HTTP for API
+  # WARNING: This exposes the admin API over plaintext HTTP. For production:
+  # - Use TLS termination (ALB/load balancer or reverse proxy) in front of the bot
+  # - Restrict api_allowed_cidr to trusted networks only (not 0.0.0.0/0)
+  # - Consider using SSH tunnels for admin access instead of direct exposure
+  # The ADMIN_TOKEN provides authentication but can be intercepted over HTTP
   ingress {
     description = "HTTP API"
     from_port   = 3000
@@ -224,7 +229,10 @@ resource "aws_iam_role_policy" "cloudwatch" {
           "logs:PutLogEvents",
           "logs:DescribeLogStreams"
         ]
-        Resource = "*"
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/${var.project_name}-${var.environment}*",
+          "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"
+        ]
       }
     ]
   })

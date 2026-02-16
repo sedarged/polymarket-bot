@@ -174,10 +174,10 @@ if [ "$HAS_TERRAFORM" = true ] && [ -d "infrastructure/terraform/aws-ec2" ]; the
   fi
   
   # Check for secrets in .tf files
-  if grep -r "PRIVATE_KEY.*=.*0x" *.tf 2>/dev/null; then
-    check_fail "SECURITY: Private key found in .tf files!"
+  if grep -riE "(PRIVATE_KEY|SECRET|PASSWORD|API_KEY).*[:=].*['\"]?[0-9a-fA-F]{40,}" *.tf 2>/dev/null; then
+    check_fail "SECURITY: Private key or secret found in .tf files!"
   else
-    check_pass "No hardcoded private keys in .tf files"
+    check_pass "No hardcoded private keys or secrets in .tf files"
   fi
   
   cd - > /dev/null

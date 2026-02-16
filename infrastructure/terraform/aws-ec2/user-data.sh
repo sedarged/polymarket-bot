@@ -138,6 +138,12 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+# Substitute environment-specific values into the systemd service file
+escaped_environment=$(printf '%s\n' "${environment}" | sed 's/[&]/\\&/g')
+escaped_docker_image=$(printf '%s\n' "${docker_image}" | sed 's/[&]/\\&/g')
+sed -i "s|\${environment}|${escaped_environment}|g" /etc/systemd/system/polymarket-bot.service
+sed -i "s|\${docker_image}|${escaped_docker_image}|g" /etc/systemd/system/polymarket-bot.service
+
 # Enable and start the service
 echo "Starting Polymarket Bot service..."
 systemctl daemon-reload
