@@ -955,12 +955,27 @@ export class BackupService {
           : undefined,
       });
 
-      const response = await client.send(new ListObjectsV2Command({
-        Bucket: s3Config.bucket,
-        Prefix: s3Config.prefix || '',
-      }));
+      // Handle pagination for listing
+      const allObjects: any[] = [];
+      let continuationToken: string | undefined = undefined;
 
-      return (response.Contents || [])
+      do {
+        const response = await client.send(
+          new ListObjectsV2Command({
+            Bucket: s3Config.bucket,
+            Prefix: s3Config.prefix || '',
+            ContinuationToken: continuationToken,
+          }),
+        );
+
+        if (response.Contents && response.Contents.length > 0) {
+          allObjects.push(...response.Contents);
+        }
+
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      return allObjects
         .filter((obj) => obj.Key?.endsWith('.db') || obj.Key?.endsWith('.db.gz'))
         .map((obj) => ({
           name: obj.Key || '',
