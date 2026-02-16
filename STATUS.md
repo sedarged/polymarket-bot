@@ -20,10 +20,19 @@ To update this status:
 *No P0 issues*
 
 ## Next — P1 (High Priority)
-*No P1 issues*
+- [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
+- [P1] #408 [GAP-019] Fee-Rate Checking
+- [P1] #406 [GAP-017] DB Backup Script
+- [P1] #404 [GAP-015] Deployment Workflow
+- [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
+- [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
 
 ## Next — P2 (Normal Priority)
-*No P2 issues*
+- [P2] #409 [GAP-020] Cost Scenarios Documentation
+- [P2] #407 [GAP-018] UMA Resolution Documentation
+- [P2] #405 [GAP-016] Pre-Deployment Verification Script
+- [P2] #402 [GAP-013] Multi-Strategy Orchestration
+- [P2] #400 [GAP-021] Data Pipeline Enhancement
 
 ## Recently Closed (Last 14 Days)
 - [P1] #323 Implement User-Friendly, Categorized Logging for Project Transparency
@@ -32,7 +41,7 @@ To update this status:
 - [P0] #301 URGENT: Deep code & documentation audit - FIX EVERYTHING, NO REPORTS
 - #283 Redesign the Polymarket Trading Bot dashboard UI to be more modern
 
-*Last updated: 2026-02-16T13:02:58.832Z*
+*Last updated: 2026-02-16T16:40:49.424Z*
 
 <!-- STATUS_SYNC_END -->
 
