@@ -22,7 +22,7 @@ output "api_url" {
 
 output "ssh_command" {
   description = "SSH command to connect to the instance"
-  value       = "ssh -i ~/.ssh/id_rsa ubuntu@${var.use_elastic_ip ? aws_eip.polymarket_bot[0].public_ip : aws_instance.polymarket_bot.public_ip}"
+  value       = "ssh -i ~/.ssh/polymarket-bot-key ubuntu@${var.use_elastic_ip ? aws_eip.polymarket_bot[0].public_ip : aws_instance.polymarket_bot.public_ip}"
 }
 
 output "security_group_id" {

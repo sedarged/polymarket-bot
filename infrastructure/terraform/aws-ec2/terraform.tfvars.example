@@ -18,10 +18,10 @@ ssh_public_key = "ssh-ed25519 AAAAC3... your-key-comment"
 
 # Security Configuration
 # IMPORTANT: Restrict SSH to your IP in production!
-ssh_allowed_cidr = ["0.0.0.0/0"]  # CHANGE THIS! Use ["YOUR.IP.ADDRESS/32"]
+ssh_allowed_cidr = ["CHANGE_ME"]  # REQUIRED: Replace with your IP, e.g. ["YOUR.IP.ADDRESS/32"]
 
 # API Access
-api_allowed_cidr = ["0.0.0.0/0"]  # Restrict as needed
+api_allowed_cidr = ["CHANGE_ME"]  # REQUIRED: Replace with allowed CIDRs, e.g. ["YOUR.IP.ADDRESS/32"]
 
 # Metrics Access (Prometheus)
 metrics_allowed_cidr = ["10.0.0.0/16"]  # VPC only by default

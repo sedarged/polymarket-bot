@@ -67,6 +67,9 @@
     # ================================================
     - name: Configure UFW firewall
       block:
+        # WARNING: SSH is allowed from anywhere by default for initial setup.
+        # For production, restrict SSH access to known IP addresses by setting
+        # ssh_allowed_cidr in your inventory/vars and adding src parameter here.
         - name: Allow SSH
           ufw:
             rule: allow
@@ -80,11 +83,9 @@
             proto: tcp
             src: "{{ api_allowed_cidr }}"
         
-        - name: Allow HTTPS
-          ufw:
-            rule: allow
-            port: '443'
-            proto: tcp
+        # Note: HTTPS (443) is intentionally not opened here.
+        # TLS termination / reverse proxy (e.g., Nginx, Cloudflare, ALB)
+        # should be configured separately and manage its own firewall rules.
         
         - name: Allow Prometheus metrics
           ufw:

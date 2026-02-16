@@ -36,7 +36,9 @@
 
 # General secrets
 **/.env
-**/.env.*
+**/.env.local
+**/.env.production
+**/.env.staging
 !**/.env.example
 **/secrets.json
 **/secrets.yaml

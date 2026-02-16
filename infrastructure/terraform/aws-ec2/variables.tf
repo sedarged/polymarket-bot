@@ -47,13 +47,23 @@ variable "ssh_public_key" {
 variable "ssh_allowed_cidr" {
   description = "CIDR blocks allowed to SSH into the instance. Default restricts to VPC-only for security."
   type        = list(string)
-  default     = ["10.0.0.0/8"] # VPC/internal-only by default; override explicitly if SSH from internet is required
+  default     = ["10.0.0.0/16"] # VPC/internal-only by default; override explicitly if SSH from internet is required
+  
+  validation {
+    condition     = alltrue([for cidr in var.ssh_allowed_cidr : cidr != "CHANGE_ME"])
+    error_message = "ssh_allowed_cidr contains 'CHANGE_ME' placeholder. Please replace with actual CIDR blocks (e.g., [\"YOUR.IP.ADDRESS/32\"])."
+  }
 }
 
 variable "api_allowed_cidr" {
   description = "CIDR blocks allowed to access the API. Default restricts to VPC-only for security."
   type        = list(string)
-  default     = ["10.0.0.0/8"] # VPC/internal-only by default; override explicitly for public API access
+  default     = ["10.0.0.0/16"] # VPC/internal-only by default; override explicitly for public API access
+  
+  validation {
+    condition     = alltrue([for cidr in var.api_allowed_cidr : cidr != "CHANGE_ME"])
+    error_message = "api_allowed_cidr contains 'CHANGE_ME' placeholder. Please replace with actual CIDR blocks (e.g., [\"YOUR.IP.ADDRESS/32\"])."
+  }
 }
 
 variable "metrics_allowed_cidr" {

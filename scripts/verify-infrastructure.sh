@@ -174,10 +174,16 @@ if [ "$HAS_TERRAFORM" = true ] && [ -d "infrastructure/terraform/aws-ec2" ]; the
   fi
   
   # Check for secrets in .tf files
-  if grep -r "PRIVATE_KEY.*=.*0x" *.tf 2>/dev/null; then
-    check_fail "SECURITY: Private key found in .tf files!"
+  # Pattern matches: Ethereum keys (0x + 64 hex), raw hex keys (64 hex), base64 (40+ chars), AWS-style secrets
+  # Excludes: example files, markdown docs, and lines with "example" or "TODO"
+  if grep -rE "(PRIVATE_KEY|SECRET|PASSWORD|API_KEY)[[:space:]]*[:=][[:space:]]*['\"]?(0x[0-9a-fA-F]{64}|[0-9a-fA-F]{64}|[A-Za-z0-9/+]{40,}={0,2}|[A-Za-z0-9/_+=.@-]{40,})['\"]?" \
+      --include="*.tf" \
+      --exclude="*.tf.example" \
+      --exclude="*.md" \
+      . 2>/dev/null | grep -viE "example|todo|sample"; then
+    check_fail "SECURITY: Private key or secret found in .tf files!"
   else
-    check_pass "No hardcoded private keys in .tf files"
+    check_pass "No hardcoded private keys or secrets in .tf files"
   fi
   
   cd - > /dev/null
