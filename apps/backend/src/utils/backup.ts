@@ -437,16 +437,23 @@ export class BackupService {
         : backupName;
 
       const fileStream = fs.createReadStream(filePath);
-      const uploadParams = {
-        Bucket: s3Config.bucket,
-        Key: key,
-        Body: fileStream,
-        ServerSideEncryption: 'AES256' as const, // Enable server-side encryption
-      };
+      
+      try {
+        const uploadParams = {
+          Bucket: s3Config.bucket,
+          Key: key,
+          Body: fileStream,
+          ServerSideEncryption: 'AES256' as const, // Enable server-side encryption
+          ContentType: backupName.endsWith('.gz') ? 'application/gzip' : 'application/x-sqlite3',
+        };
 
-      await client.send(new PutObjectCommand(uploadParams));
+        await client.send(new PutObjectCommand(uploadParams));
 
-      return `s3://${s3Config.bucket}/${key}`;
+        return `s3://${s3Config.bucket}/${key}`;
+      } finally {
+        // Ensure stream is closed even if upload fails
+        fileStream.destroy();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND') {
         throw new Error(
@@ -475,10 +482,12 @@ export class BackupService {
         ? `${gcsConfig.prefix}${backupName}`
         : backupName;
 
+      const contentType = backupName.endsWith('.gz') ? 'application/gzip' : 'application/x-sqlite3';
+
       await bucket.upload(filePath, {
         destination: key,
         metadata: {
-          contentType: 'application/gzip',
+          contentType,
         },
       });
 
@@ -502,12 +511,17 @@ export class BackupService {
       
       const azureConfig = this.config.azure!;
       let blobServiceClient: any;
+      let accountName: string | undefined;
 
       if (azureConfig.connectionString) {
         blobServiceClient = BlobServiceClient.fromConnectionString(
           azureConfig.connectionString
         );
+        // Parse account name from connection string for URL construction
+        const match = azureConfig.connectionString.match(/AccountName=([^;]+)/);
+        accountName = match ? match[1] : undefined;
       } else if (azureConfig.accountName && azureConfig.accountKey) {
+        accountName = azureConfig.accountName;
         const sharedKeyCredential = new StorageSharedKeyCredential(
           azureConfig.accountName,
           azureConfig.accountKey
@@ -535,18 +549,30 @@ export class BackupService {
       const fileStream = fs.createReadStream(filePath);
       const stats = fs.statSync(filePath);
       
-      await blockBlobClient.uploadStream(
-        fileStream,
-        stats.size,
-        5, // Max concurrency
-        {
-          blobHTTPHeaders: {
-            blobContentType: 'application/gzip',
-          },
-        }
-      );
+      try {
+        const contentType = backupName.endsWith('.gz') ? 'application/gzip' : 'application/x-sqlite3';
+        
+        await blockBlobClient.uploadStream(
+          fileStream,
+          stats.size,
+          5, // Max concurrency
+          {
+            blobHTTPHeaders: {
+              blobContentType: contentType,
+            },
+          }
+        );
 
-      return `https://${azureConfig.accountName || 'account'}.blob.core.windows.net/${azureConfig.containerName}/${blobName}`;
+        // Return proper URL if account name is available, otherwise container/blob path
+        if (accountName) {
+          return `https://${accountName}.blob.core.windows.net/${azureConfig.containerName}/${blobName}`;
+        } else {
+          return `${azureConfig.containerName}/${blobName}`;
+        }
+      } finally {
+        // Ensure stream is closed even if upload fails
+        fileStream.destroy();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND') {
         throw new Error(
