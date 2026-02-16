@@ -14,7 +14,19 @@
     app_dir: /app
     data_dir: /app/data
     docker_image: "{{ docker_image | default('ghcr.io/sedarged/polymarket-bot:latest') }}"
-    environment: "{{ 'production' if inventory_hostname in groups['production'] else 'staging' }}"
+    environment: "{{ (group_names | intersect(['production', 'staging']))[0] | default('staging') }}"
+    # Firewall configuration - restrict API access by default
+    api_allowed_cidr: "{{ api_allowed_cidr | default('10.0.0.0/8') }}"
+    metrics_allowed_cidr: "{{ metrics_allowed_cidr | default('10.0.0.0/8') }}"
+  
+  pre_tasks:
+    - name: Validate environment group assignment
+      assert:
+        that:
+          - "(group_names | intersect(['production', 'staging'])) | length > 0"
+        fail_msg: "Host {{ inventory_hostname }} is not assigned to 'production' or 'staging' group. Please fix the inventory."
+        success_msg: "Environment group detected: {{ environment }}"
+      tags: [always]
   
   tasks:
     # ================================================
@@ -66,6 +78,7 @@
             rule: allow
             port: '3000'
             proto: tcp
+            src: "{{ api_allowed_cidr }}"
         
         - name: Allow HTTPS
           ufw:
@@ -78,7 +91,7 @@
             rule: allow
             port: '9090'
             proto: tcp
-            src: 10.0.0.0/8  # Restrict to private network
+            src: "{{ metrics_allowed_cidr }}"
         
         - name: Enable UFW
           ufw:
@@ -103,15 +116,23 @@
     # ================================================
     # Docker Installation
     # ================================================
+    - name: Ensure Docker apt keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      tags: [setup, docker]
+
     - name: Add Docker GPG key
-      apt_key:
+      ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
-        state: present
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
       tags: [setup, docker]
 
     - name: Add Docker repository
       apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
       tags: [setup, docker]
 

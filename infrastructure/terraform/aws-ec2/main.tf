@@ -50,6 +50,8 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -130,15 +132,6 @@ resource "aws_security_group" "polymarket_bot" {
     cidr_blocks = var.api_allowed_cidr
   }
 
-  # HTTPS for API (if using reverse proxy)
-  ingress {
-    description = "HTTPS API"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.api_allowed_cidr
-  }
-
   # Metrics endpoint
   ingress {
     description = "Prometheus Metrics"
@@ -146,15 +139,6 @@ resource "aws_security_group" "polymarket_bot" {
     to_port     = 9090
     protocol    = "tcp"
     cidr_blocks = var.metrics_allowed_cidr
-  }
-
-  # Grafana
-  ingress {
-    description = "Grafana Dashboard"
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    cidr_blocks = var.api_allowed_cidr
   }
 
   # Outbound internet access
@@ -217,7 +201,30 @@ resource "aws_iam_role_policy" "secrets_manager" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = "arn:aws:secretsmanager:${var.aws_region}:*:secret:${var.project_name}/${var.environment}/*"
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/${var.environment}/*"
+      }
+    ]
+  })
+}
+
+# IAM Policy for CloudWatch logs and metrics (for CloudWatch Agent)
+resource "aws_iam_role_policy" "cloudwatch" {
+  name = "cloudwatch-access"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:PutMetricData",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
       }
     ]
   })

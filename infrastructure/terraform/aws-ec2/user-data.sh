@@ -34,17 +34,25 @@ apt-get install -y \
 echo "Configuring automatic security updates..."
 dpkg-reconfigure -plow unattended-upgrades
 
-# Install Docker
-echo "Installing Docker..."
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-rm get-docker.sh
+# Install Docker from official repository with version pinning
+echo "Installing Docker from official repository..."
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Install Docker Compose
-echo "Installing Docker Compose..."
-DOCKER_COMPOSE_VERSION="2.24.5"
-curl -L "https://github.com/docker/compose/releases/download/v$${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt-get update
+
+# Install Docker with latest stable version (no version pinning for easier updates via apt)
+apt-get install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
 
 # Create polymarket user
 echo "Creating polymarket user..."
@@ -82,11 +90,16 @@ chown -R polymarket:polymarket /app
 
 # Fetch secrets from AWS Secrets Manager
 echo "Fetching secrets from AWS Secrets Manager..."
-aws secretsmanager get-secret-value \
+if ! aws secretsmanager get-secret-value \
     --secret-id "${secret_name}" \
     --region "${aws_region}" \
     --query SecretString \
-    --output text > /app/.env.${environment}
+    --output text > /app/.env.${environment} 2>&1; then
+    echo "ERROR: Failed to fetch secrets from AWS Secrets Manager"
+    echo "Ensure secret ${secret_name} exists in ${aws_region} and IAM role has permissions"
+    echo "Create the secret with: aws secretsmanager create-secret --name ${secret_name} --secret-string file://secrets.json"
+    exit 1
+fi
 
 chown polymarket:polymarket /app/.env.${environment}
 chmod 600 /app/.env.${environment}
@@ -205,14 +218,10 @@ cat > /etc/logrotate.d/polymarket-bot <<EOF
 }
 EOF
 
-# Configure firewall (UFW)
-echo "Configuring firewall..."
-ufw --force enable
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp    # SSH
-ufw allow 3000/tcp  # API
-ufw allow 9090/tcp  # Metrics
+# Firewall configuration
+# Note: We rely on AWS Security Groups for network access control.
+# UFW is not enabled here to avoid conflicting or less restrictive rules.
+echo "Firewall: Using AWS Security Groups (UFW not configured)"
 
 echo "==================================="
 echo "Setup complete!"

@@ -59,7 +59,20 @@ ansible_ssh_private_key_file=~/.ssh/polymarket-bot-key
 docker_image=ghcr.io/sedarged/polymarket-bot:latest
 ```
 
-### 2. Configure Secrets
+### 2. Setup SSH Known Hosts
+
+For security, Ansible verifies SSH host keys. Add your servers to `~/.ssh/known_hosts`:
+
+```bash
+# Add server fingerprints
+ssh-keyscan staging.example.com >> ~/.ssh/known_hosts
+ssh-keyscan prod.example.com >> ~/.ssh/known_hosts
+
+# Or connect manually once
+ssh ubuntu@staging.example.com
+```
+
+### 3. Configure Secrets
 
 Create `group_vars/all/vault.yml`:
 
@@ -77,7 +90,7 @@ Encrypt the file:
 ansible-vault encrypt group_vars/all/vault.yml
 ```
 
-### 3. Test Connection
+### 4. Test Connection
 
 ```bash
 # Test connectivity
@@ -87,9 +100,11 @@ ansible all -m ping -i inventory
 # staging.example.com | SUCCESS => {
 #     "ping": "pong"
 # }
+
+# If you get host key verification errors, add hosts to known_hosts (see step 2)
 ```
 
-### 4. Run Setup
+### 5. Run Setup
 
 ```bash
 # Setup servers (first time)
@@ -98,7 +113,7 @@ ansible-playbook -i inventory playbook.yml --tags setup
 # You'll be prompted for vault password
 ```
 
-### 5. Deploy Application
+### 6. Deploy Application
 
 ```bash
 # Deploy the bot

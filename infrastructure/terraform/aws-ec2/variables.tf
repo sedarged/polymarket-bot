@@ -45,15 +45,15 @@ variable "ssh_public_key" {
 }
 
 variable "ssh_allowed_cidr" {
-  description = "CIDR blocks allowed to SSH into the instance"
+  description = "CIDR blocks allowed to SSH into the instance. Default restricts to VPC-only for security."
   type        = list(string)
-  default     = ["0.0.0.0/0"] # CHANGE THIS IN PRODUCTION!
+  default     = ["10.0.0.0/8"] # VPC/internal-only by default; override explicitly if SSH from internet is required
 }
 
 variable "api_allowed_cidr" {
-  description = "CIDR blocks allowed to access the API"
+  description = "CIDR blocks allowed to access the API. Default restricts to VPC-only for security."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["10.0.0.0/8"] # VPC/internal-only by default; override explicitly for public API access
 }
 
 variable "metrics_allowed_cidr" {

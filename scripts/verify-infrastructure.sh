@@ -53,9 +53,22 @@ section "Prerequisites"
 HAS_TERRAFORM=false
 HAS_KUBECTL=false
 HAS_ANSIBLE=false
+HAS_JQ=false
+
+# Check jq first since other tools may use it
+if command -v jq &> /dev/null; then
+  check_pass "jq installed"
+  HAS_JQ=true
+else
+  check_warn "jq not installed (recommended for JSON parsing)"
+fi
 
 if command -v terraform &> /dev/null; then
-  VERSION=$(terraform version -json | jq -r '.terraform_version')
+  if [ "$HAS_JQ" = true ]; then
+    VERSION=$(terraform version -json 2>/dev/null | jq -r '.terraform_version' 2>/dev/null || echo "unknown")
+  else
+    VERSION=$(terraform version | head -n1 | awk '{print $2}' | tr -d 'v')
+  fi
   check_pass "Terraform installed (v$VERSION)"
   HAS_TERRAFORM=true
 else
@@ -63,7 +76,11 @@ else
 fi
 
 if command -v kubectl &> /dev/null; then
-  VERSION=$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion')
+  if [ "$HAS_JQ" = true ]; then
+    VERSION=$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion' 2>/dev/null || echo "unknown")
+  else
+    VERSION=$(kubectl version --client --short 2>/dev/null | awk '{print $3}' || echo "unknown")
+  fi
   check_pass "kubectl installed ($VERSION)"
   HAS_KUBECTL=true
 else
@@ -76,12 +93,6 @@ if command -v ansible &> /dev/null; then
   HAS_ANSIBLE=true
 else
   check_skip "Ansible not installed"
-fi
-
-if command -v jq &> /dev/null; then
-  check_pass "jq installed"
-else
-  check_warn "jq not installed (recommended for JSON parsing)"
 fi
 
 # Check infrastructure directory structure
@@ -319,22 +330,50 @@ fi
 # Check for accidentally committed secrets
 section "Security - Secret Scan"
 
-SENSITIVE_PATTERNS=(
-  "terraform.tfvars"
-  "infrastructure/**/secret.yaml"
-  "infrastructure/**/inventory"
-  "infrastructure/**/.env"
-  "infrastructure/**/*.pem"
-  "infrastructure/**/*.key"
-)
-
-for pattern in "${SENSITIVE_PATTERNS[@]}"; do
-  if git ls-files | grep -q "$pattern" 2>/dev/null; then
-    check_fail "SECURITY: Found committed file matching: $pattern"
+# Use exact path matching to avoid false positives
+# Each pattern is a literal file path or glob pattern
+check_secret_file() {
+  local pattern="$1"
+  local description="$2"
+  
+  # For glob patterns, use find; for exact paths, use git ls-files
+  if [[ "$pattern" == *"*"* ]]; then
+    # Glob pattern - use find
+    if find infrastructure -type f -path "$pattern" 2>/dev/null | grep -q .; then
+      check_fail "SECURITY: Found committed file matching: $description"
+      return 1
+    fi
   else
-    check_pass "No committed secrets: $pattern"
+    # Exact path - check if it exists in git
+    if git ls-files --error-unmatch "$pattern" &>/dev/null; then
+      check_fail "SECURITY: Found committed file: $description"
+      return 1
+    fi
   fi
-done
+  
+  check_pass "No committed secrets: $description"
+  return 0
+}
+
+# Check for sensitive files (exact paths only, not examples)
+check_secret_file "infrastructure/terraform/aws-ec2/terraform.tfvars" "terraform.tfvars"
+check_secret_file "infrastructure/kubernetes/secret.yaml" "kubernetes secret.yaml"
+check_secret_file "infrastructure/ansible/inventory" "ansible inventory"
+check_secret_file "infrastructure/ansible/group_vars/all/vault.yml" "ansible vault.yml (unencrypted)"
+
+# Check for any .env files (not .env.example)
+if git ls-files 'infrastructure/**/.env' | grep -v '\.env\.example' | grep -q .; then
+  check_fail "SECURITY: Found committed .env file"
+else
+  check_pass "No committed .env files"
+fi
+
+# Check for private keys
+if git ls-files 'infrastructure/**/*.pem' 'infrastructure/**/*.key' | grep -q .; then
+  check_fail "SECURITY: Found committed private key files"
+else
+  check_pass "No committed private keys"
+fi
 
 # Summary
 section "Summary"

@@ -106,10 +106,13 @@ For complete environment details, see **[Environment Setup](./docs/environment.m
 
 ### Option 1: Infrastructure as Code (Recommended for Production)
 
-Deploy with reproducible, version-controlled infrastructure:
+Deploy with reproducible, version-controlled infrastructure.
+
+**Note:** The examples below are simplified. Each method requires prerequisites (secrets, configuration files, etc.). See the [Infrastructure as Code Guide](./docs/infrastructure.md) for complete step-by-step instructions.
 
 **Terraform (AWS):**
 ```bash
+# Requires: terraform.tfvars, AWS credentials, Secrets Manager setup
 cd infrastructure/terraform/aws-ec2
 terraform init
 terraform apply
@@ -117,12 +120,15 @@ terraform apply
 
 **Kubernetes:**
 ```bash
+# Requires: kubectl configured, secrets created, cluster access
 cd infrastructure/kubernetes
+kubectl create secret generic polymarket-bot-secrets --from-env-file=.env
 kubectl apply -f .
 ```
 
 **Ansible (VPS):**
 ```bash
+# Requires: inventory file, SSH access, vault.yml configured
 cd infrastructure/ansible
 ansible-playbook -i inventory playbook.yml
 ```
