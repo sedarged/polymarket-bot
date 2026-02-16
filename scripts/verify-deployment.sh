@@ -36,17 +36,17 @@ echo ""
 # Helper functions
 check_pass() {
   echo -e "${GREEN}✓${NC} $1"
-  ((CHECKS_PASSED++))
+  CHECKS_PASSED=$((CHECKS_PASSED + 1))
 }
 
 check_fail() {
   echo -e "${RED}✗${NC} $1"
-  ((CHECKS_FAILED++))
+  CHECKS_FAILED=$((CHECKS_FAILED + 1))
 }
 
 check_skip() {
   echo -e "${YELLOW}⊘${NC} $1"
-  ((CHECKS_SKIPPED++))
+  CHECKS_SKIPPED=$((CHECKS_SKIPPED + 1))
 }
 
 check_warn() {
