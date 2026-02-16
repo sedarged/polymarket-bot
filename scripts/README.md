@@ -11,6 +11,7 @@ This repository includes several automation scripts to streamline the developmen
 | `verify-codespaces.sh` | Automated Codespaces verification | Before creating/updating PRs |
 | `quality-check.sh` | Pre-commit quality checks | Before committing code |
 | `check-docs-links.sh` | Validate documentation links | After updating docs |
+| `verify-deployment.sh` | Deployment verification | After deploying to staging/production |
 
 ---
 
@@ -245,6 +246,186 @@ The script automatically skips:
 
 ---
 
+## Script 4: Deployment Verification
+
+**Location:** `scripts/verify-deployment.sh`
+
+**Purpose:** Verifies that a deployment to staging or production is healthy and functioning correctly.
+
+### What It Checks
+
+- ✅ Health endpoint returns 200 OK
+- ✅ Metrics endpoint returns Prometheus format
+- ✅ API endpoints are accessible
+- ✅ Configuration is correct for environment
+- ✅ Data persistence is working
+- ✅ Logging is accessible
+- ✅ No secrets exposed
+- ✅ HTTPS in production
+- ✅ Monitoring and alerting configured
+- ✅ Response times are acceptable
+
+### Usage
+
+```bash
+# Verify local deployment
+./scripts/verify-deployment.sh staging
+
+# Verify remote deployment
+./scripts/verify-deployment.sh production https://prod.example.com
+
+# With SSH access for detailed checks
+SSH_HOST=user@prod.example.com ./scripts/verify-deployment.sh production https://prod.example.com
+```
+
+### Arguments
+
+1. **Environment** (required): `staging` or `production`
+2. **Base URL** (optional): Defaults to `http://localhost:3000`
+
+### Environment Variables
+
+- `SSH_HOST` - SSH host for detailed checks (e.g., `user@server.example.com`)
+- `TIMEOUT` - Request timeout in seconds (default: 10)
+
+### Example Output
+
+```
+================================================
+Deployment Verification Script
+================================================
+
+Environment: production
+Base URL: https://prod.example.com
+Timeout: 10s
+
+━━━ Prerequisites ━━━
+✓ curl is installed
+✓ jq is installed
+
+━━━ Health Check ━━━
+✓ Health endpoint returns 200 OK
+✓ Health response has valid JSON with status: ok
+
+━━━ Metrics Endpoint ━━━
+✓ Metrics endpoint returns 200 OK
+✓ Metrics endpoint returns Prometheus format
+✓ HTTP request metrics present
+
+━━━ API Endpoints ━━━
+✓ Markets API endpoint accessible
+✓ Status API endpoint exists
+
+━━━ Configuration ━━━
+✓ LIVE_TRADING is enabled (production)
+
+━━━ Data Persistence ━━━
+✓ Data directory exists on deployment server
+✓ Database files found in data directory
+
+━━━ Logging ━━━
+✓ Can access application logs
+✓ No critical errors in recent logs
+
+━━━ Security Checks ━━━
+✓ No obvious secrets in health endpoint
+✓ Using HTTPS in production
+
+━━━ Monitoring ━━━
+⊘ Alert testing requires authentication
+
+━━━ Performance ━━━
+✓ Health endpoint response time: 127ms (good)
+
+━━━ Summary ━━━
+
+Total checks: 20
+Passed: 17
+Failed: 0
+Skipped: 3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Deployment verification PASSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### When to Use
+
+- **After deployment to staging** - Verify deployment succeeded
+- **After deployment to production** - Critical verification before considering deployment complete
+- **After rollback** - Verify rollback restored functionality
+- **During incident response** - Quick health check
+- **Regular monitoring** - Scheduled verification checks
+
+### Integration with CI/CD
+
+The deployment workflow automatically runs this script:
+
+```yaml
+- name: Verify deployment
+  run: |
+    ./scripts/verify-deployment.sh production ${{ vars.PRODUCTION_URL }}
+```
+
+Manual verification after CI/CD deployment:
+
+```bash
+# After automated deployment completes
+./scripts/verify-deployment.sh production https://prod.example.com
+
+# With SSH for comprehensive checks
+SSH_HOST=deploy@prod.example.com \
+  ./scripts/verify-deployment.sh production https://prod.example.com
+```
+
+### Exit Codes
+
+- `0` - All critical checks passed
+- `1` - One or more critical checks failed
+
+### Troubleshooting
+
+**Issue:** Health endpoint check fails
+
+```bash
+# Check if service is running
+ssh server.example.com "docker ps | grep polymarket-bot"
+
+# Check container logs
+ssh server.example.com "docker logs --tail 50 polymarket-bot"
+
+# Verify port is accessible
+curl -v https://prod.example.com/health
+```
+
+**Issue:** Database files not found
+
+```bash
+# Check data directory
+ssh server.example.com "ls -la /app/data"
+
+# Verify volume mount
+ssh server.example.com "docker inspect polymarket-bot | jq '.[0].Mounts'"
+```
+
+**Issue:** Response time too slow
+
+```bash
+# Check resource usage
+ssh server.example.com "docker stats polymarket-bot --no-stream"
+
+# Check for errors
+ssh server.example.com "docker logs polymarket-bot | grep -i error | tail -20"
+```
+
+### Related Documentation
+
+- [Deployment Guide](../docs/deployment-guide.md) - Complete deployment procedures
+- [Runbook](../docs/runbook.md) - Operational procedures
+- [Troubleshooting](../docs/troubleshooting.md) - Problem resolution
+
+---
+
 ## Workflow Integration
 
 ### For AI Agents
@@ -441,10 +622,16 @@ To add new checks to scripts:
 # After doc changes
 ./scripts/check-docs-links.sh
 
-# Full verification
+# After deployment
+./scripts/verify-deployment.sh production https://prod.example.com
+
+# Full verification (before PR)
 ./scripts/quality-check.sh && \
 ./scripts/verify-codespaces.sh && \
 ./scripts/check-docs-links.sh
+
+# Full deployment verification (after deploy)
+./scripts/verify-deployment.sh production https://prod.example.com
 ```
 
 ---

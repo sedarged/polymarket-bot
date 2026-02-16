@@ -5,6 +5,7 @@ This guide explains all GitHub automations for the Polymarket Trading Bot. These
 ## Table of Contents
 
 - [CI/CD Pipeline](#cicd-pipeline)
+- [Deployment Workflow](#deployment-workflow)
 - [Bug Report Template](#bug-report-template)
 - [Release Please](#release-please)
 - [Dependabot Security Monitoring](#dependabot-security-monitoring)
@@ -98,6 +99,174 @@ npm test
 # Security audit
 npm audit --audit-level=high
 ```
+
+---
+
+## Deployment Workflow
+
+**Workflow:** `.github/workflows/deploy.yml`
+
+### What It Does
+
+Automated deployment pipeline for staging and production environments:
+
+1. **Pre-deployment Validation:**
+   - Type checking (`npm run build`)
+   - Unit and integration tests
+   - Security audit (`npm audit`)
+   - Secret scanning (TruffleHog)
+
+2. **Docker Image Build:**
+   - Multi-arch build (amd64, arm64)
+   - Push to GitHub Container Registry (GHCR)
+   - Optional: Docker Hub, AWS ECR
+   - Security scanning with Trivy
+   - Upload scan results to GitHub Security
+
+3. **Staging Deployment:**
+   - Automatically deploys on push to `main`
+   - Supports SSH, Kubernetes, ECS, Docker Compose
+   - Health check verification
+   - Smoke tests
+
+4. **Production Deployment:**
+   - Manual trigger only
+   - Requires approval from designated reviewers
+   - Zero-downtime deployment
+   - Comprehensive verification
+   - Read-only smoke tests
+
+5. **Rollback Capability:**
+   - Rollback to any previous version
+   - Automated or manual rollback
+   - Verification after rollback
+
+### Deployment Triggers
+
+| Trigger | Environment | Approval | Notes |
+|---------|-------------|----------|-------|
+| Push to `main` | Staging | None | Automatic |
+| Manual dispatch | Staging | None | On-demand |
+| Manual dispatch | Production | Required | Minimum 2 reviewers |
+| Rollback | Any | Required (prod only) | Specify version tag |
+
+### How to Deploy
+
+**To Staging (Automatic):**
+```bash
+# Simply merge your PR to main
+git checkout main
+git pull
+# Staging deployment triggers automatically
+```
+
+**To Production (Manual):**
+1. Go to **Actions → Deploy**
+2. Click **Run workflow**
+3. Select:
+   - Branch: `main`
+   - Environment: `production`
+   - Skip tests: `false`
+4. Wait for approval request
+5. Review and approve deployment
+6. Monitor deployment progress
+
+**To Rollback:**
+1. Go to **Actions → Deploy**
+2. Click **Run workflow**
+3. Select:
+   - Branch: `main`
+   - Environment: `production`
+   - Rollback: `v1.2.3` (specify version)
+4. Approve rollback (if production)
+
+### Required Secrets
+
+Configure in GitHub Settings → Secrets and variables → Actions:
+
+**Core Secrets:**
+- `SSH_PRIVATE_KEY` - For SSH deployments
+- `STAGING_HOST` - Staging server address
+- `PRODUCTION_HOST` - Production server address
+- `STAGING_PRIVATE_KEY` - Trading wallet for staging
+- `PRODUCTION_PRIVATE_KEY` - Trading wallet for production
+
+**Optional:**
+- `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` - Docker Hub
+- `AWS_ROLE_ARN`, `AWS_REGION` - AWS ECR/ECS
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` - Notifications
+
+### Environment Protection
+
+**CRITICAL:** Configure environment protection in GitHub Settings → Environments:
+
+**Staging:**
+- Required reviewers: None
+- Wait timer: 0 minutes
+- Deployment branches: `main` only
+
+**Production:**
+- Required reviewers: Minimum 2 (repository maintainers)
+- Wait timer: 5 minutes
+- Deployment branches: `main` only
+
+### Verification
+
+After deployment, the workflow automatically:
+- Verifies health endpoint
+- Checks metrics endpoint
+- Runs smoke tests
+- Validates configuration
+
+Manual verification:
+```bash
+# Verify deployment
+./scripts/verify-deployment.sh production https://prod.example.com
+
+# Check logs
+ssh production.example.com "docker logs --tail 100 polymarket-bot"
+
+# Test endpoints
+curl https://prod.example.com/health
+curl https://prod.example.com/metrics
+```
+
+### Deployment Methods
+
+The workflow supports multiple deployment methods:
+
+1. **SSH Deployment** - SSH to server and update Docker container
+2. **Kubernetes** - kubectl set image or helm upgrade
+3. **AWS ECS** - Update ECS service with new task definition
+4. **Docker Compose** - SSH and docker-compose up with new image
+
+Configure by uncommenting the appropriate section in `deploy.yml`.
+
+### Complete Documentation
+
+For complete deployment procedures, see:
+- **[Deployment Guide](./deployment-guide.md)** - Step-by-step instructions
+- **[Docker Guide](./docker.md)** - Container deployment
+- **[Runbook](./runbook.md)** - Operational procedures
+
+### Security
+
+**Deployment Security Features:**
+- Secret scanning before deployment
+- Security scanning of Docker images
+- SARIF upload to GitHub Security
+- Environment-based secret management
+- Required approvals for production
+- Audit trail of all deployments
+
+**Best Practices:**
+1. **Never skip tests** for production deployments
+2. **Always require approval** for production
+3. **Test in staging first** before production
+4. **Use HTTPS** for production deployments
+5. **Rotate secrets regularly** (every 30-90 days)
+6. **Monitor deployments** for 30+ minutes after production deploy
+7. **Have rollback plan ready** before deploying
 
 ---
 
