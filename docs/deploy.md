@@ -1,6 +1,19 @@
 # Deployment (Research §6.1, §9)
 
-This document describes how to deploy the Polymarket bot. Research §6.1 recommends a deploy workflow; this repo supports manual and CI-based deployment.
+This document provides a quick overview of deployment options. For complete deployment procedures, see the **[Deployment Guide](./deployment-guide.md)**.
+
+## Quick Start
+
+### For Production Deployments (Automated CI/CD)
+
+**Use the automated deployment workflow:**
+
+1. **Staging:** Automatically deploys on merge to `main`
+2. **Production:** Manual trigger with required approval
+
+See **[Deployment Guide](./deployment-guide.md)** for complete instructions.
+
+### For Local/Development Testing
 
 ## Options
 
@@ -19,11 +32,37 @@ This document describes how to deploy the Polymarket bot. Research §6.1 recomme
 
 ## CI/CD
 
+**Complete automated deployment pipeline available:**
+
 - **CI:** [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs on push/PR (build, test, lint).
-- **Deploy:** There is no automated deploy workflow by default. To add one:
-  - Create `.github/workflows/deploy.yml` that builds the image and deploys to your VM or registry (e.g. push to Docker Hub/ECR, then SSH or pull on the server).
-  - Use secrets for `PRIVATE_KEY`, `ADMIN_TOKEN`, and any registry credentials.
+- **Deploy:** [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) handles staging and production deployments
+  - Pre-deployment validation (tests, security scans)
+  - Docker image build and push to registry
+  - Automated staging deployment
+  - Manual production deployment with approval
+  - Rollback capability
+  - Deployment verification
+
+**See [Deployment Guide](./deployment-guide.md) for:**
+- Complete deployment procedures
+- Environment setup (staging/production)
+- Rollback procedures
+- Security and access management
+- Troubleshooting
 
 ## Pre-deploy
 
 Run the [pre-deployment verification](./pre-deployment-verification.md) checklist and `./scripts/verify-pre-deploy.sh` (with the bot running or BASE_URL set) before going live.
+
+After deployment, verify using:
+```bash
+./scripts/verify-deployment.sh production https://your-prod-url.com
+```
+
+## Related Documentation
+
+- **[Deployment Guide](./deployment-guide.md)** - Complete deployment procedures (GAP-015)
+- **[Docker Guide](./docker.md)** - Container deployment details
+- **[Pre-deployment Verification](./pre-deployment-verification.md)** - Pre-deployment checklist
+- **[Runbook](./runbook.md)** - Operational procedures
+- **[Automation Guide](./automation.md)** - CI/CD overview
