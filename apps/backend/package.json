@@ -17,6 +17,8 @@
     "markets": "tsx src/index.ts markets",
     "book": "tsx src/index.ts book",
     "kill": "tsx src/index.ts kill",
+    "backup": "tsx src/index.ts backup",
+    "backup:list": "tsx src/index.ts backup --list",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
