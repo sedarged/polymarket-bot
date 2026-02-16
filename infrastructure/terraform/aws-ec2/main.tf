@@ -223,16 +223,27 @@ resource "aws_iam_role_policy" "cloudwatch" {
       {
         Effect = "Allow"
         Action = [
-          "cloudwatch:PutMetricData",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogStreams"
         ]
-        Resource = [
-          "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/${var.project_name}-${var.environment}*",
-          "arn:aws:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:*"
+        Resource = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/ec2/${var.project_name}-${var.environment}*"
+      },
+      {
+        Effect = "Allow"
+        # Note: cloudwatch:PutMetricData does not support resource-level permissions
+        # This must be scoped at the account level. Consider using a Condition to
+        # restrict by namespace if additional security is required.
+        Action = [
+          "cloudwatch:PutMetricData"
         ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "cloudwatch:namespace" = "PolymarketBot/${var.environment}"
+          }
+        }
       }
     ]
   })
