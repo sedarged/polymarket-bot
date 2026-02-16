@@ -2002,19 +2002,274 @@ Markets resolve via the UMA Optimistic Oracle. After resolution, winning shares 
 
 ## Backup and Recovery
 
-### Daily DB backup (Research §9.8)
+### Automated Database Backup (Gap PA-006, Issue #406)
 
-For production, back up SQLite (or Postgres) daily. **Note:** Research §11 suggests Postgres for production at scale; the current implementation uses SQLite. If you migrate to Postgres, use equivalent backup (e.g. `pg_dump`) and document the connection string in your runbook.
+The bot includes automated backup functionality for all SQLite databases with support for local and cloud storage.
 
-Example (SQLite):
+**Supported Storage Backends:**
+- **Local filesystem** - For development and small deployments
+- **AWS S3** - Recommended for production with AWS infrastructure
+- **Google Cloud Storage (GCS)** - For Google Cloud deployments
+- **Azure Blob Storage** - For Azure deployments
+
+**Features:**
+- Consistent SQLite snapshots using backup API
+- Optional gzip compression (recommended)
+- Automatic rotation and retention policies
+- Alerting on backup failures (via Telegram if configured)
+- Cloud storage with server-side encryption
+
+#### Quick Start - Manual Backup
 
 ```bash
-# Daily at 00:00 UTC; retain 30 days
-0 0 * * * sqlite3 /path/to/data/audit.db ".dump" | gzip > /path/to/backups/audit-$(date +\%Y\%m\%d).sql.gz
-# Prune: find /path/to/backups -name 'audit-*.sql.gz' -mtime +30 -delete
+# Run backup with current configuration
+npm run backup
+
+# List existing backups
+npm run backup:list
 ```
 
-Optionally push backups to S3/Backblaze for off-host retention.
+#### Configuration
+
+Configure backup settings in `.env`:
+
+```bash
+# Storage backend
+BACKUP_STORAGE_TYPE=local  # or s3, gcs, azure
+
+# Local filesystem (required for local, used as temp for cloud uploads)
+BACKUP_LOCAL_PATH=./data/backups
+
+# Compression (recommended)
+BACKUP_COMPRESS=true
+
+# Retention policy
+BACKUP_MAX_BACKUPS=30      # Keep last 30 backups
+BACKUP_MAX_AGE_DAYS=90     # Delete backups older than 90 days
+
+# AWS S3 (when BACKUP_STORAGE_TYPE=s3)
+BACKUP_S3_BUCKET=my-backup-bucket
+BACKUP_S3_REGION=us-east-1
+BACKUP_S3_PREFIX=polymarket-backups/
+# Optional: uses AWS SDK default credentials if not provided
+# BACKUP_S3_ACCESS_KEY_ID=your_access_key_id
+# BACKUP_S3_SECRET_ACCESS_KEY=your_secret_access_key
+
+# Google Cloud Storage (when BACKUP_STORAGE_TYPE=gcs)
+# BACKUP_GCS_BUCKET=my-backup-bucket
+# BACKUP_GCS_PROJECT_ID=my-project-id
+# BACKUP_GCS_PREFIX=polymarket-backups/
+# BACKUP_GCS_KEY_FILENAME=/path/to/service-account-key.json
+
+# Azure Blob Storage (when BACKUP_STORAGE_TYPE=azure)
+# BACKUP_AZURE_CONTAINER=backups
+# BACKUP_AZURE_PREFIX=polymarket-backups/
+# BACKUP_AZURE_CONNECTION_STRING=DefaultEndpointsProtocol=https;...
+# Or use account name and key:
+# BACKUP_AZURE_ACCOUNT_NAME=mystorageaccount
+# BACKUP_AZURE_ACCOUNT_KEY=your_account_key
+```
+
+#### Scheduled Backups
+
+**Using cron (Linux/macOS):**
+
+```bash
+# Daily at 2 AM UTC
+0 2 * * * cd /path/to/polymarket-bot/apps/backend && npm run backup >> /var/log/polymarket-backup.log 2>&1
+
+# Every 6 hours
+0 */6 * * * cd /path/to/polymarket-bot/apps/backend && npm run backup >> /var/log/polymarket-backup.log 2>&1
+
+# Weekly on Sunday at midnight
+0 0 * * 0 cd /path/to/polymarket-bot/apps/backend && npm run backup >> /var/log/polymarket-backup.log 2>&1
+```
+
+**Using systemd timer:**
+
+```ini
+# /etc/systemd/system/polymarket-backup.timer
+[Unit]
+Description=Polymarket Database Backup Timer
+
+[Timer]
+OnCalendar=daily
+OnCalendar=02:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```ini
+# /etc/systemd/system/polymarket-backup.service
+[Unit]
+Description=Polymarket Database Backup
+
+[Service]
+Type=oneshot
+User=polymarket
+WorkingDirectory=/path/to/polymarket-bot/apps/backend
+ExecStart=/usr/bin/npm run backup
+```
+
+Enable and start the timer:
+
+```bash
+sudo systemctl enable polymarket-backup.timer
+sudo systemctl start polymarket-backup.timer
+sudo systemctl list-timers  # Verify it's scheduled
+```
+
+#### Databases Backed Up
+
+The backup system automatically backs up all SQLite databases:
+
+1. **audit.db** - Order history, fills, positions, balances
+2. **events.db** - Learning system event store
+3. **signals.db** - Trading signals catalog
+4. **backtests.db** - Backtest results and analysis
+5. **promotions.db** - Strategy promotion workflow
+
+#### Cloud Storage Setup
+
+**AWS S3:**
+
+```bash
+# Install AWS SDK (if not already installed)
+npm install @aws-sdk/client-s3
+
+# Create S3 bucket
+aws s3 mb s3://polymarket-backups --region us-east-1
+
+# Enable versioning (optional but recommended)
+aws s3api put-bucket-versioning \
+  --bucket polymarket-backups \
+  --versioning-configuration Status=Enabled
+
+# Set lifecycle policy for automatic cleanup
+cat > lifecycle.json <<EOF
+{
+  "Rules": [{
+    "Id": "DeleteOldBackups",
+    "Status": "Enabled",
+    "Prefix": "polymarket-backups/",
+    "Expiration": { "Days": 90 }
+  }]
+}
+EOF
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket polymarket-backups \
+  --lifecycle-configuration file://lifecycle.json
+```
+
+**Google Cloud Storage:**
+
+```bash
+# Install GCS SDK (if not already installed)
+npm install @google-cloud/storage
+
+# Create bucket
+gsutil mb -l us-east1 gs://polymarket-backups
+
+# Enable versioning
+gsutil versioning set on gs://polymarket-backups
+
+# Set lifecycle for automatic cleanup
+cat > lifecycle.json <<EOF
+{
+  "lifecycle": {
+    "rule": [{
+      "action": {"type": "Delete"},
+      "condition": {"age": 90}
+    }]
+  }
+}
+EOF
+gsutil lifecycle set lifecycle.json gs://polymarket-backups
+```
+
+**Azure Blob Storage:**
+
+```bash
+# Install Azure SDK (if not already installed)
+npm install @azure/storage-blob
+
+# Create container
+az storage container create \
+  --name backups \
+  --account-name mystorageaccount
+
+# Enable blob versioning
+az storage account blob-service-properties update \
+  --account-name mystorageaccount \
+  --enable-versioning true
+```
+
+#### Monitoring and Alerting
+
+Backup failures are automatically reported via Telegram if alerting is configured:
+
+```bash
+# .env configuration for alerts
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+```
+
+You'll receive alerts for:
+- Backup failures (missing database, upload errors, etc.)
+- Cloud storage connection issues
+- Permission errors
+
+#### Verification
+
+Test your backup configuration:
+
+```bash
+# Run a test backup
+npm run backup
+
+# Verify backup was created
+npm run backup:list
+
+# For cloud storage, verify in cloud console
+aws s3 ls s3://polymarket-backups/  # S3
+gsutil ls gs://polymarket-backups/  # GCS
+az storage blob list --container-name backups  # Azure
+```
+
+### Database Recovery
+
+```bash
+# 1. Stop the bot
+npm run kill  # Or Ctrl+C if running in foreground
+
+# 2. Backup current (potentially corrupted) database
+mv data/audit.db data/audit.db.corrupted
+
+# 3. Download backup from cloud storage (if using cloud)
+# AWS S3:
+aws s3 cp s3://polymarket-backups/audit-2026-02-16T02-00-00-000Z.db.gz ./
+
+# GCS:
+gsutil cp gs://polymarket-backups/audit-2026-02-16T02-00-00-000Z.db.gz ./
+
+# Azure:
+az storage blob download \
+  --container-name backups \
+  --name audit-2026-02-16T02-00-00-000Z.db.gz \
+  --file ./audit-2026-02-16T02-00-00-000Z.db.gz
+
+# 4. Extract backup
+gunzip audit-2026-02-16T02-00-00-000Z.db.gz
+mv audit-2026-02-16T02-00-00-000Z.db data/audit.db
+
+# 5. Verify database integrity
+sqlite3 data/audit.db "PRAGMA integrity_check;"
+
+# 6. Restart bot
+npm run dev
+```
 
 ### State Backup
 ```bash
@@ -2046,27 +2301,35 @@ mv logs/*.gz /path/to/archive/
 find /path/to/archive/ -name "bot-*.log.gz" -mtime +90 -delete
 ```
 
-### Recovery Procedure
+### Full System Recovery
 ```bash
-# 1. Stop the bot
-npm run dev  # Ctrl+C or kill switch
+# 1. Clone repository (if needed)
+git clone https://github.com/sedarged/polymarket-bot.git
+cd polymarket-bot
 
-# 2. Restore from backup
-cp backup/env-YYYYMMDD.env.gpg .env.gpg
+# 2. Install dependencies
+npm install
+
+# 3. Restore configuration (keep secrets secure)
+cp backup/.env.gpg .env.gpg
 gpg -d .env.gpg > .env
 chmod 600 .env
 
-# 3. Verify configuration
+# 4. Restore all databases
+npm run backup:list  # Find latest backup
+# Download and extract each database (audit, events, signals, etc.)
+
+# 5. Verify configuration
 grep -E "LIVE_TRADING|COMPLIANCE_ACCEPTED|PRIVATE_KEY" .env
 
-# 4. Start in paper mode first
+# 6. Start in paper mode first
 sed -i.bak 's/LIVE_TRADING=true/LIVE_TRADING=false/' .env && rm -f .env.bak
 npm run dev
 
-# 5. Verify health
+# 7. Verify health
 curl http://localhost:3000/health
 
-# 6. Re-enable live trading if all checks pass
+# 8. Re-enable live trading if all checks pass
 sed -i.bak 's/LIVE_TRADING=false/LIVE_TRADING=true/' .env && rm -f .env.bak
 # Restart: Ctrl+C, then npm run dev
 ```

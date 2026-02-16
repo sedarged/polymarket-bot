@@ -4,7 +4,10 @@ import { logger } from '../utils/logger';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../utils/orderbook';
 import { Token } from '@polymarket/shared';
 import { config } from '../config';
+import { BackupService } from '../utils/backup';
+import { AlertingService } from '../utils/alerting';
 import axios from 'axios';
+import path from 'path';
 
 export async function marketsCommand(limit?: number): Promise<void> {
   try {
@@ -94,6 +97,149 @@ export async function killCommand(): Promise<void> {
   }
 }
 
+export async function backupCommand(options: Record<string, string | boolean>): Promise<void> {
+  try {
+    console.log('\n🔄 Starting database backup...\n');
+
+    // Initialize alerting service if configured
+    let alertingService: AlertingService | undefined;
+    if (config.telegramBotToken && config.telegramChatId) {
+      alertingService = new AlertingService({
+        telegramBotToken: config.telegramBotToken,
+        telegramChatId: config.telegramChatId,
+      });
+    }
+
+    // Build backup configuration
+    const backupConfig = {
+      storageType: config.backupStorageType,
+      localPath: config.backupLocalPath,
+      compress: config.backupCompress,
+      retention: {
+        maxBackups: config.backupMaxBackups,
+        maxAgeDays: config.backupMaxAgeDays,
+      },
+      databases: [
+        {
+          name: 'audit',
+          path: path.join(process.cwd(), 'data', 'audit.db'),
+        },
+        {
+          name: 'events',
+          path: path.join(process.cwd(), 'data', 'events.db'),
+        },
+        {
+          name: 'signals',
+          path: path.join(process.cwd(), 'data', 'signals.db'),
+        },
+        {
+          name: 'backtests',
+          path: path.join(process.cwd(), 'data', 'backtests.db'),
+        },
+        {
+          name: 'promotions',
+          path: path.join(process.cwd(), 'data', 'promotions.db'),
+        },
+      ],
+      alertingService,
+    };
+
+    // Add cloud-specific configuration
+    if (config.backupStorageType === 's3') {
+      backupConfig['s3'] = {
+        bucket: config.backupS3Bucket!,
+        region: config.backupS3Region!,
+        prefix: config.backupS3Prefix,
+        accessKeyId: config.backupS3AccessKeyId,
+        secretAccessKey: config.backupS3SecretAccessKey,
+      };
+    } else if (config.backupStorageType === 'gcs') {
+      backupConfig['gcs'] = {
+        bucket: config.backupGcsBucket!,
+        projectId: config.backupGcsProjectId!,
+        prefix: config.backupGcsPrefix,
+        keyFilename: config.backupGcsKeyFilename,
+      };
+    } else if (config.backupStorageType === 'azure') {
+      backupConfig['azure'] = {
+        containerName: config.backupAzureContainer!,
+        prefix: config.backupAzurePrefix,
+        connectionString: config.backupAzureConnectionString,
+        accountName: config.backupAzureAccountName,
+        accountKey: config.backupAzureAccountKey,
+      };
+    }
+
+    // Create backup service
+    const backupService = new BackupService(backupConfig as any);
+
+    // List backups if requested
+    if (options.list) {
+      console.log('📋 Listing existing backups...\n');
+      const backups = await backupService.listBackups();
+      
+      if (backups.length === 0) {
+        console.log('No backups found.\n');
+      } else {
+        console.log(`Found ${backups.length} backup(s):\n`);
+        backups.forEach((backup, index) => {
+          const sizeMB = (backup.size / (1024 * 1024)).toFixed(2);
+          console.log(`${index + 1}. ${backup.name}`);
+          console.log(`   Size: ${sizeMB} MB`);
+          console.log(`   Date: ${backup.date.toISOString()}`);
+          console.log('');
+        });
+      }
+      return;
+    }
+
+    // Perform backup
+    const results = await backupService.backup();
+
+    // Display results
+    console.log('\n📊 Backup Results:\n');
+    
+    let successCount = 0;
+    let failureCount = 0;
+    let totalSize = 0;
+
+    results.forEach((result) => {
+      if (result.success) {
+        successCount++;
+        totalSize += result.size;
+        const sizeMB = (result.size / (1024 * 1024)).toFixed(2);
+        console.log(`✓ ${result.database}: ${sizeMB} MB`);
+        console.log(`  Location: ${result.location}`);
+      } else {
+        failureCount++;
+        console.log(`✗ ${result.database}: FAILED`);
+        console.log(`  Error: ${result.error}`);
+      }
+      console.log('');
+    });
+
+    console.log('Summary:');
+    console.log(`  Success: ${successCount}`);
+    console.log(`  Failed: ${failureCount}`);
+    console.log(`  Total size: ${(totalSize / (1024 * 1024)).toFixed(2)} MB`);
+    console.log(`  Storage: ${config.backupStorageType}`);
+    console.log('');
+
+    if (failureCount > 0) {
+      console.error('⚠️  Some backups failed. Check the logs for details.');
+      process.exit(1);
+    } else {
+      console.log('✅ All backups completed successfully!');
+    }
+  } catch (error) {
+    logger.error('Backup command failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    console.error(`\n✗ Backup failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
+}
+
 export function parseArgs(args: string[]): { command: string; options: Record<string, string | boolean> } {
   const command = args[0] || '';
   const options: Record<string, string | boolean> = {};
@@ -139,11 +285,16 @@ export async function run(args: string[]): Promise<void> {
       await killCommand();
       break;
     }
+    case 'backup': {
+      await backupCommand(options);
+      break;
+    }
     default:
       console.log('Usage:');
       console.log('  npm run markets [--limit <number>]');
       console.log('  npm run book --tokenId <token_id>');
       console.log('  npm run kill');
+      console.log('  npm run backup [--list]');
       process.exit(1);
   }
 }

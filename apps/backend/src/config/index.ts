@@ -261,6 +261,33 @@ const envSchema = z.object({
   WS_MAX_RECONNECT_ATTEMPTS: numberFromEnv(10, z.number().int().positive().max(100)),
   // Heartbeat URL (e.g. healthchecks.io ping URL). GET every 1 min (Research §9.7, §10.6). If missed 5 min, external alert.
   HEARTBEAT_URL: optionalStringFromEnv(z.string().url().optional()),
+  // ========================================
+  // Database Backup Configuration (Gap PA-006, Issue #406)
+  // ========================================
+  BACKUP_STORAGE_TYPE: z.enum(['local', 's3', 'gcs', 'azure']).default('local'),
+  BACKUP_LOCAL_PATH: z.string().default('./data/backups'),
+  BACKUP_COMPRESS: booleanFromEnv.default(true),
+  BACKUP_MAX_BACKUPS: numberFromEnv(30, z.number().int().positive()),
+  BACKUP_MAX_AGE_DAYS: numberFromEnv(90, z.number().int().positive()),
+  // S3 configuration
+  BACKUP_S3_BUCKET: optionalStringFromEnv(z.string().optional()),
+  BACKUP_S3_REGION: optionalStringFromEnv(z.string().optional()),
+  BACKUP_S3_PREFIX: optionalStringFromEnv(z.string().optional()),
+  BACKUP_S3_ACCESS_KEY_ID: optionalStringFromEnv(z.string().optional()),
+  BACKUP_S3_SECRET_ACCESS_KEY: optionalStringFromEnv(z.string().optional()),
+  // GCS configuration
+  BACKUP_GCS_BUCKET: optionalStringFromEnv(z.string().optional()),
+  BACKUP_GCS_PROJECT_ID: optionalStringFromEnv(z.string().optional()),
+  BACKUP_GCS_PREFIX: optionalStringFromEnv(z.string().optional()),
+  BACKUP_GCS_KEY_FILENAME: optionalStringFromEnv(z.string().optional()),
+  // Azure configuration
+  BACKUP_AZURE_CONTAINER: optionalStringFromEnv(z.string().optional()),
+  BACKUP_AZURE_PREFIX: optionalStringFromEnv(z.string().optional()),
+  BACKUP_AZURE_CONNECTION_STRING: optionalStringFromEnv(z.string().optional()),
+  BACKUP_AZURE_ACCOUNT_NAME: optionalStringFromEnv(z.string().optional()),
+  BACKUP_AZURE_ACCOUNT_KEY: optionalStringFromEnv(z.string().optional()),
+  // Backup schedule (cron expression)
+  BACKUP_SCHEDULE: z.string().default('0 2 * * *'),
 });
 
 const configSchema = envSchema
@@ -393,6 +420,27 @@ const configSchema = envSchema
     minBalanceUsdc: env.MIN_BALANCE_USDC,
     banStatusCheckIntervalMs: env.BAN_STATUS_CHECK_INTERVAL_MS,
     banStatusExitIfCertRequired: env.BAN_STATUS_EXIT_IF_CERT_REQUIRED,
+    // Backup configuration
+    backupStorageType: env.BACKUP_STORAGE_TYPE,
+    backupLocalPath: env.BACKUP_LOCAL_PATH,
+    backupCompress: env.BACKUP_COMPRESS,
+    backupMaxBackups: env.BACKUP_MAX_BACKUPS,
+    backupMaxAgeDays: env.BACKUP_MAX_AGE_DAYS,
+    backupS3Bucket: env.BACKUP_S3_BUCKET,
+    backupS3Region: env.BACKUP_S3_REGION,
+    backupS3Prefix: env.BACKUP_S3_PREFIX,
+    backupS3AccessKeyId: env.BACKUP_S3_ACCESS_KEY_ID,
+    backupS3SecretAccessKey: env.BACKUP_S3_SECRET_ACCESS_KEY,
+    backupGcsBucket: env.BACKUP_GCS_BUCKET,
+    backupGcsProjectId: env.BACKUP_GCS_PROJECT_ID,
+    backupGcsPrefix: env.BACKUP_GCS_PREFIX,
+    backupGcsKeyFilename: env.BACKUP_GCS_KEY_FILENAME,
+    backupAzureContainer: env.BACKUP_AZURE_CONTAINER,
+    backupAzurePrefix: env.BACKUP_AZURE_PREFIX,
+    backupAzureConnectionString: env.BACKUP_AZURE_CONNECTION_STRING,
+    backupAzureAccountName: env.BACKUP_AZURE_ACCOUNT_NAME,
+    backupAzureAccountKey: env.BACKUP_AZURE_ACCOUNT_KEY,
+    backupSchedule: env.BACKUP_SCHEDULE,
   };
   });
 
