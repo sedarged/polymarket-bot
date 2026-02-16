@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../utils/orderbook';
 import { Token } from '@polymarket/shared';
 import { config } from '../config';
-import { BackupService } from '../utils/backup';
+import { BackupService, BackupConfig } from '../utils/backup';
 import { AlertingService } from '../utils/alerting';
 import axios from 'axios';
 import path from 'path';
@@ -110,8 +110,31 @@ export async function backupCommand(options: Record<string, string | boolean>): 
       });
     }
 
-    // Build backup configuration
-    const backupConfig = {
+    // Validate cloud-specific configuration up front
+    const missingVars: string[] = [];
+    if (config.backupStorageType === 's3') {
+      if (!config.backupS3Bucket) missingVars.push('BACKUP_S3_BUCKET');
+      if (!config.backupS3Region) missingVars.push('BACKUP_S3_REGION');
+    } else if (config.backupStorageType === 'gcs') {
+      if (!config.backupGcsBucket) missingVars.push('BACKUP_GCS_BUCKET');
+      if (!config.backupGcsProjectId) missingVars.push('BACKUP_GCS_PROJECT_ID');
+    } else if (config.backupStorageType === 'azure') {
+      if (!config.backupAzureContainer) missingVars.push('BACKUP_AZURE_CONTAINER');
+      if (!config.backupAzureConnectionString && (!config.backupAzureAccountName || !config.backupAzureAccountKey)) {
+        missingVars.push('BACKUP_AZURE_CONNECTION_STRING or (BACKUP_AZURE_ACCOUNT_NAME + BACKUP_AZURE_ACCOUNT_KEY)');
+      }
+    }
+
+    if (missingVars.length > 0) {
+      console.error(`\n✗ Missing required backup configuration:\n  ${missingVars.join('\n  ')}\n`);
+      process.exit(1);
+    }
+
+    // Use runtime-configured DB paths from environment or defaults
+    const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+    
+    // Build backup configuration with proper typing
+    const backupConfig: BackupConfig = {
       storageType: config.backupStorageType,
       localPath: config.backupLocalPath,
       compress: config.backupCompress,
@@ -122,31 +145,31 @@ export async function backupCommand(options: Record<string, string | boolean>): 
       databases: [
         {
           name: 'audit',
-          path: path.join(process.cwd(), 'data', 'audit.db'),
+          path: process.env.AUDIT_DB_PATH || path.join(dataDir, 'audit.db'),
         },
         {
           name: 'events',
-          path: path.join(process.cwd(), 'data', 'events.db'),
+          path: process.env.EVENT_STORE_PATH || path.join(dataDir, 'events.db'),
         },
         {
           name: 'signals',
-          path: path.join(process.cwd(), 'data', 'signals.db'),
+          path: process.env.SIGNAL_CATALOG_PATH || path.join(dataDir, 'signals.db'),
         },
         {
           name: 'backtests',
-          path: path.join(process.cwd(), 'data', 'backtests.db'),
+          path: process.env.BACKTEST_ENGINE_PATH || path.join(dataDir, 'backtests.db'),
         },
         {
           name: 'promotions',
-          path: path.join(process.cwd(), 'data', 'promotions.db'),
+          path: process.env.PROMOTION_WORKFLOW_PATH || path.join(dataDir, 'promotions.db'),
         },
       ],
       alertingService,
     };
 
-    // Add cloud-specific configuration
+    // Add cloud-specific configuration with validated values
     if (config.backupStorageType === 's3') {
-      backupConfig['s3'] = {
+      backupConfig.s3 = {
         bucket: config.backupS3Bucket!,
         region: config.backupS3Region!,
         prefix: config.backupS3Prefix,
@@ -154,14 +177,14 @@ export async function backupCommand(options: Record<string, string | boolean>): 
         secretAccessKey: config.backupS3SecretAccessKey,
       };
     } else if (config.backupStorageType === 'gcs') {
-      backupConfig['gcs'] = {
+      backupConfig.gcs = {
         bucket: config.backupGcsBucket!,
         projectId: config.backupGcsProjectId!,
         prefix: config.backupGcsPrefix,
         keyFilename: config.backupGcsKeyFilename,
       };
     } else if (config.backupStorageType === 'azure') {
-      backupConfig['azure'] = {
+      backupConfig.azure = {
         containerName: config.backupAzureContainer!,
         prefix: config.backupAzurePrefix,
         connectionString: config.backupAzureConnectionString,
@@ -170,8 +193,8 @@ export async function backupCommand(options: Record<string, string | boolean>): 
       };
     }
 
-    // Create backup service
-    const backupService = new BackupService(backupConfig as any);
+    // Create backup service with properly typed config
+    const backupService = new BackupService(backupConfig);
 
     // List backups if requested
     if (options.list) {

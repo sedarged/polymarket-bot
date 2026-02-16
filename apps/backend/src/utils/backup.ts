@@ -99,6 +99,8 @@ export interface BackupResult {
   error?: string;
 }
 
+export type { BackupConfig };
+
 export class BackupService {
   private config: BackupConfig;
   private alerting?: AlertingService;
