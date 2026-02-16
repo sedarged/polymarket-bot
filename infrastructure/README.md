@@ -21,22 +21,21 @@ Declare all infrastructure as code, track it in VCS, and deploy reproducibly usi
 
 ### 1. Terraform - AWS EC2 (`terraform/aws-ec2/`)
 
-**Best for:** Production deployments on AWS with complete infrastructure control
+**Best for:** Production deployments on AWS with infrastructure managed via Terraform
 
 **Features:**
+- Single AWS EC2 instance for running the trading bot
 - Complete AWS infrastructure (VPC, subnets, security groups)
-- Auto-scaling capable EC2 instance
-- EBS volumes for persistent data
-- IAM roles for AWS Secrets Manager integration
-- CloudWatch monitoring and alarms
-- Automated backups
-- Blue-green deployment support
+- EBS volume for persistent bot data
+- IAM roles for AWS service integration
+- CloudWatch monitoring and alarms for basic instance health
+- Infrastructure versioning and state management via Terraform
 
 **Use when:**
-- You need enterprise-grade infrastructure
-- You want AWS-native integrations (Secrets Manager, CloudWatch)
+- You want AWS-native compute with minimal infrastructure
+- You want AWS-native integrations such as CloudWatch
 - You require infrastructure versioning and state management
-- You need disaster recovery capabilities
+- You plan to iterate towards more advanced infrastructure over time
 
 **[Documentation →](terraform/aws-ec2/README.md)**
 

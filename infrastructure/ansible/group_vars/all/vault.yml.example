@@ -6,7 +6,7 @@
 # 2. Edit with your secrets: vi vault.yml
 # 3. Encrypt it: ansible-vault encrypt vault.yml
 #
-# The encrypted file can be safely committed to git.
+# Even when encrypted, vault.yml should NOT be committed to git.
 
 ---
 # Trading wallet private key

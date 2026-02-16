@@ -32,7 +32,8 @@ apt-get install -y \
 
 # Configure automatic security updates
 echo "Configuring automatic security updates..."
-dpkg-reconfigure -plow unattended-upgrades
+echo "unattended-upgrades unattended-upgrades/enable_auto_updates boolean true" | debconf-set-selections
+DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades
 
 # Install Docker from official repository with version pinning
 echo "Installing Docker from official repository..."
