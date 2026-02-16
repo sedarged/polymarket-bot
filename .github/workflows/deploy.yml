@@ -21,7 +21,7 @@ on:
           - staging
           - production
       skip_tests:
-        description: 'Skip test suite (not recommended for production)'
+        description: 'Skip test suite (NOT ALLOWED for production)'
         required: false
         type: boolean
         default: false
@@ -87,6 +87,13 @@ jobs:
       - name: Validate deployment readiness
         id: check
         run: |
+          # Block test skipping in production (violates safety guidelines)
+          if [ "${{ inputs.environment }}" = "production" ] && [ "${{ inputs.skip_tests }}" = "true" ]; then
+            echo "::error::Cannot skip tests when deploying to production"
+            echo "Tests MUST pass before production deployment per repository guidelines"
+            exit 1
+          fi
+          
           echo "should_deploy=true" >> $GITHUB_OUTPUT
           echo "✅ Pre-deployment validation passed"
 
@@ -198,11 +205,18 @@ jobs:
           echo "Image: $IMAGE_TAG"
           
           # Example: SSH deployment
-          # Uncomment and configure SSH_PRIVATE_KEY secret and STAGING_HOST
+          # Uncomment and configure SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS secrets and STAGING_HOST
+          # # Set up cleanup trap to ensure SSH key is removed even on failure
+          # trap 'rm -f ~/.ssh/deploy_key' EXIT
           # mkdir -p ~/.ssh
           # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           # chmod 600 ~/.ssh/deploy_key
-          # ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          # echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          # chmod 644 ~/.ssh/known_hosts
+          # # NOTE: Do NOT use 'StrictHostKeyChecking=no' in production. Always verify host keys.
+          # ssh -i ~/.ssh/deploy_key \
+          #   -o UserKnownHostsFile=~/.ssh/known_hosts \
+          #   -o StrictHostKeyChecking=yes \
           #   ${{ secrets.STAGING_HOST }} \
           #   "docker pull $IMAGE_TAG && \
           #    docker stop polymarket-bot || true && \
@@ -225,9 +239,12 @@ jobs:
           #    export IMAGE_TAG=$IMAGE_TAG && \
           #    docker-compose up -d"
           
-          echo "✅ Staging deployment completed"
-          echo "Configure deployment method by uncommenting and editing the appropriate section above."
+          # IMPORTANT: This is a placeholder. Actual deployment is not configured.
+          # Uncomment and configure one of the deployment methods above before using this workflow.
+          echo "::error::No staging deployment method is currently configured."
+          echo "Configure a deployment method by uncommenting and editing one of the example sections above."
           echo "See docs/deployment-guide.md for detailed instructions."
+          exit 1
 
       - name: Verify staging deployment
         run: |
@@ -236,9 +253,15 @@ jobs:
           # Wait for service to be ready
           sleep 30
           
-          # Health check
-          # Uncomment and configure STAGING_URL
-          # curl -f ${{ vars.STAGING_URL }}/health || exit 1
+          # Health check (runs only if STAGING_URL is configured)
+          if [ -n "${{ vars.STAGING_URL }}" ]; then
+            echo "🔎 Performing health check against ${{ vars.STAGING_URL }}/health"
+            curl -f "${{ vars.STAGING_URL }}/health" || exit 1
+            echo "✅ Health check passed"
+          else
+            echo "⚠️ STAGING_URL is not configured; skipping health check."
+            echo "   Configure vars.STAGING_URL to enable automated deployment verification."
+          fi
           
           echo "✅ Staging verification completed"
 
@@ -299,16 +322,27 @@ jobs:
           # required reviewers configured in GitHub Settings
           
           # Example: SSH deployment with zero-downtime
+          # # Set up cleanup trap to ensure SSH key is removed even on failure
+          # trap 'rm -f ~/.ssh/deploy_key' EXIT
           # mkdir -p ~/.ssh
           # echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           # chmod 600 ~/.ssh/deploy_key
+          # echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          # chmod 644 ~/.ssh/known_hosts
+          # # SECURITY: Always verify host keys in production - never use StrictHostKeyChecking=no
           # 
           # # Pull new image
-          # ssh -i ~/.ssh/deploy_key ${{ secrets.PRODUCTION_HOST }} \
+          # ssh -i ~/.ssh/deploy_key \
+          #   -o UserKnownHostsFile=~/.ssh/known_hosts \
+          #   -o StrictHostKeyChecking=yes \
+          #   ${{ secrets.PRODUCTION_HOST }} \
           #   "docker pull $IMAGE_TAG"
           # 
           # # Start new container
-          # ssh -i ~/.ssh/deploy_key ${{ secrets.PRODUCTION_HOST }} \
+          # ssh -i ~/.ssh/deploy_key \
+          #   -o UserKnownHostsFile=~/.ssh/known_hosts \
+          #   -o StrictHostKeyChecking=yes \
+          #   ${{ secrets.PRODUCTION_HOST }} \
           #   "docker run -d --name polymarket-bot-new \
           #      -p 3001:3000 \
           #      --env-file /app/.env.production \
@@ -319,15 +353,21 @@ jobs:
           # sleep 30
           # 
           # # Switch traffic
-          # ssh -i ~/.ssh/deploy_key ${{ secrets.PRODUCTION_HOST }} \
+          # ssh -i ~/.ssh/deploy_key \
+          #   -o UserKnownHostsFile=~/.ssh/known_hosts \
+          #   -o StrictHostKeyChecking=yes \
+          #   ${{ secrets.PRODUCTION_HOST }} \
           #   "docker stop polymarket-bot && \
           #    docker rm polymarket-bot && \
           #    docker rename polymarket-bot-new polymarket-bot && \
           #    docker update --restart unless-stopped polymarket-bot"
           
-          echo "✅ Production deployment completed"
-          echo "Configure deployment method by uncommenting and editing the appropriate section above."
+          # IMPORTANT: This is a placeholder. Actual deployment is not configured.
+          # Uncomment and configure one of the deployment methods above before using this workflow.
+          echo "::error::No production deployment method is currently configured."
+          echo "Configure a deployment method by uncommenting and editing one of the example sections above."
           echo "See docs/deployment-guide.md for detailed instructions."
+          exit 1
 
       - name: Verify production deployment
         run: |
@@ -336,12 +376,20 @@ jobs:
           # Wait for service to be ready
           sleep 30
           
-          # Health check
-          # Uncomment and configure PRODUCTION_URL
-          # curl -f ${{ vars.PRODUCTION_URL }}/health || exit 1
-          
-          # Verify metrics endpoint
-          # curl -f ${{ vars.PRODUCTION_URL }}/metrics || exit 1
+          # Health check (runs only if PRODUCTION_URL is configured)
+          if [ -n "${{ vars.PRODUCTION_URL }}" ]; then
+            echo "🔎 Performing health check against ${{ vars.PRODUCTION_URL }}/health"
+            curl -f "${{ vars.PRODUCTION_URL }}/health" || exit 1
+            echo "✅ Health check passed"
+            
+            # Verify metrics endpoint
+            echo "🔎 Verifying metrics endpoint"
+            curl -f "${{ vars.PRODUCTION_URL }}/metrics" || exit 1
+            echo "✅ Metrics endpoint verified"
+          else
+            echo "⚠️ PRODUCTION_URL is not configured; skipping health check."
+            echo "   Configure vars.PRODUCTION_URL to enable automated deployment verification."
+          fi
           
           echo "✅ Production verification completed"
 
