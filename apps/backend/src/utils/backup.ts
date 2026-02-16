@@ -789,6 +789,9 @@ export class BackupService {
           return bTime - aTime;
         });
 
+      // Group backups by database name for per-database retention
+      const backupsByDb = this.groupBackupsByDatabase(backups.map(f => f.name));
+      
       const maxAge = this.config.retention!.maxAgeDays! * 24 * 60 * 60 * 1000;
       const now = Date.now();
 
@@ -797,14 +800,18 @@ export class BackupService {
           ? new Date(file.metadata.updated).getTime() 
           : 0;
 
+        const dbName = this.extractDatabaseName(file.name);
+        const dbBackups = backupsByDb.get(dbName) || [];
+        const indexInDb = dbBackups.indexOf(file.name);
+
         const shouldDelete =
           (this.config.retention!.maxBackups && 
-           backups.indexOf(file) >= this.config.retention!.maxBackups) ||
+           indexInDb >= this.config.retention!.maxBackups) ||
           (this.config.retention!.maxAgeDays &&
            now - fileTime > maxAge);
 
         if (shouldDelete) {
-          logger.info('Deleting old GCS backup', { file: file.name });
+          logger.info('Deleting old GCS backup', { file: file.name, database: dbName });
           await file.delete();
         }
       }
@@ -864,20 +871,27 @@ export class BackupService {
         return bTime - aTime;
       });
 
+      // Group backups by database name for per-database retention
+      const backupsByDb = this.groupBackupsByDatabase(blobs.map(b => b.name));
+      
       const maxAge = this.config.retention!.maxAgeDays! * 24 * 60 * 60 * 1000;
       const now = Date.now();
 
       for (const blob of blobs) {
         const blobTime = blob.lastModified?.getTime() || 0;
 
+        const dbName = this.extractDatabaseName(blob.name);
+        const dbBackups = backupsByDb.get(dbName) || [];
+        const indexInDb = dbBackups.indexOf(blob.name);
+
         const shouldDelete =
           (this.config.retention!.maxBackups && 
-           blobs.indexOf(blob) >= this.config.retention!.maxBackups) ||
+           indexInDb >= this.config.retention!.maxBackups) ||
           (this.config.retention!.maxAgeDays &&
            now - blobTime > maxAge);
 
         if (shouldDelete) {
-          logger.info('Deleting old Azure backup', { blob: blob.name });
+          logger.info('Deleting old Azure backup', { blob: blob.name, database: dbName });
           const blobClient = containerClient.getBlobClient(blob.name);
           await blobClient.delete();
         }
