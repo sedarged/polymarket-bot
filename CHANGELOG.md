@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.35.0](https://github.com/sedarged/polymarket-bot/compare/v1.34.1...v1.35.0) (2026-02-16)
+
+
+### Features
+
+* implement automated database backup system with cloud storage support ([bf10f3d](https://github.com/sedarged/polymarket-bot/commit/bf10f3de4e07fc68899f9c6f42df9589b1a602eb))
+
+
+### Bug Fixes
+
+* add config schema validation for cloud backup credentials ([ffb472d](https://github.com/sedarged/polymarket-bot/commit/ffb472d533daf03eb7e95a84818a0e99ce788bd4))
+* add S3 pagination to list backups method ([96e98b1](https://github.com/sedarged/polymarket-bot/commit/96e98b14422d0666e40780fdf3d585f213524864))
+* add type safety and config validation for backup command ([08be989](https://github.com/sedarged/polymarket-bot/commit/08be989f5751f4d68ed8015b7feebdde2e571152))
+* apply per-database retention to GCS and Azure ([b32273b](https://github.com/sedarged/polymarket-bot/commit/b32273bec5dae05b9d03bc229f13864ca3b168da))
+* implement S3 pagination and per-database retention ([c5c8fb0](https://github.com/sedarged/polymarket-bot/commit/c5c8fb0f163de57136bc14e331beac649b379328))
+* improve SQLite backup consistency and security ([d426124](https://github.com/sedarged/polymarket-bot/commit/d426124bd6b629634ddb6bd108164ee97b79165d))
+* prevent resource leaks and correct content types ([364f3e5](https://github.com/sedarged/polymarket-bot/commit/364f3e52976ef2672c534e0f61e5db187de7950e))
+* resolve TypeScript errors and update test assertions ([5ce01ea](https://github.com/sedarged/polymarket-bot/commit/5ce01ea1ac7774386d7e4a267380e3aa2a679a26))
+
 ## [1.34.1](https://github.com/sedarged/polymarket-bot/compare/v1.34.0...v1.34.1) (2026-02-13)
 
 
