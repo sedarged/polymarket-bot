@@ -583,6 +583,39 @@ export class BackupService {
   }
 
   /**
+   * Helper to extract database name from backup filename
+   */
+  private extractDatabaseName(filename: string): string {
+    // Extract the database name from backup filename pattern: dbname-timestamp.db(.gz)
+    // Handle both local filenames and S3 keys (with prefix)
+    const baseName = filename.split('/').pop() || filename;
+    const match = baseName.match(/^([a-zA-Z0-9_-]+)-\d{4}-\d{2}-\d{2}T/);
+    return match ? match[1] : 'unknown';
+  }
+
+  /**
+   * Helper to group backups by database name for per-database retention
+   */
+  private groupBackupsByDatabase(filenames: string[]): Map<string, string[]> {
+    const grouped = new Map<string, string[]>();
+    
+    for (const filename of filenames) {
+      const dbName = this.extractDatabaseName(filename);
+      if (!grouped.has(dbName)) {
+        grouped.set(dbName, []);
+      }
+      grouped.get(dbName)!.push(filename);
+    }
+    
+    // Sort each group by timestamp (newest first)
+    for (const [, backups] of grouped) {
+      backups.sort((a, b) => b.localeCompare(a)); // Timestamp in filename sorts correctly
+    }
+    
+    return grouped;
+  }
+
+  /**
    * Clean up old local backups
    */
   private async cleanupLocalBackups(): Promise<void> {
@@ -591,8 +624,11 @@ export class BackupService {
       return;
     }
 
+    // Only consider files matching backup naming pattern to avoid deleting live DBs
+    const backupPattern = /^[a-zA-Z0-9_-]+-\d{4}-\d{2}-\d{2}T.*\.(db|db\.gz)$/;
+    
     const files = fs.readdirSync(backupDir)
-      .filter((file) => file.endsWith('.db') || file.endsWith('.db.gz'))
+      .filter((file) => backupPattern.test(file))
       .map((file) => ({
         name: file,
         path: path.join(backupDir, file),
@@ -600,18 +636,25 @@ export class BackupService {
       }))
       .sort((a, b) => b.stats.mtime.getTime() - a.stats.mtime.getTime()); // Newest first
 
+    // Group by database name for per-database retention
+    const backupsByDb = this.groupBackupsByDatabase(files.map(f => f.name));
+    
     const maxAge = this.config.retention!.maxAgeDays! * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     for (const file of files) {
+      const dbName = this.extractDatabaseName(file.name);
+      const dbBackups = backupsByDb.get(dbName) || [];
+      const indexInDb = dbBackups.indexOf(file.name);
+      
       const shouldDelete =
         (this.config.retention!.maxBackups && 
-         files.indexOf(file) >= this.config.retention!.maxBackups) ||
+         indexInDb >= this.config.retention!.maxBackups) ||
         (this.config.retention!.maxAgeDays &&
          now - file.stats.mtime.getTime() > maxAge);
 
       if (shouldDelete) {
-        logger.info('Deleting old backup', { file: file.name });
+        logger.info('Deleting old backup', { file: file.name, database: dbName });
         fs.unlinkSync(file.path);
       }
     }
@@ -635,29 +678,52 @@ export class BackupService {
           : undefined,
       });
 
-      const listParams = {
-        Bucket: s3Config.bucket,
-        Prefix: s3Config.prefix || '',
-      };
+      // Retrieve all objects from S3, handling pagination to ensure retention applies to every backup
+      const allObjects: any[] = [];
+      let continuationToken: string | undefined = undefined;
 
-      const response = await client.send(new ListObjectsV2Command(listParams));
-      const objects = (response.Contents || [])
+      do {
+        const listResponse = await client.send(
+          new ListObjectsV2Command({
+            Bucket: s3Config.bucket,
+            Prefix: s3Config.prefix || '',
+            ContinuationToken: continuationToken,
+          }),
+        );
+
+        if (listResponse.Contents && listResponse.Contents.length > 0) {
+          allObjects.push(...listResponse.Contents);
+        }
+
+        continuationToken = listResponse.IsTruncated ? listResponse.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      const objects = allObjects
         .filter((obj) => obj.Key?.endsWith('.db') || obj.Key?.endsWith('.db.gz'))
         .sort((a, b) => (b.LastModified?.getTime() || 0) - (a.LastModified?.getTime() || 0));
 
+      // Group backups by database name for per-database retention
+      const backupsByDb = this.groupBackupsByDatabase(objects.map(obj => obj.Key || ''));
+      
       const maxAge = this.config.retention!.maxAgeDays! * 24 * 60 * 60 * 1000;
       const now = Date.now();
 
       for (const obj of objects) {
+        if (!obj.Key) continue;
+        
+        const dbName = this.extractDatabaseName(obj.Key);
+        const dbBackups = backupsByDb.get(dbName) || [];
+        const indexInDb = dbBackups.indexOf(obj.Key);
+        
         const shouldDelete =
           (this.config.retention!.maxBackups && 
-           objects.indexOf(obj) >= this.config.retention!.maxBackups) ||
+           indexInDb >= this.config.retention!.maxBackups) ||
           (this.config.retention!.maxAgeDays &&
            obj.LastModified &&
            now - obj.LastModified.getTime() > maxAge);
 
-        if (shouldDelete && obj.Key) {
-          logger.info('Deleting old S3 backup', { key: obj.Key });
+        if (shouldDelete) {
+          logger.info('Deleting old S3 backup', { key: obj.Key, database: dbName });
           await client.send(new DeleteObjectCommand({
             Bucket: s3Config.bucket,
             Key: obj.Key,
