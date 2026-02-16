@@ -104,7 +104,32 @@ For complete environment details, see **[Environment Setup](./docs/environment.m
 
 ## Installation
 
-### Option 1: Docker (Recommended)
+### Option 1: Infrastructure as Code (Recommended for Production)
+
+Deploy with reproducible, version-controlled infrastructure:
+
+**Terraform (AWS):**
+```bash
+cd infrastructure/terraform/aws-ec2
+terraform init
+terraform apply
+```
+
+**Kubernetes:**
+```bash
+cd infrastructure/kubernetes
+kubectl apply -f .
+```
+
+**Ansible (VPS):**
+```bash
+cd infrastructure/ansible
+ansible-playbook -i inventory playbook.yml
+```
+
+See **[Infrastructure as Code Guide](./docs/infrastructure.md)** for complete IaC documentation.
+
+### Option 2: Docker (Development/Testing)
 
 Docker provides the fastest way to get started with consistent environment setup:
 

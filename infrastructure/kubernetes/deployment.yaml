@@ -1,0 +1,152 @@
+# Kubernetes Deployment for Polymarket Bot
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+  labels:
+    app: polymarket-bot
+    version: v1
+spec:
+  replicas: 1  # Single instance for stateful trading bot
+  strategy:
+    type: Recreate  # Avoid multiple instances placing orders simultaneously
+  selector:
+    matchLabels:
+      app: polymarket-bot
+  template:
+    metadata:
+      labels:
+        app: polymarket-bot
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      # Service account (optional, for RBAC)
+      serviceAccountName: polymarket-bot
+      
+      containers:
+      - name: polymarket-bot
+        image: ghcr.io/sedarged/polymarket-bot:latest
+        imagePullPolicy: Always
+        
+        # Ports
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: polymarket-bot-config
+        - secretRef:
+            name: polymarket-bot-secrets
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Startup probe (for slow starts)
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        
+        # Volume mounts
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        
+        # Security
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # Need write access for temp files
+          capabilities:
+            drop:
+            - ALL
+      
+      # Volumes
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: polymarket-bot-data
+      
+      # Image pull secrets (if using private registry)
+      # imagePullSecrets:
+      # - name: ghcr-secret
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+---
+# Role for ServiceAccount (minimal permissions)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+subjects:
+- kind: ServiceAccount
+  name: polymarket-bot
+  namespace: polymarket-bot
+roleRef:
+  kind: Role
+  name: polymarket-bot
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,43 @@
+[Unit]
+Description=Polymarket Trading Bot
+After=docker.service
+Requires=docker.service
+Documentation=https://github.com/sedarged/polymarket-bot
+
+[Service]
+Type=simple
+User=polymarket
+WorkingDirectory={{ app_dir }}
+
+# Pre-start: Stop and remove existing container
+ExecStartPre=-/usr/bin/docker stop {{ project_name }}
+ExecStartPre=-/usr/bin/docker rm {{ project_name }}
+
+# Start container
+ExecStart=/usr/bin/docker run \
+    --name {{ project_name }} \
+    --rm \
+    -p 3000:3000 \
+    -p 9090:9090 \
+    --env-file {{ app_dir }}/.env.{{ environment }} \
+    -v {{ data_dir }}:{{ data_dir }} \
+    --log-driver json-file \
+    --log-opt max-size=10m \
+    --log-opt max-file=3 \
+    {{ docker_image }}
+
+# Stop container
+ExecStop=/usr/bin/docker stop {{ project_name }}
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+
+# Limits
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

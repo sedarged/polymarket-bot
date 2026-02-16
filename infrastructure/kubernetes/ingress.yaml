@@ -1,0 +1,34 @@
+# Ingress for Polymarket Bot (optional)
+# Requires an Ingress Controller (nginx, traefik, etc.)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+  annotations:
+    # Nginx annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Cert-manager for automatic TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.polymarket-bot.example.com
+    secretName: polymarket-bot-tls
+  rules:
+  - host: api.polymarket-bot.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: polymarket-bot
+            port:
+              number: 3000

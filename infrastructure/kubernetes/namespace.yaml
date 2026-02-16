@@ -1,0 +1,9 @@
+# Kubernetes Namespace for Polymarket Bot
+# Addresses GAP-040: Infrastructure as Code
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: polymarket-bot
+  labels:
+    app: polymarket-bot
+    managed-by: kubernetes

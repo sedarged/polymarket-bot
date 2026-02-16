@@ -45,6 +45,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - Kill switch usage and monitoring
   - Backup and recovery procedures
   - Docker and native deployment options
+- **[Infrastructure as Code Guide](./infrastructure.md)** - 🏗️ **IaC deployment guide (GAP-040)**
+  - **Terraform, Kubernetes, and Ansible configurations**
+  - Reproducible infrastructure deployments
+  - Version-controlled infrastructure definitions
+  - Complete documentation and examples
 - **[Deployment Guide](./deployment-guide.md)** - 🚀 Complete deployment procedures (GAP-015)
   - **Step-by-step deployment to staging and production**
   - Environment setup and configuration

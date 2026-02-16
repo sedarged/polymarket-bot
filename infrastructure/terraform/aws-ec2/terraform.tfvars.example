@@ -1,0 +1,44 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and customize for your deployment
+
+# Environment
+environment = "staging"  # or "production"
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Instance Configuration
+instance_type    = "t3.small"   # t3.small for staging, t3.medium for production
+use_elastic_ip   = false         # true for production
+data_volume_size = 20            # GB, increase for production (e.g., 50)
+
+# SSH Configuration
+# Generate key with: ssh-keygen -t ed25519 -C "polymarket-bot-deploy"
+ssh_public_key = "ssh-ed25519 AAAAC3... your-key-comment"
+
+# Security Configuration
+# IMPORTANT: Restrict SSH to your IP in production!
+ssh_allowed_cidr = ["0.0.0.0/0"]  # CHANGE THIS! Use ["YOUR.IP.ADDRESS/32"]
+
+# API Access
+api_allowed_cidr = ["0.0.0.0/0"]  # Restrict as needed
+
+# Metrics Access (Prometheus)
+metrics_allowed_cidr = ["10.0.0.0/16"]  # VPC only by default
+
+# Docker Image
+docker_image = "ghcr.io/sedarged/polymarket-bot:latest"
+
+# Monitoring
+log_retention_days = 30  # CloudWatch log retention
+
+# Optional: SNS Topic for Alarms
+# Uncomment and set ARN if you have SNS configured
+# sns_topic_arn = "arn:aws:sns:us-east-1:123456789:polymarket-alerts"
+
+# VPC Configuration (optional, uses defaults if not specified)
+# vpc_cidr           = "10.0.0.0/16"
+# public_subnet_cidr = "10.0.1.0/24"
+
+# Project Name (optional)
+# project_name = "polymarket-bot"

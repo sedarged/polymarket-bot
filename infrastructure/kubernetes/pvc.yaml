@@ -1,0 +1,18 @@
+# PersistentVolumeClaim for data storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: polymarket-bot-data
+  namespace: polymarket-bot
+  labels:
+    app: polymarket-bot
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  # Storage class (adjust based on your cluster)
+  # storageClassName: gp3  # AWS EBS gp3
+  # storageClassName: standard  # GKE standard
+  # storageClassName: default  # Use cluster default

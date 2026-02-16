@@ -1,0 +1,64 @@
+# Infrastructure as Code - Gitignore
+# Prevents committing secrets and state files
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfvars
+**/.terraformrc
+**/terraform.rc
+**/*.tfvars
+!**/*.tfvars.example
+**/crash.log
+**/crash.*.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.terraform.tfstate.lock.info
+
+# Ansible
+**/inventory
+!**/inventory.example
+**/group_vars/**/vault.yml
+!**/group_vars/**/vault.yml.example
+**/*.retry
+**/.vault_pass
+**/.ansible_facts/
+**/ansible.log
+
+# Kubernetes
+**/secret.yaml
+!**/secret.yaml.example
+**/kustomization.yaml
+
+# General secrets
+**/.env
+**/.env.*
+!**/.env.example
+**/secrets.json
+**/secrets.yaml
+**/*-secret.yaml
+**/.credentials
+**/*.pem
+**/*.key
+**/*.crt
+!**/templates/*.j2
+
+# Backup files
+**/*.tar.gz
+**/*.zip
+**/backup/
+
+# IDE
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS
+**/.DS_Store
+**/Thumbs.db
