@@ -312,6 +312,48 @@ const configSchema = envSchema
       path: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
     },
   )
+  .refine(
+    (env) => {
+      // Validate cloud backup configuration based on storage type
+      if (env.BACKUP_STORAGE_TYPE === 's3') {
+        return !!env.BACKUP_S3_BUCKET && !!env.BACKUP_S3_REGION;
+      }
+      return true;
+    },
+    {
+      message:
+        "When BACKUP_STORAGE_TYPE=s3, both BACKUP_S3_BUCKET and BACKUP_S3_REGION are required",
+      path: ["BACKUP_S3_BUCKET", "BACKUP_S3_REGION"],
+    },
+  )
+  .refine(
+    (env) => {
+      if (env.BACKUP_STORAGE_TYPE === 'gcs') {
+        return !!env.BACKUP_GCS_BUCKET && !!env.BACKUP_GCS_PROJECT_ID;
+      }
+      return true;
+    },
+    {
+      message:
+        "When BACKUP_STORAGE_TYPE=gcs, both BACKUP_GCS_BUCKET and BACKUP_GCS_PROJECT_ID are required",
+      path: ["BACKUP_GCS_BUCKET", "BACKUP_GCS_PROJECT_ID"],
+    },
+  )
+  .refine(
+    (env) => {
+      if (env.BACKUP_STORAGE_TYPE === 'azure') {
+        const hasConnectionString = !!env.BACKUP_AZURE_CONNECTION_STRING;
+        const hasAccountCredentials = !!env.BACKUP_AZURE_ACCOUNT_NAME && !!env.BACKUP_AZURE_ACCOUNT_KEY;
+        return !!env.BACKUP_AZURE_CONTAINER && (hasConnectionString || hasAccountCredentials);
+      }
+      return true;
+    },
+    {
+      message:
+        "When BACKUP_STORAGE_TYPE=azure, BACKUP_AZURE_CONTAINER is required, and either BACKUP_AZURE_CONNECTION_STRING or (BACKUP_AZURE_ACCOUNT_NAME + BACKUP_AZURE_ACCOUNT_KEY)",
+      path: ["BACKUP_AZURE_CONTAINER"],
+    },
+  )
   .transform((env) => {
     let tokenIds: string[] = env.TOKEN_IDS.split(",")
       .map((s) => s.trim())
