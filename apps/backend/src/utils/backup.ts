@@ -215,7 +215,10 @@ export class BackupService {
   ): Promise<BackupResult> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const extension = this.config.compress ? '.db.gz' : '.db';
-    const backupName = `${database.name}-${timestamp}${extension}`;
+    
+    // Sanitize database name to prevent path traversal attacks
+    const sanitizedName = database.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const backupName = `${sanitizedName}-${timestamp}${extension}`;
 
     // Check if database file exists
     if (!fs.existsSync(database.path)) {
@@ -239,25 +242,54 @@ export class BackupService {
     let sourceDb: Database.Database | null = null;
     
     try {
-      // Open the source database and checkpoint any WAL files
-      sourceDb = new Database(database.path, { readonly: false });
+      // Open the source database in readonly mode to avoid interfering with the running bot
+      sourceDb = new Database(database.path, { readonly: true });
       
-      // Checkpoint the WAL (Write-Ahead Logging) to ensure all changes are in the main DB file
-      // This ensures we get a consistent snapshot
-      try {
-        sourceDb.pragma('wal_checkpoint(TRUNCATE)');
-      } catch (err) {
-        // If not in WAL mode, this will fail, which is fine
-        logger.debug('WAL checkpoint skipped (database not in WAL mode)', {
-          database: database.name,
-        });
-      }
-      
+      // Check if database is in WAL mode
+      const walMode = sourceDb.pragma('journal_mode', { simple: true });
       sourceDb.close();
       sourceDb = null;
       
-      // Now copy the file directly (safe after checkpoint)
+      // If in WAL mode, checkpoint before backup to ensure complete snapshot
+      if (walMode === 'wal') {
+        // Need write access for checkpoint
+        sourceDb = new Database(database.path, { readonly: false });
+        
+        try {
+          // TRUNCATE mode ensures WAL is fully checkpointed and emptied
+          const result = sourceDb.pragma('wal_checkpoint(TRUNCATE)', { simple: true });
+          logger.debug('WAL checkpoint completed', {
+            database: database.name,
+            result,
+          });
+        } catch (err) {
+          logger.warn('WAL checkpoint failed, backup may be incomplete', {
+            database: database.name,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        
+        sourceDb.close();
+        sourceDb = null;
+      }
+      
+      // Now copy the main DB file
       fs.copyFileSync(database.path, tempBackupPath);
+      
+      // If in WAL mode, also copy WAL and SHM files if they exist (for extra safety)
+      if (walMode === 'wal') {
+        const walPath = `${database.path}-wal`;
+        const shmPath = `${database.path}-shm`;
+        
+        if (fs.existsSync(walPath)) {
+          fs.copyFileSync(walPath, `${tempBackupPath}-wal`);
+          logger.debug('Copied WAL file', { database: database.name });
+        }
+        if (fs.existsSync(shmPath)) {
+          fs.copyFileSync(shmPath, `${tempBackupPath}-shm`);
+          logger.debug('Copied SHM file', { database: database.name });
+        }
+      }
 
       // Get file size before compression
       const stats = fs.statSync(tempBackupPath);
@@ -272,6 +304,14 @@ export class BackupService {
         // Update size and remove uncompressed file
         backupSize = fs.statSync(finalBackupPath).size;
         fs.unlinkSync(tempBackupPath);
+        
+        // Clean up WAL/SHM files if they exist
+        if (fs.existsSync(`${tempBackupPath}-wal`)) {
+          fs.unlinkSync(`${tempBackupPath}-wal`);
+        }
+        if (fs.existsSync(`${tempBackupPath}-shm`)) {
+          fs.unlinkSync(`${tempBackupPath}-shm`);
+        }
       }
 
       // Upload to storage backend
