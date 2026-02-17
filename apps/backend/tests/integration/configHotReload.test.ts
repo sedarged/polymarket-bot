@@ -184,20 +184,23 @@ describe('Configuration Hot-Reload Integration', () => {
       await configManager.startWatching();
       await wait(100);
 
+      // Clear any initial reload events
+      changedListener.mockClear();
+
       // Make multiple rapid changes
       for (let i = 0; i < 5; i++) {
         const markets = [
           { tokenId: `token-${i}`, maxPositionSize: 100 + i },
         ];
         fs.writeFileSync(marketsPath, JSON.stringify(markets, null, 2));
-        await wait(50); // Small delay between writes
+        await wait(50); // Small delay between writes (less than debounce delay)
       }
 
-      // Wait for debounce period to pass
-      await wait(800);
+      // Wait for debounce period to pass (debounce delay + buffer)
+      await wait(ConfigManager.DEBOUNCE_DELAY_MS + 300);
 
-      // Should only reload once due to debouncing
-      // Note: May be called 1-2 times depending on timing, but not 5 times
+      // Should only reload once or twice due to debouncing, definitely not 5 times
+      // (File watchers may trigger slightly differently on different systems)
       expect(changedListener.mock.calls.length).toBeLessThan(5);
       expect(changedListener.mock.calls.length).toBeGreaterThanOrEqual(1);
 

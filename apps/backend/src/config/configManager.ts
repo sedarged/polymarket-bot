@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { FSWatcher, watch } from "fs";
 import { z } from "zod";
+import dotenv from "dotenv";
 import { logger } from "../utils/logger";
 import { parseConfig, Config } from "./index";
 import { EventEmitter } from "events";
@@ -64,7 +65,10 @@ export class ConfigManager extends EventEmitter {
   private currentConfig: Config;
   private isWatching: boolean = false;
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
-  private readonly debounceDelayMs: number = 500; // Debounce file change events
+  
+  // Debounce delay for file change events (exposed for testing)
+  public static readonly DEBOUNCE_DELAY_MS = 500;
+  private readonly debounceDelayMs: number = ConfigManager.DEBOUNCE_DELAY_MS;
 
   private constructor() {
     super();
@@ -110,6 +114,8 @@ export class ConfigManager extends EventEmitter {
       }
 
       const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      
+      // Use async stat operation for better performance
       const stats = await fs.promises.stat(resolvedPath);
 
       return {
@@ -446,7 +452,6 @@ export class ConfigManager extends EventEmitter {
         // For .env files, reload environment variables
         if (type === 'env') {
           // Re-read .env file using dotenv
-          const dotenv = await import('dotenv');
           dotenv.config({ override: true });
         }
 

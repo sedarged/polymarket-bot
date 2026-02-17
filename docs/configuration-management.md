@@ -461,24 +461,25 @@ try {
 
 ```bash
 # Get current configuration
-curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+# Replace <your-admin-token> with your actual ADMIN_TOKEN value
+curl -H "Authorization: Bearer <your-admin-token>" \
   http://localhost:3000/api/config
 
 # Update markets configuration
 curl -X PUT \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Authorization: Bearer <your-admin-token>" \
   -H "Content-Type: application/json" \
   -d '[{"tokenId":"token-1","maxPositionSize":1000}]' \
   http://localhost:3000/api/config/markets
 
 # Start file watching
 curl -X POST \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Authorization: Bearer <your-admin-token>" \
   http://localhost:3000/api/config/watching/start
 
 # Validate configuration
 curl -X POST \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Authorization: Bearer <your-admin-token>" \
   -H "Content-Type: application/json" \
   -d '{"spread":0.02,"maxPositionSize":500}' \
   http://localhost:3000/api/config/validate/strategy
@@ -544,7 +545,7 @@ Located in `apps/backend/tests/integration/configHotReload.test.ts`:
 - ✅ File change detection
 - ✅ Automatic reload on file changes
 - ✅ Debouncing of rapid changes
-- ✅ Multiple file watching
+- ✅ Watching multiple files
 - ✅ Error recovery
 - ✅ Event ordering
 
