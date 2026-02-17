@@ -18,6 +18,17 @@ import {
   handleGetBestStrategy,
   handleGetLearningStatus,
 } from './learningApiHandlers';
+import {
+  handleGetConfig,
+  handleGetConfigFile,
+  handleUpdateConfigFile,
+  handleDeleteConfigFile,
+  handleValidateConfig,
+  handleReloadConfig,
+  handleGetWatchingStatus,
+  handleStartWatching,
+  handleStopWatching,
+} from './configApiHandlers';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -705,6 +716,105 @@ export function createServer(): http.Server {
     if (url === '/api/learning/status' && method === 'GET') {
       if (!requireAdminAuth(req, res, 'Learning Status')) return;
       await handleGetLearningStatus(req, res);
+      return;
+    }
+
+    // Configuration Management API endpoints (GAP-003, admin auth required)
+    // Helper function to parse URL and extract pathname without query params
+    const getPathname = (url: string): string => {
+      const queryIndex = url.indexOf('?');
+      return queryIndex === -1 ? url : url.substring(0, queryIndex);
+    };
+    
+    // Helper to extract and validate config type from URL path
+    // Returns null if path has extra segments (only allows optional trailing slash)
+    const getConfigType = (pathname: string, prefix: string): string | null => {
+      const remainder = pathname.substring(prefix.length);
+      
+      // Remove optional trailing slash
+      const normalized = remainder.endsWith('/') ? remainder.slice(0, -1) : remainder;
+      
+      // If there's still a slash, there are extra path segments
+      if (normalized.includes('/')) {
+        return null;
+      }
+      
+      return normalized || null;
+    };
+    
+    const pathname = getPathname(url);
+    
+    if (pathname === '/api/config' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Get Configuration')) return;
+      await handleGetConfig(req, res);
+      return;
+    }
+
+    if (pathname.startsWith('/api/config/') && method === 'GET' && !pathname.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Get Config File')) return;
+      const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
+      await handleGetConfigFile(req, res, type);
+      return;
+    }
+
+    if (pathname.startsWith('/api/config/') && method === 'PUT' && !pathname.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Update Config File')) return;
+      const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
+      await handleUpdateConfigFile(req, res, type);
+      return;
+    }
+
+    if (pathname.startsWith('/api/config/') && method === 'DELETE' && !pathname.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Delete Config File')) return;
+      const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
+      await handleDeleteConfigFile(req, res, type);
+      return;
+    }
+
+    if (pathname.startsWith('/api/config/validate/') && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Validate Config')) return;
+      const type = getConfigType(pathname, '/api/config/validate/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/validate/:type' }, req);
+        return;
+      }
+      await handleValidateConfig(req, res, type);
+      return;
+    }
+
+    if (pathname === '/api/config/reload' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Reload Config')) return;
+      await handleReloadConfig(req, res);
+      return;
+    }
+
+    if (pathname === '/api/config/watching' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Get Watching Status')) return;
+      await handleGetWatchingStatus(req, res);
+      return;
+    }
+
+    if (pathname === '/api/config/watching/start' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Start Watching')) return;
+      await handleStartWatching(req, res);
+      return;
+    }
+
+    if (pathname === '/api/config/watching/stop' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Stop Watching')) return;
+      await handleStopWatching(req, res);
       return;
     }
 
