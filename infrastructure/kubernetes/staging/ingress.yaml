@@ -1,0 +1,64 @@
+# Kubernetes Ingress for Polymarket Bot - Staging Environment
+# Addresses GAP-042: Staging Environment
+#
+# Exposes the staging API and metrics endpoints via HTTP/HTTPS
+# Requires an Ingress Controller (nginx, traefik, etc.)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: "nginx"
+    
+    # SSL/TLS (optional - uncomment for HTTPS)
+    # cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # Rate limiting (optional)
+    # nginx.ingress.kubernetes.io/limit-rps: "100"
+    
+    # CORS (optional)
+    # nginx.ingress.kubernetes.io/enable-cors: "true"
+    # nginx.ingress.kubernetes.io/cors-allow-origin: "https://staging.yourdomain.com"
+    
+    # Auth (optional - protect staging endpoints)
+    # nginx.ingress.kubernetes.io/auth-type: basic
+    # nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    # nginx.ingress.kubernetes.io/auth-realm: 'Staging Environment - Authentication Required'
+spec:
+  # TLS configuration (optional)
+  # tls:
+  # - hosts:
+  #   - staging-api.yourdomain.com
+  #   - staging-metrics.yourdomain.com
+  #   secretName: polymarket-bot-staging-tls
+  
+  rules:
+  # API endpoint
+  - host: staging-api.yourdomain.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: polymarket-bot-staging
+            port:
+              number: 3001
+  
+  # Metrics endpoint
+  - host: staging-metrics.yourdomain.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: polymarket-bot-staging-metrics
+            port:
+              number: 9091

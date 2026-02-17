@@ -1,0 +1,177 @@
+# Kubernetes Deployment for Polymarket Bot - Staging Environment
+# Addresses GAP-042: Staging Environment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+    version: v1
+spec:
+  replicas: 1  # Single instance for stateful trading bot
+  strategy:
+    type: Recreate  # Avoid multiple instances placing orders simultaneously
+  selector:
+    matchLabels:
+      app: polymarket-bot
+      environment: staging
+  template:
+    metadata:
+      labels:
+        app: polymarket-bot
+        environment: staging
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      
+      # Service account
+      serviceAccountName: polymarket-bot-staging
+      
+      containers:
+      - name: polymarket-bot
+        image: ghcr.io/sedarged/polymarket-bot:staging
+        imagePullPolicy: Always
+        
+        # Ports (staging uses different ports)
+        ports:
+        - name: http
+          containerPort: 3001
+          protocol: TCP
+        - name: metrics
+          containerPort: 9091
+          protocol: TCP
+        
+        # Environment variables
+        env:
+        - name: NODE_ENV
+          value: "staging"
+        - name: PORT
+          value: "3001"
+        - name: METRICS_PORT
+          value: "9091"
+        - name: LOG_LEVEL
+          value: "debug"
+        # Always paper trading in staging
+        - name: LIVE_TRADING
+          value: "false"
+        - name: COMPLIANCE_ACCEPTED
+          value: "false"
+        
+        # Environment from ConfigMap and Secrets
+        envFrom:
+        - configMapRef:
+            name: polymarket-bot-staging-config
+        - secretRef:
+            name: polymarket-bot-staging-secrets
+        
+        # Resource limits (lower for staging)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 10
+        
+        # Volume mounts
+        volumeMounts:
+        - name: data
+          mountPath: /app/data/staging
+          subPath: staging
+        
+        # Security
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      
+      # Volumes
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: polymarket-bot-staging-data
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+---
+# Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get"]
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+subjects:
+- kind: ServiceAccount
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+roleRef:
+  kind: Role
+  name: polymarket-bot-staging
+  apiGroup: rbac.authorization.k8s.io

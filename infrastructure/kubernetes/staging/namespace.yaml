@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: polymarket-staging
+  labels:
+    name: polymarket-staging
+    environment: staging
+    app: polymarket-bot

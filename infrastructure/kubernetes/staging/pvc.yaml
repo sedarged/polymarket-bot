@@ -1,0 +1,18 @@
+# Persistent Volume Claim for Polymarket Bot - Staging Environment
+# Addresses GAP-042: Staging Environment
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: polymarket-bot-staging-data
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi  # Smaller storage for staging
+  # Optional: Specify storage class
+  # storageClassName: fast-ssd

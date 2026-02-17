@@ -139,6 +139,7 @@ See **[Infrastructure as Code Guide](./docs/infrastructure.md)** for complete Ia
 
 Docker provides the fastest way to get started with consistent environment setup:
 
+**Production/Development:**
 ```bash
 # Clone the repository
 git clone https://github.com/YOUR_USERNAME/polymarket-bot.git
@@ -156,7 +157,22 @@ docker-compose up --build
 # - Frontend Dashboard: http://localhost:8080
 ```
 
-See **[Docker Deployment Guide](./docs/docker.md)** for comprehensive Docker documentation.
+**Staging Environment (GAP-042):**
+```bash
+# Quick setup for pre-production testing
+./scripts/setup-staging.sh
+
+# Start staging environment
+docker-compose -f docker-compose.staging.yml up -d
+
+# Access staging services:
+# - Backend API: http://localhost:3001
+# - Frontend Dashboard: http://localhost:8081
+# - Prometheus: http://localhost:9092
+# - Grafana: http://localhost:3002
+```
+
+See **[Docker Deployment Guide](./docs/docker.md)** and **[Staging Environment Guide](./docs/staging-environment.md)** for comprehensive documentation.
 
 ### Option 2: Local Development
 

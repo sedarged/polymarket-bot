@@ -1,0 +1,219 @@
+# Docker Compose configuration for Staging Environment
+# Pre-production testing environment with paper trading and debug logging
+# Addresses GAP-042: Staging Environment
+#
+# Usage:
+#   docker-compose -f docker-compose.staging.yml up -d
+#   docker-compose -f docker-compose.staging.yml logs -f
+#   docker-compose -f docker-compose.staging.yml down
+
+version: '3.8'
+
+services:
+  # Backend service - Staging
+  backend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: polymarket-backend-staging
+    restart: unless-stopped
+    ports:
+      - "3001:3001"  # API port (staging)
+      - "9091:9091"  # Metrics port (staging)
+    environment:
+      # Environment Identification
+      - NODE_ENV=staging
+      
+      # API Configuration
+      - GAMMA_API_URL=${GAMMA_API_URL:-https://gamma-api.polymarket.com}
+      - CLOB_API_URL=${CLOB_API_URL:-https://clob.polymarket.com}
+      - WS_MARKET_URL=${WS_MARKET_URL:-wss://ws-subscriptions-clob.polymarket.com/ws/market}
+      
+      # Market Configuration
+      - TOKEN_IDS=${TOKEN_IDS:-}
+      
+      # Logging (Debug level for staging)
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      
+      # Trading Gates (ALWAYS PAPER TRADING IN STAGING)
+      - LIVE_TRADING=false
+      - COMPLIANCE_ACCEPTED=false
+      
+      # Secret Management
+      - SECRET_SOURCE=${SECRET_SOURCE:-env}
+      - PRIVATE_KEY=${PRIVATE_KEY:-}
+      
+      # Authentication
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-staging-admin-token}
+      
+      # Blockchain
+      - CHAIN_ID=${CHAIN_ID:-137}
+      
+      # Server (Staging ports)
+      - PORT=3001
+      - METRICS_PORT=9091
+      
+      # Retry Configuration
+      - RETRY_ATTEMPTS=${RETRY_ATTEMPTS:-3}
+      - RETRY_DELAY=${RETRY_DELAY:-1000}
+      - RETRY_TOTAL_TIMEOUT=${RETRY_TOTAL_TIMEOUT:-300000}
+      
+      # Paper Trading (More realistic partial fills for testing)
+      - PAPER_TRADING_SLIPPAGE=${PAPER_TRADING_SLIPPAGE:-0.01}
+      - PAPER_TRADING_MAX_SLIPPAGE=${PAPER_TRADING_MAX_SLIPPAGE:-0.05}
+      - PAPER_TRADING_FEE_RATE=${PAPER_TRADING_FEE_RATE:-0.002}
+      - PAPER_TRADING_PARTIAL_FILL_RATE=${PAPER_TRADING_PARTIAL_FILL_RATE:-0.2}
+      - PAPER_TRADING_MIN_FILL_RATIO=${PAPER_TRADING_MIN_FILL_RATIO:-0.1}
+      - PAPER_TRADING_MAX_FILL_RATIO=${PAPER_TRADING_MAX_FILL_RATIO:-0.9}
+      
+      # Risk Management (Lower limits for staging)
+      - RISK_MAX_EXPOSURE_PER_MARKET=${RISK_MAX_EXPOSURE_PER_MARKET:-100}
+      - RISK_MAX_OPEN_ORDERS=${RISK_MAX_OPEN_ORDERS:-10}
+      - RISK_MAX_DRAWDOWN=${RISK_MAX_DRAWDOWN:-0.15}
+      - RISK_ERROR_RATE_THRESHOLD=${RISK_ERROR_RATE_THRESHOLD:-0.10}
+      - RISK_ERROR_RATE_WINDOW=${RISK_ERROR_RATE_WINDOW:-100}
+      
+      # Circuit Breaker
+      - CIRCUIT_BREAKER_FAILURE_THRESHOLD=${CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
+      - CIRCUIT_BREAKER_RESET_TIMEOUT_MS=${CIRCUIT_BREAKER_RESET_TIMEOUT_MS:-60000}
+      - CIRCUIT_BREAKER_SUCCESS_THRESHOLD=${CIRCUIT_BREAKER_SUCCESS_THRESHOLD:-2}
+      
+      # CORS (Allow staging origins)
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:8081}
+      
+      # Reconciliation (More frequent in staging)
+      - RECONCILIATION_INTERVAL_SECONDS=${RECONCILIATION_INTERVAL_SECONDS:-180}
+      
+      # Rate Limiting
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_TRUST_PROXY=${RATE_LIMIT_TRUST_PROXY:-false}
+      
+      # Alerting (Optional - separate staging alerts)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - ALERT_ERROR_RATE_THRESHOLD=${ALERT_ERROR_RATE_THRESHOLD:-5}
+      - ALERT_CIRCUIT_BREAKER_TRIPS=${ALERT_CIRCUIT_BREAKER_TRIPS:-1}
+      
+      # Learning System Database Paths (Staging)
+      - EVENT_STORE_PATH=/app/data/staging/events.db
+      - SIGNAL_CATALOG_PATH=/app/data/staging/signals.db
+      - BACKTEST_ENGINE_PATH=/app/data/staging/backtests.db
+      - PROMOTION_WORKFLOW_PATH=/app/data/staging/promotions.db
+    
+    volumes:
+      # Mount staging data directory
+      - ./data/staging:/app/data/staging
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - polymarket-staging-network
+    
+    labels:
+      - "com.polymarket.environment=staging"
+      - "com.polymarket.service=backend"
+
+  # Frontend service - Staging Dashboard
+  frontend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: polymarket-frontend-staging
+    restart: unless-stopped
+    ports:
+      - "8081:8081"  # Frontend port (staging)
+    environment:
+      - NODE_ENV=staging
+      - PORT=8081
+      # Frontend connects to staging backend
+      - BACKEND_URL=http://backend-staging:3001
+    
+    volumes:
+      - frontend-staging-static:/app/apps/frontend/public
+    
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --spider http://localhost:8081/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    
+    depends_on:
+      backend-staging:
+        condition: service_healthy
+    
+    networks:
+      - polymarket-staging-network
+    
+    command: npm run --workspace @polymarket/frontend start
+    
+    labels:
+      - "com.polymarket.environment=staging"
+      - "com.polymarket.service=frontend"
+
+  # Prometheus for staging metrics
+  prometheus-staging:
+    image: prom/prometheus:latest
+    container_name: polymarket-prometheus-staging
+    restart: unless-stopped
+    ports:
+      - "9092:9090"  # Prometheus UI (staging)
+    volumes:
+      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-staging-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'  # 7 days retention for staging
+    networks:
+      - polymarket-staging-network
+    labels:
+      - "com.polymarket.environment=staging"
+      - "com.polymarket.service=prometheus"
+
+  # Grafana for staging dashboards
+  grafana-staging:
+    image: grafana/grafana:latest
+    container_name: polymarket-grafana-staging
+    restart: unless-stopped
+    ports:
+      - "3002:3000"  # Grafana UI (staging)
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-staging-admin}
+      - GF_SERVER_ROOT_URL=http://localhost:3002
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - grafana-staging-data:/var/lib/grafana
+    depends_on:
+      - prometheus-staging
+    networks:
+      - polymarket-staging-network
+    labels:
+      - "com.polymarket.environment=staging"
+      - "com.polymarket.service=grafana"
+
+networks:
+  polymarket-staging-network:
+    driver: bridge
+    labels:
+      - "com.polymarket.environment=staging"
+
+volumes:
+  frontend-staging-static:
+    labels:
+      - "com.polymarket.environment=staging"
+  prometheus-staging-data:
+    labels:
+      - "com.polymarket.environment=staging"
+  grafana-staging-data:
+    labels:
+      - "com.polymarket.environment=staging"

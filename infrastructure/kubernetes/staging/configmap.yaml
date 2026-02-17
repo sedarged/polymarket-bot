@@ -1,0 +1,95 @@
+# ConfigMap for Polymarket Bot - Staging Environment
+# Addresses GAP-042: Staging Environment
+#
+# Non-sensitive configuration values
+# Sensitive values should be stored in Kubernetes Secrets
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: polymarket-bot-staging-config
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+data:
+  # API Configuration
+  GAMMA_API_URL: "https://gamma-api.polymarket.com"
+  CLOB_API_URL: "https://clob.polymarket.com"
+  WS_MARKET_URL: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+  
+  # Logging
+  LOG_LEVEL: "debug"
+  
+  # Trading Gates (ALWAYS FALSE IN STAGING)
+  LIVE_TRADING: "false"
+  COMPLIANCE_ACCEPTED: "false"
+  
+  # Server
+  PORT: "3001"
+  METRICS_PORT: "9091"
+  
+  # Retry Configuration
+  RETRY_ATTEMPTS: "3"
+  RETRY_DELAY: "1000"
+  RETRY_TOTAL_TIMEOUT: "300000"
+  
+  # Paper Trading
+  PAPER_TRADING_SLIPPAGE: "0.01"
+  PAPER_TRADING_MAX_SLIPPAGE: "0.05"
+  PAPER_TRADING_FEE_RATE: "0.002"
+  PAPER_TRADING_PARTIAL_FILL_RATE: "0.2"
+  PAPER_TRADING_MIN_FILL_RATIO: "0.1"
+  PAPER_TRADING_MAX_FILL_RATIO: "0.9"
+  
+  # Risk Management (Lower limits for staging)
+  RISK_MAX_EXPOSURE_PER_MARKET: "100"
+  RISK_MAX_OPEN_ORDERS: "10"
+  RISK_MAX_DRAWDOWN: "0.15"
+  RISK_ERROR_RATE_THRESHOLD: "0.10"
+  RISK_ERROR_RATE_WINDOW: "100"
+  
+  # Circuit Breaker
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: "5"
+  CIRCUIT_BREAKER_RESET_TIMEOUT_MS: "60000"
+  CIRCUIT_BREAKER_SUCCESS_THRESHOLD: "2"
+  
+  # CORS
+  ALLOWED_ORIGINS: "http://localhost:3001,https://staging.yourdomain.com"
+  
+  # Reconciliation (More frequent in staging)
+  RECONCILIATION_INTERVAL_SECONDS: "180"
+  
+  # Rate Limiting
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_TRUST_PROXY: "false"
+  
+  # Alerting
+  ALERT_ERROR_RATE_THRESHOLD: "5"
+  ALERT_CIRCUIT_BREAKER_TRIPS: "1"
+  
+  # Compliance
+  MIN_BALANCE_USDC: "0"
+  BAN_STATUS_CHECK_INTERVAL_MS: "86400000"
+  BAN_STATUS_EXIT_IF_CERT_REQUIRED: "false"
+  WS_MAX_RECONNECT_ATTEMPTS: "10"
+  
+  # Learning System (Staging paths)
+  EVENT_STORE_PATH: "/app/data/staging/events.db"
+  SIGNAL_CATALOG_PATH: "/app/data/staging/signals.db"
+  BACKTEST_ENGINE_PATH: "/app/data/staging/backtests.db"
+  PROMOTION_WORKFLOW_PATH: "/app/data/staging/promotions.db"
+  
+  # Backup (Staging)
+  BACKUP_STORAGE_TYPE: "local"
+  BACKUP_LOCAL_PATH: "/app/data/staging/backups"
+  BACKUP_COMPRESS: "true"
+  BACKUP_MAX_BACKUPS: "10"
+  BACKUP_MAX_AGE_DAYS: "30"
+  BACKUP_SCHEDULE: "0 3 * * *"
+  
+  # Blockchain
+  CHAIN_ID: "137"
+  
+  # Secret Source
+  SECRET_SOURCE: "env"

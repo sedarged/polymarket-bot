@@ -45,6 +45,7 @@ Declare all infrastructure as code, track it in VCS, and deploy reproducibly usi
 
 **Features:**
 - Complete K8s manifests (Deployment, Service, Ingress, PVC)
+- **Staging environment support** (`kubernetes/staging/`) - GAP-042
 - ConfigMaps and Secrets management
 - Health checks and rolling updates
 - Resource limits and autoscaling
@@ -57,7 +58,7 @@ Declare all infrastructure as code, track it in VCS, and deploy reproducibly usi
 - You want cloud-agnostic deployments
 - You need advanced deployment strategies (canary, blue-green)
 
-**[Documentation →](kubernetes/README.md)**
+**[Documentation →](kubernetes/README.md)** | **[Staging →](kubernetes/staging/README.md)**
 
 ### 3. Ansible (`ansible/`)
 
@@ -69,7 +70,7 @@ Declare all infrastructure as code, track it in VCS, and deploy reproducibly usi
 - Systemd service configuration
 - Security hardening (firewall, automatic updates)
 - Backup automation
-- Multi-environment support
+- **Multi-environment support** (staging/production) - GAP-042
 - Idempotent and repeatable
 
 **Use when:**

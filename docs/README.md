@@ -50,6 +50,12 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - Reproducible infrastructure deployments
   - Version-controlled infrastructure definitions
   - Complete documentation and examples
+- **[Staging Environment Guide](./staging-environment.md)** - 🧪 **Pre-production testing environment (GAP-042)**
+  - **Complete staging setup and configuration**
+  - Docker Compose, Kubernetes, and Ansible deployment options
+  - Safe testing without production risk
+  - Testing workflows and best practices
+  - Isolated configuration and data storage
 - **[Deployment Guide](./deployment-guide.md)** - 🚀 Complete deployment procedures (GAP-015)
   - **Step-by-step deployment to staging and production**
   - Environment setup and configuration

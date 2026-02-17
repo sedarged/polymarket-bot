@@ -1,0 +1,49 @@
+# Kubernetes Service for Polymarket Bot - Staging Environment
+# Addresses GAP-042: Staging Environment
+apiVersion: v1
+kind: Service
+metadata:
+  name: polymarket-bot-staging
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+spec:
+  type: ClusterIP
+  selector:
+    app: polymarket-bot
+    environment: staging
+  ports:
+  - name: http
+    port: 3001
+    targetPort: 3001
+    protocol: TCP
+  - name: metrics
+    port: 9091
+    targetPort: 9091
+    protocol: TCP
+---
+# Metrics Service (for Prometheus)
+apiVersion: v1
+kind: Service
+metadata:
+  name: polymarket-bot-staging-metrics
+  namespace: polymarket-staging
+  labels:
+    app: polymarket-bot
+    environment: staging
+    component: metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9091"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: polymarket-bot
+    environment: staging
+  ports:
+  - name: metrics
+    port: 9091
+    targetPort: 9091
+    protocol: TCP
