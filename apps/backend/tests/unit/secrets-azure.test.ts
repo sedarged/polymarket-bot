@@ -51,5 +51,81 @@ describe('Azure Key Vault secret backend', () => {
       'Secret value is empty',
     );
   });
+
+  it('reads private key from JSON with privateKey field', async () => {
+    const keyNoPrefix = 'e'.repeat(64);
+    getSecretMock.mockResolvedValueOnce({
+      value: JSON.stringify({ privateKey: keyNoPrefix }),
+    });
+
+    const result = await getPrivateKey({
+      source: 'azure',
+      azureKeyVaultName: 'my-kv',
+      azureSecretName: 'polymarket-private-key',
+    });
+
+    expect(result.source).toBe('azure');
+    expect(result.key).toBe(`0x${keyNoPrefix}`);
+  });
+
+  it('reads private key from JSON with PRIVATE_KEY field', async () => {
+    const keyNoPrefix = 'f'.repeat(64);
+    getSecretMock.mockResolvedValueOnce({
+      value: JSON.stringify({ PRIVATE_KEY: keyNoPrefix }),
+    });
+
+    const result = await getPrivateKey({
+      source: 'azure',
+      azureKeyVaultName: 'my-kv',
+      azureSecretName: 'polymarket-private-key',
+    });
+
+    expect(result.source).toBe('azure');
+    expect(result.key).toBe(`0x${keyNoPrefix}`);
+  });
+
+  it('reads private key from JSON with private_key field', async () => {
+    const keyNoPrefix = '1'.repeat(64);
+    getSecretMock.mockResolvedValueOnce({
+      value: JSON.stringify({ private_key: keyNoPrefix }),
+    });
+
+    const result = await getPrivateKey({
+      source: 'azure',
+      azureKeyVaultName: 'my-kv',
+      azureSecretName: 'polymarket-private-key',
+    });
+
+    expect(result.source).toBe('azure');
+    expect(result.key).toBe(`0x${keyNoPrefix}`);
+  });
+
+  it('throws if JSON does not contain a private key field', async () => {
+    getSecretMock.mockResolvedValueOnce({
+      value: JSON.stringify({ someOtherField: 'not-a-key' }),
+    });
+
+    await expect(
+      getPrivateKey({
+        source: 'azure',
+        azureKeyVaultName: 'my-kv',
+        azureSecretName: 'polymarket-private-key',
+      }),
+    ).rejects.toThrow(/private.*key/i);
+  });
+
+  it('rejects invalid private key format in JSON', async () => {
+    getSecretMock.mockResolvedValueOnce({
+      value: JSON.stringify({ privateKey: 'invalid-key' }),
+    });
+
+    await expect(
+      getPrivateKey({
+        source: 'azure',
+        azureKeyVaultName: 'my-kv',
+        azureSecretName: 'polymarket-private-key',
+      }),
+    ).rejects.toThrow();
+  });
 });
 
