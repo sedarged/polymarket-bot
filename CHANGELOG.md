@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/sedarged/polymarket-bot/compare/v2.0.0...v2.1.0) (2026-02-17)
+
+
+### Features
+
+* implement configuration management interface with hot-reload (GAP-003) ([cc9993f](https://github.com/sedarged/polymarket-bot/commit/cc9993faf7a23715c87061b00d2e7606480918c7)), closes [#394](https://github.com/sedarged/polymarket-bot/issues/394)
+
+
+### Bug Fixes
+
+* address code review feedback for configuration management ([17e1e5d](https://github.com/sedarged/polymarket-bot/commit/17e1e5de275b5e46e3ac692d862b74c9e4c50e15))
+* address configuration management PR review feedback ([35df05d](https://github.com/sedarged/polymarket-bot/commit/35df05d71b66e9db7972f844d14a1dd2851bb4e7))
+* address new PR review feedback ([0f76313](https://github.com/sedarged/polymarket-bot/commit/0f763134007c6c8a18428289cfbbde17201e8fca))
+* address PR review feedback for configuration management ([833cd70](https://github.com/sedarged/polymarket-bot/commit/833cd70e47bf574bdd706d393dfec4a8e148cec2))
+
 ## [2.0.0](https://github.com/sedarged/polymarket-bot/compare/v1.36.0...v2.0.0) (2026-02-17)
 
 
