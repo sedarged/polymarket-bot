@@ -198,7 +198,8 @@ if [ "$HAS_KUBECTL" = true ] && [ -d "infrastructure/kubernetes" ]; then
   # Validate each manifest (skip empty/commented-out files)
   for file in *.yaml; do
     # Check if file has actual resources (not just comments or empty)
-    if grep -q '^[^#[:space:]]' "$file"; then
+    # Allow leading whitespace before non-comment content
+    if grep -q '^[[:space:]]*[^#[:space:]]' "$file"; then
       if kubectl apply -f "$file" --dry-run=client &> /dev/null; then
         check_pass "$file is valid"
       else
@@ -206,7 +207,7 @@ if [ "$HAS_KUBECTL" = true ] && [ -d "infrastructure/kubernetes" ]; then
         kubectl apply -f "$file" --dry-run=client
       fi
     else
-      check_pass "$file is empty/commented (skipped)"
+      check_skip "$file is empty/commented (skipped)"
     fi
   done
   

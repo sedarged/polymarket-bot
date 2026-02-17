@@ -28,7 +28,8 @@ apt-get install -y \
     lsb-release \
     jq \
     awscli \
-    unattended-upgrades
+    unattended-upgrades \
+    debconf-utils
 
 # Configure automatic security updates
 echo "Configuring automatic security updates..."
