@@ -513,11 +513,12 @@ Configuration updates use atomic write operations to prevent corruption:
 
 File change events are debounced with a 500ms delay to prevent excessive reloads during rapid file modifications (e.g., editor auto-save).
 
-### Thread Safety
+### Concurrency Control
 
 - Singleton pattern ensures single ConfigManager instance
-- File operations use atomic writes
-- Event-driven architecture prevents race conditions
+- Write operations are serialized using a mutex to prevent concurrent modifications
+- Atomic file writes using temp files prevent partial reads
+- Event-driven architecture for coordinated state updates
 
 ### Error Handling
 

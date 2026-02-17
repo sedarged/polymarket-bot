@@ -61,10 +61,12 @@ const strategyConfigSchema = z.object({
 
 export class ConfigManager extends EventEmitter {
   private static instance: ConfigManager | null = null;
+  private static isDestroying: boolean = false;
   private watchers: Map<string, FSWatcher> = new Map();
   private currentConfig: Config;
   private isWatching: boolean = false;
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  private writeLock: Promise<void> = Promise.resolve();
   
   // Debounce delay for file change events (exposed for testing)
   public static readonly DEBOUNCE_DELAY_MS = 500;
@@ -72,13 +74,16 @@ export class ConfigManager extends EventEmitter {
 
   private constructor() {
     super();
-    this.currentConfig = parseConfig();
+    this.currentConfig = parseConfig(process.env);
   }
 
   /**
    * Get the singleton instance of ConfigManager
    */
   public static getInstance(): ConfigManager {
+    if (ConfigManager.isDestroying) {
+      throw new Error('Cannot get ConfigManager instance during destruction');
+    }
     if (!ConfigManager.instance) {
       ConfigManager.instance = new ConfigManager();
     }
@@ -143,7 +148,16 @@ export class ConfigManager extends EventEmitter {
     type: 'markets' | 'strategy',
     content: unknown,
   ): Promise<ConfigUpdateResult> {
+    // Acquire write lock to prevent concurrent modifications
+    const previousLock = this.writeLock;
+    let releaseLock: () => void;
+    this.writeLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    
     try {
+      await previousLock;
+      
       // Validate content against schema
       let validatedContent: unknown;
       if (type === 'markets') {
@@ -217,6 +231,8 @@ export class ConfigManager extends EventEmitter {
         success: false,
         message: `Failed to update configuration: ${error instanceof Error ? error.message : String(error)}`,
       };
+    } finally {
+      releaseLock!();
     }
   }
 
@@ -276,7 +292,8 @@ export class ConfigManager extends EventEmitter {
 
   /**
    * Reload configuration from files
-   * This re-parses all configuration sources and validates them
+   * This re-parses all configuration sources and validates them.
+   * If parsing fails for a specific config file, the previous valid value is retained.
    */
   public async reloadConfig(): Promise<void> {
     try {
@@ -284,6 +301,22 @@ export class ConfigManager extends EventEmitter {
 
       // Re-parse configuration (this reads from environment and config files)
       const newConfig = parseConfig(process.env);
+
+      // Preserve old valid config values if new parse resulted in undefined
+      // This ensures we don't lose configuration on parse errors
+      if (newConfig.markets === undefined && this.currentConfig.markets !== undefined) {
+        logger.warn("Markets config failed to parse, retaining previous valid configuration", {
+          category: "config",
+        });
+        newConfig.markets = this.currentConfig.markets;
+      }
+      
+      if (newConfig.strategy === undefined && this.currentConfig.strategy !== undefined) {
+        logger.warn("Strategy config failed to parse, retaining previous valid configuration", {
+          category: "config",
+        });
+        newConfig.strategy = this.currentConfig.strategy;
+      }
 
       // Emit event before updating to allow listeners to prepare
       this.emit('configReloading', newConfig);
@@ -515,10 +548,16 @@ export class ConfigManager extends EventEmitter {
 
   /**
    * Clean up resources
+   * Should only be called during application shutdown when no other operations are expected.
    */
   public async destroy(): Promise<void> {
-    await this.stopWatching();
-    this.removeAllListeners();
-    ConfigManager.instance = null;
+    ConfigManager.isDestroying = true;
+    try {
+      await this.stopWatching();
+      this.removeAllListeners();
+      ConfigManager.instance = null;
+    } finally {
+      ConfigManager.isDestroying = false;
+    }
   }
 }

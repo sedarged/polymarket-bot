@@ -23,11 +23,21 @@ const configManager = ConfigManager.getInstance();
 
 /**
  * Parse request body as JSON
+ * Limits body size to 1MB to prevent DoS attacks
  */
 async function parseJsonBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
+    const maxBodySize = 1024 * 1024; // 1MB limit
+    let bytesReceived = 0;
+    
     req.on('data', (chunk) => {
+      bytesReceived += chunk.length;
+      if (bytesReceived > maxBodySize) {
+        req.destroy();
+        reject(new Error(`Request body too large. Maximum size is ${maxBodySize / 1024 / 1024}MB`));
+        return;
+      }
       body += chunk.toString();
     });
     req.on('end', () => {
