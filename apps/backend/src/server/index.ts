@@ -726,11 +726,20 @@ export function createServer(): http.Server {
       return queryIndex === -1 ? url : url.substring(0, queryIndex);
     };
     
-    // Helper to extract config type from URL path
-    const getConfigType = (pathname: string, prefix: string): string => {
-      const type = pathname.substring(prefix.length);
-      const slashIndex = type.indexOf('/');
-      return slashIndex === -1 ? type : type.substring(0, slashIndex);
+    // Helper to extract and validate config type from URL path
+    // Returns null if path has extra segments (only allows optional trailing slash)
+    const getConfigType = (pathname: string, prefix: string): string | null => {
+      const remainder = pathname.substring(prefix.length);
+      
+      // Remove optional trailing slash
+      const normalized = remainder.endsWith('/') ? remainder.slice(0, -1) : remainder;
+      
+      // If there's still a slash, there are extra path segments
+      if (normalized.includes('/')) {
+        return null;
+      }
+      
+      return normalized || null;
     };
     
     const pathname = getPathname(url);
@@ -744,6 +753,10 @@ export function createServer(): http.Server {
     if (pathname.startsWith('/api/config/') && method === 'GET' && !pathname.includes('/watching')) {
       if (!requireAdminAuth(req, res, 'Get Config File')) return;
       const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
       await handleGetConfigFile(req, res, type);
       return;
     }
@@ -751,6 +764,10 @@ export function createServer(): http.Server {
     if (pathname.startsWith('/api/config/') && method === 'PUT' && !pathname.includes('/watching')) {
       if (!requireAdminAuth(req, res, 'Update Config File')) return;
       const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
       await handleUpdateConfigFile(req, res, type);
       return;
     }
@@ -758,6 +775,10 @@ export function createServer(): http.Server {
     if (pathname.startsWith('/api/config/') && method === 'DELETE' && !pathname.includes('/watching')) {
       if (!requireAdminAuth(req, res, 'Delete Config File')) return;
       const type = getConfigType(pathname, '/api/config/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/:type' }, req);
+        return;
+      }
       await handleDeleteConfigFile(req, res, type);
       return;
     }
@@ -765,6 +786,10 @@ export function createServer(): http.Server {
     if (pathname.startsWith('/api/config/validate/') && method === 'POST') {
       if (!requireAdminAuth(req, res, 'Validate Config')) return;
       const type = getConfigType(pathname, '/api/config/validate/');
+      if (!type) {
+        respondJson(res, 400, { error: 'Invalid config path. Expected /api/config/validate/:type' }, req);
+        return;
+      }
       await handleValidateConfig(req, res, type);
       return;
     }

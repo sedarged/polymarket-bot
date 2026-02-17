@@ -241,7 +241,16 @@ export class ConfigManager extends EventEmitter {
    * @param type - The type of configuration file to delete
    */
   public async deleteConfigFile(type: 'markets' | 'strategy'): Promise<ConfigUpdateResult> {
+    // Acquire write lock to prevent concurrent modifications
+    const previousLock = this.writeLock;
+    let releaseLock: () => void = () => {};
+    this.writeLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    
     try {
+      await previousLock;
+      
       const envVar = type === 'markets' ? 'MARKETS_CONFIG_PATH' : 'STRATEGY_CONFIG_PATH';
       const filePath = process.env[envVar];
       if (!filePath) {
@@ -287,13 +296,16 @@ export class ConfigManager extends EventEmitter {
         success: false,
         message: `Failed to delete configuration: ${error instanceof Error ? error.message : String(error)}`,
       };
+    } finally {
+      releaseLock();
     }
   }
 
   /**
    * Reload configuration from files
    * This re-parses all configuration sources and validates them.
-   * If parsing fails for a specific config file, the previous valid value is retained.
+   * If parsing fails for a specific config file (invalid JSON), the previous valid value is retained.
+   * If the file is missing/deleted, the config is set to undefined as expected.
    */
   public async reloadConfig(): Promise<void> {
     try {
@@ -302,23 +314,37 @@ export class ConfigManager extends EventEmitter {
       // Re-parse configuration (this reads from environment and config files)
       const newConfig = parseConfig(process.env);
 
-      // Helper to preserve old config value if new parse resulted in undefined
+      // Helper to preserve old config value only if file exists but has parse errors
       const preserveConfigIfNeeded = (
         configType: 'markets' | 'strategy',
         newValue: unknown,
         oldValue: unknown
       ): unknown => {
         if (newValue === undefined && oldValue !== undefined) {
-          logger.warn(`${configType.charAt(0).toUpperCase() + configType.slice(1)} config failed to parse, retaining previous valid configuration`, {
-            category: "config",
-          });
-          return oldValue;
+          // Check if the config file actually exists
+          const envVar = configType === 'markets' ? 'MARKETS_CONFIG_PATH' : 'STRATEGY_CONFIG_PATH';
+          const filePath = process.env[envVar];
+          
+          if (filePath) {
+            const resolvedPath = path.isAbsolute(filePath) 
+              ? filePath 
+              : path.resolve(process.cwd(), filePath);
+            
+            // Only preserve if file exists (meaning parse failed), not if file is missing
+            if (fs.existsSync(resolvedPath)) {
+              logger.warn(`${configType.charAt(0).toUpperCase() + configType.slice(1)} config file exists but failed to parse, retaining previous valid configuration`, {
+                category: "config",
+                path: resolvedPath,
+              });
+              return oldValue;
+            }
+          }
         }
         return newValue;
       };
 
-      // Preserve old valid config values if new parse resulted in undefined
-      // This ensures we don't lose configuration on parse errors
+      // Preserve old valid config values if file exists but parse resulted in undefined
+      // This ensures we don't lose configuration on parse errors, but allow deletion
       newConfig.markets = preserveConfigIfNeeded('markets', newConfig.markets, this.currentConfig.markets) as typeof newConfig.markets;
       newConfig.strategy = preserveConfigIfNeeded('strategy', newConfig.strategy, this.currentConfig.strategy) as typeof newConfig.strategy;
 
