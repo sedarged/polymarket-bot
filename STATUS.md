@@ -35,14 +35,16 @@ To update this status:
 ## Recently Closed (Last 14 Days)
 - [P1] #406 [GAP-017] DB Backup Script
 - [P1] #404 [GAP-015] Deployment Workflow
+- #394 [GAP-003] Implement Configuration Management Interface
+- #378 [GAP-041] Container Registry Workflow
+- #377 [GAP-042] Staging Environment
 - #373 [GAP-040] Infrastructure as Code
 - [P1] #323 Implement User-Friendly, Categorized Logging for Project Transparency
 - [P0] #316 [Enforce Codespaces Real-World Testing & Doc Improvement Policy]
 - #304 Setup Codespaces and Environment for Full Agent/App Testing
 - [P0] #301 URGENT: Deep code & documentation audit - FIX EVERYTHING, NO REPORTS
-- #283 Redesign the Polymarket Trading Bot dashboard UI to be more modern
 
-*Last updated: 2026-02-17T13:03:13.808Z*
+*Last updated: 2026-02-17T19:19:26.926Z*
 
 <!-- STATUS_SYNC_END -->
 
