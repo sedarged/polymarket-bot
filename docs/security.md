@@ -582,15 +582,20 @@ PRIVATE_KEY=ghijklmn...  # Non-hex characters
 node -e "const {encryptPrivateKey} = require('./apps/backend/src/secrets'); console.log(encryptPrivateKey('0x1234...', 'correct-passphrase'));"
 ```
 
-### Error: "AWS Secrets Manager integration not implemented"
+### Error: "Failed to retrieve private key from AWS Secrets Manager"
 
-**Solution:** Install AWS SDK dependencies (not included by default to keep deployment lightweight).
+**Solution:** Ensure the AWS SDK can authenticate (IAM role or env credentials), the region is correct, and the secret value is in a supported format.
+
+- **Required env**: `SECRET_SOURCE=aws`, `AWS_SECRET_NAME`, `AWS_REGION`
+- **Supported secret value formats**:
+  - Direct string: `"0x<64-hex>"` (or without `0x`)
+  - JSON: `{"privateKey":"0x..."}`, `{"PRIVATE_KEY":"0x..."}`, or `{"private_key":"0x..."}`
+
+If running locally, you can quickly verify access:
 
 ```bash
-npm install @aws-sdk/client-secrets-manager
+aws secretsmanager get-secret-value --secret-id "$AWS_SECRET_NAME" --region "$AWS_REGION"
 ```
-
-Then uncomment the AWS integration code in `apps/backend/src/secrets/index.ts`.
 
 ### Error: "ENCRYPTION_KEY is required for encrypted secret source"
 
@@ -616,8 +621,8 @@ Check the logs for secret loading:
 
 ## Additional Resources
 
-- [ADR-0005: Secrets Management](../adr/0005-secrets-management.md)
-- [Audit Finding A-001](../../REPORTS/AUDIT.md#a-001-critical---plaintext-private-key-storage)
+- [ADR-0005: Secrets Management](./adr/0005-secrets-management.md)
+- [Audit Finding A-001](../REPORTS/AUDIT.md#a-001-critical---plaintext-private-key-storage)
 - [OWASP Secrets Management](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
 - [AWS Secrets Manager Best Practices](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html)
 - [HashiCorp Vault Documentation](https://www.vaultproject.io/docs)

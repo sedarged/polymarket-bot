@@ -12,46 +12,46 @@ Navigate to: **Repository Settings → Secrets and variables → Codespaces → 
 
 Click "New repository secret" for each of the following:
 
-### AWS Secrets Manager (for testing Method 3 - currently stubbed)
-**Note:** AWS Secrets Manager integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
+### AWS Secrets Manager (optional - Method 3)
+**Note:** AWS Secrets Manager integration is implemented. If you set **fake** AWS credentials in Codespaces secrets, `SECRET_SOURCE=aws` will fail with auth/permissions errors (expected) — useful only to verify fail-closed behavior. For end-to-end AWS testing, use a dedicated test AWS account and restricted IAM role.
 ```
 Name: AWS_ACCESS_KEY_ID
 Value: AKIAIOSFODNN7EXAMPLE
-Description: Fake AWS access key for testing AWS error handling (integration stubbed)
+Description: Optional fake AWS access key (use only for fail-closed testing)
 ```
 
 ```
 Name: AWS_SECRET_ACCESS_KEY
 Value: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-Description: Fake AWS secret key for testing AWS error handling (integration stubbed)
+Description: Optional fake AWS secret key (use only for fail-closed testing)
 ```
 
-### Azure Key Vault (for testing Method 5 - currently stubbed)
-**Note:** Azure Key Vault integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
+### Azure Key Vault (optional - Method 5)
+**Note:** Azure Key Vault integration is implemented. If you set **fake** Azure credentials in Codespaces secrets, `SECRET_SOURCE=azure` will fail authentication (expected) — useful only to verify fail-closed behavior. For end-to-end Azure testing, use a dedicated test tenant/subscription and a managed identity or service principal with minimal permissions.
 ```
 Name: AZURE_CLIENT_ID
 Value: 12345678-1234-1234-1234-123456789012
-Description: Fake Azure client ID for testing Azure error handling (integration stubbed)
+Description: Optional fake Azure client ID (use only for fail-closed testing)
 ```
 
 ```
 Name: AZURE_CLIENT_SECRET
 Value: test-secret-value-not-real-safe-for-dev
-Description: Fake Azure client secret for testing Azure error handling (integration stubbed)
+Description: Optional fake Azure client secret (use only for fail-closed testing)
 ```
 
 ```
 Name: AZURE_TENANT_ID
 Value: 87654321-4321-4321-4321-210987654321
-Description: Fake Azure tenant ID for testing Azure error handling (integration stubbed)
+Description: Optional fake Azure tenant ID (use only for fail-closed testing)
 ```
 
-### HashiCorp Vault (for testing Method 4 - currently stubbed)
-**Note:** HashiCorp Vault integration is currently a stub that throws "not implemented" errors. These test secrets allow verification of error handling.
+### HashiCorp Vault (optional - Method 4)
+**Note:** HashiCorp Vault integration is implemented. If you set a **fake** `VAULT_TOKEN`, `SECRET_SOURCE=vault` will fail with permission/auth errors (expected). For end-to-end Vault testing, use a dedicated dev/test Vault with a minimal read-only policy.
 ```
 Name: VAULT_TOKEN
 Value: hvs.test_fake_token_for_development_only
-Description: Fake Vault token for testing Vault error handling (integration stubbed)
+Description: Optional fake Vault token (use only for fail-closed testing)
 ```
 
 ### Encrypted Storage (for testing Method 2)
@@ -160,11 +160,12 @@ After configuration, test that everything works:
 
 3. Test secret management methods:
    ```bash
-   # Only env and encrypted methods are functional
+   # Local methods
    SECRET_SOURCE=env npm run dev
    SECRET_SOURCE=encrypted npm run dev
    
-   # These will throw "not implemented" errors (expected behavior)
+   # Cloud methods (require valid credentials + a configured secret in the target system)
+   # If you configured only fake credentials, these are expected to fail fast with auth/permission errors.
    SECRET_SOURCE=aws npm run dev
    SECRET_SOURCE=azure npm run dev
    SECRET_SOURCE=vault npm run dev
@@ -198,7 +199,7 @@ Ensure contributors know about the setup:
 
 ## CI/CD Configuration (Bonus)
 
-The same secrets can be configured for GitHub Actions to enable testing in CI. Note that only `env` and `encrypted` secret sources are currently functional; AWS/Azure/Vault backends are stubbed.
+The same secrets can be configured for GitHub Actions to enable testing in CI. Unit tests mock AWS/Azure/Vault SDK calls, so CI does not require real cloud credentials to validate these code paths.
 
 Navigate to: **Repository Settings → Secrets and variables → Actions**
 
@@ -219,17 +220,12 @@ Configure the same secrets as above in the "Secrets" tab. This allows CI workflo
 2. Secret names match exactly (case-sensitive)
 3. Codespace was rebuilt after adding secrets
 
-### Issue: Tests failing with "Missing credentials"
-**Solution:** This is expected for AWS/Azure/Vault tests since we're using stubbed implementations. The code should:
-1. Attempt to use the stubbed backend
-2. Throw "integration not implemented" error
-3. Not crash or hang
-
-This proves the error handling works correctly. Only `env` and `encrypted` sources are fully functional.
+### Issue: Runtime fails with "Missing credentials" / auth errors (AWS/Azure/Vault)
+**Solution:** Cloud secret backends require valid credentials and network access. In Codespaces we recommend avoiding real cloud credentials by default; rely on unit tests for coverage. If you do need to test end-to-end, use a dedicated test account/tenant and minimal permissions.
 
 ## Verification Checklist
 
-- [ ] All 10 Codespaces secrets configured
+- [ ] All required Codespaces secrets configured (cloud secrets optional)
 - [ ] Optional environment variables set (if desired)
 - [ ] Test Codespace created and secrets verified
 - [ ] Secret management methods tested (should fail gracefully)

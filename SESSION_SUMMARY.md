@@ -69,9 +69,9 @@
 #### Fix 3: Documentation Drift in ENV_VARIABLE_REFERENCE.md ✅
 **Problem:** Incorrect counts and status markers  
 **Solution Implemented:**
-- Updated secret management: "2 production-ready, 3 stubbed"
+- Updated secret management: "5 implemented sources (env, encrypted, AWS, Vault, Azure)"
 - Corrected total: "50 functional, 7 not-yet-wired" (was "44 functional, 13 planned")
-- Clarified cloud backends have infrastructure but need SDK integration
+- Clarified cloud backends require credentials + network access at startup
 
 **Files Changed:**
 - `docs/ENV_VARIABLE_REFERENCE.md`

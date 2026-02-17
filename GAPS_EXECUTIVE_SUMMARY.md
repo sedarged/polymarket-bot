@@ -229,9 +229,9 @@ These gaps sound serious but aren't actually blockers:
 - **Current workaround:** Existing code works great for one strategy
 
 ### "Cloud Secret Backends Are Stubs"
-- ❌ **Blocker for:** AWS Secrets Manager / Azure Key Vault
+- ✅ **Status:** Implemented (AWS Secrets Manager, HashiCorp Vault, Azure Key Vault)
 - ✅ **NOT blocking:** Production deployment
-- **Current solution:** `encrypted` source is production-ready!
+- **Recommendation:** `encrypted` remains the simplest option for single-server deployments; use cloud backends for managed IAM/RBAC + audit logs.
 
 ### "Learning System Config Not Wired"
 - ❌ **Blocker for:** ML-driven strategy selection via env vars
