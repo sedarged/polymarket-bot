@@ -4,15 +4,15 @@ const getSecretMock = vi.fn();
 
 vi.mock('@azure/identity', () => {
   return {
-    DefaultAzureCredential: vi.fn().mockImplementation(() => ({})),
+    DefaultAzureCredential: vi.fn().mockImplementation(function (this: any) {}),
   };
 });
 
 vi.mock('@azure/keyvault-secrets', () => {
   return {
-    SecretClient: vi.fn().mockImplementation(() => ({
-      getSecret: getSecretMock,
-    })),
+    SecretClient: vi.fn().mockImplementation(function (this: any) {
+      this.getSecret = getSecretMock;
+    }),
   };
 });
 

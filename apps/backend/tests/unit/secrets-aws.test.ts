@@ -4,12 +4,12 @@ const sendMock = vi.fn();
 
 vi.mock('@aws-sdk/client-secrets-manager', () => {
   return {
-    SecretsManagerClient: vi.fn().mockImplementation(() => ({
-      send: sendMock,
-    })),
-    GetSecretValueCommand: vi.fn().mockImplementation((input: any) => ({
-      input,
-    })),
+    SecretsManagerClient: vi.fn().mockImplementation(function (this: any) {
+      this.send = sendMock;
+    }),
+    GetSecretValueCommand: vi.fn().mockImplementation(function (this: any, input: any) {
+      this.input = input;
+    }),
   };
 });
 
