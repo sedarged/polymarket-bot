@@ -18,6 +18,17 @@ import {
   handleGetBestStrategy,
   handleGetLearningStatus,
 } from './learningApiHandlers';
+import {
+  handleGetConfig,
+  handleGetConfigFile,
+  handleUpdateConfigFile,
+  handleDeleteConfigFile,
+  handleValidateConfig,
+  handleReloadConfig,
+  handleGetWatchingStatus,
+  handleStartWatching,
+  handleStopWatching,
+} from './configApiHandlers';
 
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
@@ -705,6 +716,65 @@ export function createServer(): http.Server {
     if (url === '/api/learning/status' && method === 'GET') {
       if (!requireAdminAuth(req, res, 'Learning Status')) return;
       await handleGetLearningStatus(req, res);
+      return;
+    }
+
+    // Configuration Management API endpoints (GAP-003, admin auth required)
+    if (url === '/api/config' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Get Configuration')) return;
+      await handleGetConfig(req, res);
+      return;
+    }
+
+    if (url.startsWith('/api/config/') && method === 'GET' && !url.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Get Config File')) return;
+      const type = url.substring('/api/config/'.length);
+      await handleGetConfigFile(req, res, type);
+      return;
+    }
+
+    if (url.startsWith('/api/config/') && method === 'PUT' && !url.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Update Config File')) return;
+      const type = url.substring('/api/config/'.length);
+      await handleUpdateConfigFile(req, res, type);
+      return;
+    }
+
+    if (url.startsWith('/api/config/') && method === 'DELETE' && !url.includes('/watching')) {
+      if (!requireAdminAuth(req, res, 'Delete Config File')) return;
+      const type = url.substring('/api/config/'.length);
+      await handleDeleteConfigFile(req, res, type);
+      return;
+    }
+
+    if (url.startsWith('/api/config/validate/') && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Validate Config')) return;
+      const type = url.substring('/api/config/validate/'.length);
+      await handleValidateConfig(req, res, type);
+      return;
+    }
+
+    if (url === '/api/config/reload' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Reload Config')) return;
+      await handleReloadConfig(req, res);
+      return;
+    }
+
+    if (url === '/api/config/watching' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Get Watching Status')) return;
+      await handleGetWatchingStatus(req, res);
+      return;
+    }
+
+    if (url === '/api/config/watching/start' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Start Watching')) return;
+      await handleStartWatching(req, res);
+      return;
+    }
+
+    if (url === '/api/config/watching/stop' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Stop Watching')) return;
+      await handleStopWatching(req, res);
       return;
     }
 

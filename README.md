@@ -67,6 +67,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - 🔌 Auto-reconnect with backoff + jitter strategy
 - 🔒 Idempotent operations with client-generated order IDs
 - 🔐 Multiple secret management backends (Vault, AWS, Azure, encrypted)
+- 🔧 Configuration management with hot-reload (no restart required)
 - 📊 Prometheus metrics and Grafana dashboards
 - 🚨 Telegram alerting for errors and circuit breaker trips
 - 📝 Categorized logging with automatic sensitive data masking
