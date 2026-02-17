@@ -52,5 +52,15 @@ describe('HashiCorp Vault secret backend', () => {
       getPrivateKeyFromVault('https://vault.example.com', 'token', 'secret/polymarket'),
     ).rejects.toThrow('permission denied');
   });
+
+  it('throws if Vault secret does not contain a private key field', async () => {
+    readMock.mockResolvedValueOnce({
+      data: { someOtherField: 'not-a-private-key' },
+    });
+
+    await expect(
+      getPrivateKeyFromVault('https://vault.example.com', 'token', 'secret/polymarket'),
+    ).rejects.toThrow(/private.*key/i);
+  });
 });
 

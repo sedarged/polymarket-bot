@@ -287,8 +287,6 @@ export const getPrivateKeyFromAWS = async (
 /**
  * Retrieves private key from HashiCorp Vault
  * 
- * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
- * 
  * @param vaultAddr - Vault server address
  * @param vaultToken - Vault authentication token
  * @param vaultPath - Path to the secret (e.g., 'secret/data/polymarket')
@@ -347,8 +345,6 @@ export const getPrivateKeyFromVault = async (
 /**
  * Retrieves private key from Azure Key Vault
  * 
- * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
- * 
  * @param keyVaultName - Name of the Azure Key Vault
  * @param secretName - Name of the secret
  * @returns The private key
@@ -372,14 +368,44 @@ export const getPrivateKeyFromAzure = async (
       throw new Error('Secret value is empty');
     }
 
+    // Support storing the private key directly as the secret value.
+    if (validatePrivateKey(value)) {
+      systemLogger.info('Private key retrieved from Azure Key Vault', {
+        audit: 'A-001',
+        source: 'azure',
+        keyVaultName,
+        secretName,
+        secretFormat: 'string',
+      });
+      return value;
+    }
+
+    // Try parsing as JSON and extract the private key from known field names
+    const parsed = safeJsonParse(value);
+    if (!parsed) {
+      throw new Error(
+        'Azure secret value must be a private key string or JSON containing one of: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
+    const extracted = extractPrivateKeyFromUnknown(parsed);
+    if (!extracted) {
+      throw new Error(
+        'Private key not found in Azure secret JSON. Expected field: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
     systemLogger.info('Private key retrieved from Azure Key Vault', {
       audit: 'A-001',
       source: 'azure',
       keyVaultName,
       secretName,
+      secretFormat: 'json',
     });
 
-    return value;
+    return extracted;
   } catch (error) {
     systemLogger.error('Failed to retrieve private key from Azure Key Vault', {
       source: 'azure',
