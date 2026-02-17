@@ -124,13 +124,18 @@ resource "aws_security_group" "polymarket_bot" {
   }
 
   # HTTP for API
-  # WARNING: This exposes the admin API over plaintext HTTP. For production:
-  # - Use TLS termination (ALB/load balancer or reverse proxy) in front of the bot
-  # - Restrict api_allowed_cidr to trusted networks only (not 0.0.0.0/0)
-  # - Consider using SSH tunnels for admin access instead of direct exposure
-  # The ADMIN_TOKEN provides authentication but can be intercepted over HTTP
+  # SECURITY WARNING: This exposes the admin API over plaintext HTTP.
+  # The ADMIN_TOKEN provides authentication but can be intercepted by on-path attackers.
+  #
+  # For production deployments, you MUST:
+  # 1. Terminate TLS at an ALB/load balancer or reverse proxy within this VPC, OR
+  # 2. Restrict api_allowed_cidr to only trusted internal networks (VPC CIDR), OR
+  # 3. Use SSH tunneling for admin access instead of direct network exposure
+  #
+  # DO NOT set api_allowed_cidr to 0.0.0.0/0 in production without TLS termination.
+  # Recommended: Use the VPC CIDR block to keep API traffic internal-only.
   ingress {
-    description = "HTTP API"
+    description = "HTTP API (VPC-internal recommended)"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"

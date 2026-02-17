@@ -27,11 +27,16 @@ Automated server configuration and deployment using Ansible for VPS, bare metal,
    pip3 install ansible
    ```
 
-2. **SSH Access** to target servers with sudo privileges
+2. **Install required Ansible collections**
+   ```bash
+   ansible-galaxy collection install -r requirements.yml
+   ```
 
-3. **SSH Key** for authentication
+3. **SSH Access** to target servers with sudo privileges
 
-4. **Target Server**: Ubuntu 20.04+ or Debian 11+
+4. **SSH Key** for authentication
+
+5. **Target Server**: Ubuntu 20.04+ or Debian 11+
 
 ## Quick Start
 

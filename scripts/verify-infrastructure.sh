@@ -195,13 +195,19 @@ if [ "$HAS_KUBECTL" = true ] && [ -d "infrastructure/kubernetes" ]; then
   
   cd infrastructure/kubernetes
   
-  # Validate each manifest
+  # Validate each manifest (skip empty/commented-out files)
   for file in *.yaml; do
-    if kubectl apply -f "$file" --dry-run=client &> /dev/null; then
-      check_pass "$file is valid"
+    # Check if file has actual resources (not just comments or empty)
+    # Allow leading whitespace before non-comment content
+    if grep -q '^[[:space:]]*[^#[:space:]]' "$file"; then
+      if kubectl apply -f "$file" --dry-run=client &> /dev/null; then
+        check_pass "$file is valid"
+      else
+        check_fail "$file validation failed"
+        kubectl apply -f "$file" --dry-run=client
+      fi
     else
-      check_fail "$file validation failed"
-      kubectl apply -f "$file" --dry-run=client
+      check_skip "$file is empty/commented (skipped)"
     fi
   done
   
@@ -350,10 +356,17 @@ check_secret_file() {
       return 1
     fi
   else
-    # Exact path - check if it exists in git
-    if git ls-files --error-unmatch "$pattern" &>/dev/null; then
-      check_fail "SECURITY: Found committed file: $description"
-      return 1
+    # Exact path - check if it exists in git (skip if not in a git repo)
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+      if git ls-files --error-unmatch "$pattern" &>/dev/null; then
+        check_fail "SECURITY: Found committed file: $description"
+        return 1
+      fi
+    else
+      # Not in a git repo, fall back to filesystem check
+      if [ -e "$pattern" ]; then
+        check_warn "File exists (git check skipped - not in git repo): $description"
+      fi
     fi
   fi
   

@@ -18,6 +18,8 @@
     # Firewall configuration - restrict API access by default
     api_allowed_cidr: "{{ api_allowed_cidr | default('10.0.0.0/8') }}"
     metrics_allowed_cidr: "{{ metrics_allowed_cidr | default('10.0.0.0/8') }}"
+    # SSH access control - empty string means allow from anywhere
+    ssh_allowed_cidr: "{{ ssh_allowed_cidr | default('') }}"
   
   pre_tasks:
     - name: Validate environment group assignment
@@ -67,14 +69,14 @@
     # ================================================
     - name: Configure UFW firewall
       block:
-        # WARNING: SSH is allowed from anywhere by default for initial setup.
-        # For production, restrict SSH access to known IP addresses by setting
-        # ssh_allowed_cidr in your inventory/vars and adding src parameter here.
-        - name: Allow SSH
+        - name: Allow SSH (restricted or global)
           ufw:
             rule: allow
             port: '22'
             proto: tcp
+            src: "{{ ssh_allowed_cidr if ssh_allowed_cidr else omit }}"
+          # Note: If ssh_allowed_cidr is empty, SSH is allowed from anywhere.
+          # For production, set ssh_allowed_cidr in your inventory/group_vars.
         
         - name: Allow HTTP API
           ufw:

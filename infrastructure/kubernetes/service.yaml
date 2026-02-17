@@ -41,7 +41,6 @@ spec:
     port: 80
     targetPort: 3000
     protocol: TCP
-  - name: https
-    port: 443
-    targetPort: 3000
-    protocol: TCP
+  # Note: Port 443 not exposed here. For HTTPS, configure TLS termination
+  # at your load balancer/ingress level using provider-specific annotations
+  # or a separate Ingress resource with TLS configuration.

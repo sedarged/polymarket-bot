@@ -103,8 +103,8 @@ instance_type    = "t3.small"
 # Security: Restrict SSH to your IP
 ssh_allowed_cidr = ["YOUR.IP.ADDRESS.HERE/32"]
 
-# API access (adjust as needed)
-api_allowed_cidr = ["0.0.0.0/0"]
+# Admin API access: restrict to your IP or VPN (or use SSH tunneling)
+api_allowed_cidr = ["YOUR.IP.ADDRESS.HERE/32"]
 
 # Docker image
 docker_image     = "ghcr.io/sedarged/polymarket-bot:latest"
