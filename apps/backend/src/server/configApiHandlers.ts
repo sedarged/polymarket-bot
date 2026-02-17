@@ -21,24 +21,89 @@ import { logger } from '../utils/logger';
 
 const configManager = ConfigManager.getInstance();
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB limit
+const MAX_BODY_SIZE_MB = 1; // 1MB
+
+/**
+ * Custom error for body size limit exceeded
+ */
+class BodyTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BodyTooLargeError';
+  }
+}
+
+/**
+ * Custom error for invalid JSON
+ */
+class InvalidJsonError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidJsonError';
+  }
+}
+
 /**
  * Parse request body as JSON
+ * Limits body size to 1MB to prevent DoS attacks
+ * @throws {BodyTooLargeError} When body exceeds size limit
+ * @throws {InvalidJsonError} When JSON parsing fails
  */
 async function parseJsonBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
+    let bytesReceived = 0;
+    let settled = false;
+    
+    const cleanup = () => {
+      req.removeAllListeners('data');
+      req.removeAllListeners('end');
+      req.removeAllListeners('error');
+    };
+    
+    const rejectOnce = (error: Error) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        reject(error);
+      }
+    };
+    
+    const resolveOnce = (value: unknown) => {
+      if (!settled) {
+        settled = true;
+        cleanup();
+        resolve(value);
+      }
+    };
+    
     req.on('data', (chunk) => {
+      if (settled) return;
+      
+      bytesReceived += chunk.length;
+      if (bytesReceived > MAX_BODY_SIZE) {
+        req.destroy();
+        rejectOnce(new BodyTooLargeError(`Request body too large. Maximum size is ${MAX_BODY_SIZE_MB}MB`));
+        return;
+      }
       body += chunk.toString();
     });
+    
     req.on('end', () => {
+      if (settled) return;
+      
       try {
         const parsed = body ? JSON.parse(body) : {};
-        resolve(parsed);
+        resolveOnce(parsed);
       } catch (error) {
-        reject(new Error(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
+        rejectOnce(new InvalidJsonError(`Invalid JSON: ${error instanceof Error ? error.message : String(error)}`));
       }
     });
-    req.on('error', reject);
+    
+    req.on('error', (error) => {
+      rejectOnce(error);
+    });
   });
 }
 
@@ -169,10 +234,19 @@ export async function handleUpdateConfigFile(
       type,
       error: error instanceof Error ? error.message : String(error),
     });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
+    
+    // Return appropriate status code based on error type
+    let statusCode = 500;
+    if (error instanceof BodyTooLargeError) {
+      statusCode = 413; // Payload Too Large
+    } else if (error instanceof InvalidJsonError) {
+      statusCode = 400; // Bad Request
+    }
+    
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       success: false,
-      error: `Failed to update configuration: ${error instanceof Error ? error.message : String(error)}`,
+      error: error instanceof Error ? error.message : String(error),
     }));
   }
 }
@@ -253,10 +327,19 @@ export async function handleValidateConfig(
       type,
       error: error instanceof Error ? error.message : String(error),
     });
-    res.writeHead(500, { 'Content-Type': 'application/json' });
+    
+    // Return appropriate status code based on error type
+    let statusCode = 500;
+    if (error instanceof BodyTooLargeError) {
+      statusCode = 413; // Payload Too Large
+    } else if (error instanceof InvalidJsonError) {
+      statusCode = 400; // Bad Request
+    }
+    
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       success: false,
-      error: `Failed to validate configuration: ${error instanceof Error ? error.message : String(error)}`,
+      error: error instanceof Error ? error.message : String(error),
     }));
   }
 }

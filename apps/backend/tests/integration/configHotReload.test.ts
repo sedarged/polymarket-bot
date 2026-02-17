@@ -263,14 +263,15 @@ describe('Configuration Hot-Reload Integration', () => {
       fs.writeFileSync(marketsPath, 'invalid json {{{');
       await wait(800);
 
-      // Should still trigger config reload (with fallback to empty markets)
+      // Should still trigger config reload (with previous valid config preserved)
       expect(changedListener).toHaveBeenCalled();
 
-      // Config should still be accessible (falls back to no markets)
+      // Config should still be accessible with previous valid markets preserved
       const config = configManager.getConfig();
       expect(config).toBeDefined();
-      // Markets should be undefined or empty due to invalid JSON
-      expect(config.markets).toBeUndefined();
+      // Markets should be preserved from previous valid configuration
+      expect(config.markets).toBeDefined();
+      expect(config.markets?.[0].tokenId).toBe('initial-token');
 
       configManager.off('configChanged', changedListener);
       await configManager.stopWatching();
