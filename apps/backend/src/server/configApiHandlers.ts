@@ -21,6 +21,9 @@ import { logger } from '../utils/logger';
 
 const configManager = ConfigManager.getInstance();
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1MB limit
+const MAX_BODY_SIZE_MB = 1; // 1MB
+
 /**
  * Parse request body as JSON
  * Limits body size to 1MB to prevent DoS attacks
@@ -28,14 +31,13 @@ const configManager = ConfigManager.getInstance();
 async function parseJsonBody(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
-    const maxBodySize = 1024 * 1024; // 1MB limit
     let bytesReceived = 0;
     
     req.on('data', (chunk) => {
       bytesReceived += chunk.length;
-      if (bytesReceived > maxBodySize) {
+      if (bytesReceived > MAX_BODY_SIZE) {
         req.destroy();
-        reject(new Error(`Request body too large. Maximum size is ${maxBodySize / 1024 / 1024}MB`));
+        reject(new Error(`Request body too large. Maximum size is ${MAX_BODY_SIZE_MB}MB`));
         return;
       }
       body += chunk.toString();

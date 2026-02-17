@@ -150,7 +150,7 @@ export class ConfigManager extends EventEmitter {
   ): Promise<ConfigUpdateResult> {
     // Acquire write lock to prevent concurrent modifications
     const previousLock = this.writeLock;
-    let releaseLock: () => void;
+    let releaseLock: () => void = () => {};
     this.writeLock = new Promise<void>((resolve) => {
       releaseLock = resolve;
     });
@@ -232,7 +232,7 @@ export class ConfigManager extends EventEmitter {
         message: `Failed to update configuration: ${error instanceof Error ? error.message : String(error)}`,
       };
     } finally {
-      releaseLock!();
+      releaseLock();
     }
   }
 
@@ -302,21 +302,25 @@ export class ConfigManager extends EventEmitter {
       // Re-parse configuration (this reads from environment and config files)
       const newConfig = parseConfig(process.env);
 
+      // Helper to preserve old config value if new parse resulted in undefined
+      const preserveConfigIfNeeded = (
+        configType: 'markets' | 'strategy',
+        newValue: unknown,
+        oldValue: unknown
+      ): unknown => {
+        if (newValue === undefined && oldValue !== undefined) {
+          logger.warn(`${configType.charAt(0).toUpperCase() + configType.slice(1)} config failed to parse, retaining previous valid configuration`, {
+            category: "config",
+          });
+          return oldValue;
+        }
+        return newValue;
+      };
+
       // Preserve old valid config values if new parse resulted in undefined
       // This ensures we don't lose configuration on parse errors
-      if (newConfig.markets === undefined && this.currentConfig.markets !== undefined) {
-        logger.warn("Markets config failed to parse, retaining previous valid configuration", {
-          category: "config",
-        });
-        newConfig.markets = this.currentConfig.markets;
-      }
-      
-      if (newConfig.strategy === undefined && this.currentConfig.strategy !== undefined) {
-        logger.warn("Strategy config failed to parse, retaining previous valid configuration", {
-          category: "config",
-        });
-        newConfig.strategy = this.currentConfig.strategy;
-      }
+      newConfig.markets = preserveConfigIfNeeded('markets', newConfig.markets, this.currentConfig.markets) as typeof newConfig.markets;
+      newConfig.strategy = preserveConfigIfNeeded('strategy', newConfig.strategy, this.currentConfig.strategy) as typeof newConfig.strategy;
 
       // Emit event before updating to allow listeners to prepare
       this.emit('configReloading', newConfig);
