@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/sedarged/polymarket-bot/compare/v1.36.0...v2.0.0) (2026-02-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* Infrastructure can now be deployed reproducibly using version-controlled configurations.
+
+### Features
+
+* implement Infrastructure as Code for reproducible deployments ([2ba6c46](https://github.com/sedarged/polymarket-bot/commit/2ba6c4699a0122cd73c224ff48ad4067146b8f02))
+
+
+### Bug Fixes
+
+* address IaC verification and deployment robustness issues ([5049886](https://github.com/sedarged/polymarket-bot/commit/50498866fd465de5dcbfe0ccc728ae55da4a659b))
+
 ## [1.36.0](https://github.com/sedarged/polymarket-bot/compare/v1.35.0...v1.36.0) (2026-02-16)
 
 
