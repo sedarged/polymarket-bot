@@ -595,7 +595,7 @@ node -e "const {encryptPrivateKey} = require('./apps/backend/src/secrets'); cons
 If running locally, you can quickly verify access:
 
 ```bash
-aws secretsmanager get-secret-value --secret-id "$AWS_SECRET_NAME" --region "$AWS_REGION"
+aws secretsmanager get-secret-value --secret-id "$AWS_SECRET_NAME" --region "${AWS_REGION:-us-east-1}"
 ```
 
 ### Error: "ENCRYPTION_KEY is required for encrypted secret source"
