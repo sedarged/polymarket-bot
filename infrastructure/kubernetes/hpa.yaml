@@ -1,0 +1,44 @@
+# HorizontalPodAutoscaler for Polymarket Bot (EXAMPLE ONLY - DO NOT APPLY)
+#
+# ⚠️ WARNING:
+# - DO NOT enable horizontal pod autoscaling for live trading bots.
+# - Running multiple trading bot replicas can cause duplicate orders,
+#   race conditions, and inconsistent positions.
+#
+# This file is provided as a reference/template for advanced operators
+# who understand the risks and ONLY for use in safe scenarios
+# (e.g., read-only services, simulations, or other stateless workloads).
+#
+# By default, the entire manifest below is commented out so that applying
+# this file has NO EFFECT. To use it:
+#   1. Carefully review the risks.
+#   2. Copy this file to a separate location.
+#   3. Uncomment and customize the manifest in your own environment.
+#
+# Example HorizontalPodAutoscaler (DISABLED BY DEFAULT):
+#
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: polymarket-bot
+#   namespace: polymarket-bot
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: polymarket-bot
+#   minReplicas: 1
+#   maxReplicas: 3  # NOTE: Only safe for non-trading/stateless workloads
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       target:
+#         type: Utilization
+#         averageUtilization: 80
+#   - type: Resource
+#     resource:
+#       name: memory
+#       target:
+#         type: Utilization
+#         averageUtilization: 80

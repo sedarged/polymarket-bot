@@ -1,0 +1,68 @@
+# ConfigMap for non-sensitive configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: polymarket-bot-config
+  namespace: polymarket-bot
+data:
+  # API Endpoints
+  GAMMA_API_URL: "https://gamma-api.polymarket.com"
+  CLOB_API_URL: "https://clob.polymarket.com"
+  WS_MARKET_URL: "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+  
+  # Server Configuration
+  PORT: "3000"
+  METRICS_PORT: "9090"
+  LOG_LEVEL: "info"
+  
+  # Blockchain
+  CHAIN_ID: "137"
+  
+  # Secret Management
+  SECRET_SOURCE: "env"
+  
+  # Retry Configuration
+  RETRY_ATTEMPTS: "3"
+  RETRY_DELAY: "1000"
+  RETRY_TOTAL_TIMEOUT: "300000"
+  
+  # Paper Trading
+  PAPER_TRADING_SLIPPAGE: "0.01"
+  PAPER_TRADING_MAX_SLIPPAGE: "0.05"
+  PAPER_TRADING_FEE_RATE: "0.002"
+  PAPER_TRADING_PARTIAL_FILL_RATE: "0.0"
+  PAPER_TRADING_MIN_FILL_RATIO: "0.1"
+  PAPER_TRADING_MAX_FILL_RATIO: "0.9"
+  
+  # Risk Management
+  RISK_MAX_EXPOSURE_PER_MARKET: "1000"
+  RISK_MAX_OPEN_ORDERS: "50"
+  RISK_MAX_DRAWDOWN: "0.20"
+  RISK_ERROR_RATE_THRESHOLD: "0.10"
+  RISK_ERROR_RATE_WINDOW: "100"
+  
+  # Circuit Breaker
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: "5"
+  CIRCUIT_BREAKER_RESET_TIMEOUT_MS: "60000"
+  CIRCUIT_BREAKER_SUCCESS_THRESHOLD: "2"
+  
+  # CORS
+  ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:8080"
+  
+  # Reconciliation
+  RECONCILIATION_INTERVAL_SECONDS: "300"
+  
+  # Rate Limiting
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  RATE_LIMIT_WINDOW_MS: "60000"
+  RATE_LIMIT_TRUST_PROXY: "false"
+  
+  # Alerting
+  ALERT_ERROR_RATE_THRESHOLD: "5"
+  ALERT_CIRCUIT_BREAKER_TRIPS: "1"
+  
+  # Learning System Database Paths
+  EVENT_STORE_PATH: "/app/data/events.db"
+  SIGNAL_CATALOG_PATH: "/app/data/signals.db"
+  BACKTEST_ENGINE_PATH: "/app/data/backtests.db"
+  PROMOTION_WORKFLOW_PATH: "/app/data/promotions.db"

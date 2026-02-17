@@ -1,0 +1,16 @@
+# Ansible Inventory for Polymarket Bot
+# Copy this file to 'inventory' and customize for your servers
+
+[staging]
+staging.polymarket-bot.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/polymarket-bot-key
+
+[production]
+prod.polymarket-bot.example.com ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/polymarket-bot-key
+
+[all:vars]
+# Python interpreter
+ansible_python_interpreter=/usr/bin/python3
+
+# Common variables
+project_name=polymarket-bot
+docker_image=ghcr.io/sedarged/polymarket-bot:latest

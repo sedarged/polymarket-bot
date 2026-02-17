@@ -1,0 +1,20 @@
+# Example Ansible Vault file for secrets
+# DO NOT commit the actual vault.yml file!
+#
+# To create the actual vault file:
+# 1. Copy this file: cp vault.yml.example vault.yml
+# 2. Edit with your secrets: vi vault.yml
+# 3. Encrypt it: ansible-vault encrypt vault.yml
+#
+# Even when encrypted, vault.yml should NOT be committed to git.
+
+---
+# Trading wallet private key
+vault_private_key: "0xYOUR_PRIVATE_KEY_HERE"
+
+# API admin token (generate with: openssl rand -hex 32)
+vault_admin_token: "YOUR_ADMIN_TOKEN_HERE"
+
+# Telegram alerting (optional)
+vault_telegram_bot_token: "YOUR_TELEGRAM_BOT_TOKEN"
+vault_telegram_chat_id: "YOUR_TELEGRAM_CHAT_ID"

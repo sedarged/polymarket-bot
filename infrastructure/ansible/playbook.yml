@@ -1,0 +1,323 @@
+---
+# Ansible Playbook for Polymarket Bot Deployment
+# Addresses GAP-040: Infrastructure as Code
+#
+# Usage:
+#   ansible-playbook -i inventory playbook.yml --tags setup
+#   ansible-playbook -i inventory playbook.yml --tags deploy
+
+- name: Setup and Deploy Polymarket Bot
+  hosts: all
+  become: yes
+  vars:
+    project_name: polymarket-bot
+    app_dir: /app
+    data_dir: /app/data
+    docker_image: "{{ docker_image | default('ghcr.io/sedarged/polymarket-bot:latest') }}"
+    environment: "{{ (group_names | intersect(['production', 'staging']))[0] | default('staging') }}"
+    # Firewall configuration - restrict API access by default
+    api_allowed_cidr: "{{ api_allowed_cidr | default('10.0.0.0/8') }}"
+    metrics_allowed_cidr: "{{ metrics_allowed_cidr | default('10.0.0.0/8') }}"
+    # SSH access control - empty string means allow from anywhere
+    ssh_allowed_cidr: "{{ ssh_allowed_cidr | default('') }}"
+  
+  pre_tasks:
+    - name: Validate environment group assignment
+      assert:
+        that:
+          - "(group_names | intersect(['production', 'staging'])) | length > 0"
+        fail_msg: "Host {{ inventory_hostname }} is not assigned to 'production' or 'staging' group. Please fix the inventory."
+        success_msg: "Environment group detected: {{ environment }}"
+      tags: [always]
+  
+  tasks:
+    # ================================================
+    # System Setup
+    # ================================================
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: [setup, update]
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      tags: [setup, update]
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - jq
+          - htop
+          - vim
+          - git
+          - ufw
+        state: present
+      tags: [setup]
+
+    # ================================================
+    # Security Configuration
+    # ================================================
+    - name: Configure UFW firewall
+      block:
+        - name: Allow SSH (restricted or global)
+          ufw:
+            rule: allow
+            port: '22'
+            proto: tcp
+            src: "{{ ssh_allowed_cidr if ssh_allowed_cidr else omit }}"
+          # Note: If ssh_allowed_cidr is empty, SSH is allowed from anywhere.
+          # For production, set ssh_allowed_cidr in your inventory/group_vars.
+        
+        - name: Allow HTTP API
+          ufw:
+            rule: allow
+            port: '3000'
+            proto: tcp
+            src: "{{ api_allowed_cidr }}"
+        
+        # Note: HTTPS (443) is intentionally not opened here.
+        # TLS termination / reverse proxy (e.g., Nginx, Cloudflare, ALB)
+        # should be configured separately and manage its own firewall rules.
+        
+        - name: Allow Prometheus metrics
+          ufw:
+            rule: allow
+            port: '9090'
+            proto: tcp
+            src: "{{ metrics_allowed_cidr }}"
+        
+        - name: Enable UFW
+          ufw:
+            state: enabled
+            policy: deny
+      tags: [setup, security]
+
+    - name: Configure automatic security updates
+      apt:
+        name: unattended-upgrades
+        state: present
+      tags: [setup, security]
+
+    - name: Enable automatic security updates
+      debconf:
+        name: unattended-upgrades
+        question: unattended-upgrades/enable_auto_updates
+        value: 'true'
+        vtype: boolean
+      tags: [setup, security]
+
+    # ================================================
+    # Docker Installation
+    # ================================================
+    - name: Ensure Docker apt keyrings directory exists
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      tags: [setup, docker]
+
+    - name: Add Docker GPG key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+      tags: [setup, docker]
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      tags: [setup, docker]
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+      tags: [setup, docker]
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags: [setup, docker]
+
+    - name: Install Docker Python library
+      pip:
+        name: docker
+        state: present
+      tags: [setup, docker]
+
+    # ================================================
+    # User Management
+    # ================================================
+    - name: Create polymarket user
+      user:
+        name: polymarket
+        shell: /bin/bash
+        groups: docker
+        append: yes
+        create_home: yes
+      tags: [setup]
+
+    # ================================================
+    # Application Directory Setup
+    # ================================================
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: polymarket
+        group: polymarket
+        mode: '0755'
+      loop:
+        - "{{ app_dir }}"
+        - "{{ data_dir }}"
+        - "{{ data_dir }}/{{ environment }}"
+      tags: [setup, deploy]
+
+    # ================================================
+    # Environment Configuration
+    # ================================================
+    - name: Copy environment file
+      template:
+        src: templates/env.j2
+        dest: "{{ app_dir }}/.env.{{ environment }}"
+        owner: polymarket
+        group: polymarket
+        mode: '0600'
+      tags: [deploy, config]
+      notify: Restart polymarket-bot
+
+    # ================================================
+    # Systemd Service
+    # ================================================
+    - name: Create systemd service file
+      template:
+        src: templates/polymarket-bot.service.j2
+        dest: /etc/systemd/system/polymarket-bot.service
+        owner: root
+        group: root
+        mode: '0644'
+      tags: [setup, deploy]
+      notify:
+        - Reload systemd
+        - Restart polymarket-bot
+
+    # ================================================
+    # Docker Image Management
+    # ================================================
+    - name: Pull Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+      tags: [deploy]
+
+    - name: Enable and start polymarket-bot service
+      systemd:
+        name: polymarket-bot
+        state: started
+        enabled: yes
+        daemon_reload: yes
+      tags: [deploy]
+
+    # ================================================
+    # Monitoring Setup
+    # ================================================
+    - name: Create monitoring directory
+      file:
+        path: /var/log/polymarket-bot
+        state: directory
+        owner: polymarket
+        group: polymarket
+        mode: '0755'
+      tags: [setup, monitoring]
+
+    - name: Configure log rotation
+      copy:
+        content: |
+          /var/log/polymarket-bot/*.log {
+              daily
+              rotate 7
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 0644 polymarket polymarket
+          }
+        dest: /etc/logrotate.d/polymarket-bot
+        owner: root
+        group: root
+        mode: '0644'
+      tags: [setup, monitoring]
+
+    # ================================================
+    # Backup Configuration
+    # ================================================
+    - name: Create backup script
+      template:
+        src: templates/backup.sh.j2
+        dest: /usr/local/bin/polymarket-bot-backup.sh
+        owner: root
+        group: root
+        mode: '0755'
+      tags: [setup, backup]
+
+    - name: Configure backup cron job
+      cron:
+        name: "Polymarket Bot data backup"
+        minute: "0"
+        hour: "2"
+        job: "/usr/local/bin/polymarket-bot-backup.sh > /var/log/polymarket-bot/backup.log 2>&1"
+        user: root
+      tags: [setup, backup]
+
+    # ================================================
+    # Health Checks
+    # ================================================
+    - name: Wait for service to be healthy
+      uri:
+        url: "http://localhost:3000/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 10
+      tags: [deploy, verify]
+
+    - name: Display deployment info
+      debug:
+        msg:
+          - "Deployment successful!"
+          - "Environment: {{ environment }}"
+          - "API URL: http://{{ ansible_host }}:3000"
+          - "Health: http://{{ ansible_host }}:3000/health"
+          - "Metrics: http://{{ ansible_host }}:9090/metrics"
+      tags: [deploy, verify]
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart polymarket-bot
+      systemd:
+        name: polymarket-bot
+        state: restarted

@@ -1,0 +1,46 @@
+# Kubernetes Service for Polymarket Bot
+apiVersion: v1
+kind: Service
+metadata:
+  name: polymarket-bot
+  namespace: polymarket-bot
+  labels:
+    app: polymarket-bot
+spec:
+  type: ClusterIP
+  selector:
+    app: polymarket-bot
+  ports:
+  - name: http
+    port: 3000
+    targetPort: 3000
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+---
+# Service for external access (LoadBalancer or NodePort)
+apiVersion: v1
+kind: Service
+metadata:
+  name: polymarket-bot-external
+  namespace: polymarket-bot
+  labels:
+    app: polymarket-bot
+  annotations:
+    # AWS Load Balancer annotations (if using AWS)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: polymarket-bot
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  # Note: Port 443 not exposed here. For HTTPS, configure TLS termination
+  # at your load balancer/ingress level using provider-specific annotations
+  # or a separate Ingress resource with TLS configuration.
