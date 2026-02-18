@@ -109,7 +109,7 @@ describe('RecoveryProcedures', () => {
         severity: DiscrepancySeverity.HIGH,
         timestamp: Date.now(),
         description: 'Balance mismatch',
-        metadata: { tokenId: 'USDC', localAmount: '1000', remoteAmount: '900' },
+        metadata: { currency: 'USDC', localAmount: '1000', remoteAmount: '900' },
       };
 
       const action = await recovery.recover(discrepancy);

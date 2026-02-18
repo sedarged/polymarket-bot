@@ -173,14 +173,16 @@ describe('DiscrepancyDetector', () => {
     it('should detect balance mismatches above thresholds', () => {
       const localBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '1000',
+          currency: 'USDC',
+          total: '1000',
+          available: '1000',
         } as Balance,
       ];
       const remoteBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '900', // 10% difference, above 1% threshold
+          currency: 'USDC',
+          total: '900', // 10% difference, above 1% threshold
+          available: '900',
         } as Balance,
       ];
 
@@ -195,14 +197,16 @@ describe('DiscrepancyDetector', () => {
     it('should not detect small balance differences below thresholds', () => {
       const localBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '1000',
+          currency: 'USDC',
+          total: '1000',
+          available: '1000',
         } as Balance,
       ];
       const remoteBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '999', // 0.1% difference, below 1% threshold
+          currency: 'USDC',
+          total: '999', // 0.1% difference, below 1% threshold
+          available: '999',
         } as Balance,
       ];
 
@@ -214,14 +218,16 @@ describe('DiscrepancyDetector', () => {
     it('should detect critical balance discrepancies', () => {
       const localBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '10000',
+          currency: 'USDC',
+          total: '10000',
+          available: '10000',
         } as Balance,
       ];
       const remoteBalances: Balance[] = [
         {
-          tokenId: 'USDC',
-          amount: '8000', // 20% difference - critical
+          currency: 'USDC',
+          total: '8000', // 20% difference - critical
+          available: '8000',
         } as Balance,
       ];
 

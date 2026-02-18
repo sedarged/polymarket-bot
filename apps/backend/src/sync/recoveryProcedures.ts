@@ -5,11 +5,9 @@
  * Handles discrepancies with appropriate recovery strategies.
  */
 
-import { Order, Fill, Position, Balance, Orderbook } from '@polymarket/shared';
 import {
   Discrepancy,
   DiscrepancyType,
-  DiscrepancySeverity,
   RecoveryAction,
   RecoveryActionType,
   SyncConfig,
@@ -242,7 +240,7 @@ export class RecoveryProcedures {
     // 4. Check if balance affects trading limits
     
     logger.info('Recovery: Would update balance', {
-      tokenId: discrepancy.metadata?.tokenId,
+      currency: discrepancy.metadata?.currency,
       localAmount: discrepancy.metadata?.localAmount,
       remoteAmount: discrepancy.metadata?.remoteAmount,
       difference: discrepancy.metadata?.difference,

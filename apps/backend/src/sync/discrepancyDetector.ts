@@ -11,11 +11,7 @@ import {
   DiscrepancyType,
   DiscrepancySeverity,
   SyncConfig,
-  StateSnapshot,
 } from './types';
-import { systemLogger } from '../utils/logger';
-
-const logger = systemLogger;
 
 /**
  * Detects discrepancies between local and remote state
@@ -163,18 +159,18 @@ export class DiscrepancyDetector {
    */
   compareBalances(localBalances: Balance[], remoteBalances: Balance[]): Discrepancy[] {
     const discrepancies: Discrepancy[] = [];
-    const remoteBalanceMap = new Map(remoteBalances.map(b => [b.tokenId, b]));
+    const remoteBalanceMap = new Map(remoteBalances.map(b => [b.currency, b]));
 
     for (const localBalance of localBalances) {
-      const remoteBalance = remoteBalanceMap.get(localBalance.tokenId);
+      const remoteBalance = remoteBalanceMap.get(localBalance.currency);
       
       if (!remoteBalance) {
         // Balance exists locally but not remotely (unusual but possible)
         continue;
       }
 
-      const localAmount = Number(localBalance.amount);
-      const remoteAmount = Number(remoteBalance.amount);
+      const localAmount = Number(localBalance.total);
+      const remoteAmount = Number(remoteBalance.total);
       const difference = Math.abs(localAmount - remoteAmount);
       const percentDiff = remoteAmount > 0 ? (difference / remoteAmount) * 100 : 0;
 
@@ -187,13 +183,13 @@ export class DiscrepancyDetector {
           type: DiscrepancyType.BALANCE_MISMATCH,
           severity: this.getBalanceDiscrepancySeverity(difference, percentDiff),
           timestamp: Date.now(),
-          description: `Balance mismatch for token ${localBalance.tokenId}: local=${localBalance.amount}, remote=${remoteBalance.amount} (diff: ${difference.toFixed(2)}, ${percentDiff.toFixed(2)}%)`,
+          description: `Balance mismatch for ${localBalance.currency}: local=${localBalance.total}, remote=${remoteBalance.total} (diff: ${difference.toFixed(2)}, ${percentDiff.toFixed(2)}%)`,
           localState: localBalance,
           remoteState: remoteBalance,
           metadata: {
-            tokenId: localBalance.tokenId,
-            localAmount: localBalance.amount,
-            remoteAmount: remoteBalance.amount,
+            currency: localBalance.currency,
+            localAmount: localBalance.total,
+            remoteAmount: remoteBalance.total,
             difference: difference.toFixed(2),
             percentDiff: percentDiff.toFixed(2),
           },
