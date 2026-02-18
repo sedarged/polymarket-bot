@@ -17,6 +17,61 @@ export const register = new promClient.Registry();
 promClient.collectDefaultMetrics({ register });
 
 // ============================================================================
+// Data Pipeline / Ingestion Metrics (GAP-021)
+// ============================================================================
+
+/**
+ * Counter for ingested events produced by pipeline components.
+ */
+export const ingestionEventsTotal = new promClient.Counter({
+  name: 'polymarket_ingestion_events_total',
+  help: 'Total number of events processed by ingestion pipelines',
+  labelNames: ['pipeline', 'event_type', 'result', 'source'], // result: received/written/deduped/failed
+  registers: [register],
+});
+
+/**
+ * Gauge for current in-memory buffer size (number of markets pending flush).
+ */
+export const ingestionBufferSize = new promClient.Gauge({
+  name: 'polymarket_ingestion_buffer_size',
+  help: 'Number of buffered market records pending ingestion flush',
+  labelNames: ['pipeline'],
+  registers: [register],
+});
+
+/**
+ * Gauge for last successful flush time (unix timestamp seconds).
+ */
+export const ingestionLastSuccessTimestampSeconds = new promClient.Gauge({
+  name: 'polymarket_ingestion_last_success_timestamp_seconds',
+  help: 'Unix timestamp (seconds) of last successful ingestion flush',
+  labelNames: ['pipeline'],
+  registers: [register],
+});
+
+/**
+ * Gauge for last failure time (unix timestamp seconds).
+ */
+export const ingestionLastFailureTimestampSeconds = new promClient.Gauge({
+  name: 'polymarket_ingestion_last_failure_timestamp_seconds',
+  help: 'Unix timestamp (seconds) of last failed ingestion flush',
+  labelNames: ['pipeline'],
+  registers: [register],
+});
+
+/**
+ * Histogram for ingestion flush duration.
+ */
+export const ingestionFlushDurationSeconds = new promClient.Histogram({
+  name: 'polymarket_ingestion_flush_duration_seconds',
+  help: 'Duration of ingestion flush operations in seconds',
+  labelNames: ['pipeline'],
+  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [register],
+});
+
+// ============================================================================
 // Config / Secrets Rotation Metrics (GAP-038)
 // ============================================================================
 

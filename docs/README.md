@@ -120,6 +120,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Learning & Experimentation
 - [Learning System Guide](./learning-system.md) - Event store, signal catalog, and backtesting framework
 - [Learning System Design](../REPORTS/LEARNING_SYSTEM.md) - Complete architecture and design specification
+- [Data Pipeline](./data-pipeline.md) - Market-feed ingestion into EventStore (GAP-021)
 
 ### AI & Automation
 - [AI Agent Workflow & Quality Gates](./AI_AGENT_WORKFLOW.md) - 🤖 Complete autonomous workflow with strict quality gates

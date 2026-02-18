@@ -204,6 +204,7 @@ export interface EventRow {
   source: string;
   payload: string; // JSON serialized
   partition_key: string; // market_id + date for partitioning
+  dedupe_key?: string | null; // Optional idempotency key (GAP-021)
 }
 
 export interface SignalDefinitionRow {

@@ -217,7 +217,22 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 20. Metrics Configuration (0 variables functional, 2 planned)
+## 20. Data Pipeline / Ingestion (8 variables)
+
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `DATA_PIPELINE_ENABLED` | `true` | No | Enable/disable real-time ingestion pipeline (starts only when TOKEN_IDS/markets config provides markets) |
+| `DATA_PIPELINE_FLUSH_INTERVAL_MS` | `1000` | No | Flush interval for buffered market data writes to EventStore (ms) |
+| `DATA_PIPELINE_ORDERBOOK_LEVELS` | `10` | No | Top N levels stored per side for `OrderBookUpdateEvent` |
+| `DATA_PIPELINE_STORE_ORDERBOOK_EVENTS` | `true` | No | If `false`, only store `MarketEvent` summaries (skip `OrderBookUpdateEvent`) |
+| `DATA_PIPELINE_ALERT_AFTER_CONSECUTIVE_FAILURES` | `3` | No | Send alert after N consecutive flush failures (Telegram if configured) |
+| `DATA_PIPELINE_CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `5` | No | Failures before opening ingestion EventStore write circuit breaker |
+| `DATA_PIPELINE_CIRCUIT_BREAKER_RESET_TIMEOUT_MS` | `60000` | No | Circuit breaker reset timeout (ms) |
+| `DATA_PIPELINE_CIRCUIT_BREAKER_SUCCESS_THRESHOLD` | `2` | No | Successes required in half-open to close circuit |
+
+---
+
+## 21. Metrics Configuration (0 variables functional, 2 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -228,7 +243,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 21. WebSocket Configuration (2 planned)
+## 22. WebSocket Configuration (2 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -262,9 +277,10 @@ This document provides an overview of environment variables used by the Polymark
 | Rate Limiting | 3 | DoS protection |
 | Alerting | 4 | Telegram notifications |
 | Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
+| Data Pipeline / Ingestion | 8 | Real-time market ingestion to EventStore (GAP-021) |
 | Metrics | 2 | Planned - not yet wired into config |
 | WebSocket | 2 | Planned - WS_RECONNECT_DELAY, WS_HEARTBEAT_INTERVAL (WS_MAX_RECONNECT_ATTEMPTS in §8) |
-| **TOTAL** | **57** | **~50 functional, ~7 not-yet-wired (documented but not in config schema)** |
+| **TOTAL** | **65** | **~58 functional, ~7 not-yet-wired (documented but not in config schema)** |
 
 ---
 

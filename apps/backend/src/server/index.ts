@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { config } from '../config';
 import { ConfigManager } from '../config/configManager';
 import { marketFeedService } from './marketFeedService';
+import { dataPipelineService } from './dataPipelineService';
 import { calculateOrderbookSummary } from '../utils/orderbook';
 import { tradingClient } from '../clients/tradingClient';
 import { isLiveTradingEnabled } from '../utils/liveTrading';
@@ -410,6 +411,13 @@ export function createServer(): http.Server {
       };
       respondJson(res, 200, status, req);
       logger.info('Market feed status retrieved');
+      return;
+    }
+
+    // Data pipeline status (GAP-021) - requires authentication
+    if (method === 'GET' && url === '/api/ingestion/status') {
+      if (!requireAdminAuth(req, res, 'Ingestion Status')) return;
+      respondJson(res, 200, dataPipelineService.getStatus(), req);
       return;
     }
 
@@ -873,6 +881,9 @@ export async function startServer(): Promise<http.Server> {
     logger.info('Heartbeat started', { intervalMs: HEARTBEAT_MS, research: '§9.7' });
   }
 
+  // Start data pipeline (GAP-021) before market feed so we don't miss early snapshots.
+  dataPipelineService.start();
+
   // Start market feed service
   marketFeedService.start();
   
@@ -1067,6 +1078,7 @@ export async function startServer(): Promise<http.Server> {
       // A-017: Await market feed service stop for proper WebSocket cleanup
       // This ensures WebSocket connections are fully closed before server shutdown
       // marketFeedService.stop() awaits client.close() which properly cleans up timers (A-016)
+      await dataPipelineService.stop();
       await marketFeedService.stop();
       logger.info('Market feed service stopped', { audit: 'A-017' });
       

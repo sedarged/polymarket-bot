@@ -98,6 +98,8 @@ const envSchema = z.object({
   // Metrics server port (Research §7 Day 6, §9.1). When different from PORT, a dedicated HTTP server
   // serves GET /metrics on this port. Set to same as PORT for single-port mode (metrics on main server).
   METRICS_PORT: numberFromEnv(9090, z.number().int().positive()),
+  // Learning system database paths (also used by data pipeline)
+  EVENT_STORE_PATH: z.string().default("./data/events.db"),
   // Trading credentials (optional - only required for live trading)
   // Private key must be 64 hex characters (optionally prefixed with 0x)
   // Addresses Audit Finding A-024: Private key format validation
@@ -292,6 +294,41 @@ const envSchema = z.object({
   BACKUP_AZURE_ACCOUNT_KEY: optionalStringFromEnv(z.string().optional()),
   // Backup schedule (cron expression)
   BACKUP_SCHEDULE: z.string().default('0 2 * * *'),
+
+  // ========================================
+  // Data Pipeline / Ingestion Configuration (GAP-021)
+  // ========================================
+  DATA_PIPELINE_ENABLED: booleanFromEnv.default(true),
+  // Flush interval for buffered market data to the EventStore.
+  DATA_PIPELINE_FLUSH_INTERVAL_MS: numberFromEnv(
+    1000,
+    z.number().int().positive().min(100).max(60000),
+  ),
+  // How many top-of-book levels to store per side for orderbook events.
+  DATA_PIPELINE_ORDERBOOK_LEVELS: numberFromEnv(
+    10,
+    z.number().int().positive().min(1).max(50),
+  ),
+  // If false, only MarketEvent summaries are stored (no OrderBookUpdateEvent).
+  DATA_PIPELINE_STORE_ORDERBOOK_EVENTS: booleanFromEnv.default(true),
+  // Send an alert after N consecutive flush failures.
+  DATA_PIPELINE_ALERT_AFTER_CONSECUTIVE_FAILURES: numberFromEnv(
+    3,
+    z.number().int().positive().min(1).max(100),
+  ),
+  // Circuit breaker guarding EventStore writes for ingestion.
+  DATA_PIPELINE_CIRCUIT_BREAKER_FAILURE_THRESHOLD: numberFromEnv(
+    5,
+    z.number().int().positive(),
+  ),
+  DATA_PIPELINE_CIRCUIT_BREAKER_RESET_TIMEOUT_MS: numberFromEnv(
+    60000,
+    z.number().int().positive(),
+  ),
+  DATA_PIPELINE_CIRCUIT_BREAKER_SUCCESS_THRESHOLD: numberFromEnv(
+    2,
+    z.number().int().positive(),
+  ),
 });
 
 const configSchema = envSchema
@@ -424,6 +461,7 @@ const configSchema = envSchema
     complianceAccepted: env.COMPLIANCE_ACCEPTED,
     port: env.PORT,
     metricsPort: env.METRICS_PORT,
+    eventStorePath: env.EVENT_STORE_PATH,
     privateKey: env.PRIVATE_KEY,
     secretSource: env.SECRET_SOURCE,
     encryptionKey: env.ENCRYPTION_KEY,
@@ -488,6 +526,16 @@ const configSchema = envSchema
     backupAzureAccountName: env.BACKUP_AZURE_ACCOUNT_NAME,
     backupAzureAccountKey: env.BACKUP_AZURE_ACCOUNT_KEY,
     backupSchedule: env.BACKUP_SCHEDULE,
+
+    // Data pipeline / ingestion (GAP-021)
+    dataPipelineEnabled: env.DATA_PIPELINE_ENABLED,
+    dataPipelineFlushIntervalMs: env.DATA_PIPELINE_FLUSH_INTERVAL_MS,
+    dataPipelineOrderbookLevels: env.DATA_PIPELINE_ORDERBOOK_LEVELS,
+    dataPipelineStoreOrderbookEvents: env.DATA_PIPELINE_STORE_ORDERBOOK_EVENTS,
+    dataPipelineAlertAfterConsecutiveFailures: env.DATA_PIPELINE_ALERT_AFTER_CONSECUTIVE_FAILURES,
+    dataPipelineCircuitBreakerFailureThreshold: env.DATA_PIPELINE_CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+    dataPipelineCircuitBreakerResetTimeoutMs: env.DATA_PIPELINE_CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
+    dataPipelineCircuitBreakerSuccessThreshold: env.DATA_PIPELINE_CIRCUIT_BREAKER_SUCCESS_THRESHOLD,
   };
   });
 
