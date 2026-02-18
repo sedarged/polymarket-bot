@@ -394,6 +394,76 @@ describe('ExchangeRateClient - GAP-007', () => {
         client.getExchangeRate('USDC', 'USD')
       ).rejects.toThrow('Exchange rate not found for USDC/USD');
     });
+
+    it('should throw error for zero rate value', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          'usd-coin': {
+            usd: 0,
+          },
+        },
+      });
+
+      await expect(
+        client.getExchangeRate('USDC', 'USD')
+      ).rejects.toThrow('Invalid exchange rate received for USDC/USD: 0');
+    });
+
+    it('should throw error for negative rate value', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          'usd-coin': {
+            usd: -0.5,
+          },
+        },
+      });
+
+      await expect(
+        client.getExchangeRate('USDC', 'USD')
+      ).rejects.toThrow('Invalid exchange rate received for USDC/USD: -0.5');
+    });
+
+    it('should throw error for NaN rate value', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          'usd-coin': {
+            usd: NaN,
+          },
+        },
+      });
+
+      await expect(
+        client.getExchangeRate('USDC', 'USD')
+      ).rejects.toThrow('Invalid exchange rate received for USDC/USD');
+    });
+
+    it('should throw error for Infinity rate value', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          'usd-coin': {
+            usd: Infinity,
+          },
+        },
+      });
+
+      await expect(
+        client.getExchangeRate('USDC', 'USD')
+      ).rejects.toThrow('Invalid exchange rate received for USDC/USD');
+    });
+
+    it('should throw error for non-numeric rate value', async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          'usd-coin': {
+            usd: '0.9998' as any, // String instead of number
+          },
+        },
+      });
+
+      await expect(
+        client.getExchangeRate('USDC', 'USD')
+      ).rejects.toThrow('Invalid exchange rate received for USDC/USD');
+    });
   });
 
   describe('Circuit Breaker', () => {

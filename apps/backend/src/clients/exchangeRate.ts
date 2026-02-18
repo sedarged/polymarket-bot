@@ -60,9 +60,9 @@ export class ExchangeRateClient {
   /**
    * Create a new ExchangeRateClient instance.
    * 
-   * @param cacheTtlMs - Cache time-to-live in milliseconds (default: 5 minutes)
+   * @param cacheTtlMs - Cache time-to-live in milliseconds (default: from config)
    */
-  constructor(cacheTtlMs: number = 300000) {
+  constructor(cacheTtlMs: number = config.exchangeRateCacheTtlMs) {
     this.cacheTtlMs = cacheTtlMs;
 
     // Initialize CoinGecko API client (free tier, no auth needed)
@@ -199,8 +199,15 @@ export class ExchangeRateClient {
     });
 
     const rate = response.data[coinId]?.[currency];
-    if (!rate) {
+    
+    // Check if rate exists and is valid
+    if (rate === undefined || rate === null) {
       throw new Error(`Exchange rate not found for ${from}/${to}`);
+    }
+    
+    // Validate rate is a proper number
+    if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) {
+      throw new Error(`Invalid exchange rate received for ${from}/${to}: ${rate}`);
     }
 
     logger.info('Exchange rate fetched successfully', { from, to, rate });
@@ -346,3 +353,12 @@ export class ExchangeRateClient {
     this.cache.clear();
   }
 }
+
+/**
+ * Shared Exchange Rate client instance for application code.
+ * 
+ * This instance should be used by trading workflows and services
+ * so that all exchange rate access shares a single circuit breaker
+ * and cache for consistent behavior.
+ */
+export const exchangeRateClient = new ExchangeRateClient();

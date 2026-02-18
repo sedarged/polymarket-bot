@@ -296,7 +296,6 @@ export function parseArgs(args: string[]): { command: string; options: Record<st
  * Usage:
  *   npm run rates                    # Show all supported rates
  *   npm run rates -- --from USDC --to USD    # Show specific rate
- *   npm run rates -- --batch         # Show multiple rates at once
  *   npm run rates -- --stats         # Show cache statistics
  * 
  * Examples:
