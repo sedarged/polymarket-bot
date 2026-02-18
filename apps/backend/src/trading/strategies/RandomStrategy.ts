@@ -24,8 +24,10 @@ interface RandomStrategyParams {
   seed?: number; // For reproducible randomness in tests
 }
 
+type RequiredRandomStrategyParams = Required<Omit<RandomStrategyParams, 'seed'>> & { seed?: number };
+
 export class RandomStrategy extends BaseStrategy {
-  private params!: Required<RandomStrategyParams>;
+  private params!: RequiredRandomStrategyParams;
   private rng: () => number;
 
   constructor() {
@@ -70,7 +72,7 @@ export class RandomStrategy extends BaseStrategy {
 
   protected async onEvaluate(
     context: MarketContext,
-    position?: Position,
+    _position?: Position,
   ): Promise<TradingDecision> {
     // Check if spread is acceptable
     if (context.spread < this.params.minSpread) {
