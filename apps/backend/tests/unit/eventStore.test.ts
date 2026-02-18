@@ -9,6 +9,7 @@ import { EventStore } from '../../src/learning/eventStore';
 import type { MarketEvent, SignalEvent } from '../../src/learning/types';
 import fs from 'fs';
 import path from 'path';
+import Database from 'better-sqlite3';
 
 describe('EventStore', () => {
   let eventStore: EventStore;
@@ -120,6 +121,100 @@ describe('EventStore', () => {
       const event = eventStore.getEvent(eventId);
       expect(event).toBeDefined();
       expect(event?.occurredAt).toBe(occurredAt);
+    });
+  });
+
+  describe('idempotent writes (GAP-021)', () => {
+    it('should dedupe repeated writes with same dedupeKey', () => {
+      const marketEvent: MarketEvent = {
+        marketStatus: 'open',
+        bestBid: 0.48,
+        bestAsk: 0.52,
+        mid: 0.50,
+        spread: 0.04,
+        liquidity: 1000,
+        tickSize: 0.01,
+      };
+
+      const dedupeKey = `test:MarketEvent:market-123:${EventStore.hashPayload(marketEvent)}`;
+      const first = eventStore.writeEventIdempotent(
+        'MarketEvent',
+        'market-123',
+        'websocket',
+        marketEvent,
+        dedupeKey,
+      );
+      const second = eventStore.writeEventIdempotent(
+        'MarketEvent',
+        'market-123',
+        'websocket',
+        marketEvent,
+        dedupeKey,
+      );
+
+      expect(first.inserted).toBe(true);
+      expect(second.inserted).toBe(false);
+
+      const stats = eventStore.getStats();
+      expect(stats.totalEvents).toBe(1);
+      expect(stats.eventsByType['MarketEvent']).toBe(1);
+    });
+
+    it('migrates older DBs by adding dedupe_key column', () => {
+      const legacyDbPath = path.join(process.cwd(), 'data', 'test-events-legacy.db');
+      const legacyFiles = [legacyDbPath, `${legacyDbPath}-wal`, `${legacyDbPath}-shm`];
+      for (const fp of legacyFiles) {
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      }
+
+      // Create an "old" schema DB without dedupe_key
+      const dir = path.dirname(legacyDbPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+      const db = new Database(legacyDbPath);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          event_id TEXT UNIQUE NOT NULL,
+          event_type TEXT NOT NULL,
+          event_version INTEGER NOT NULL DEFAULT 1,
+          occurred_at TEXT NOT NULL,
+          received_at TEXT NOT NULL,
+          market_id TEXT NOT NULL,
+          source TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          partition_key TEXT NOT NULL
+        )
+      `);
+      db.close();
+
+      // Re-open through EventStore; should apply migration and allow idempotent writes.
+      const migrated = new EventStore({ path: legacyDbPath });
+      const marketEvent: MarketEvent = {
+        marketStatus: 'open',
+        bestBid: 0.48,
+        bestAsk: 0.52,
+        mid: 0.50,
+        spread: 0.04,
+        liquidity: 1000,
+        tickSize: 0.01,
+      };
+      const dedupeKey = `test:migrate:${EventStore.hashPayload(marketEvent)}`;
+      const result = migrated.writeEventIdempotent(
+        'MarketEvent',
+        'market-123',
+        'websocket',
+        marketEvent,
+        dedupeKey,
+      );
+      expect(result.inserted).toBe(true);
+      expect(migrated.getStats().totalEvents).toBe(1);
+      migrated.close();
+
+      // Cleanup legacy db files
+      for (const fp of legacyFiles) {
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      }
     });
   });
 

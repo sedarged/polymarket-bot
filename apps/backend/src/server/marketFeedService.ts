@@ -2,10 +2,15 @@ import { MarketFeedClient } from '../clients/marketFeed';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { Orderbook } from '@polymarket/shared';
+import { EventEmitter } from 'events';
 
-class MarketFeedService {
+class MarketFeedService extends EventEmitter {
   private client: MarketFeedClient | null = null;
   private isRunning: boolean = false;
+
+  constructor() {
+    super();
+  }
 
   start(): void {
     if (this.isRunning) {
@@ -41,14 +46,17 @@ class MarketFeedService {
 
     this.client.on('connected', () => {
       logger.info('Market feed connected');
+      this.emit('connected');
     });
 
     this.client.on('disconnected', () => {
       logger.warn('Market feed disconnected');
+      this.emit('disconnected');
     });
 
     this.client.on('error', (error: Error) => {
       logger.error('Market feed error', { error: error.message });
+      this.emit('error', error);
     });
 
     this.client.on('snapshot', (tokenId: string, orderbook: Orderbook) => {
@@ -57,6 +65,7 @@ class MarketFeedService {
         bids: orderbook.bids.length,
         asks: orderbook.asks.length,
       });
+      this.emit('snapshot', tokenId, orderbook);
     });
 
     this.client.on('update', (tokenId: string, orderbook: Orderbook) => {
@@ -65,6 +74,7 @@ class MarketFeedService {
         bids: orderbook.bids.length,
         asks: orderbook.asks.length,
       });
+      this.emit('update', tokenId, orderbook);
     });
   }
 
@@ -82,6 +92,7 @@ class MarketFeedService {
     await this.client.close();
     this.client = null;
     this.isRunning = false;
+    this.emit('stopped');
   }
 
   getOrderbook(tokenId: string): Orderbook | null {

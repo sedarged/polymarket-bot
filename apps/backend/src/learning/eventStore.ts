@@ -19,6 +19,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
+import crypto from 'crypto';
 import type {
   EventEnvelope,
   EventRow,
@@ -81,7 +82,8 @@ export class EventStore {
         market_id TEXT NOT NULL,
         source TEXT NOT NULL,
         payload TEXT NOT NULL,
-        partition_key TEXT NOT NULL
+        partition_key TEXT NOT NULL,
+        dedupe_key TEXT
       )
     `);
 
@@ -106,7 +108,51 @@ export class EventStore {
       ON events(occurred_at)
     `);
 
+    // Migration: add dedupe_key column if the DB predates this field (GAP-021).
+    // Used for idempotent writes so retries do not create duplicate events.
+    this.ensureDedupeKeySupport();
+
     logger.info('Event store schema initialized');
+  }
+
+  /**
+   * Ensure `dedupe_key` exists and is uniquely indexed when present.
+   * This function is safe to call on new and existing databases.
+   */
+  private ensureDedupeKeySupport(): void {
+    try {
+      const cols = this.db
+        .prepare(`PRAGMA table_info(events)`)
+        .all() as Array<{ name: string }>;
+      const hasDedupeKey = cols.some((c) => c.name === 'dedupe_key');
+
+      if (!hasDedupeKey) {
+        this.db.exec(`ALTER TABLE events ADD COLUMN dedupe_key TEXT`);
+        logger.info('Event store migrated: added dedupe_key column');
+      }
+
+      // Partial unique index: only enforces uniqueness when dedupe_key is non-null.
+      this.db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_events_dedupe_key
+        ON events(dedupe_key)
+        WHERE dedupe_key IS NOT NULL
+      `);
+    } catch (error) {
+      logger.error('Failed to ensure dedupe_key support in event store', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Compute a stable SHA-256 hash for payloads to help form idempotency keys.
+   * Note: This uses JSON.stringify, so callers should provide stable key order
+   * if they need cross-process determinism.
+   */
+  static hashPayload(payload: unknown): string {
+    const raw = JSON.stringify(payload);
+    return crypto.createHash('sha256').update(raw).digest('hex');
   }
 
   /**
@@ -131,8 +177,8 @@ export class EventStore {
     const stmt = this.db.prepare(`
       INSERT INTO events (
         event_id, event_type, event_version, occurred_at, received_at,
-        market_id, source, payload, partition_key
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        market_id, source, payload, partition_key, dedupe_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     try {
@@ -145,7 +191,8 @@ export class EventStore {
         marketId,
         source,
         JSON.stringify(payload),
-        partitionKey
+        partitionKey,
+        null
       );
 
       logger.debug('Event written', {
@@ -164,6 +211,97 @@ export class EventStore {
       });
       throw error;
     }
+  }
+
+  /**
+   * Write one or more events idempotently using `dedupe_key`.
+   *
+   * - Uses `INSERT OR IGNORE` so duplicates (same dedupe_key) are ignored.
+   * - Writes are executed inside a single transaction for throughput.
+   */
+  writeEventsIdempotent(
+    events: Array<{
+      eventType: EventType;
+      marketId: string;
+      source: EventSource;
+      payload: unknown;
+      occurredAt?: string;
+      eventVersion?: number;
+      dedupeKey?: string;
+    }>
+  ): { inserted: number; deduped: number } {
+    if (events.length === 0) {
+      return { inserted: 0, deduped: 0 };
+    }
+
+    const stmt = this.db.prepare(`
+      INSERT OR IGNORE INTO events (
+        event_id, event_type, event_version, occurred_at, received_at,
+        market_id, source, payload, partition_key, dedupe_key
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const runTxn = this.db.transaction((batch) => {
+      let inserted = 0;
+      let deduped = 0;
+      const receivedAt = new Date().toISOString();
+
+      for (const e of batch as typeof events) {
+        const eventId = uuidv4();
+        const occurred = e.occurredAt || receivedAt;
+        const partitionKey = `${e.marketId}_${occurred.split('T')[0]}`;
+        const payloadJson = JSON.stringify(e.payload);
+
+        const info = stmt.run(
+          eventId,
+          e.eventType,
+          e.eventVersion ?? 1,
+          occurred,
+          receivedAt,
+          e.marketId,
+          e.source,
+          payloadJson,
+          partitionKey,
+          e.dedupeKey ?? null
+        );
+
+        if (info.changes === 1) {
+          inserted++;
+        } else {
+          deduped++;
+        }
+      }
+
+      return { inserted, deduped };
+    });
+
+    try {
+      return runTxn(events);
+    } catch (error) {
+      logger.error('Failed to write events idempotently', {
+        count: events.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Convenience wrapper for single-event idempotent writes.
+   */
+  writeEventIdempotent<T>(
+    eventType: EventType,
+    marketId: string,
+    source: EventSource,
+    payload: T,
+    dedupeKey: string,
+    occurredAt?: string,
+    eventVersion: number = 1
+  ): { inserted: boolean } {
+    const result = this.writeEventsIdempotent([
+      { eventType, marketId, source, payload, occurredAt, eventVersion, dedupeKey },
+    ]);
+    return { inserted: result.inserted === 1 };
   }
 
   /**
