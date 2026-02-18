@@ -407,8 +407,11 @@ export class DataPipelineService {
       });
 
       // Re-buffer the latest known orderbooks so we can retry on next flush.
+      // Do not overwrite any newer snapshots that may have arrived while flushing.
       for (const [tokenId, orderbook] of batch.entries()) {
-        this.buffer.set(tokenId, orderbook);
+        if (!this.buffer.has(tokenId)) {
+          this.buffer.set(tokenId, orderbook);
+        }
       }
       ingestionBufferSize.set({ pipeline: PIPELINE_NAME }, this.buffer.size);
 
