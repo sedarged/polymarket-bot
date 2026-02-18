@@ -215,7 +215,45 @@ const isLive = config.liveTrading;
 
 ## Strategy Modules
 
-### 1. Paper Trading Engine
+### 1. Strategy Framework (Abstract Factory)
+**Location:** `apps/backend/src/trading/strategies/`
+
+**Purpose:** Extensible framework for implementing trading strategies
+
+**Components:**
+- **IStrategy Interface** - Contract for all trading strategies
+- **BaseStrategy** - Abstract base class with common functionality
+- **StrategyFactory** - Factory pattern for strategy instantiation
+- **Built-in Strategies**:
+  - RandomStrategy - Random trading for testing
+  - TrendFollowingStrategy - Momentum-based trading
+  - MarketMakingStrategy - Liquidity provision
+
+**Usage:**
+```typescript
+import { registerStrategies, StrategyFactory } from './trading/strategies';
+
+// Register built-in strategies
+registerStrategies();
+
+// Create from config
+const strategy = await StrategyFactory.create({
+  strategyId: 'my-strategy',
+  type: 'trend-following',
+  enabled: true,
+  params: { lookbackPeriod: 20 }
+});
+
+// Evaluate market
+const decision = await strategy.evaluate(marketContext);
+```
+
+**Extensibility:**
+- Register custom strategies via `StrategyFactory.register()`
+- Implement `IStrategy` interface or extend `BaseStrategy`
+- Load strategies from configuration files
+
+### 2. Paper Trading Engine
 **Location:** `apps/backend/src/trading/paperTradingEngine.ts`
 
 **Purpose:** Simulate trading without real funds
@@ -246,7 +284,7 @@ interface EngineState {
 4. Update position and balance
 5. Calculate PnL
 
-### 2. Risk Manager
+### 3. Risk Manager
 **Location:** `apps/backend/src/trading/riskManager.ts`
 
 **Purpose:** Enforce risk limits and circuit breakers
@@ -281,7 +319,7 @@ interface RiskCheckResult {
 }
 ```
 
-### 3. Trading Client (Live)
+### 4. Trading Client (Live)
 **Location:** `apps/backend/src/clients/tradingClient.ts`
 
 **Purpose:** Interface for live trading on Polymarket
