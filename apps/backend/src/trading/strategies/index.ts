@@ -3,6 +3,12 @@
  * 
  * Exports all strategy classes and provides auto-registration
  * for the strategy factory.
+ * 
+ * Strategies are designed specifically for Polymarket prediction markets:
+ * - Arbitrage: Exploits YES + NO price discrepancies
+ * - Mean Reversion: Fades overreactions to news
+ * - Market Making: Provides liquidity for spread capture
+ * - Random: Testing and framework validation only
  */
 
 // Core types and abstractions
@@ -11,54 +17,59 @@ export { BaseStrategy } from './BaseStrategy';
 export { StrategyFactory } from './StrategyFactory';
 
 // Strategy implementations
-export { RandomStrategy } from './RandomStrategy';
-export { TrendFollowingStrategy } from './TrendFollowingStrategy';
+export { ArbitrageStrategy } from './ArbitrageStrategy';
+export { MeanReversionStrategy } from './MeanReversionStrategy';
 export { MarketMakingStrategy } from './MarketMakingStrategy';
+export { RandomStrategy } from './RandomStrategy';
 
 // Auto-register all strategies
 import { StrategyFactory } from './StrategyFactory';
-import { RandomStrategy } from './RandomStrategy';
-import { TrendFollowingStrategy } from './TrendFollowingStrategy';
+import { ArbitrageStrategy } from './ArbitrageStrategy';
+import { MeanReversionStrategy } from './MeanReversionStrategy';
 import { MarketMakingStrategy } from './MarketMakingStrategy';
+import { RandomStrategy } from './RandomStrategy';
 
 /**
  * Register all built-in strategies with the factory
  * Call this once at application startup
  */
 export function registerStrategies(): void {
-  // Random Strategy
+  // Arbitrage Strategy - MOST IMPORTANT for Polymarket
   StrategyFactory.register({
-    type: 'random',
-    factory: () => new RandomStrategy(),
-    description: 'Random trading strategy for testing',
+    type: 'arbitrage',
+    factory: () => new ArbitrageStrategy(),
+    description: 'Intra-market arbitrage: exploit YES + NO != $1.00',
     defaultConfig: {
       strategyId: '',
-      type: 'random',
+      type: 'arbitrage',
       enabled: true,
       params: {
-        buyProbability: 0.3,
-        sellProbability: 0.3,
-        maxSize: 10,
-        minSpread: 0.01,
+        minProfitBps: 50, // 0.5% minimum profit
+        feeRate: 0.02, // 2% fee
+        maxOrderSize: 100,
+        minLiquidity: 50,
+        priceUpdateWindow: 5000,
       },
     },
   });
 
-  // Trend Following Strategy
+  // Mean Reversion Strategy - Better than trend-following for prediction markets
   StrategyFactory.register({
-    type: 'trend-following',
-    factory: () => new TrendFollowingStrategy(),
-    description: 'Momentum-based trend following strategy',
+    type: 'mean-reversion',
+    factory: () => new MeanReversionStrategy(),
+    description: 'Fade overreactions and bet on price normalization',
     defaultConfig: {
       strategyId: '',
-      type: 'trend-following',
+      type: 'mean-reversion',
       enabled: true,
       params: {
-        lookbackPeriod: 10,
-        trendThreshold: 0.02,
-        maxPositionSize: 50,
+        lookbackPeriod: 20,
+        stdDevThreshold: 2.0,
         minSpread: 0.01,
-        stopLoss: 0.05,
+        maxPositionSize: 50,
+        entryThreshold: 2.0,
+        exitThreshold: 0.5,
+        cooldownPeriod: 60000,
       },
     },
   });
@@ -67,7 +78,7 @@ export function registerStrategies(): void {
   StrategyFactory.register({
     type: 'market-making',
     factory: () => new MarketMakingStrategy(),
-    description: 'Simple market making with inventory management',
+    description: 'Provide liquidity and capture spreads',
     defaultConfig: {
       strategyId: '',
       type: 'market-making',
@@ -78,6 +89,24 @@ export function registerStrategies(): void {
         maxInventory: 100,
         inventorySkew: true,
         minSpread: 0.005,
+      },
+    },
+  });
+
+  // Random Strategy - FOR TESTING ONLY
+  StrategyFactory.register({
+    type: 'random',
+    factory: () => new RandomStrategy(),
+    description: 'Random trading for testing framework only',
+    defaultConfig: {
+      strategyId: '',
+      type: 'random',
+      enabled: true,
+      params: {
+        buyProbability: 0.3,
+        sellProbability: 0.3,
+        maxSize: 10,
+        minSpread: 0.01,
       },
     },
   });

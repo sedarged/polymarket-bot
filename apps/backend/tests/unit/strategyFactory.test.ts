@@ -12,7 +12,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { StrategyFactory } from '../../src/trading/strategies/StrategyFactory';
 import { RandomStrategy } from '../../src/trading/strategies/RandomStrategy';
-import { TrendFollowingStrategy } from '../../src/trading/strategies/TrendFollowingStrategy';
+import { ArbitrageStrategy } from '../../src/trading/strategies/ArbitrageStrategy';
+import { MeanReversionStrategy } from '../../src/trading/strategies/MeanReversionStrategy';
 import { MarketMakingStrategy } from '../../src/trading/strategies/MarketMakingStrategy';
 import type { StrategyConfig } from '../../src/trading/strategies/types';
 
@@ -83,7 +84,7 @@ describe('StrategyFactory', () => {
 
       StrategyFactory.register({
         type: 'strategy-2',
-        factory: () => new TrendFollowingStrategy(),
+        factory: () => new ArbitrageStrategy(),
         description: 'Strategy 2',
         defaultConfig: {
           strategyId: '',
@@ -215,12 +216,12 @@ describe('StrategyFactory', () => {
       });
 
       StrategyFactory.register({
-        type: 'trend-following',
-        factory: () => new TrendFollowingStrategy(),
-        description: 'Trend following',
+        type: 'arbitrage',
+        factory: () => new ArbitrageStrategy(),
+        description: 'Arbitrage strategy',
         defaultConfig: {
           strategyId: '',
-          type: 'trend-following',
+          type: 'arbitrage',
           enabled: true,
           params: {},
         },
@@ -237,7 +238,7 @@ describe('StrategyFactory', () => {
         },
         {
           strategyId: 'strategy-2',
-          type: 'trend-following',
+          type: 'arbitrage',
           enabled: true,
           params: {},
         },
@@ -247,7 +248,7 @@ describe('StrategyFactory', () => {
 
       expect(strategies).toHaveLength(2);
       expect(strategies[0].id).toBe('random-strategy');
-      expect(strategies[1].id).toBe('trend-following-strategy');
+      expect(strategies[1].id).toBe('arbitrage-strategy');
     });
 
     it('should handle partial failures gracefully', async () => {
@@ -266,7 +267,7 @@ describe('StrategyFactory', () => {
         },
         {
           strategyId: 'strategy-3',
-          type: 'trend-following',
+          type: 'arbitrage',
           enabled: true,
           params: {},
         },
@@ -277,7 +278,7 @@ describe('StrategyFactory', () => {
       // Should create 2 out of 3 strategies
       expect(strategies).toHaveLength(2);
       expect(strategies[0].id).toBe('random-strategy');
-      expect(strategies[1].id).toBe('trend-following-strategy');
+      expect(strategies[1].id).toBe('arbitrage-strategy');
     });
 
     it('should return empty array for empty config', async () => {
@@ -316,32 +317,32 @@ describe('StrategyFactory', () => {
       expect(strategy.name).toBe('Random');
     });
 
-    it('should create TrendFollowingStrategy', async () => {
+    it('should create ArbitrageStrategy', async () => {
       StrategyFactory.register({
-        type: 'trend-following',
-        factory: () => new TrendFollowingStrategy(),
-        description: 'Trend following',
+        type: 'arbitrage',
+        factory: () => new ArbitrageStrategy(),
+        description: 'Arbitrage strategy',
         defaultConfig: {
           strategyId: '',
-          type: 'trend-following',
+          type: 'arbitrage',
           enabled: true,
           params: {},
         },
       });
 
       const config: StrategyConfig = {
-        strategyId: 'trend-1',
-        type: 'trend-following',
+        strategyId: 'arbitrage-1',
+        type: 'arbitrage',
         enabled: true,
         params: {
-          lookbackPeriod: 15,
+          minProfitBps: 100,
         },
       };
 
       const strategy = await StrategyFactory.create(config);
 
-      expect(strategy).toBeInstanceOf(TrendFollowingStrategy);
-      expect(strategy.name).toBe('TrendFollowing');
+      expect(strategy).toBeInstanceOf(ArbitrageStrategy);
+      expect(strategy.name).toBe('Arbitrage');
     });
 
     it('should create MarketMakingStrategy', async () => {

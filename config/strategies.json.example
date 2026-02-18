@@ -1,48 +1,49 @@
 [
   {
-    "strategyId": "random-test-1",
-    "type": "random",
+    "strategyId": "arbitrage-main",
+    "type": "arbitrage",
     "enabled": true,
     "params": {
-      "buyProbability": 0.3,
-      "sellProbability": 0.3,
-      "maxSize": 10,
-      "minSpread": 0.01
+      "minProfitBps": 50,
+      "feeRate": 0.02,
+      "maxOrderSize": 100,
+      "minLiquidity": 50,
+      "priceUpdateWindow": 5000
     }
   },
   {
-    "strategyId": "trend-btc",
-    "type": "trend-following",
+    "strategyId": "mean-reversion-aggressive",
+    "type": "mean-reversion",
     "enabled": true,
     "params": {
-      "lookbackPeriod": 20,
-      "trendThreshold": 0.03,
-      "maxPositionSize": 100,
-      "minSpread": 0.01,
-      "stopLoss": 0.05
+      "lookbackPeriod": 15,
+      "stdDevThreshold": 2.0,
+      "entryThreshold": 2.5,
+      "exitThreshold": 0.5,
+      "maxPositionSize": 75,
+      "cooldownPeriod": 60000
     }
   },
   {
-    "strategyId": "mm-eth",
+    "strategyId": "market-maker-tight",
     "type": "market-making",
     "enabled": true,
     "params": {
-      "spreadBps": 150,
+      "spreadBps": 80,
       "orderSize": 20,
-      "maxInventory": 200,
+      "maxInventory": 150,
       "inventorySkew": true,
       "minSpread": 0.005
     }
   },
   {
-    "strategyId": "disabled-example",
+    "strategyId": "random-test",
     "type": "random",
     "enabled": false,
     "params": {
-      "buyProbability": 0.5,
-      "sellProbability": 0.5,
-      "maxSize": 5,
-      "minSpread": 0.02
+      "buyProbability": 0.3,
+      "sellProbability": 0.3,
+      "maxSize": 5
     }
   }
 ]

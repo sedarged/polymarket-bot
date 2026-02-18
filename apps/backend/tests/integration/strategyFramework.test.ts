@@ -28,20 +28,25 @@ describe('Strategy Framework - End-to-End', () => {
       const types = StrategyFactory.getRegisteredTypes();
       
       expect(types).toContain('random');
-      expect(types).toContain('trend-following');
+      expect(types).toContain('arbitrage');
+      expect(types).toContain('mean-reversion');
       expect(types).toContain('market-making');
-      expect(types.length).toBeGreaterThanOrEqual(3);
+      expect(types.length).toBeGreaterThanOrEqual(4);
     });
 
     it('should list strategy information', () => {
       const strategies = StrategyFactory.listStrategies();
       
-      expect(strategies.length).toBeGreaterThanOrEqual(3);
+      expect(strategies.length).toBeGreaterThanOrEqual(4);
       
       const randomStrategy = strategies.find(s => s.type === 'random');
       expect(randomStrategy).toBeDefined();
       expect(randomStrategy?.description).toContain('testing');
       expect(randomStrategy?.defaultConfig.params).toBeDefined();
+
+      const arbitrageStrategy = strategies.find(s => s.type === 'arbitrage');
+      expect(arbitrageStrategy).toBeDefined();
+      expect(arbitrageStrategy?.description).toContain('arbitrage');
     });
   });
 
@@ -64,24 +69,23 @@ describe('Strategy Framework - End-to-End', () => {
 
     it('should create strategy with custom parameters', async () => {
       const config: StrategyConfig = {
-        strategyId: 'test-trend-1',
-        type: 'trend-following',
+        strategyId: 'test-arbitrage-1',
+        type: 'arbitrage',
         enabled: true,
         params: {
-          lookbackPeriod: 20,
-          trendThreshold: 0.03,
-          maxPositionSize: 100,
+          minProfitBps: 100,
+          maxOrderSize: 50,
         },
       };
 
       const strategy = await StrategyFactory.create(config);
 
       expect(strategy).toBeDefined();
-      expect(strategy.name).toBe('TrendFollowing');
+      expect(strategy.name).toBe('Arbitrage');
       
       const strategyConfig = strategy.getConfig();
-      expect(strategyConfig.params.lookbackPeriod).toBe(20);
-      expect(strategyConfig.params.trendThreshold).toBe(0.03);
+      expect(strategyConfig.params.minProfitBps).toBe(100);
+      expect(strategyConfig.params.maxOrderSize).toBe(50);
     });
 
     it('should create multiple strategies from config array', async () => {
@@ -93,10 +97,10 @@ describe('Strategy Framework - End-to-End', () => {
           params: { maxSize: 10 },
         },
         {
-          strategyId: 'trend-1',
-          type: 'trend-following',
+          strategyId: 'arbitrage-1',
+          type: 'arbitrage',
           enabled: true,
-          params: { lookbackPeriod: 15 },
+          params: { minProfitBps: 75 },
         },
         {
           strategyId: 'mm-1',
@@ -110,7 +114,7 @@ describe('Strategy Framework - End-to-End', () => {
 
       expect(strategies).toHaveLength(3);
       expect(strategies[0].name).toBe('Random');
-      expect(strategies[1].name).toBe('TrendFollowing');
+      expect(strategies[1].name).toBe('Arbitrage');
       expect(strategies[2].name).toBe('MarketMaking');
     });
   });
@@ -154,14 +158,14 @@ describe('Strategy Framework - End-to-End', () => {
       expect(decision.rationale).toBeDefined();
     });
 
-    it('should evaluate TrendFollowingStrategy', async () => {
+    it('should evaluate MeanReversionStrategy', async () => {
       const config: StrategyConfig = {
-        strategyId: 'test-trend',
-        type: 'trend-following',
+        strategyId: 'test-mean-reversion',
+        type: 'mean-reversion',
         enabled: true,
         params: {
           lookbackPeriod: 5,
-          trendThreshold: 0.01,
+          entryThreshold: 1.5,
         },
       };
 
@@ -170,13 +174,13 @@ describe('Strategy Framework - End-to-End', () => {
       // First evaluation - not enough history
       const decision1 = await strategy.evaluate(mockMarketContext);
       expect(decision1.action).toBe('hold');
-      expect(decision1.rationale).toContain('Insufficient price history');
+      expect(decision1.rationale).toContain('Building price history');
 
       // Add more market updates to build history
       for (let i = 0; i < 5; i++) {
         await strategy.evaluate({
           ...mockMarketContext,
-          mid: 0.50 + i * 0.01, // Uptrend
+          mid: 0.50,
           timestamp: new Date(Date.now() + i * 1000).toISOString(),
         });
       }
@@ -184,7 +188,7 @@ describe('Strategy Framework - End-to-End', () => {
       // Should now have enough history
       const finalDecision = await strategy.evaluate({
         ...mockMarketContext,
-        mid: 0.55,
+        mid: 0.50,
         timestamp: new Date().toISOString(),
       });
 
@@ -229,9 +233,9 @@ describe('Strategy Framework - End-to-End', () => {
         },
         {
           strategyId: 'strategy-2',
-          type: 'trend-following',
+          type: 'arbitrage',
           enabled: true,
-          params: { lookbackPeriod: 3 },
+          params: { minProfitBps: 100 },
         },
         {
           strategyId: 'strategy-3',
@@ -335,13 +339,26 @@ describe('Strategy Framework - End-to-End', () => {
       await expect(StrategyFactory.create(config)).rejects.toThrow();
     });
 
-    it('should reject invalid trend-following config', async () => {
+    it('should reject invalid arbitrage config', async () => {
       const config: StrategyConfig = {
-        strategyId: 'invalid-trend',
-        type: 'trend-following',
+        strategyId: 'invalid-arbitrage',
+        type: 'arbitrage',
         enabled: true,
         params: {
-          lookbackPeriod: 1, // Invalid: too small
+          minProfitBps: -10, // Invalid: negative
+        },
+      };
+
+      await expect(StrategyFactory.create(config)).rejects.toThrow();
+    });
+
+    it('should reject invalid mean-reversion config', async () => {
+      const config: StrategyConfig = {
+        strategyId: 'invalid-mean-reversion',
+        type: 'mean-reversion',
+        enabled: true,
+        params: {
+          lookbackPeriod: 2, // Invalid: too small
         },
       };
 
@@ -353,7 +370,7 @@ describe('Strategy Framework - End-to-End', () => {
     it('should handle strategy cleanup', async () => {
       const config: StrategyConfig = {
         strategyId: 'lifecycle-test',
-        type: 'trend-following',
+        type: 'mean-reversion',
         enabled: true,
         params: {},
       };
