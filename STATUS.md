@@ -30,21 +30,21 @@ To update this status:
 - [P2] #407 [GAP-018] UMA Resolution Documentation
 - [P2] #405 [GAP-016] Pre-Deployment Verification Script
 - [P2] #402 [GAP-013] Multi-Strategy Orchestration
-- [P2] #400 [GAP-021] Data Pipeline Enhancement
 
 ## Recently Closed (Last 14 Days)
 - [P1] #406 [GAP-017] DB Backup Script
 - [P1] #404 [GAP-015] Deployment Workflow
+- [P2] #400 [GAP-021] Data Pipeline Enhancement
 - #394 [GAP-003] Implement Configuration Management Interface
+- #392 [GAP-023] Secret Management Status Clarity
+- #380 [GAP-038] Secrets Rotation
 - #378 [GAP-041] Container Registry Workflow
 - #377 [GAP-042] Staging Environment
 - #373 [GAP-040] Infrastructure as Code
 - [P1] #323 Implement User-Friendly, Categorized Logging for Project Transparency
 - [P0] #316 [Enforce Codespaces Real-World Testing & Doc Improvement Policy]
-- #304 Setup Codespaces and Environment for Full Agent/App Testing
-- [P0] #301 URGENT: Deep code & documentation audit - FIX EVERYTHING, NO REPORTS
 
-*Last updated: 2026-02-18T13:03:35.225Z*
+*Last updated: 2026-02-18T18:38:43.143Z*
 
 <!-- STATUS_SYNC_END -->
 
