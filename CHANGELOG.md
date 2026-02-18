@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/sedarged/polymarket-bot/compare/v2.1.0...v2.2.0) (2026-02-18)
+
+
+### Features
+
+* implement cloud secret backends ([af60d67](https://github.com/sedarged/polymarket-bot/commit/af60d675ba9bbbc64e0839ac796a23d2378852be))
+
+
+### Bug Fixes
+
+* normalize cloud backend keys and clarify AWS_REGION default ([a6f040f](https://github.com/sedarged/polymarket-bot/commit/a6f040fa525b37bc356ac146d6e37b685d9c320f))
+* validate and normalize keys from cloud backends ([032f229](https://github.com/sedarged/polymarket-bot/commit/032f2296f79f027a7efae2c07c218a71405a503c))
+
 ## [2.1.0](https://github.com/sedarged/polymarket-bot/compare/v2.0.0...v2.1.0) (2026-02-17)
 
 
