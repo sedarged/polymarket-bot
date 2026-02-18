@@ -17,6 +17,40 @@ export const register = new promClient.Registry();
 promClient.collectDefaultMetrics({ register });
 
 // ============================================================================
+// Config / Secrets Rotation Metrics (GAP-038)
+// ============================================================================
+
+/**
+ * Counter for successful config reloads (manual or file-watch).
+ */
+export const configReloadsTotal = new promClient.Counter({
+  name: 'polymarket_config_reloads_total',
+  help: 'Total number of successful configuration reloads',
+  labelNames: ['reason'], // reason: api/file-watch/file-update/unknown
+  registers: [register],
+});
+
+/**
+ * Gauge for last successful config reload time (unix timestamp seconds).
+ */
+export const configLastReloadTimestampSeconds = new promClient.Gauge({
+  name: 'polymarket_config_last_reload_timestamp_seconds',
+  help: 'Unix timestamp (seconds) of last successful configuration reload',
+  registers: [register],
+});
+
+/**
+ * Counter for detected secret changes during config reloads.
+ * Never includes secret values; only the secret name label.
+ */
+export const secretRotationsTotal = new promClient.Counter({
+  name: 'polymarket_secret_rotations_total',
+  help: 'Total number of detected secret changes during configuration reloads',
+  labelNames: ['secret', 'reason'], // secret: admin_token/telegram_bot_token/etc
+  registers: [register],
+});
+
+// ============================================================================
 // Order Metrics
 // ============================================================================
 
