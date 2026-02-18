@@ -586,7 +586,8 @@ node -e "const {encryptPrivateKey} = require('./apps/backend/src/secrets'); cons
 
 **Solution:** Ensure the AWS SDK can authenticate (IAM role or env credentials), the region is correct, and the secret value is in a supported format.
 
-- **Required env**: `SECRET_SOURCE=aws`, `AWS_SECRET_NAME`, `AWS_REGION`
+- **Required env**: `SECRET_SOURCE=aws`, `AWS_SECRET_NAME`
+- **Optional env**: `AWS_REGION` (defaults to `us-east-1` if not set)
 - **Supported secret value formats**:
   - Direct string: `"0x<64-hex>"` (or without `0x`)
   - JSON: `{"privateKey":"0x..."}`, `{"PRIVATE_KEY":"0x..."}`, or `{"private_key":"0x..."}`
@@ -594,7 +595,7 @@ node -e "const {encryptPrivateKey} = require('./apps/backend/src/secrets'); cons
 If running locally, you can quickly verify access:
 
 ```bash
-aws secretsmanager get-secret-value --secret-id "$AWS_SECRET_NAME" --region "$AWS_REGION"
+aws secretsmanager get-secret-value --secret-id "$AWS_SECRET_NAME" --region "${AWS_REGION:-us-east-1}"
 ```
 
 ### Error: "ENCRYPTION_KEY is required for encrypted secret source"

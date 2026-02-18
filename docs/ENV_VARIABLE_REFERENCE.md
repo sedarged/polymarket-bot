@@ -95,7 +95,7 @@ This document provides an overview of environment variables used by the Polymark
 | `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2). |
 | `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2). |
 | `AWS_SECRET_NAME` | - | Conditional | AWS Secrets Manager secret name. Secret value can be a direct private-key string or JSON containing `privateKey` / `PRIVATE_KEY` / `private_key`. |
-| `AWS_REGION` | - | Conditional | AWS region (used by the AWS SDK client). |
+| `AWS_REGION` | `us-east-1` | No | AWS region (used by the AWS SDK client). Defaults to `us-east-1` if not specified. |
 | `AWS_ACCESS_KEY_ID` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
 | `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
 | `VAULT_ADDR` | - | Conditional | Vault server address (e.g. `https://vault.example.com`). |

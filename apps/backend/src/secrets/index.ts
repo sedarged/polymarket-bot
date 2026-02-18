@@ -237,6 +237,7 @@ export const getPrivateKeyFromAWS = async (
 
     // Support storing the private key directly as the secret value.
     if (validatePrivateKey(trimmed)) {
+      const normalized = normalizePrivateKey(trimmed);
       systemLogger.info('Private key retrieved from AWS Secrets Manager', {
         audit: 'A-001',
         region,
@@ -244,7 +245,7 @@ export const getPrivateKeyFromAWS = async (
         secretFormat: 'string',
         source: 'aws',
       });
-      return trimmed;
+      return normalized;
     }
 
     const parsed = safeJsonParse(trimmed);
@@ -263,6 +264,15 @@ export const getPrivateKeyFromAWS = async (
       );
     }
 
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in AWS secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
     systemLogger.info('Private key retrieved from AWS Secrets Manager', {
       audit: 'A-001',
       region,
@@ -271,7 +281,7 @@ export const getPrivateKeyFromAWS = async (
       source: 'aws',
     });
 
-    return extracted;
+    return normalized;
   } catch (error) {
     systemLogger.error('Failed to retrieve private key from AWS Secrets Manager', {
       region,
@@ -322,6 +332,15 @@ export const getPrivateKeyFromVault = async (
       );
     }
 
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in Vault secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
     systemLogger.info('Private key retrieved from HashiCorp Vault', {
       audit: 'A-001',
       source: 'vault',
@@ -329,7 +348,7 @@ export const getPrivateKeyFromVault = async (
       vaultPath,
     });
 
-    return extracted;
+    return normalized;
   } catch (error) {
     systemLogger.error('Failed to retrieve private key from HashiCorp Vault', {
       source: 'vault',
@@ -370,6 +389,7 @@ export const getPrivateKeyFromAzure = async (
 
     // Support storing the private key directly as the secret value.
     if (validatePrivateKey(value)) {
+      const normalized = normalizePrivateKey(value);
       systemLogger.info('Private key retrieved from Azure Key Vault', {
         audit: 'A-001',
         source: 'azure',
@@ -377,7 +397,7 @@ export const getPrivateKeyFromAzure = async (
         secretName,
         secretFormat: 'string',
       });
-      return value;
+      return normalized;
     }
 
     // Try parsing as JSON and extract the private key from known field names
@@ -397,6 +417,15 @@ export const getPrivateKeyFromAzure = async (
       );
     }
 
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in Azure secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
     systemLogger.info('Private key retrieved from Azure Key Vault', {
       audit: 'A-001',
       source: 'azure',
@@ -405,7 +434,7 @@ export const getPrivateKeyFromAzure = async (
       secretFormat: 'json',
     });
 
-    return extracted;
+    return normalized;
   } catch (error) {
     systemLogger.error('Failed to retrieve private key from Azure Key Vault', {
       source: 'azure',
