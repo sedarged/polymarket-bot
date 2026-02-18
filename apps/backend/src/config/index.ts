@@ -176,6 +176,10 @@ const envSchema = z.object({
   // Admin Authentication (Audit Finding A-004)
   // ADMIN_TOKEN is required for production and live trading modes
   ADMIN_TOKEN: z.string().optional(),
+  // Optional "next" admin token for zero-downtime rotation (GAP-038)
+  // If set, both ADMIN_TOKEN and ADMIN_TOKEN_NEXT are accepted for admin endpoints.
+  // In production/live trading, at least one of them must be set.
+  ADMIN_TOKEN_NEXT: z.string().optional(),
   // CORS Configuration
   // Comma-separated list of allowed origins. Default: http://localhost:3000
   // Use '*' only for development. Production MUST use specific origins.
@@ -447,6 +451,7 @@ const configSchema = envSchema
     circuitBreakerResetTimeoutMs: env.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
     circuitBreakerSuccessThreshold: env.CIRCUIT_BREAKER_SUCCESS_THRESHOLD,
     adminToken: env.ADMIN_TOKEN,
+    adminTokenNext: env.ADMIN_TOKEN_NEXT,
     allowedOrigins: env.ALLOWED_ORIGINS.split(",")
       .map((s) => s.trim())
       .filter((s) => s.length > 0),
@@ -536,20 +541,26 @@ export const parseConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   // This prevents unauthorized access to sensitive endpoints (kill switch, order management, config changes)
   // Note: isProduction already includes liveTrading check (line 198)
   const requiresAdminToken = isProduction;
+  const hasAdminToken =
+    !!config.adminToken && config.adminToken.trim() !== "";
+  const hasAdminTokenNext =
+    !!config.adminTokenNext && config.adminTokenNext.trim() !== "";
+  const hasAnyAdminToken = hasAdminToken || hasAdminTokenNext;
 
   if (
     requiresAdminToken &&
-    (!config.adminToken || config.adminToken.trim() === "")
+    !hasAnyAdminToken
   ) {
     const mode = config.liveTrading ? "live trading" : "production";
     throw new Error(
       `CRITICAL SECURITY ERROR: ADMIN_TOKEN is required for ${mode} mode. ` +
         "Sensitive endpoints (kill switch, order management, config changes) require authentication. " +
-        "Generate a secure token: openssl rand -hex 32",
+        "Generate a secure token: openssl rand -hex 32. " +
+        "For zero-downtime rotation, you may also set ADMIN_TOKEN_NEXT.",
     );
   }
 
-  if (!config.adminToken || config.adminToken.trim() === "") {
+  if (!hasAnyAdminToken) {
     console.warn(
       "⚠️  WARNING: ADMIN_TOKEN is not set. Admin endpoints will be disabled. " +
         "This is only acceptable for local development/testing. " +

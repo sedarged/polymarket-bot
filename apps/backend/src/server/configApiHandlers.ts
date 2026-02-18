@@ -123,6 +123,7 @@ export async function handleGetConfig(
       ...config,
       privateKey: config.privateKey ? '***REDACTED***' : undefined,
       adminToken: config.adminToken ? '***REDACTED***' : undefined,
+      adminTokenNext: config.adminTokenNext ? '***REDACTED***' : undefined,
       encryptionKey: config.encryptionKey ? '***REDACTED***' : undefined,
       telegramBotToken: config.telegramBotToken ? '***REDACTED***' : undefined,
       awsSecretName: config.awsSecretName ? '***REDACTED***' : undefined,
@@ -352,7 +353,7 @@ export async function handleReloadConfig(
   res: http.ServerResponse,
 ): Promise<void> {
   try {
-    await configManager.reloadConfig();
+    await configManager.reloadConfig({ reason: 'api' });
     
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({

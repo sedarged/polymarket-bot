@@ -2,6 +2,7 @@ import http from 'http';
 import { getHealthStatus, getReadinessStatus } from './health';
 import { logger } from '../utils/logger';
 import { config } from '../config';
+import { ConfigManager } from '../config/configManager';
 import { marketFeedService } from './marketFeedService';
 import { calculateOrderbookSummary } from '../utils/orderbook';
 import { tradingClient } from '../clients/tradingClient';
@@ -36,6 +37,8 @@ let riskManager: RiskManager | null = null;
 
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
+
+const configManager = ConfigManager.getInstance();
 
 /**
  * Get the current rate limiter instance (for testing)
@@ -119,7 +122,15 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
  * Validate admin token from Authorization header
  */
 const validateAdminToken = (req: http.IncomingMessage): boolean => {
-  if (!config.adminToken || config.adminToken.trim() === '') {
+  // Read the latest config so ADMIN_TOKEN can be rotated without downtime (GAP-038).
+  const runtimeConfig = configManager.getConfig();
+  const adminToken = runtimeConfig.adminToken;
+  const adminTokenNext = runtimeConfig.adminTokenNext;
+
+  const hasAdminToken = !!adminToken && adminToken.trim() !== '';
+  const hasAdminTokenNext = !!adminTokenNext && adminTokenNext.trim() !== '';
+
+  if (!hasAdminToken && !hasAdminTokenNext) {
     logger.error('ADMIN_TOKEN is not configured; admin endpoints are disabled');
     return false;
   }
@@ -134,7 +145,12 @@ const validateAdminToken = (req: http.IncomingMessage): boolean => {
     ? authHeader.substring(7) 
     : authHeader;
 
-  return token === config.adminToken;
+  // Only compare against valid tokens to prevent empty string matches
+  const validTokens = [];
+  if (hasAdminToken) validTokens.push(adminToken);
+  if (hasAdminTokenNext) validTokens.push(adminTokenNext);
+  
+  return token.length > 0 && validTokens.includes(token);
 };
 
 /**

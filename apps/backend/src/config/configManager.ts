@@ -6,6 +6,11 @@ import dotenv from "dotenv";
 import { logger } from "../utils/logger";
 import { parseConfig, Config } from "./index";
 import { EventEmitter } from "events";
+import {
+  configLastReloadTimestampSeconds,
+  configReloadsTotal,
+  secretRotationsTotal,
+} from "../utils/metrics";
 
 /**
  * Configuration Management Interface (GAP-003)
@@ -307,12 +312,14 @@ export class ConfigManager extends EventEmitter {
    * If parsing fails for a specific config file (invalid JSON), the previous valid value is retained.
    * If the file is missing/deleted, the config is set to undefined as expected.
    */
-  public async reloadConfig(): Promise<void> {
+  public async reloadConfig(options?: { reason?: string }): Promise<void> {
     try {
-      logger.info("Reloading configuration", { category: "config" });
+      const reason = options?.reason ?? "unknown";
+      logger.info("Reloading configuration", { category: "config", reason });
 
       // Re-parse configuration (this reads from environment and config files)
       const newConfig = parseConfig(process.env);
+      const previousConfig = this.currentConfig;
 
       // Helper to preserve old config value only if file exists but has parse errors
       const preserveConfigIfNeeded = (
@@ -348,6 +355,32 @@ export class ConfigManager extends EventEmitter {
       newConfig.markets = preserveConfigIfNeeded('markets', newConfig.markets, this.currentConfig.markets) as typeof newConfig.markets;
       newConfig.strategy = preserveConfigIfNeeded('strategy', newConfig.strategy, this.currentConfig.strategy) as typeof newConfig.strategy;
 
+      const normalizeSecret = (value?: string): string | undefined => {
+        if (typeof value !== "string") return undefined;
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+      };
+
+      const changedSecrets: string[] = [];
+      const secretFields: Array<{ name: string; prev?: string; next?: string }> = [
+        { name: "admin_token", prev: previousConfig.adminToken, next: newConfig.adminToken },
+        { name: "admin_token_next", prev: previousConfig.adminTokenNext, next: newConfig.adminTokenNext },
+        { name: "telegram_bot_token", prev: previousConfig.telegramBotToken, next: newConfig.telegramBotToken },
+        { name: "encryption_key", prev: previousConfig.encryptionKey, next: newConfig.encryptionKey },
+        { name: "vault_token", prev: previousConfig.vaultToken, next: newConfig.vaultToken },
+        { name: "backup_s3_access_key_id", prev: previousConfig.backupS3AccessKeyId, next: newConfig.backupS3AccessKeyId },
+        { name: "backup_s3_secret_access_key", prev: previousConfig.backupS3SecretAccessKey, next: newConfig.backupS3SecretAccessKey },
+        { name: "backup_azure_connection_string", prev: previousConfig.backupAzureConnectionString, next: newConfig.backupAzureConnectionString },
+        { name: "backup_azure_account_key", prev: previousConfig.backupAzureAccountKey, next: newConfig.backupAzureAccountKey },
+      ];
+
+      for (const field of secretFields) {
+        if (normalizeSecret(field.prev) !== normalizeSecret(field.next)) {
+          changedSecrets.push(field.name);
+          secretRotationsTotal.inc({ secret: field.name, reason });
+        }
+      }
+
       // Emit event before updating to allow listeners to prepare
       this.emit('configReloading', newConfig);
 
@@ -357,8 +390,20 @@ export class ConfigManager extends EventEmitter {
       // Emit event after update
       this.emit('configChanged', newConfig);
 
+      configReloadsTotal.inc({ reason });
+      configLastReloadTimestampSeconds.set(Date.now() / 1000);
+
+      if (changedSecrets.length > 0) {
+        logger.info("Secrets changed via config reload", {
+          category: "config",
+          reason,
+          secretsChanged: changedSecrets,
+        });
+      }
+
       logger.info("Configuration reloaded successfully", {
         category: "config",
+        reason,
         hasMarkets: !!newConfig.markets,
         hasStrategy: !!newConfig.strategy,
         tokenCount: newConfig.tokenIds.length,
@@ -519,7 +564,7 @@ export class ConfigManager extends EventEmitter {
         }
 
         // Reload configuration
-        await this.reloadConfig();
+        await this.reloadConfig({ reason: 'file-watch' });
 
         this.emit('fileChanged', { path: filePath, type });
       } catch (error) {
