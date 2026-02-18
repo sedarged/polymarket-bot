@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/sedarged/polymarket-bot/compare/v2.4.0...v2.5.0) (2026-02-18)
+
+
+### Features
+
+* implement core market synchronization module (GAP-004) ([341cc2a](https://github.com/sedarged/polymarket-bot/commit/341cc2a87dd17d96d752572e98e5701ae217060b))
+
+
+### Bug Fixes
+
+* address code review feedback for sync module ([c533993](https://github.com/sedarged/polymarket-bot/commit/c5339939264dc0d02a0920672876f58f012c31da))
+
 ## [2.4.0](https://github.com/sedarged/polymarket-bot/compare/v2.3.0...v2.4.0) (2026-02-18)
 
 
