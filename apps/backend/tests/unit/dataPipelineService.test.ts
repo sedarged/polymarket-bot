@@ -176,17 +176,14 @@ describe('DataPipelineService (GAP-021)', () => {
     const feed = new FakeMarketFeed();
     const calls: any[] = [];
     let shouldFail = true;
-    let flushInProgress = false;
 
     const store: DataPipelineEventStore = {
       writeEventsIdempotent: (events: any[]) => {
         calls.push(events);
         if (shouldFail) {
-          flushInProgress = true;
           shouldFail = false;
           // Simulate a newer orderbook arriving during the flush
           feed.emit('snapshot', 't1', makeOrderbook({ timestamp: 1700000001000 }));
-          flushInProgress = false;
           throw new Error('sqlite busy');
         }
         return { inserted: events.length, deduped: 0 };
