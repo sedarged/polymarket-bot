@@ -145,7 +145,12 @@ const validateAdminToken = (req: http.IncomingMessage): boolean => {
     ? authHeader.substring(7) 
     : authHeader;
 
-  return token === adminToken || token === adminTokenNext;
+  // Only compare against valid tokens to prevent empty string matches
+  const validTokens = [];
+  if (hasAdminToken) validTokens.push(adminToken);
+  if (hasAdminTokenNext) validTokens.push(adminTokenNext);
+  
+  return token.length > 0 && validTokens.includes(token);
 };
 
 /**

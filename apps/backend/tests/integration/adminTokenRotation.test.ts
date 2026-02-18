@@ -98,5 +98,41 @@ describe("Admin token rotation (GAP-038)", () => {
     });
     expect(old.status).toBe(401);
   });
+
+  it("rejects empty authorization header value (Bearer with no token)", async () => {
+    // Set up dual-token window
+    process.env.ADMIN_TOKEN = token1;
+    process.env.ADMIN_TOKEN_NEXT = token2;
+    await configManager.reloadConfig({ reason: "test" });
+
+    const emptyBearer = await fetch(`${baseUrl}/status`, {
+      headers: { Authorization: "Bearer " },
+    });
+    expect(emptyBearer.status).toBe(401);
+  });
+
+  it("rejects whitespace-only tokens", async () => {
+    // Set up dual-token window
+    process.env.ADMIN_TOKEN = token1;
+    process.env.ADMIN_TOKEN_NEXT = token2;
+    await configManager.reloadConfig({ reason: "test" });
+
+    const whitespaceToken = await fetch(`${baseUrl}/status`, {
+      headers: { Authorization: "Bearer    " },
+    });
+    expect(whitespaceToken.status).toBe(401);
+  });
+
+  it("rejects authorization header with only Bearer keyword", async () => {
+    // Set up dual-token window
+    process.env.ADMIN_TOKEN = token1;
+    process.env.ADMIN_TOKEN_NEXT = token2;
+    await configManager.reloadConfig({ reason: "test" });
+
+    const bearerOnly = await fetch(`${baseUrl}/status`, {
+      headers: { Authorization: "Bearer" },
+    });
+    expect(bearerOnly.status).toBe(401);
+  });
 });
 
