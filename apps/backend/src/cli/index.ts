@@ -1,5 +1,6 @@
 import { GammaClient } from '../clients/gamma';
 import { ClobClient } from '../clients/clob';
+import { ExchangeRateClient } from '../clients/exchangeRate';
 import { logger } from '../utils/logger';
 import { calculateOrderbookSummary, formatOrderbookSummary } from '../utils/orderbook';
 import { Token } from '@polymarket/shared';
@@ -286,6 +287,108 @@ export function parseArgs(args: string[]): { command: string; options: Record<st
   return { command, options };
 }
 
+/**
+ * Exchange Rate Command
+ * 
+ * Fetches and displays exchange rates for supported cryptocurrencies.
+ * Demonstrates the ExchangeRateClient functionality (GAP-007).
+ * 
+ * Usage:
+ *   npm run rates                    # Show all supported rates
+ *   npm run rates -- --from USDC --to USD    # Show specific rate
+ *   npm run rates -- --batch         # Show multiple rates at once
+ *   npm run rates -- --stats         # Show cache statistics
+ * 
+ * Examples:
+ *   npm run rates
+ *   npm run rates -- --from ETH --to USD
+ *   npm run rates -- --stats
+ */
+export async function ratesCommand(options: Record<string, string | boolean>): Promise<void> {
+  const client = new ExchangeRateClient(config.exchangeRateCacheTtlMs);
+
+  try {
+    // Show cache statistics
+    if (options.stats) {
+      const stats = client.getCacheStats();
+      const metrics = client.getCircuitBreakerMetrics();
+      
+      console.log('\n📊 Exchange Rate Service Statistics\n');
+      console.log(`Cache Size: ${stats.size} entries`);
+      console.log(`Cache TTL: ${config.exchangeRateCacheTtlMs / 1000} seconds`);
+      console.log(`Circuit Breaker: ${metrics.state}`);
+      console.log(`API URL: ${config.exchangeRateApiUrl}`);
+      
+      if (stats.entries.length > 0) {
+        console.log('\nCached Rates:');
+        stats.entries.forEach(entry => {
+          const ageSeconds = Math.floor(entry.age / 1000);
+          console.log(`  ${entry.from}/${entry.to} - cached ${ageSeconds}s ago`);
+        });
+      }
+      
+      console.log('');
+      return;
+    }
+
+    // Show specific rate
+    if (options.from && options.to) {
+      const from = (options.from as string).toUpperCase();
+      const to = (options.to as string).toUpperCase();
+      
+      console.log(`\n💱 Fetching ${from}/${to} exchange rate...\n`);
+      
+      const rate = await client.getExchangeRate(from, to);
+      
+      console.log(`1 ${rate.from} = ${rate.rate} ${rate.to}`);
+      console.log(`Timestamp: ${new Date(rate.timestamp).toISOString()}`);
+      console.log('');
+      return;
+    }
+
+    // Show batch rates (default or --batch flag)
+    console.log('\n💱 Exchange Rates (GAP-007)\n');
+    
+    const pairs: [string, string][] = [
+      ['USDC', 'USD'],
+      ['ETH', 'USD'],
+      ['BTC', 'USD'],
+      ['MATIC', 'USD'],
+      ['DAI', 'USD'],
+      ['USDT', 'USD'],
+    ];
+    
+    const rates = await client.getBatchExchangeRates(pairs);
+    
+    console.log('Supported Cryptocurrencies:');
+    rates.forEach(rate => {
+      const rateStr = rate.rate.toFixed(rate.from === 'BTC' ? 2 : 4);
+      console.log(`  1 ${rate.from.padEnd(6)} = ${rateStr.padStart(12)} ${rate.to}`);
+    });
+    
+    console.log('\nCache Statistics:');
+    const stats = client.getCacheStats();
+    console.log(`  Cached Entries: ${stats.size}`);
+    console.log(`  Cache TTL: ${config.exchangeRateCacheTtlMs / 1000} seconds`);
+    
+    const metrics = client.getCircuitBreakerMetrics();
+    console.log('\nCircuit Breaker:');
+    console.log(`  State: ${metrics.state}`);
+    console.log(`  Successes: ${metrics.successes}`);
+    console.log(`  Failures: ${metrics.failures}`);
+    
+    console.log('');
+  } catch (error) {
+    logger.error('Failed to fetch exchange rates', { 
+      error: error instanceof Error ? error.message : String(error),
+    });
+    console.error(`\n✗ Error: ${error instanceof Error ? error.message : String(error)}\n`);
+    throw error;
+  } finally {
+    client.destroy();
+  }
+}
+
 export async function run(args: string[]): Promise<void> {
   const { command, options } = parseArgs(args);
 
@@ -312,12 +415,17 @@ export async function run(args: string[]): Promise<void> {
       await backupCommand(options);
       break;
     }
+    case 'rates': {
+      await ratesCommand(options);
+      break;
+    }
     default:
       console.log('Usage:');
       console.log('  npm run markets [--limit <number>]');
       console.log('  npm run book --tokenId <token_id>');
       console.log('  npm run kill');
       console.log('  npm run backup [--list]');
+      console.log('  npm run rates [--from <currency> --to <currency>] [--batch] [--stats]');
       process.exit(1);
   }
 }

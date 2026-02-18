@@ -17,6 +17,7 @@
     "markets": "tsx src/index.ts markets",
     "book": "tsx src/index.ts book",
     "kill": "tsx src/index.ts kill",
+    "rates": "tsx src/index.ts rates",
     "backup": "tsx src/index.ts backup",
     "backup:list": "tsx src/index.ts backup --list",
     "test": "vitest run",
