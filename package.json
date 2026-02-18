@@ -1,6 +1,6 @@
 {
   "name": "polymarket-bot",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Polymarket read-only starter - fetch markets and orderbooks",
   "private": true,
   "engines": {
@@ -28,7 +28,7 @@
   ],
   "license": "ISC",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.54.0",
     "eslint": "^9.39.2"
   }
