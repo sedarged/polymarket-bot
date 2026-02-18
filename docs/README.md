@@ -130,6 +130,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Session State Template](./ai/session-state.md) - Template for agents to track work
 
 ### API & Integration
+- [Exchange Rate Service](./EXCHANGE_RATE_SERVICE.md) - 💱 Exchange rate fetcher with CoinGecko API (GAP-007)
 - [Price & Market Endpoints Usage](./price-endpoints-usage.md) - Complete guide to price query APIs (PR-005)
 - [API Missing Endpoints Analysis](./api-missing-endpoints-analysis.md) - Gap analysis of Polymarket API coverage
 - [API Alignment Verification](./api-alignment-verification.md) - Verification against official Polymarket docs

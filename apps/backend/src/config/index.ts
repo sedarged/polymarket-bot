@@ -296,6 +296,17 @@ const envSchema = z.object({
   BACKUP_SCHEDULE: z.string().default('0 2 * * *'),
 
   // ========================================
+  // Exchange Rate Configuration (GAP-007)
+  // ========================================
+  // Exchange rate API URL (default: CoinGecko API)
+  EXCHANGE_RATE_API_URL: z.string().url().default('https://api.coingecko.com/api/v3'),
+  // Exchange rate cache TTL in milliseconds (default: 5 minutes)
+  EXCHANGE_RATE_CACHE_TTL_MS: numberFromEnv(
+    300000,
+    z.number().int().positive().min(60000).max(3600000),
+  ),
+
+  // ========================================
   // Data Pipeline / Ingestion Configuration (GAP-021)
   // ========================================
   DATA_PIPELINE_ENABLED: booleanFromEnv.default(true),
@@ -526,6 +537,10 @@ const configSchema = envSchema
     backupAzureAccountName: env.BACKUP_AZURE_ACCOUNT_NAME,
     backupAzureAccountKey: env.BACKUP_AZURE_ACCOUNT_KEY,
     backupSchedule: env.BACKUP_SCHEDULE,
+
+    // Exchange rate configuration (GAP-007)
+    exchangeRateApiUrl: env.EXCHANGE_RATE_API_URL.replace(/\/$/, ""),
+    exchangeRateCacheTtlMs: env.EXCHANGE_RATE_CACHE_TTL_MS,
 
     // Data pipeline / ingestion (GAP-021)
     dataPipelineEnabled: env.DATA_PIPELINE_ENABLED,
