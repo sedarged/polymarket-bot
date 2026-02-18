@@ -161,6 +161,9 @@ export class SyncManager {
 
       result.success = true;
       
+      // Reset recovery attempts after successful sync to prevent memory leak
+      this.recovery.resetAttempts();
+      
       // Update statistics (only after successful sync)
       this.updateStats(result, Date.now() - startTime);
       
@@ -174,12 +177,17 @@ export class SyncManager {
       result.success = false;
       const errorMessage = error instanceof Error ? error.message : String(error);
       result.errors = [errorMessage];
+      const durationMs = Date.now() - startTime;
       logger.error('Sync cycle failed', {
         error: errorMessage,
-        durationMs: Date.now() - startTime,
+        durationMs,
       });
       this.stats.failedSyncs++;
       this.stats.totalSyncs++;
+      
+      // Update average duration to include failed syncs for accurate metrics
+      const totalDuration = this.stats.averageSyncDurationMs * (this.stats.totalSyncs - 1) + durationMs;
+      this.stats.averageSyncDurationMs = totalDuration / this.stats.totalSyncs;
     }
 
     this.stats.lastSyncTime = Date.now();
@@ -275,11 +283,12 @@ export class SyncManager {
     return {
       timestamp: Date.now(),
       version,
-      orders: remoteState.orders,
-      fills: remoteState.fills,
-      positions: remoteState.positions,
-      balances: remoteState.balances,
-      orderbooks: remoteState.orderbooks,
+      // Create shallow copies to ensure snapshot immutability
+      orders: [...remoteState.orders],
+      fills: [...remoteState.fills],
+      positions: [...remoteState.positions],
+      balances: [...remoteState.balances],
+      orderbooks: new Map(remoteState.orderbooks),
     };
   }
 

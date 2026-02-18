@@ -69,7 +69,7 @@ export class DiscrepancyDetector {
       if (remoteOrder && localOrder.status !== remoteOrder.status) {
         discrepancies.push({
           type: DiscrepancyType.ORDER_STATUS_MISMATCH,
-          severity: DiscrepancySeverity.MEDIUM,
+          severity: this.getOrderStatusMismatchSeverity(localOrder, remoteOrder),
           timestamp: Date.now(),
           description: `Order ${localOrder.orderId} status mismatch: local=${localOrder.status}, remote=${remoteOrder.status}`,
           localState: localOrder,
@@ -84,6 +84,25 @@ export class DiscrepancyDetector {
     }
 
     return discrepancies;
+  }
+
+  /**
+   * Determine severity of order status mismatch
+   * CRITICAL for open/partially filled orders, MEDIUM for completed orders
+   */
+  private getOrderStatusMismatchSeverity(localOrder: Order, remoteOrder: Order): DiscrepancySeverity {
+    // Critical if either order is open or partially filled
+    if (
+      localOrder.status === 'OPEN' ||
+      localOrder.status === 'PARTIALLY_FILLED' ||
+      remoteOrder.status === 'OPEN' ||
+      remoteOrder.status === 'PARTIALLY_FILLED'
+    ) {
+      return DiscrepancySeverity.CRITICAL;
+    }
+    
+    // Medium severity for completed orders
+    return DiscrepancySeverity.MEDIUM;
   }
 
   /**

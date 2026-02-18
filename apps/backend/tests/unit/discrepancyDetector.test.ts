@@ -98,9 +98,44 @@ describe('DiscrepancyDetector', () => {
 
       expect(discrepancies).toHaveLength(1);
       expect(discrepancies[0].type).toBe(DiscrepancyType.ORDER_STATUS_MISMATCH);
-      expect(discrepancies[0].severity).toBe(DiscrepancySeverity.MEDIUM);
+      expect(discrepancies[0].severity).toBe(DiscrepancySeverity.CRITICAL); // CRITICAL because local order is OPEN
       expect(discrepancies[0].metadata?.localStatus).toBe('OPEN');
       expect(discrepancies[0].metadata?.remoteStatus).toBe('MATCHED');
+    });
+
+    it('should detect order status mismatches with MEDIUM severity for completed orders', () => {
+      const localOrders: Order[] = [
+        {
+          orderId: 'order-1',
+          tokenId: 'token-1',
+          side: 'BUY',
+          price: '0.5',
+          size: '100',
+          status: 'MATCHED',
+          filledSize: '100',
+          createdAt: Date.now(),
+        } as Order,
+      ];
+      const remoteOrders: Order[] = [
+        {
+          orderId: 'order-1',
+          tokenId: 'token-1',
+          side: 'BUY',
+          price: '0.5',
+          size: '100',
+          status: 'CANCELLED',
+          filledSize: '0',
+          createdAt: Date.now(),
+        } as Order,
+      ];
+
+      const discrepancies = detector.compareOrders(localOrders, remoteOrders);
+
+      expect(discrepancies).toHaveLength(1);
+      expect(discrepancies[0].type).toBe(DiscrepancyType.ORDER_STATUS_MISMATCH);
+      expect(discrepancies[0].severity).toBe(DiscrepancySeverity.MEDIUM); // MEDIUM because both orders are completed
+      expect(discrepancies[0].metadata?.localStatus).toBe('MATCHED');
+      expect(discrepancies[0].metadata?.remoteStatus).toBe('CANCELLED');
     });
 
     it('should not detect discrepancies for identical orders', () => {
@@ -130,7 +165,6 @@ describe('DiscrepancyDetector', () => {
           tokenId: 'token-1',
           size: '100',
           averagePrice: '0.5',
-          realizedPnl: '0',
         } as Position,
       ];
       const remotePositions: Position[] = [
@@ -138,7 +172,6 @@ describe('DiscrepancyDetector', () => {
           tokenId: 'token-1',
           size: '150',
           averagePrice: '0.5',
-          realizedPnl: '0',
         } as Position,
       ];
 
@@ -157,7 +190,6 @@ describe('DiscrepancyDetector', () => {
           tokenId: 'token-1',
           size: '100',
           averagePrice: '0.5',
-          realizedPnl: '0',
         } as Position,
       ];
 
