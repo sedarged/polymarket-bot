@@ -14,9 +14,9 @@ import {
   RecoveryActionType,
   SyncConfig,
 } from './types';
-import { logger as baseLogger } from '../utils/logger';
+import { systemLogger } from '../utils/logger';
 
-const logger = baseLogger.child({ module: 'RecoveryProcedures' });
+const logger = systemLogger;
 
 /**
  * Recovery procedures for state synchronization issues

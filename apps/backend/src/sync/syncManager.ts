@@ -30,10 +30,9 @@ import {
 } from './types';
 import { DiscrepancyDetector } from './discrepancyDetector';
 import { RecoveryProcedures } from './recoveryProcedures';
-import { logger as baseLogger } from '../utils/logger';
-import { databaseLogger } from '../utils/logger';
+import { systemLogger, databaseLogger } from '../utils/logger';
 
-const logger = baseLogger.child({ module: 'SyncManager' });
+const logger = systemLogger;
 
 /**
  * Data source interface for fetching remote state
@@ -124,7 +123,6 @@ export class SyncManager {
       timestamp: startTime,
       discrepancies: [],
       recoveryActions: [],
-      errors: [],
     };
 
     logger.info('Starting sync cycle');
@@ -161,10 +159,11 @@ export class SyncManager {
       }
       result.recoveryActions = recoveryActions;
 
-      // Update statistics
-      this.updateStats(result, Date.now() - startTime);
-
       result.success = true;
+      
+      // Update statistics (only after successful sync)
+      this.updateStats(result, Date.now() - startTime);
+      
       logger.info('Sync cycle completed', {
         durationMs: Date.now() - startTime,
         discrepancies: discrepancies.length,
@@ -180,6 +179,7 @@ export class SyncManager {
         durationMs: Date.now() - startTime,
       });
       this.stats.failedSyncs++;
+      this.stats.totalSyncs++;
     }
 
     this.stats.lastSyncTime = Date.now();

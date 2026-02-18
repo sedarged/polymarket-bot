@@ -13,9 +13,9 @@ import {
   SyncConfig,
   StateSnapshot,
 } from './types';
-import { logger as baseLogger } from '../utils/logger';
+import { systemLogger } from '../utils/logger';
 
-const logger = baseLogger.child({ module: 'DiscrepancyDetector' });
+const logger = systemLogger;
 
 /**
  * Detects discrepancies between local and remote state
