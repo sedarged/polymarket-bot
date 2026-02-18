@@ -364,7 +364,7 @@ export class ConfigManager extends EventEmitter {
       const changedSecrets: string[] = [];
       const secretFields: Array<{ name: string; prev?: string; next?: string }> = [
         { name: "admin_token", prev: previousConfig.adminToken, next: newConfig.adminToken },
-        { name: "admin_token_next", prev: (previousConfig as any).adminTokenNext, next: (newConfig as any).adminTokenNext },
+        { name: "admin_token_next", prev: previousConfig.adminTokenNext, next: newConfig.adminTokenNext },
         { name: "telegram_bot_token", prev: previousConfig.telegramBotToken, next: newConfig.telegramBotToken },
         { name: "encryption_key", prev: previousConfig.encryptionKey, next: newConfig.encryptionKey },
         { name: "vault_token", prev: previousConfig.vaultToken, next: newConfig.vaultToken },
