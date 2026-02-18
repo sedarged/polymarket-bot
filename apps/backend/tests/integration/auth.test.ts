@@ -310,6 +310,21 @@ describe("Authentication - Token requirement in production", () => {
     );
   });
 
+  it("should succeed config parsing when ADMIN_TOKEN is missing but ADMIN_TOKEN_NEXT is provided in production", async () => {
+    const { parseConfig } = await import("../../src/config/index.js");
+
+    const envWithNextToken = {
+      ...process.env,
+      NODE_ENV: "production",
+      ADMIN_TOKEN: "",
+      ADMIN_TOKEN_NEXT: "next-token-12345",
+      LIVE_TRADING: "false",
+    };
+
+    const config = parseConfig(envWithNextToken);
+    expect(config.adminTokenNext).toBe("next-token-12345");
+  });
+
   it("should fail config parsing when ADMIN_TOKEN is missing with live trading", async () => {
     const { parseConfig } = await import("../../src/config/index.js");
 

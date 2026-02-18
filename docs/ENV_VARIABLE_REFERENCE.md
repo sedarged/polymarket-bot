@@ -161,6 +161,7 @@ This document provides an overview of environment variables used by the Polymark
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `ADMIN_TOKEN` | (empty) | Conditional | Admin token for sensitive endpoints (required in production) |
+| `ADMIN_TOKEN_NEXT` | (empty) | No | Optional “next” admin token for zero-downtime rotation; when set, both tokens are accepted for admin endpoints |
 
 ---
 

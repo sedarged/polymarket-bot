@@ -122,6 +122,17 @@ The bot enforces this requirement to prevent accidental deployment without authe
 5. **Use HTTPS** - Always use TLS/SSL in production to protect tokens in transit
 6. **Monitor access** - Review logs for unauthorized access attempts (401 responses)
 
+### Zero-Downtime Token Rotation (GAP-038)
+
+To rotate the admin token without restarting the bot (no downtime), use a dual-token window:
+
+1. Set the current token in `ADMIN_TOKEN` and the new token in `ADMIN_TOKEN_NEXT`
+2. Trigger a reload via `POST /api/config/reload` (authorized with the current token)
+3. During the rotation window, **both tokens are accepted** for admin endpoints
+4. After all clients are updated, set `ADMIN_TOKEN` to the new token, clear `ADMIN_TOKEN_NEXT`, and reload again
+
+This pattern reduces operational risk while keeping admin endpoints fail-closed if no token is configured.
+
 ### Testing Authentication
 
 ```bash
