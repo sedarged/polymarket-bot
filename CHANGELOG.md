@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/sedarged/polymarket-bot/compare/v2.2.0...v2.3.0) (2026-02-18)
+
+
+### Features
+
+* add buffered data pipeline ingestion to event store ([f611c19](https://github.com/sedarged/polymarket-bot/commit/f611c195352bf38cae3b29f4dd6c3fa322b3e8fb))
+* add config reload and secret rotation metrics ([d761fb1](https://github.com/sedarged/polymarket-bot/commit/d761fb16d8e7f79a8e80fff1b315ea91891f4f6c))
+* support admin token rotation via next token ([ffffaae](https://github.com/sedarged/polymarket-bot/commit/ffffaaeb6672580f48ec56aec10f6d738488bfc6))
+
+
+### Bug Fixes
+
+* address PR [#436](https://github.com/sedarged/polymarket-bot/issues/436) security review comments ([105a06f](https://github.com/sedarged/polymarket-bot/commit/105a06f7ae2c3b006ec8b7c13229d6e0f289c877))
+* address PR review comments for admin token security ([66f1ed8](https://github.com/sedarged/polymarket-bot/commit/66f1ed834be14f3a0a1886dd7eec7662c8f4a6e9))
+* address security review feedback on secret management docs ([2b3fcc7](https://github.com/sedarged/polymarket-bot/commit/2b3fcc780ec460a960224d9bdb712ff6519f3a95))
+* preserve newer orderbook snapshots during re-buffering after flush failure ([d7e7cd7](https://github.com/sedarged/polymarket-bot/commit/d7e7cd787ebddde641a797e0a77d54ce6670605f))
+
 ## [2.2.0](https://github.com/sedarged/polymarket-bot/compare/v2.1.0...v2.2.0) (2026-02-18)
 
 
