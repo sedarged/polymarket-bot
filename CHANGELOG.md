@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/sedarged/polymarket-bot/compare/v2.3.0...v2.4.0) (2026-02-18)
+
+
+### Features
+
+* add CLI command and integration tests for exchange rates (GAP-007) ([7677ad1](https://github.com/sedarged/polymarket-bot/commit/7677ad1d1cb37821d1fac08b3a37151739d99a68))
+* add ExchangeRateClient with caching and error handling (GAP-007) ([c70155c](https://github.com/sedarged/polymarket-bot/commit/c70155c7ff6650b08bdae3fe1703fb9a20664fc7))
+
+
+### Bug Fixes
+
+* address PR review feedback for exchange rate client (GAP-007) ([fbd405b](https://github.com/sedarged/polymarket-bot/commit/fbd405b8a64714974265c6bfc3cfe6d3e4eecf25))
+
 ## [2.3.0](https://github.com/sedarged/polymarket-bot/compare/v2.2.0...v2.3.0) (2026-02-18)
 
 
