@@ -97,39 +97,87 @@ console.log(decision);
 
 ## Built-in Strategies
 
-### RandomStrategy
+### ArbitrageStrategy ⭐ MOST IMPORTANT
 
-Random trading strategy for testing the framework.
+**The core Polymarket strategy.** Exploits price discrepancies where YES + NO ≠ $1.00.
 
-**Parameters:**
-- `buyProbability` (0-1): Probability of buying (default: 0.3)
-- `sellProbability` (0-1): Probability of selling (default: 0.3)
-- `maxSize` (number): Maximum order size (default: 10)
-- `minSpread` (number): Minimum spread to trade (default: 0.01)
-- `seed` (number): Optional seed for reproducible randomness
-
-**Use Case:** Testing, backtesting, framework validation
-
-**⚠️ WARNING:** For testing only. Do NOT use in live trading.
-
-### TrendFollowingStrategy
-
-Momentum-based strategy that follows price trends.
+**Key Concept:**
+- On Polymarket, YES and NO shares must sum to exactly $1.00 at settlement
+- If YES + NO < $1.00 (minus fees), buy both sides for guaranteed profit
+- If YES + NO > $1.00 (plus fees), sell both sides (requires inventory)
 
 **Parameters:**
-- `lookbackPeriod` (number): Price updates to consider (default: 10)
-- `trendThreshold` (number): Minimum change % for trend (default: 0.02)
-- `maxPositionSize` (number): Maximum position (default: 50)
+- `minProfitBps` (number): Minimum profit in basis points after fees (default: 50 = 0.5%)
+- `feeRate` (number): Trading fee rate (default: 0.02 = 2%)
+- `maxOrderSize` (number): Maximum order size (default: 100)
+- `minLiquidity` (number): Minimum liquidity required on both sides (default: 50)
+- `priceUpdateWindow` (number): Time window for stale price detection in ms (default: 5000)
+
+**Use Case:** 
+- Primary profit generator for Polymarket bots
+- Risk-free returns when opportunities exist
+- Works in all market conditions
+
+**✅ Production-Ready:** This strategy is ready for live trading on Polymarket.
+
+**Example:**
+```typescript
+{
+  strategyId: 'arbitrage-main',
+  type: 'arbitrage',
+  enabled: true,
+  params: {
+    minProfitBps: 50,  // 0.5% minimum profit
+    feeRate: 0.02,     // 2% Polymarket fee
+    maxOrderSize: 100
+  }
+}
+```
+
+### MeanReversionStrategy
+
+**Statistical strategy for prediction markets.** Markets often overreact to breaking news, creating mean-reversion opportunities.
+
+**Key Concept:**
+- Calculates mean price over lookback period
+- Identifies when current price deviates beyond statistical norms (z-score)
+- Bets on return to equilibrium
+- Includes cooldown periods to avoid overtrading
+
+**Parameters:**
+- `lookbackPeriod` (number): Price updates for mean calculation (default: 20)
+- `stdDevThreshold` (number): Standard deviations from mean (default: 2.0)
 - `minSpread` (number): Minimum spread to trade (default: 0.01)
-- `stopLoss` (number): Stop loss % (default: 0.05)
+- `maxPositionSize` (number): Maximum position size (default: 50)
+- `entryThreshold` (number): Z-score threshold for entry (default: 2.0)
+- `exitThreshold` (number): Z-score threshold for exit (default: 0.5)
+- `cooldownPeriod` (number): Minimum time between trades in ms (default: 60000 = 1 min)
 
-**Use Case:** Trend identification, momentum trading
+**Use Case:** 
+- News-driven markets (elections, sports, politics)
+- High volatility events
+- Markets with frequent overreactions
 
-**⚠️ WARNING:** Simplified for testing. Not production-ready.
+**⚠️ Note:** Works well for prediction markets but requires careful parameter tuning.
+
+**Example:**
+```typescript
+{
+  strategyId: 'mean-reversion-1',
+  type: 'mean-reversion',
+  enabled: true,
+  params: {
+    lookbackPeriod: 20,
+    entryThreshold: 2.5,   // Enter when 2.5 std devs from mean
+    exitThreshold: 0.5,     // Exit when within 0.5 std devs
+    cooldownPeriod: 60000   // Wait 1 minute between trades
+  }
+}
+```
 
 ### MarketMakingStrategy
 
-Simple market making with inventory management.
+Simple market making with inventory management. Provides liquidity while capturing spreads.
 
 **Parameters:**
 - `spreadBps` (number): Target spread in basis points (default: 100 = 1%)
@@ -138,13 +186,48 @@ Simple market making with inventory management.
 - `inventorySkew` (boolean): Adjust quotes by inventory (default: true)
 - `minSpread` (number): Minimum market spread (default: 0.005)
 
-**Use Case:** Market making, liquidity provision
+**Use Case:** 
+- Steady income from spreads
+- Works in stable markets
+- Requires active inventory management
 
-**⚠️ WARNING:** Simplified for testing. Production requires:
+**⚠️ WARNING:** Simplified for testing. Production market making requires:
 - Proper risk management
 - Latency optimization
 - Adverse selection protection
 - Dynamic spread adjustment
+
+**Example:**
+```typescript
+{
+  strategyId: 'mm-stable',
+  type: 'market-making',
+  enabled: true,
+  params: {
+    spreadBps: 100,        // 1% spread
+    orderSize: 20,
+    inventorySkew: true    // Skew prices based on inventory
+  }
+}
+```
+
+### RandomStrategy
+
+**FOR TESTING ONLY.** Random trading for framework validation.
+
+**Parameters:**
+- `buyProbability` (0-1): Probability of buying (default: 0.3)
+- `sellProbability` (0-1): Probability of selling (default: 0.3)
+- `maxSize` (number): Maximum order size (default: 10)
+- `minSpread` (number): Minimum spread to trade (default: 0.01)
+- `seed` (number): Optional seed for reproducible randomness
+
+**Use Case:** 
+- Testing strategy framework
+- Backtesting infrastructure
+- Development and debugging
+
+**❌ DO NOT USE IN LIVE TRADING**
 
 ## Configuration
 
@@ -155,23 +238,33 @@ Create `config/strategies.json`:
 ```json
 [
   {
-    "strategyId": "random-test-1",
-    "type": "random",
+    "strategyId": "arbitrage-main",
+    "type": "arbitrage",
     "enabled": true,
     "params": {
-      "buyProbability": 0.3,
-      "sellProbability": 0.3,
-      "maxSize": 10
+      "minProfitBps": 50,
+      "feeRate": 0.02,
+      "maxOrderSize": 100
     }
   },
   {
-    "strategyId": "trend-btc",
-    "type": "trend-following",
+    "strategyId": "mean-reversion-1",
+    "type": "mean-reversion",
     "enabled": true,
     "params": {
       "lookbackPeriod": 20,
-      "trendThreshold": 0.03,
-      "maxPositionSize": 100
+      "entryThreshold": 2.5,
+      "exitThreshold": 0.5
+    }
+  },
+  {
+    "strategyId": "market-maker-1",
+    "type": "market-making",
+    "enabled": true,
+    "params": {
+      "spreadBps": 100,
+      "orderSize": 20,
+      "inventorySkew": true
     }
   }
 ]
