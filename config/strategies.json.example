@@ -1,0 +1,48 @@
+[
+  {
+    "strategyId": "random-test-1",
+    "type": "random",
+    "enabled": true,
+    "params": {
+      "buyProbability": 0.3,
+      "sellProbability": 0.3,
+      "maxSize": 10,
+      "minSpread": 0.01
+    }
+  },
+  {
+    "strategyId": "trend-btc",
+    "type": "trend-following",
+    "enabled": true,
+    "params": {
+      "lookbackPeriod": 20,
+      "trendThreshold": 0.03,
+      "maxPositionSize": 100,
+      "minSpread": 0.01,
+      "stopLoss": 0.05
+    }
+  },
+  {
+    "strategyId": "mm-eth",
+    "type": "market-making",
+    "enabled": true,
+    "params": {
+      "spreadBps": 150,
+      "orderSize": 20,
+      "maxInventory": 200,
+      "inventorySkew": true,
+      "minSpread": 0.005
+    }
+  },
+  {
+    "strategyId": "disabled-example",
+    "type": "random",
+    "enabled": false,
+    "params": {
+      "buyProbability": 0.5,
+      "sellProbability": 0.5,
+      "maxSize": 5,
+      "minSpread": 0.02
+    }
+  }
+]
