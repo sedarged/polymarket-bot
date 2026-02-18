@@ -692,7 +692,11 @@ Deployment Server (.env files)
 | Docker Registry | Every 180 days | No |
 | Telegram Bot Token | On compromise only | No |
 
+**For detailed rotation procedures, see [Security Guide - Secret Management Operations](./security.md#secret-management-operations).**
+
 #### Secret Rotation Procedure
+
+**Quick Reference:** The procedures below provide high-level steps. For complete step-by-step workflows with verification and rollback procedures, see [docs/security.md - Secret Management Operations](./security.md#secret-management-operations).
 
 1. **Generate new secret:**
    ```bash
@@ -713,6 +717,8 @@ Deployment Server (.env files)
 4. **Revoke old secret:**
    - Only after confirming new secret works
    - Document rotation in security log
+
+**Zero-downtime rotation:** For ADMIN_TOKEN, use the dual-token rotation procedure documented in [security.md](./security.md#admin_token-rotation-zero-downtime).
 
 ### Security Checklist
 
