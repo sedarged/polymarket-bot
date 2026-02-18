@@ -1,12 +1,14 @@
 # Secret Management Quick Reference
 
-**Print this page and keep it accessible for emergency procedures.**
+**TEMPLATE:** This document contains placeholders and must be customized with your team's real escalation paths before production use. In particular, replace all placeholders in the **Emergency Contacts** section below.
+
+**Print this page and keep it accessible for emergency procedures once fully customized.**
 
 ## Emergency Contacts
 
-- **Security Team:** [Add contact information]
-- **Operations Lead:** [Add contact information]
-- **On-Call Engineer:** [Add contact information]
+- **Security Team:** <FILL IN: primary security escalation channel (e.g., #security Slack channel, security@company.com, security on-call rotation URL)>
+- **Operations Lead:** <FILL IN: name and preferred contact method (e.g., Slack handle, email, phone number)>
+- **On-Call Engineer:** <FILL IN: link to on-call schedule / pager system and emergency contact method)>
 
 ## Secret Rotation Schedule
 

@@ -670,7 +670,8 @@ This section provides step-by-step operational procedures for managing secrets i
    ```bash
    # Generate cryptographically secure token
    NEW_TOKEN=$(openssl rand -hex 32)
-   echo "New token generated: $NEW_TOKEN"
+   echo "New ADMIN_TOKEN generated. Store it immediately in your secret manager (do not paste it into logs or chat)."
+   echo "Token suffix for confirmation: ${NEW_TOKEN: -4}"
    ```
 
 2. **Update environment with dual-token configuration:**
@@ -691,18 +692,18 @@ This section provides step-by-step operational procedures for managing secrets i
    ```bash
    # Reload configuration using current token
    curl -X POST http://localhost:3000/api/config/reload \
-     -H "Authorization: Bearer old_token_here"
+     -H "Authorization: Bearer $ADMIN_TOKEN"
    
-   # Expected response: {"message": "Configuration reloaded successfully"}
+   # Expected response: {"success": true, "message": "Configuration reloaded successfully"}
    ```
 
 4. **Verify both tokens work:**
    ```bash
    # Test old token (should still work)
-   curl -H "Authorization: Bearer old_token_here" http://localhost:3000/status
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/status
    
    # Test new token (should now work)
-   curl -H "Authorization: Bearer new_token_here" http://localhost:3000/status
+   curl -H "Authorization: Bearer $NEW_TOKEN" http://localhost:3000/status
    
    # Both should return 200 OK with status data
    ```
@@ -732,13 +733,13 @@ This section provides step-by-step operational procedures for managing secrets i
    ```bash
    # Reload configuration using new token
    curl -X POST http://localhost:3000/api/config/reload \
-     -H "Authorization: Bearer new_token_here"
+     -H "Authorization: Bearer $NEW_TOKEN"
    ```
 
 8. **Verify old token no longer works:**
    ```bash
-   # Test old token (should now fail)
-   curl -H "Authorization: Bearer old_token_here" http://localhost:3000/status
+   # Save old token for testing, then test it (should now fail)
+   curl -H "Authorization: Bearer $OLD_ADMIN_TOKEN" http://localhost:3000/status
    
    # Expected: 401 Unauthorized
    ```
@@ -779,53 +780,69 @@ If issues occur during rotation:
 
 2. **Generate new encryption key:**
    ```bash
-   # Generate new passphrase
+   # Generate new passphrase (do NOT echo this value to the terminal or logs)
    NEW_ENCRYPTION_KEY=$(openssl rand -base64 32)
-   echo "New encryption key generated (save securely): $NEW_ENCRYPTION_KEY"
+   # Immediately store NEW_ENCRYPTION_KEY in a secure password manager or secrets vault.
+   # Avoid copying it into chat, issue trackers, or any persistent logs.
    ```
 
 3. **Decrypt private key with old key:**
    ```bash
-   # Create temporary decryption script
-   cat > /tmp/decrypt-key.js << 'EOF'
-   const { decryptPrivateKey } = require('./apps/backend/src/secrets');
-   const encryptedKey = process.argv[2];
-   const oldPassphrase = process.argv[3];
-   try {
-     const decrypted = decryptPrivateKey(encryptedKey, oldPassphrase);
-     console.log(decrypted);
-   } catch (error) {
-     console.error('Decryption failed:', error.message);
-     process.exit(1);
-   }
-   EOF
-   
-   # Decrypt with old key
-   PRIVATE_KEY=$(node /tmp/decrypt-key.js "$ENCRYPTED_PRIVATE_KEY" "$ENCRYPTION_KEY")
-   rm /tmp/decrypt-key.js
+   # Decrypt with old key using inline Node script
+   PRIVATE_KEY=$(
+     npx tsx - << 'EOF'
+     import path from 'path';
+     import { decryptPrivateKey } from './apps/backend/src/secrets/index.js';
+     
+     const encryptedKey = process.env.ENCRYPTED_PRIVATE_KEY;
+     const oldPassphrase = process.env.ENCRYPTION_KEY;
+     
+     if (!encryptedKey || !oldPassphrase) {
+       console.error('Missing ENCRYPTED_PRIVATE_KEY or ENCRYPTION_KEY in environment');
+       process.exit(1);
+     }
+     
+     try {
+       const decrypted = decryptPrivateKey(encryptedKey, oldPassphrase);
+       console.log(decrypted);
+     } catch (error) {
+       console.error('Decryption failed:', error.message || error);
+       process.exit(1);
+     }
+     EOF
+   )
    ```
 
 4. **Re-encrypt with new key:**
    ```bash
-   # Create temporary encryption script
-   cat > /tmp/encrypt-key.js << 'EOF'
-   const { encryptPrivateKey } = require('./apps/backend/src/secrets');
-   const privateKey = process.argv[2];
-   const newPassphrase = process.argv[3];
-   try {
-     const encrypted = encryptPrivateKey(privateKey, newPassphrase);
-     console.log(encrypted);
-   } catch (error) {
-     console.error('Encryption failed:', error.message);
-     process.exit(1);
-   }
-   EOF
+   # Make PRIVATE_KEY available to the Node process (avoid passing via arguments)
+   export PRIVATE_KEY
    
-   # Encrypt with new key
-   NEW_ENCRYPTED_PRIVATE_KEY=$(node /tmp/encrypt-key.js "$PRIVATE_KEY" "$NEW_ENCRYPTION_KEY")
-   rm /tmp/encrypt-key.js
+   # Encrypt with new key using inline Node script
+   NEW_ENCRYPTED_PRIVATE_KEY=$(
+     npx tsx - << 'EOF'
+     import path from 'path';
+     import { encryptPrivateKey } from './apps/backend/src/secrets/index.js';
+     
+     const privateKey = process.env.PRIVATE_KEY;
+     const newPassphrase = process.env.NEW_ENCRYPTION_KEY;
+     
+     if (!privateKey || !newPassphrase) {
+       console.error('Missing PRIVATE_KEY or NEW_ENCRYPTION_KEY in environment');
+       process.exit(1);
+     }
+     
+     try {
+       const encrypted = encryptPrivateKey(privateKey, newPassphrase);
+       console.log(encrypted);
+     } catch (error) {
+       console.error('Encryption failed:', error.message || error);
+       process.exit(1);
+     }
+     EOF
+   )
    
-   # Clear private key from memory
+   # Clear private key from environment
    unset PRIVATE_KEY
    ```
 
@@ -862,8 +879,8 @@ If issues occur during rotation:
 
 8. **Verify trading functionality:**
    ```bash
-   # Test wallet connection
-   curl http://localhost:3000/status | jq '.walletAddress'
+   # Test wallet connection (requires ADMIN_TOKEN)
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/status | jq '.walletAddress'
    
    # Should return wallet address, not null
    ```
@@ -921,9 +938,11 @@ If decryption fails after restart:
 
 6. **Review access logs:**
    ```bash
-   # Check for unauthorized access
+   # Check for unauthorized access attempts (401 responses)
    grep "401.*Unauthorized" logs/bot-$(date +%Y%m%d).log
-   grep "Authorization.*Bearer" logs/bot-$(date +%Y%m%d).log
+   
+   # Example: search for application auth-denied messages
+   grep "endpoint access denied" logs/bot-$(date +%Y%m%d).log
    ```
 
 #### PRIVATE_KEY Compromise
