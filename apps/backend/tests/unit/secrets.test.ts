@@ -229,18 +229,6 @@ describe('Get Private Key - External KMS (AWS, Vault, Azure)', () => {
     );
   });
 
-  it('throws error for AWS (not implemented)', async () => {
-    const config: SecretsConfig = {
-      source: 'aws',
-      awsSecretName: 'my-secret',
-      awsRegion: 'us-east-1',
-    };
-
-    await expect(getPrivateKey(config)).rejects.toThrow(
-      'AWS Secrets Manager integration not implemented'
-    );
-  });
-
   it('throws error for Vault without required params', async () => {
     const config: SecretsConfig = {
       source: 'vault',
@@ -251,19 +239,6 @@ describe('Get Private Key - External KMS (AWS, Vault, Azure)', () => {
     );
   });
 
-  it('throws error for Vault (not implemented)', async () => {
-    const config: SecretsConfig = {
-      source: 'vault',
-      vaultAddr: 'https://vault.example.com',
-      vaultToken: 'my-token',
-      vaultPath: 'secret/polymarket',
-    };
-
-    await expect(getPrivateKey(config)).rejects.toThrow(
-      'HashiCorp Vault integration not implemented'
-    );
-  });
-
   it('throws error for Azure without required params', async () => {
     const config: SecretsConfig = {
       source: 'azure',
@@ -271,18 +246,6 @@ describe('Get Private Key - External KMS (AWS, Vault, Azure)', () => {
 
     await expect(getPrivateKey(config)).rejects.toThrow(
       'AZURE_KEY_VAULT_NAME and AZURE_SECRET_NAME are required for Azure secret source'
-    );
-  });
-
-  it('throws error for Azure (not implemented)', async () => {
-    const config: SecretsConfig = {
-      source: 'azure',
-      azureKeyVaultName: 'my-keyvault',
-      azureSecretName: 'polymarket-key',
-    };
-
-    await expect(getPrivateKey(config)).rejects.toThrow(
-      'Azure Key Vault integration not implemented'
     );
   });
 

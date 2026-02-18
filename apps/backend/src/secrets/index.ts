@@ -31,7 +31,12 @@
  */
 
 import crypto from 'crypto';
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { DefaultAzureCredential } from '@azure/identity';
+import { SecretClient } from '@azure/keyvault-secrets';
+import vault from 'node-vault';
 import { z } from 'zod';
+import { systemLogger } from '../utils/logger';
 
 /**
  * Supported secret storage backends
@@ -157,10 +162,43 @@ export const decryptPrivateKey = (encryptedData: string, passphrase: string): st
   }
 };
 
+const SECRET_FIELD_CANDIDATES = [
+  'privateKey',
+  'PRIVATE_KEY',
+  'private_key',
+] as const;
+
+const safeJsonParse = (value: string): unknown => {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+};
+
+const extractPrivateKeyFromUnknown = (data: unknown): string | undefined => {
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  if (!data || typeof data !== 'object') {
+    return undefined;
+  }
+
+  const record = data as Record<string, unknown>;
+
+  for (const field of SECRET_FIELD_CANDIDATES) {
+    const candidate = record[field];
+    if (typeof candidate === 'string') {
+      return candidate;
+    }
+  }
+
+  return undefined;
+};
+
 /**
  * Retrieves private key from AWS Secrets Manager
- * 
- * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
  * 
  * @param secretName - Name of the secret in AWS Secrets Manager
  * @param region - AWS region (defaults to us-east-1)
@@ -170,31 +208,94 @@ export const getPrivateKeyFromAWS = async (
   secretName: string,
   region: string = 'us-east-1'
 ): Promise<string> => {
-  // This is a placeholder for AWS Secrets Manager integration
-  // In production, this would use the AWS SDK:
-  // import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-  
-  // Prevent unused variable warnings in stub
-  void secretName;
-  void region;
-  
-  throw new Error(
-    'AWS Secrets Manager integration not implemented. ' +
-    'To implement: npm install @aws-sdk/client-secrets-manager and uncomment the integration code.'
-  );
-  
-  // Example implementation (commented out to avoid adding dependency):
-  // const client = new SecretsManagerClient({ region });
-  // const command = new GetSecretValueCommand({ SecretId: secretName });
-  // const response = await client.send(command);
-  // const secret = JSON.parse(response.SecretString || '{}');
-  // return secret.privateKey || secret.PRIVATE_KEY;
+  const client = new SecretsManagerClient({ region });
+
+  try {
+    const response = await client.send(
+      new GetSecretValueCommand({
+        SecretId: secretName,
+      })
+    );
+
+    const rawSecretString =
+      typeof response.SecretString === 'string' && response.SecretString.trim().length > 0
+        ? response.SecretString
+        : undefined;
+
+    const rawSecretBinary =
+      response.SecretBinary && (response.SecretBinary as any).length
+        ? Buffer.from(response.SecretBinary as any).toString('utf8')
+        : undefined;
+
+    const secretPayload = rawSecretString ?? rawSecretBinary;
+
+    if (!secretPayload) {
+      throw new Error('Secret value is empty (SecretString/SecretBinary missing)');
+    }
+
+    const trimmed = secretPayload.trim();
+
+    // Support storing the private key directly as the secret value.
+    if (validatePrivateKey(trimmed)) {
+      const normalized = normalizePrivateKey(trimmed);
+      systemLogger.info('Private key retrieved from AWS Secrets Manager', {
+        audit: 'A-001',
+        region,
+        secretName,
+        secretFormat: 'string',
+        source: 'aws',
+      });
+      return normalized;
+    }
+
+    const parsed = safeJsonParse(trimmed);
+    if (!parsed) {
+      throw new Error(
+        'AWS secret value must be a private key string or JSON containing one of: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
+    const extracted = extractPrivateKeyFromUnknown(parsed);
+    if (!extracted) {
+      throw new Error(
+        'Private key not found in AWS secret JSON. Expected field: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in AWS secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
+    systemLogger.info('Private key retrieved from AWS Secrets Manager', {
+      audit: 'A-001',
+      region,
+      secretName,
+      secretFormat: 'json',
+      source: 'aws',
+    });
+
+    return normalized;
+  } catch (error) {
+    systemLogger.error('Failed to retrieve private key from AWS Secrets Manager', {
+      region,
+      secretName,
+      source: 'aws',
+      error: error instanceof Error ? error.message : String(error),
+      errorName: (error as any)?.name,
+    });
+    throw error;
+  }
 };
 
 /**
  * Retrieves private key from HashiCorp Vault
- * 
- * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
  * 
  * @param vaultAddr - Vault server address
  * @param vaultToken - Vault authentication token
@@ -206,30 +307,62 @@ export const getPrivateKeyFromVault = async (
   vaultToken: string,
   vaultPath: string
 ): Promise<string> => {
-  // This is a placeholder for HashiCorp Vault integration
-  // In production, this would use the Vault API or node-vault client
-  
-  // Prevent unused variable warnings in stub
-  void vaultAddr;
-  void vaultToken;
-  void vaultPath;
-  
-  throw new Error(
-    'HashiCorp Vault integration not implemented. ' +
-    'To implement: npm install node-vault and uncomment the integration code.'
-  );
-  
-  // Example implementation (commented out to avoid adding dependency):
-  // import vault from 'node-vault';
-  // const client = vault({ apiVersion: 'v1', endpoint: vaultAddr, token: vaultToken });
-  // const result = await client.read(vaultPath);
-  // return result.data.data.privateKey || result.data.data.PRIVATE_KEY;
+  const client = vault({
+    apiVersion: 'v1',
+    endpoint: vaultAddr,
+    token: vaultToken,
+  }) as any;
+
+  try {
+    const response = await client.read(vaultPath);
+
+    // node-vault response shape differs between KV v1 and KV v2.
+    // - KV v1: { data: { privateKey: '0x...' } }
+    // - KV v2: { data: { data: { privateKey: '0x...' }, metadata: {...} } }
+    const direct = extractPrivateKeyFromUnknown(response?.data);
+    const nested = extractPrivateKeyFromUnknown(response?.data?.data);
+
+    const extracted = direct ?? nested;
+
+    if (!extracted) {
+      throw new Error(
+        'Private key not found in Vault secret. Expected field: ' +
+          SECRET_FIELD_CANDIDATES.join(', ') +
+          ' (KV v1) or under data.data (KV v2)'
+      );
+    }
+
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in Vault secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
+    systemLogger.info('Private key retrieved from HashiCorp Vault', {
+      audit: 'A-001',
+      source: 'vault',
+      vaultAddr,
+      vaultPath,
+    });
+
+    return normalized;
+  } catch (error) {
+    systemLogger.error('Failed to retrieve private key from HashiCorp Vault', {
+      source: 'vault',
+      vaultAddr,
+      vaultPath,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: (error as any)?.name,
+    });
+    throw error;
+  }
 };
 
 /**
  * Retrieves private key from Azure Key Vault
- * 
- * NOTE: This is a stub implementation. Parameters will be used when the function is implemented.
  * 
  * @param keyVaultName - Name of the Azure Key Vault
  * @param secretName - Name of the secret
@@ -239,26 +372,79 @@ export const getPrivateKeyFromAzure = async (
   keyVaultName: string,
   secretName: string
 ): Promise<string> => {
-  // This is a placeholder for Azure Key Vault integration
-  // In production, this would use the Azure SDK:
-  // import { SecretClient } from "@azure/keyvault-secrets";
-  // import { DefaultAzureCredential } from "@azure/identity";
-  
-  // Prevent unused variable warnings in stub
-  void keyVaultName;
-  void secretName;
-  
-  throw new Error(
-    'Azure Key Vault integration not implemented. ' +
-    'To implement: npm install @azure/keyvault-secrets @azure/identity and uncomment the integration code.'
-  );
-  
-  // Example implementation (commented out to avoid adding dependency):
-  // const credential = new DefaultAzureCredential();
-  // const url = `https://${keyVaultName}.vault.azure.net`;
-  // const client = new SecretClient(url, credential);
-  // const secret = await client.getSecret(secretName);
-  // return secret.value || '';
+  const vaultUrl = keyVaultName.startsWith('https://')
+    ? keyVaultName
+    : `https://${keyVaultName}.vault.azure.net`;
+
+  const credential = new DefaultAzureCredential();
+  const client = new SecretClient(vaultUrl, credential);
+
+  try {
+    const secret = await client.getSecret(secretName);
+    const value = secret.value?.trim();
+
+    if (!value) {
+      throw new Error('Secret value is empty');
+    }
+
+    // Support storing the private key directly as the secret value.
+    if (validatePrivateKey(value)) {
+      const normalized = normalizePrivateKey(value);
+      systemLogger.info('Private key retrieved from Azure Key Vault', {
+        audit: 'A-001',
+        source: 'azure',
+        keyVaultName,
+        secretName,
+        secretFormat: 'string',
+      });
+      return normalized;
+    }
+
+    // Try parsing as JSON and extract the private key from known field names
+    const parsed = safeJsonParse(value);
+    if (!parsed) {
+      throw new Error(
+        'Azure secret value must be a private key string or JSON containing one of: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
+    const extracted = extractPrivateKeyFromUnknown(parsed);
+    if (!extracted) {
+      throw new Error(
+        'Private key not found in Azure secret JSON. Expected field: ' +
+          SECRET_FIELD_CANDIDATES.join(', ')
+      );
+    }
+
+    // Validate and normalize the extracted key
+    const trimmedExtracted = extracted.trim();
+    if (!validatePrivateKey(trimmedExtracted)) {
+      throw new Error(
+        `Invalid private key format in Azure secret. Expected 64 hex characters (optionally prefixed with 0x)`
+      );
+    }
+    const normalized = normalizePrivateKey(trimmedExtracted);
+
+    systemLogger.info('Private key retrieved from Azure Key Vault', {
+      audit: 'A-001',
+      source: 'azure',
+      keyVaultName,
+      secretName,
+      secretFormat: 'json',
+    });
+
+    return normalized;
+  } catch (error) {
+    systemLogger.error('Failed to retrieve private key from Azure Key Vault', {
+      source: 'azure',
+      keyVaultName,
+      secretName,
+      error: error instanceof Error ? error.message : String(error),
+      errorName: (error as any)?.name,
+    });
+    throw error;
+  }
 };
 
 /**

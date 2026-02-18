@@ -84,30 +84,30 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 9. Secret Management (16 variables – 2 production-ready, 3 stubbed)
+## 9. Secret Management (16 variables – 5 implemented)
 
-**Status:** `env` and `encrypted` sources are fully functional and production-ready. `aws`, `vault`, and `azure` backends exist but throw "not implemented" errors (stubs for future implementation).
+**Status:** All five secret sources are implemented: `env`, `encrypted`, `aws`, `vault`, and `azure`. For most deployments, `encrypted` is the simplest production-ready option; cloud backends require platform credentials and network access at startup.
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `SECRET_SOURCE` | `env` | No | Secret source: `env`, `encrypted` (**FUNCTIONAL**). `aws`, `vault`, `azure` (stubbed - infrastructure exists, integration not implemented) |
-| `PRIVATE_KEY` | - | Conditional | Private key (64 hex chars, optional 0x prefix). Required for live trading. (**FUNCTIONAL**) |
-| `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2). (**FUNCTIONAL**) |
-| `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2). (**FUNCTIONAL**) |
-| `AWS_SECRET_NAME` | - | Conditional | **(Stubbed)** AWS Secrets Manager secret name. Infrastructure exists, AWS SDK integration not implemented. |
-| `AWS_REGION` | - | Conditional | **(Stubbed)** AWS region. Infrastructure exists, AWS SDK integration not implemented. |
+| `SECRET_SOURCE` | `env` | No | Secret source: `env`, `encrypted`, `aws`, `vault`, `azure`. |
+| `PRIVATE_KEY` | - | Conditional | Private key (64 hex chars, optional 0x prefix). Required for live trading when `SECRET_SOURCE=env`. |
+| `ENCRYPTION_KEY` | - | Conditional | Passphrase for encrypted storage (Method 2). |
+| `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2). |
+| `AWS_SECRET_NAME` | - | Conditional | AWS Secrets Manager secret name. Secret value can be a direct private-key string or JSON containing `privateKey` / `PRIVATE_KEY` / `private_key`. |
+| `AWS_REGION` | `us-east-1` | No | AWS region (used by the AWS SDK client). Defaults to `us-east-1` if not specified. |
 | `AWS_ACCESS_KEY_ID` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
 | `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
-| `VAULT_ADDR` | - | Conditional | **(Stubbed)** Vault server address. Infrastructure exists, Vault client not implemented. |
-| `VAULT_TOKEN` | - | Conditional | **(Stubbed)** Vault authentication token. Infrastructure exists, Vault client not implemented. |
-| `VAULT_PATH` | - | Conditional | **(Stubbed)** Vault secret path. Infrastructure exists, Vault client not implemented. |
-| `AZURE_KEY_VAULT_NAME` | - | Conditional | **(Stubbed)** Azure Key Vault name. Infrastructure exists, Azure SDK integration not implemented. |
-| `AZURE_SECRET_NAME` | - | Conditional | **(Stubbed)** Azure secret name. Infrastructure exists, Azure SDK integration not implemented. |
+| `VAULT_ADDR` | - | Conditional | Vault server address (e.g. `https://vault.example.com`). |
+| `VAULT_TOKEN` | - | Conditional | Vault authentication token. |
+| `VAULT_PATH` | - | Conditional | Vault secret path (KV v1 or KV v2 path). The code supports both KV v1 (`data.privateKey`) and KV v2 (`data.data.privateKey`). |
+| `AZURE_KEY_VAULT_NAME` | - | Conditional | Azure Key Vault name (e.g. `my-keyvault`) or full URL (e.g. `https://my-keyvault.vault.azure.net`). |
+| `AZURE_SECRET_NAME` | - | Conditional | Azure Key Vault secret name. |
 | `AZURE_CLIENT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
 | `AZURE_CLIENT_SECRET` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
 | `AZURE_TENANT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
 
-**Note:** For production, use `encrypted` source (fully implemented) or implement cloud backend of choice.
+**Note:** Cloud backends use the platform’s default credential chain (AWS SDK / Azure `DefaultAzureCredential`). Prefer IAM roles / managed identities over long-lived keys where possible.
 
 ---
 
@@ -250,7 +250,7 @@ This document provides an overview of environment variables used by the Polymark
 | Startup & Compliance | 3 | MIN_BALANCE, ban-status (Research §9, §10) |
 | Config Paths | 2 | markets.json, strategy.json paths |
 | Heartbeat & WebSocket Limits | 2 | HEARTBEAT_URL, WS_MAX_RECONNECT_ATTEMPTS |
-| Secret Management | 11 | 2 production-ready (env, encrypted), 3 stubbed with infrastructure (AWS, Vault, Azure) |
+| Secret Management | 11 | 5 implemented sources (env, encrypted, AWS, Vault, Azure) |
 | Retry | 3 | Retry logic configuration |
 | Paper Trading | 6 | Simulation settings |
 | Risk Management | 5 | Trading limits |
