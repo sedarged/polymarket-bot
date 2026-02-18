@@ -1977,7 +1977,7 @@ lsof -i :8080
    - Review caching strategy
 
 3. Security audit
-   - Rotate credentials if needed
+   - Rotate credentials if needed (see docs/security.md#secret-management-operations)
    - Review access logs
    - Check for vulnerabilities
 
@@ -1991,6 +1991,25 @@ lsof -i :8080
    - Record lessons learned
    - Update architecture docs
 ```
+
+### Secret Rotation Procedures
+
+**IMPORTANT:** For detailed step-by-step procedures, see [Security Guide - Secret Management Operations](./security.md#secret-management-operations).
+
+Quick reference for rotation schedule:
+
+| Secret | Rotation Frequency | Downtime Required |
+|--------|-------------------|-------------------|
+| ADMIN_TOKEN | 30 days | No (zero-downtime rotation) |
+| ENCRYPTION_KEY | 90 days | Yes (2-5 minutes) |
+| PRIVATE_KEY | On compromise only | Yes (requires new wallet) |
+| AWS/Vault/Azure credentials | 90 days | Yes (brief restart) |
+
+**Emergency procedures:**
+- ADMIN_TOKEN compromise: Immediate revocation and restart
+- PRIVATE_KEY compromise: Transfer funds immediately, generate new wallet
+
+See [Emergency Secret Revocation](./security.md#emergency-secret-revocation) for detailed procedures.
 
 ## UMA resolution and redemption (Research §1.6)
 

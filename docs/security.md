@@ -16,7 +16,8 @@ This guide explains how to securely configure and operate the Polymarket trading
 6. [Encryption Tool](#encryption-tool)
 7. [Production Setup](#production-setup)
 8. [Security Best Practices](#security-best-practices)
-9. [Troubleshooting](#troubleshooting)
+9. [Secret Management Operations](#secret-management-operations)
+10. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -639,6 +640,463 @@ Check the logs for secret loading:
 - [AWS Secrets Manager Best Practices](https://docs.aws.amazon.com/secretsmanager/latest/userguide/best-practices.html)
 - [HashiCorp Vault Documentation](https://www.vaultproject.io/docs)
 - [Azure Key Vault Best Practices](https://docs.microsoft.com/azure/key-vault/general/best-practices)
+
+## Secret Management Operations
+
+This section provides step-by-step operational procedures for managing secrets in production. Follow these workflows exactly to avoid downtime or security incidents.
+
+### Overview of Secret Types
+
+| Secret | Purpose | Rotation Frequency | Downtime Required |
+|--------|---------|-------------------|-------------------|
+| ADMIN_TOKEN | API authentication | 30 days | No (with dual-token rotation) |
+| PRIVATE_KEY | Wallet signing | On compromise only | Yes (requires new wallet) |
+| ENCRYPTION_KEY | Local key encryption | 90 days | Yes (brief restart) |
+| AWS/Vault/Azure credentials | KMS access | 90 days | Yes (brief restart) |
+| TELEGRAM_BOT_TOKEN | Alerting | On compromise only | No |
+
+### ADMIN_TOKEN Rotation (Zero-Downtime)
+
+**Use case:** Regular rotation (every 30 days) or after suspected compromise.
+
+#### Prerequisites
+- Current ADMIN_TOKEN value
+- Access to .env configuration
+- Ability to trigger config reload
+
+#### Step-by-Step Procedure
+
+1. **Generate new token:**
+   ```bash
+   # Generate cryptographically secure token
+   NEW_TOKEN=$(openssl rand -hex 32)
+   echo "New ADMIN_TOKEN generated. Store it immediately in your secret manager (do not paste it into logs or chat)."
+   echo "Token suffix for confirmation: ${NEW_TOKEN: -4}"
+   ```
+
+2. **Update environment with dual-token configuration:**
+   ```bash
+   # Edit .env file
+   # Keep current token as ADMIN_TOKEN
+   # Add new token as ADMIN_TOKEN_NEXT
+   
+   # Before:
+   # ADMIN_TOKEN=old_token_here
+   
+   # After:
+   # ADMIN_TOKEN=old_token_here
+   # ADMIN_TOKEN_NEXT=new_token_here
+   ```
+
+3. **Trigger config reload:**
+   ```bash
+   # Reload configuration using current token
+   curl -X POST http://localhost:3000/api/config/reload \
+     -H "Authorization: Bearer $ADMIN_TOKEN"
+   
+   # Expected response: {"success": true, "message": "Configuration reloaded successfully"}
+   ```
+
+4. **Verify both tokens work:**
+   ```bash
+   # Test old token (should still work)
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/status
+   
+   # Test new token (should now work)
+   curl -H "Authorization: Bearer $NEW_TOKEN" http://localhost:3000/status
+   
+   # Both should return 200 OK with status data
+   ```
+
+5. **Update all clients to use new token:**
+   - Update monitoring scripts
+   - Update automation tools
+   - Update dashboard configuration
+   - Verify each client works with new token
+
+6. **Finalize rotation:**
+   ```bash
+   # Edit .env file
+   # Move new token to ADMIN_TOKEN
+   # Remove ADMIN_TOKEN_NEXT
+   
+   # Before:
+   # ADMIN_TOKEN=old_token_here
+   # ADMIN_TOKEN_NEXT=new_token_here
+   
+   # After:
+   # ADMIN_TOKEN=new_token_here
+   # (ADMIN_TOKEN_NEXT removed)
+   ```
+
+7. **Trigger final reload:**
+   ```bash
+   # Reload configuration using new token
+   curl -X POST http://localhost:3000/api/config/reload \
+     -H "Authorization: Bearer $NEW_TOKEN"
+   ```
+
+8. **Verify old token no longer works:**
+   ```bash
+   # Save old token for testing, then test it (should now fail)
+   curl -H "Authorization: Bearer $OLD_ADMIN_TOKEN" http://localhost:3000/status
+   
+   # Expected: 401 Unauthorized
+   ```
+
+9. **Document rotation:**
+   ```bash
+   # Log rotation in operations log
+   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) - ADMIN_TOKEN rotated successfully" >> logs/security-ops.log
+   ```
+
+#### Rollback Procedure
+
+If issues occur during rotation:
+
+1. **If step 3 fails:** Remove ADMIN_TOKEN_NEXT from .env, no reload needed
+2. **If step 4-5 fail:** Remove ADMIN_TOKEN_NEXT from .env, reload with old token
+3. **If step 7 fails:** Restore .env to have both tokens, reload with new token
+
+### ENCRYPTION_KEY Rotation
+
+**Use case:** Periodic rotation (every 90 days) or after suspected compromise.
+
+**⚠️ WARNING:** This procedure requires brief downtime (2-5 minutes).
+
+#### Prerequisites
+- Current ENCRYPTION_KEY value
+- Current ENCRYPTED_PRIVATE_KEY value
+- Original unencrypted PRIVATE_KEY (from secure backup or KMS)
+- Ability to restart the bot
+
+#### Step-by-Step Procedure
+
+1. **Schedule maintenance window:**
+   ```bash
+   # Notify stakeholders of 5-minute maintenance
+   # Schedule during low-activity period
+   ```
+
+2. **Generate new encryption key:**
+   ```bash
+   # Generate new passphrase (do NOT echo this value to the terminal or logs)
+   NEW_ENCRYPTION_KEY=$(openssl rand -base64 32)
+   # Immediately store NEW_ENCRYPTION_KEY in a secure password manager or secrets vault.
+   # Avoid copying it into chat, issue trackers, or any persistent logs.
+   ```
+
+3. **Decrypt private key with old key:**
+   ```bash
+   # Decrypt with old key using inline Node script
+   PRIVATE_KEY=$(
+     npx tsx - << 'EOF'
+     import path from 'path';
+     import { decryptPrivateKey } from './apps/backend/src/secrets/index.js';
+     
+     const encryptedKey = process.env.ENCRYPTED_PRIVATE_KEY;
+     const oldPassphrase = process.env.ENCRYPTION_KEY;
+     
+     if (!encryptedKey || !oldPassphrase) {
+       console.error('Missing ENCRYPTED_PRIVATE_KEY or ENCRYPTION_KEY in environment');
+       process.exit(1);
+     }
+     
+     try {
+       const decrypted = decryptPrivateKey(encryptedKey, oldPassphrase);
+       console.log(decrypted);
+     } catch (error) {
+       console.error('Decryption failed:', error.message || error);
+       process.exit(1);
+     }
+     EOF
+   )
+   ```
+
+4. **Re-encrypt with new key:**
+   ```bash
+   # Make PRIVATE_KEY available to the Node process (avoid passing via arguments)
+   export PRIVATE_KEY
+   
+   # Encrypt with new key using inline Node script
+   NEW_ENCRYPTED_PRIVATE_KEY=$(
+     npx tsx - << 'EOF'
+     import path from 'path';
+     import { encryptPrivateKey } from './apps/backend/src/secrets/index.js';
+     
+     const privateKey = process.env.PRIVATE_KEY;
+     const newPassphrase = process.env.NEW_ENCRYPTION_KEY;
+     
+     if (!privateKey || !newPassphrase) {
+       console.error('Missing PRIVATE_KEY or NEW_ENCRYPTION_KEY in environment');
+       process.exit(1);
+     }
+     
+     try {
+       const encrypted = encryptPrivateKey(privateKey, newPassphrase);
+       console.log(encrypted);
+     } catch (error) {
+       console.error('Encryption failed:', error.message || error);
+       process.exit(1);
+     }
+     EOF
+   )
+   
+   # Clear private key from environment
+   unset PRIVATE_KEY
+   ```
+
+5. **Update .env file:**
+   ```bash
+   # Before:
+   # ENCRYPTION_KEY=old_passphrase_here
+   # ENCRYPTED_PRIVATE_KEY=old_encrypted_data_here
+   
+   # After:
+   # ENCRYPTION_KEY=new_passphrase_here
+   # ENCRYPTED_PRIVATE_KEY=new_encrypted_data_here
+   ```
+
+6. **Restart bot:**
+   ```bash
+   # Graceful shutdown
+   npm run kill  # or use kill switch endpoint
+   
+   # Wait for shutdown to complete
+   sleep 5
+   
+   # Start with new configuration
+   npm run dev
+   ```
+
+7. **Verify successful decryption:**
+   ```bash
+   # Check logs for successful private key loading
+   tail -n 50 logs/bot-$(date +%Y%m%d).log | grep "Private key loaded"
+   
+   # Expected: "Private key loaded securely" with source="encrypted"
+   ```
+
+8. **Verify trading functionality:**
+   ```bash
+   # Test wallet connection (requires ADMIN_TOKEN)
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3000/status | jq '.walletAddress'
+   
+   # Should return wallet address, not null
+   ```
+
+9. **Document rotation:**
+   ```bash
+   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) - ENCRYPTION_KEY rotated successfully" >> logs/security-ops.log
+   ```
+
+#### Rollback Procedure
+
+If decryption fails after restart:
+
+1. **Stop the bot immediately**
+2. **Restore old .env values:**
+   ```bash
+   ENCRYPTION_KEY=old_passphrase_here
+   ENCRYPTED_PRIVATE_KEY=old_encrypted_data_here
+   ```
+3. **Restart bot**
+4. **Investigate failure before retrying**
+
+### Emergency Secret Revocation
+
+**Use case:** Immediate response to secret compromise or unauthorized access.
+
+#### ADMIN_TOKEN Compromise
+
+1. **Immediately generate new token:**
+   ```bash
+   NEW_TOKEN=$(openssl rand -hex 32)
+   ```
+
+2. **Update .env with new token only:**
+   ```bash
+   # Directly replace ADMIN_TOKEN
+   # Do NOT use dual-token rotation
+   ADMIN_TOKEN=new_token_here
+   ```
+
+3. **Restart bot immediately:**
+   ```bash
+   # Force restart (no graceful shutdown)
+   pkill -f "npm run dev" || pm2 restart bot
+   npm run dev
+   ```
+
+4. **Verify old token is rejected:**
+   ```bash
+   curl -H "Authorization: Bearer old_compromised_token" http://localhost:3000/status
+   # Expected: 401 Unauthorized
+   ```
+
+5. **Update all clients immediately**
+
+6. **Review access logs:**
+   ```bash
+   # Check for unauthorized access attempts (401 responses)
+   grep "401.*Unauthorized" logs/bot-$(date +%Y%m%d).log
+   
+   # Example: search for application auth-denied messages
+   grep "endpoint access denied" logs/bot-$(date +%Y%m%d).log
+   ```
+
+#### PRIVATE_KEY Compromise
+
+**⚠️ CRITICAL:** If private key is compromised, funds are at immediate risk.
+
+1. **Immediately stop the bot:**
+   ```bash
+   npm run kill
+   pkill -f "npm run dev"
+   ```
+
+2. **Transfer remaining funds:**
+   ```bash
+   # Use separate tool or web wallet to transfer funds to new wallet
+   # This is time-critical - do NOT delay
+   ```
+
+3. **Generate new wallet:**
+   ```bash
+   # Use secure offline method to generate new wallet
+   # Store new private key in KMS immediately
+   ```
+
+4. **Update bot configuration with new key:**
+   ```bash
+   # Update SECRET_SOURCE and related credentials
+   # Follow normal private key setup procedures
+   ```
+
+5. **Document incident:**
+   ```bash
+   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) - CRITICAL: Private key compromise - wallet rotated" >> logs/security-incidents.log
+   ```
+
+6. **Post-mortem:**
+   - Investigate how key was compromised
+   - Review and strengthen security procedures
+   - Update incident response procedures
+
+### Secret Backup and Recovery
+
+#### Backup Procedures
+
+1. **Secure backup storage:**
+   - Store in encrypted password manager (1Password, LastPass, Bitwarden)
+   - Use hardware security key for additional protection
+   - Never store in plaintext files
+
+2. **What to backup:**
+   ```bash
+   # Essential secrets (store separately, never together)
+   - PRIVATE_KEY (unencrypted, for emergency recovery)
+   - ENCRYPTION_KEY (if using encrypted storage)
+   - ADMIN_TOKEN (current active token)
+   - AWS/Vault/Azure credentials (if using KMS)
+   ```
+
+3. **Backup verification:**
+   ```bash
+   # Periodically verify backups are accessible and valid
+   # Schedule: Monthly
+   ```
+
+#### Recovery Procedures
+
+**Scenario: Lost ENCRYPTION_KEY**
+
+1. Retrieve unencrypted PRIVATE_KEY from secure backup
+2. Generate new ENCRYPTION_KEY
+3. Follow ENCRYPTION_KEY rotation procedure above
+
+**Scenario: Lost ADMIN_TOKEN**
+
+1. If bot is accessible:
+   - Generate new token
+   - Update .env
+   - Restart bot
+2. If bot is not accessible:
+   - Access server directly
+   - Update .env file
+   - Restart bot
+
+**Scenario: Lost PRIVATE_KEY (unrecoverable)**
+
+1. Funds in compromised wallet cannot be recovered
+2. Generate new wallet
+3. Configure bot with new wallet
+4. Fund new wallet for trading
+
+### Pre-Rotation Checklist
+
+Before rotating any secret, verify:
+
+- [ ] Backup of current secret is secure and accessible
+- [ ] Maintenance window scheduled (if downtime required)
+- [ ] All dependent systems identified and documented
+- [ ] Rollback procedure understood and tested
+- [ ] Monitoring in place to detect issues
+- [ ] Team notified of rotation timing
+- [ ] Access logs reviewed for suspicious activity
+
+### Post-Rotation Checklist
+
+After rotating any secret, verify:
+
+- [ ] New secret works correctly
+- [ ] Old secret is rejected (where applicable)
+- [ ] All dependent systems updated
+- [ ] No errors in logs
+- [ ] Trading functionality verified
+- [ ] Rotation documented in operations log
+- [ ] New secret backed up securely
+- [ ] Old secret securely deleted from all locations
+
+### Rotation Schedule
+
+| Secret Type | Environment | Frequency | Required By |
+|-------------|-------------|-----------|-------------|
+| ADMIN_TOKEN | All | 30 days | Security best practice |
+| ENCRYPTION_KEY | Production | 90 days | Security best practice |
+| PRIVATE_KEY | All | On compromise only | Emergency response |
+| AWS credentials | Production | 90 days | AWS security best practice |
+| Vault token | Production | 90 days | Vault policy |
+| Azure credentials | Production | 90 days | Azure security best practice |
+
+### Compliance and Audit
+
+**Logging requirements:**
+
+All secret rotations must be logged with:
+- Timestamp (UTC)
+- Secret type rotated
+- Operator who performed rotation
+- Success/failure status
+- Any issues encountered
+
+**Log format:**
+```
+2026-02-18T14:30:00Z - ADMIN_TOKEN rotated successfully by operator@example.com
+2026-02-18T14:35:00Z - ENCRYPTION_KEY rotation initiated by operator@example.com
+2026-02-18T14:37:00Z - ENCRYPTION_KEY rotation completed successfully
+```
+
+**Audit trail:**
+
+Maintain separate security operations log:
+```bash
+# Create security ops log if it doesn't exist
+touch logs/security-ops.log
+chmod 600 logs/security-ops.log  # Restrict access
+
+# All secret operations logged here
+```
 
 ## Support
 

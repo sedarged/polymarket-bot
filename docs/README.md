@@ -34,6 +34,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Security & Audits
 - [Compliance Guide](./compliance.md) - 🚨 Geographic restrictions, ToS compliance, risk disclaimers
 - [Security Guide](./security.md) - 🔐 Private key security and best practices
+- [Secret Management Quick Reference](./SECRET_MANAGEMENT_QUICK_REFERENCE.md) - 📋 **One-page operational guide** (print for quick reference)
 - [Security Audit Report](../REPORTS/AUDIT.md) - Comprehensive security & reliability audit (27 findings)
 - [Gap Analysis](../REPORTS/GAP_ANALYSIS.md) - Production readiness assessment
 - [Reports Index](../REPORTS/README.md) - All audit and analysis reports
