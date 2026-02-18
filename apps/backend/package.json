@@ -27,7 +27,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.991.0",
+    "@aws-sdk/client-secrets-manager": "^3.992.0",
     "@azure/identity": "^4.13.0",
     "@azure/keyvault-secrets": "^4.10.0",
     "@ethersproject/wallet": "^5.8.0",
