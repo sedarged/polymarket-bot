@@ -23,6 +23,7 @@
     "backtest": "tsx src/index.ts backtest",
     "example:execution": "tsx examples/execution-service-example.ts",
     "example:validate": "tsx examples/validate-strategy-example.ts",
+    "example:hotreload": "tsx examples/strategyHotReload.ts",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",

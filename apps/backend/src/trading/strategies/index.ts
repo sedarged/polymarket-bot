@@ -15,6 +15,7 @@
 export * from './types';
 export { BaseStrategy } from './BaseStrategy';
 export { StrategyFactory } from './StrategyFactory';
+export { StrategyManager, type StrategyManagerConfig, type StrategyInstance, type StrategyReloadEvent, type StrategyErrorEvent } from './StrategyManager';
 export { StrategyValidator, validateStrategy, type ValidationResult, type ValidationReport, type ValidationCriteria } from './validator';
 
 // Strategy implementations
