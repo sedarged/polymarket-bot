@@ -136,7 +136,8 @@ describe('StrategyOrchestrator', () => {
       await orchestrator.addStrategy(strategy);
       expect(orchestrator.getStrategyCount()).toBe(1);
 
-      await orchestrator.removeStrategy(strategy.id);
+      // Use the config's strategyId
+      await orchestrator.removeStrategy('random-1');
       expect(orchestrator.getStrategyCount()).toBe(0);
     });
 
@@ -158,15 +159,15 @@ describe('StrategyOrchestrator', () => {
       await orchestrator.addStrategy(strategy);
       expect(addedSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          strategyId: strategy.id,
+          strategyId: 'random-1',
           strategyName: strategy.name,
         })
       );
 
-      await orchestrator.removeStrategy(strategy.id);
+      await orchestrator.removeStrategy('random-1');
       expect(removedSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          strategyId: strategy.id,
+          strategyId: 'random-1',
         })
       );
     });
@@ -297,8 +298,9 @@ describe('StrategyOrchestrator', () => {
 
     it('should track execution statistics', async () => {
       const strategy = new RandomStrategy();
+      const strategyId = 'random-1';
       await strategy.initialize({
-        strategyId: 'random-1',
+        strategyId,
         type: 'random',
         enabled: true,
         params: { seed: 123 },
@@ -311,7 +313,7 @@ describe('StrategyOrchestrator', () => {
         await orchestrator.evaluateAll(mockMarketContext);
       }
 
-      const stats = orchestrator.getStrategyStats(strategy.id);
+      const stats = orchestrator.getStrategyStats(strategyId);
       
       expect(stats).toBeDefined();
       expect(stats?.totalEvaluations).toBe(5);
@@ -377,8 +379,9 @@ describe('StrategyOrchestrator', () => {
       await orchestrator.addStrategy(strategy1);
       await orchestrator.addStrategy(strategy2);
 
-      const state1 = orchestrator.getStrategyState(strategy1.id);
-      const state2 = orchestrator.getStrategyState(strategy2.id);
+      // Use config strategyId
+      const state1 = orchestrator.getStrategyState('iso-1');
+      const state2 = orchestrator.getStrategyState('iso-2');
 
       expect(state1).toBeDefined();
       expect(state2).toBeDefined();
@@ -439,8 +442,8 @@ describe('StrategyOrchestrator', () => {
       await orchestrator.addStrategy(strategy1);
       await orchestrator.addStrategy(strategy2);
 
-      // Update position for strategy1
-      orchestrator.updateStrategyPosition(strategy1.id, 'token-123', {
+      // Update position for strategy1 using config strategyId
+      orchestrator.updateStrategyPosition('pos-1', 'token-123', {
         tokenId: 'token-123',
         size: 10,
         avgPrice: 0.5,
@@ -448,8 +451,8 @@ describe('StrategyOrchestrator', () => {
         realizedPnl: 0,
       });
 
-      // Update different position for strategy2
-      orchestrator.updateStrategyPosition(strategy2.id, 'token-123', {
+      // Update different position for strategy2 using config strategyId
+      orchestrator.updateStrategyPosition('pos-2', 'token-123', {
         tokenId: 'token-123',
         size: 20,
         avgPrice: 0.6,
@@ -457,8 +460,8 @@ describe('StrategyOrchestrator', () => {
         realizedPnl: 0,
       });
 
-      const state1 = orchestrator.getStrategyState(strategy1.id);
-      const state2 = orchestrator.getStrategyState(strategy2.id);
+      const state1 = orchestrator.getStrategyState('pos-1');
+      const state2 = orchestrator.getStrategyState('pos-2');
 
       const position1 = state1?.positions.get('token-123');
       const position2 = state2?.positions.get('token-123');
@@ -470,9 +473,10 @@ describe('StrategyOrchestrator', () => {
     });
 
     it('should record last evaluation in isolated state', async () => {
+      const strategyId = 'random-1';
       const strategy = new RandomStrategy();
       await strategy.initialize({
-        strategyId: 'random-1',
+        strategyId,
         type: 'random',
         enabled: true,
         params: { seed: 456 },
@@ -482,7 +486,7 @@ describe('StrategyOrchestrator', () => {
       
       await orchestrator.evaluateAll(mockMarketContext);
 
-      const state = orchestrator.getStrategyState(strategy.id);
+      const state = orchestrator.getStrategyState(strategyId);
       
       expect(state?.lastEvaluation).toBeDefined();
       expect(state?.lastDecision).toBeDefined();
@@ -688,6 +692,7 @@ describe('StrategyOrchestrator', () => {
 
   describe('Conflict Resolution', () => {
     it('should resolve conflicts by highest confidence', async () => {
+      const strategyId1 = 'high-conf-strategy';
       const highConfidenceStrategy: IStrategy = {
         id: 'high-conf-strategy',
         name: 'HighConf',
@@ -706,7 +711,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 'high-1',
+            strategyId: strategyId1,
             type: 'high',
             enabled: true,
             params: {},
@@ -714,6 +719,7 @@ describe('StrategyOrchestrator', () => {
         },
       };
 
+      const strategyId2 = 'low-conf-strategy';
       const lowConfidenceStrategy: IStrategy = {
         id: 'low-conf-strategy',
         name: 'LowConf',
@@ -732,7 +738,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 'low-1',
+            strategyId: strategyId2,
             type: 'low',
             enabled: true,
             params: {},
@@ -747,7 +753,7 @@ describe('StrategyOrchestrator', () => {
 
       expect(result.hasConflicts).toBe(true);
       expect(result.resolvedDecision).toBeDefined();
-      expect(result.resolvedDecision?.strategyId).toBe('high-conf-strategy');
+      expect(result.resolvedDecision?.strategyId).toBe(strategyId1);
       expect(result.resolvedDecision?.decision.confidence).toBe(0.9);
     });
 
@@ -756,6 +762,7 @@ describe('StrategyOrchestrator', () => {
         conflictResolution: 'first-wins',
       });
 
+      const strategyId1 = 'strategy-1';
       const strategy1: IStrategy = {
         id: 'strategy-1',
         name: 'First',
@@ -772,7 +779,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 's1',
+            strategyId: strategyId1,
             type: 's1',
             enabled: true,
             params: {},
@@ -780,6 +787,7 @@ describe('StrategyOrchestrator', () => {
         },
       };
 
+      const strategyId2 = 'strategy-2';
       const strategy2: IStrategy = {
         id: 'strategy-2',
         name: 'Second',
@@ -796,7 +804,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 's2',
+            strategyId: strategyId2,
             type: 's2',
             enabled: true,
             params: {},
@@ -812,7 +820,7 @@ describe('StrategyOrchestrator', () => {
       expect(result.hasConflicts).toBe(true);
       expect(result.resolvedDecision).toBeDefined();
       // First-wins should select the first strategy, regardless of confidence
-      expect(['strategy-1', 'strategy-2']).toContain(result.resolvedDecision?.strategyId);
+      expect([strategyId1, strategyId2]).toContain(result.resolvedDecision?.strategyId);
 
       await firstOrchestrator.cleanup();
     });
@@ -822,6 +830,7 @@ describe('StrategyOrchestrator', () => {
         conflictResolution: 'merge',
       });
 
+      const strategyId1 = 'buy-1';
       const buyStrategy1: IStrategy = {
         id: 'buy-1',
         name: 'Buy1',
@@ -840,7 +849,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 'b1',
+            strategyId: strategyId1,
             type: 'b1',
             enabled: true,
             params: {},
@@ -848,6 +857,7 @@ describe('StrategyOrchestrator', () => {
         },
       };
 
+      const strategyId2 = 'buy-2';
       const buyStrategy2: IStrategy = {
         id: 'buy-2',
         name: 'Buy2',
@@ -866,7 +876,7 @@ describe('StrategyOrchestrator', () => {
         },
         getConfig() {
           return {
-            strategyId: 'b2',
+            strategyId: strategyId2,
             type: 'b2',
             enabled: true,
             params: {},
@@ -884,7 +894,7 @@ describe('StrategyOrchestrator', () => {
       expect(result.resolvedDecision?.strategyId).toBe('merged');
       expect(result.resolvedDecision?.decision.action).toBe('buy');
       expect(result.resolvedDecision?.decision.rationale).toContain('Merged from');
-      expect(result.resolvedDecision?.decision.metadata?.mergedFrom).toEqual(['buy-1', 'buy-2']);
+      expect(result.resolvedDecision?.decision.metadata?.mergedFrom).toEqual([strategyId1, strategyId2]);
 
       await mergeOrchestrator.cleanup();
     });
@@ -923,9 +933,10 @@ describe('StrategyOrchestrator', () => {
     });
 
     it('should track per-strategy metrics', async () => {
+      const strategyId = 'random-1';
       const strategy = new RandomStrategy();
       await strategy.initialize({
-        strategyId: 'random-1',
+        strategyId,
         type: 'random',
         enabled: true,
         params: { seed: 999 },
@@ -941,8 +952,8 @@ describe('StrategyOrchestrator', () => {
       const allStats = orchestrator.getAllStats();
       
       expect(Object.keys(allStats)).toHaveLength(1);
-      expect(allStats[strategy.id]).toBeDefined();
-      expect(allStats[strategy.id].totalEvaluations).toBe(3);
+      expect(allStats[strategyId]).toBeDefined();
+      expect(allStats[strategyId].totalEvaluations).toBe(3);
     });
   });
 

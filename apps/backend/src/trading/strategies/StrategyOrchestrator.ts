@@ -130,8 +130,11 @@ export class StrategyOrchestrator extends EventEmitter {
       );
     }
 
-    if (this.strategies.has(strategy.id)) {
-      throw new Error(`Strategy ${strategy.id} already exists`);
+    const strategyConfig = strategy.getConfig();
+    const strategyId = strategyConfig.strategyId;
+
+    if (this.strategies.has(strategyId)) {
+      throw new Error(`Strategy with ID ${strategyId} already exists`);
     }
 
     const context: StrategyExecutionContext = {
@@ -147,16 +150,17 @@ export class StrategyOrchestrator extends EventEmitter {
       },
     };
 
-    this.strategies.set(strategy.id, context);
+    this.strategies.set(strategyId, context);
 
     logger.info('[Orchestrator] Strategy added', {
-      strategyId: strategy.id,
+      strategyId,
       strategyName: strategy.name,
+      strategyType: strategy.id,
       totalStrategies: this.strategies.size,
     });
 
     this.emit('strategyAdded', {
-      strategyId: strategy.id,
+      strategyId,
       strategyName: strategy.name,
       timestamp: new Date().toISOString(),
     });
