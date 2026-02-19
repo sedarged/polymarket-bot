@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0](https://github.com/sedarged/polymarket-bot/compare/v2.7.0...v2.8.0) (2026-02-19)
+
+
+### Features
+
+* implement fee-rate checking mechanism (GAP-019) ([7836210](https://github.com/sedarged/polymarket-bot/commit/7836210c95514915bbc2e77045e42aebde79e0c3))
+
+
+### Bug Fixes
+
+* address code review feedback (GAP-019) ([eed8a6b](https://github.com/sedarged/polymarket-bot/commit/eed8a6ba361056caa838f35c486a629a34c8900c))
+
 ## [2.7.0](https://github.com/sedarged/polymarket-bot/compare/v2.6.0...v2.7.0) (2026-02-19)
 
 
