@@ -227,21 +227,39 @@ export class ExecutionService {
         );
       }
 
-      // Route to appropriate execution method based on order type
+      // Route to appropriate execution method based on order type,
+      // optionally applying retry logic when a retry policy is provided.
       let result: OrderExecutionResult;
-      
-      switch (request.params.orderType) {
-        case OrderTypeEnum.MARKET:
-          result = await this.executeMarketOrder(request, startTime);
-          break;
-        case OrderTypeEnum.LIMIT:
-          result = await this.executeLimitOrder(request, startTime);
-          break;
-        case OrderTypeEnum.CONDITIONAL:
-          result = await this.executeConditionalOrder(request, startTime);
-          break;
-        default:
-          throw new Error(`Unsupported order type: ${(request.params as OrderParams).orderType}`);
+      let attemptCount = 0;
+
+      const executeOnce = async (): Promise<OrderExecutionResult> => {
+        // The first invocation is the initial attempt; subsequent invocations are retries.
+        if (attemptCount > 0) {
+          retryAttempts += 1;
+        }
+        attemptCount += 1;
+
+        switch (request.params.orderType) {
+          case OrderTypeEnum.MARKET:
+            return await this.executeMarketOrder(request, startTime);
+          case OrderTypeEnum.LIMIT:
+            return await this.executeLimitOrder(request, startTime);
+          case OrderTypeEnum.CONDITIONAL:
+            return await this.executeConditionalOrder(request, startTime);
+          default:
+            throw new Error(`Unsupported order type: ${(request.params as OrderParams).orderType}`);
+        }
+      };
+
+      if (request.context.retryPolicy) {
+        // Apply retry logic with custom policy
+        result = await retry(executeOnce, {
+          attempts: request.context.retryPolicy.maxAttempts,
+          delay: request.context.retryPolicy.initialDelayMs,
+        });
+      } else {
+        // No retry policy, execute once
+        result = await executeOnce();
       }
 
       result.retryAttempts = retryAttempts;
@@ -307,12 +325,12 @@ export class ExecutionService {
     });
 
     // Use TradingClient to place the order
-    const order = await this.tradingClient.createOrder({
-      tokenId: params.tokenId,
-      side: params.side,
+    const order = await this.tradingClient.createOrder(
+      params.tokenId,
+      params.side,
       price,
-      size: params.size,
-    });
+      params.size
+    );
 
     const executionTimeMs = Date.now() - startTime;
 
@@ -345,12 +363,12 @@ export class ExecutionService {
     });
 
     // Use TradingClient to place the limit order
-    const order = await this.tradingClient.createOrder({
-      tokenId: params.tokenId,
-      side: params.side,
-      price: params.price,
-      size: params.size,
-    });
+    const order = await this.tradingClient.createOrder(
+      params.tokenId,
+      params.side,
+      params.price,
+      params.size
+    );
 
     const executionTimeMs = Date.now() - startTime;
 

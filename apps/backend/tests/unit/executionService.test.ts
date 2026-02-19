@@ -78,12 +78,12 @@ describe('ExecutionService', () => {
       expect(result.order).toEqual(mockOrder);
       expect(result.executionId).toBe('exec-1');
       expect(result.retryAttempts).toBe(0);
-      expect(mockTradingClient.createOrder).toHaveBeenCalledWith({
-        tokenId: 'token-456',
-        side: 'BUY',
-        price: '0.99',
-        size: '100',
-      });
+      expect(mockTradingClient.createOrder).toHaveBeenCalledWith(
+        'token-456',
+        'BUY',
+        '0.99',
+        '100'
+      );
     });
 
     it('should execute a market SELL order successfully', async () => {
@@ -116,12 +116,12 @@ describe('ExecutionService', () => {
 
       expect(result.status).toBe(ExecutionStatus.SUCCESS);
       expect(result.order).toEqual(mockOrder);
-      expect(mockTradingClient.createOrder).toHaveBeenCalledWith({
-        tokenId: 'token-456',
-        side: 'SELL',
-        price: '0.01',
-        size: '50',
-      });
+      expect(mockTradingClient.createOrder).toHaveBeenCalledWith(
+        'token-456',
+        'SELL',
+        '0.01',
+        '50'
+      );
     });
 
     it('should handle market order failure', async () => {
@@ -182,12 +182,12 @@ describe('ExecutionService', () => {
 
       expect(result.status).toBe(ExecutionStatus.SUCCESS);
       expect(result.order).toEqual(mockOrder);
-      expect(mockTradingClient.createOrder).toHaveBeenCalledWith({
-        tokenId: 'token-789',
-        side: 'BUY',
-        price: '0.55',
-        size: '200',
-      });
+      expect(mockTradingClient.createOrder).toHaveBeenCalledWith(
+        'token-789',
+        'BUY',
+        '0.55',
+        '200'
+      );
     });
 
     it('should handle limit order with different time in force', async () => {
