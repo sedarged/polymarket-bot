@@ -86,7 +86,7 @@ export class StrategyManager extends EventEmitter {
       watchEnabled: config.watchEnabled ?? false,
       debounceDelayMs: config.debounceDelayMs ?? 500,
       autoReload: config.autoReload ?? true,
-      watchDirectory: config.watchDirectory ?? path.join(process.cwd(), 'apps', 'backend', 'src', 'trading', 'strategies'),
+      watchDirectory: config.watchDirectory ?? path.join(__dirname),
     };
 
     logger.info('StrategyManager initialized', {
