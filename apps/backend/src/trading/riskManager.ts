@@ -73,7 +73,7 @@ export class RiskManager {
     });
 
     // Initialize fee rate validator (GAP-019)
-    this.feeRateValidator = new FeeRateValidator(this.config.maxFeeRateBps);
+    this.feeRateValidator = new FeeRateValidator(this.config.maxFeeRateBps ?? 50);
 
     // Set up circuit breaker event listeners for logging
     this.circuitBreaker.on('open', (metrics) => {
