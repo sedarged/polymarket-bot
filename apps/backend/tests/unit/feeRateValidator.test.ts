@@ -26,6 +26,24 @@ describe('FeeRateValidator', () => {
         'maxFeeRateBps must be between 0 and 10000'
       );
     });
+
+    it('should reject NaN as max fee rate', () => {
+      expect(() => new FeeRateValidator(NaN)).toThrow(
+        'maxFeeRateBps must be a finite number'
+      );
+    });
+
+    it('should reject Infinity as max fee rate', () => {
+      expect(() => new FeeRateValidator(Infinity)).toThrow(
+        'maxFeeRateBps must be a finite number'
+      );
+    });
+
+    it('should reject -Infinity as max fee rate', () => {
+      expect(() => new FeeRateValidator(-Infinity)).toThrow(
+        'maxFeeRateBps must be a finite number'
+      );
+    });
   });
 
   describe('checkFeeRate', () => {
@@ -82,6 +100,24 @@ describe('FeeRateValidator', () => {
       expect(result.allowed).toBe(false);
       // tokenId is used for logging but not returned in result
     });
+
+    it('should reject NaN fee rate', () => {
+      const result = validator.checkFeeRate(NaN);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('must be a finite number');
+    });
+
+    it('should reject Infinity fee rate', () => {
+      const result = validator.checkFeeRate(Infinity);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('must be a finite number');
+    });
+
+    it('should reject -Infinity fee rate', () => {
+      const result = validator.checkFeeRate(-Infinity);
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('must be a finite number');
+    });
   });
 
   describe('getMaxFeeRateBps', () => {
@@ -115,6 +151,18 @@ describe('FeeRateValidator', () => {
     it('should reject max fee rate above 10000', () => {
       expect(() => validator.setMaxFeeRateBps(10001)).toThrow(
         'maxFeeRateBps must be between 0 and 10000'
+      );
+    });
+
+    it('should reject NaN when updating max fee rate', () => {
+      expect(() => validator.setMaxFeeRateBps(NaN)).toThrow(
+        'maxFeeRateBps must be a finite number'
+      );
+    });
+
+    it('should reject Infinity when updating max fee rate', () => {
+      expect(() => validator.setMaxFeeRateBps(Infinity)).toThrow(
+        'maxFeeRateBps must be a finite number'
       );
     });
 

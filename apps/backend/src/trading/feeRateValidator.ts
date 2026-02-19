@@ -27,6 +27,9 @@ export class FeeRateValidator {
   private maxFeeRateBps: number;
 
   constructor(maxFeeRateBps: number) {
+    if (!Number.isFinite(maxFeeRateBps)) {
+      throw new Error('maxFeeRateBps must be a finite number');
+    }
     if (maxFeeRateBps < 0 || maxFeeRateBps > 10000) {
       throw new Error('maxFeeRateBps must be between 0 and 10000 (0% to 100%)');
     }
@@ -48,6 +51,20 @@ export class FeeRateValidator {
   checkFeeRate(feeRateBps: number | undefined, tokenId?: string): FeeRateCheckResult {
     // Treat undefined or null fee rate as 0 (no fee)
     const actualFeeRateBps = feeRateBps ?? 0;
+    
+    // Validate fee rate is finite
+    if (!Number.isFinite(actualFeeRateBps)) {
+      logger.warn('Invalid non-finite fee rate detected', {
+        feeRateBps: actualFeeRateBps,
+        tokenId,
+      });
+      return {
+        allowed: false,
+        reason: `Invalid fee rate: ${actualFeeRateBps} bps (must be a finite number)`,
+        feeRateBps: actualFeeRateBps,
+        maxFeeRateBps: this.maxFeeRateBps,
+      };
+    }
     
     // Validate fee rate is non-negative
     if (actualFeeRateBps < 0) {
@@ -103,6 +120,9 @@ export class FeeRateValidator {
    * @param newMaxFeeRateBps - New maximum fee rate in basis points
    */
   setMaxFeeRateBps(newMaxFeeRateBps: number): void {
+    if (!Number.isFinite(newMaxFeeRateBps)) {
+      throw new Error('maxFeeRateBps must be a finite number');
+    }
     if (newMaxFeeRateBps < 0 || newMaxFeeRateBps > 10000) {
       throw new Error('maxFeeRateBps must be between 0 and 10000 (0% to 100%)');
     }

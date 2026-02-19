@@ -536,6 +536,43 @@ export function createServer(): http.Server {
           batchSize: orders.length,
         });
 
+        // Perform risk checks for each order (GAP-019)
+        if (riskManager) {
+          // Get current state for risk checks
+          const currentOrders = tradingClient.getOrders();
+          const currentPositions = tradingClient.getPositions();
+          
+          for (let i = 0; i < orders.length; i++) {
+            const order = orders[i];
+            
+            // Check order against risk limits including fee rate
+            const riskCheck = riskManager.checkOrder(
+              order.tokenId,
+              order.side,
+              order.size,
+              currentOrders,
+              currentPositions,
+              order.feeRateBps // Fee rate from order request (optional)
+            );
+            
+            if (!riskCheck.allowed) {
+              logger.warn('Order rejected by risk manager', {
+                orderIndex: i,
+                tokenId: order.tokenId,
+                reason: riskCheck.reason,
+                category: 'ORDER_FLOW',
+              });
+              
+              respondJson(res, 403, {
+                error: 'Order rejected by risk manager',
+                reason: riskCheck.reason,
+                orderIndex: i,
+              }, req);
+              return;
+            }
+          }
+        }
+
         // Create batch orders
         const result = await tradingClient.createOrdersBatch(orders);
 

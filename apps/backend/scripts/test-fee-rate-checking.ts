@@ -1,9 +1,10 @@
-#!/usr/bin/env node
 /**
  * Manual test script for fee rate checking (GAP-019)
  * 
  * This script demonstrates the fee rate validation in action
  * and allows manual verification of the feature.
+ * 
+ * Run with: npx tsx scripts/test-fee-rate-checking.ts
  */
 
 import { RiskManager } from '../src/trading/riskManager';
