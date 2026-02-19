@@ -475,7 +475,7 @@ export class StrategyValidator {
       }
 
       // Test 6: Rationale present
-      if (!decision.rationale || decision.rationale.trim() === '') {
+      if (!decision.rationale || typeof decision.rationale !== 'string' || decision.rationale.trim() === '') {
         results.push({
           check: 'behavior.rationale',
           passed: false,

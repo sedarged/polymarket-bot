@@ -9,8 +9,8 @@
  *   tsx examples/validate-strategy-example.ts
  */
 
-import { registerStrategies, StrategyFactory, StrategyValidator } from '../src/trading/strategies';
-import type { StrategyConfig, ValidationCriteria } from '../src/trading/strategies/types';
+import { registerStrategies, StrategyFactory, StrategyValidator, type ValidationCriteria } from '../src/trading/strategies';
+import type { StrategyConfig } from '../src/trading/strategies/types';
 
 async function main() {
   console.log('='.repeat(60));
