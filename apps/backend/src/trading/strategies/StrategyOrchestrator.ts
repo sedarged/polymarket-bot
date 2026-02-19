@@ -496,17 +496,21 @@ export class StrategyOrchestrator extends EventEmitter {
     const action = buyConfidence > sellConfidence ? 'buy' : 'sell';
     const side = action === 'buy' ? 'BUY' : 'SELL';
 
-    // Calculate merged confidence (weighted average)
-    const mergedConfidence = totalConfidence > 0 ? 
-      (action === 'buy' ? buyConfidence : sellConfidence) / totalConfidence : 0;
-
-    // Calculate average price and size
+    // Calculate merged confidence as average of winning side's confidences
     const relevantResults = action === 'buy' ? buyVotes : sellVotes;
-    const avgPrice = relevantResults.length > 0
-      ? relevantResults.reduce((sum, r) => sum + (r.decision.price || 0), 0) / relevantResults.length
+    const mergedConfidence = relevantResults.length > 0
+      ? relevantResults.reduce((sum, r) => sum + r.decision.confidence, 0) / relevantResults.length
+      : 0;
+
+    // Calculate average price and size (only from results with valid prices)
+    const withPrice = relevantResults.filter(r => typeof r.decision.price === 'number' && r.decision.price > 0);
+    const avgPrice = withPrice.length > 0
+      ? withPrice.reduce((sum, r) => sum + (r.decision.price || 0), 0) / withPrice.length
       : undefined;
-    const avgSize = relevantResults.length > 0
-      ? relevantResults.reduce((sum, r) => sum + (r.decision.size || 0), 0) / relevantResults.length
+
+    const withSize = relevantResults.filter(r => typeof r.decision.size === 'number' && r.decision.size > 0);
+    const avgSize = withSize.length > 0
+      ? withSize.reduce((sum, r) => sum + (r.decision.size || 0), 0) / withSize.length
       : undefined;
 
     return {

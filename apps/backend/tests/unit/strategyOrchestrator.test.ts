@@ -73,7 +73,7 @@ describe('StrategyOrchestrator', () => {
 
       const strategy2 = new RandomStrategy();
       await strategy2.initialize({
-        strategyId: 'random-2',
+        strategyId: 'random-1',  // Same strategyId as strategy1
         type: 'random',
         enabled: true,
         params: {},
@@ -81,10 +81,8 @@ describe('StrategyOrchestrator', () => {
 
       await orchestrator.addStrategy(strategy1);
       
-      // Both instances have the same strategy.id (because they're the same class)
-      // But they can coexist if they have different instances
-      // Let's test the actual duplicate prevention
-      await expect(orchestrator.addStrategy(strategy1)).rejects.toThrow('already exists');
+      // Should reject second strategy with same strategyId
+      await expect(orchestrator.addStrategy(strategy2)).rejects.toThrow('already exists');
     });
 
     it('should enforce maximum strategy limit', async () => {
