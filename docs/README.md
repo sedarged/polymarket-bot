@@ -102,6 +102,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Architecture Overview](./architecture-overview.md) - Plain language system explanation
 - [Architecture Decision Records (ADR)](./migration-log.md) - Key architectural decisions and rationale
   - Complete list in [adr/ directory](./adr/)
+  - [ADR-0007: Order Execution Service](./adr/0007-order-execution-service.md) - Order execution architecture (GAP-006)
+- [Order Execution Guide](./order-execution-guide.md) - 📋 **Usage guide for ExecutionService** (GAP-006)
+  - Market, limit, and conditional order examples
+  - Error handling and retry strategies
+  - Integration with trading strategies
 - [Original PR Plan](./plan.md) - Original 10-PR rollout plan
 - [Small PR Plan](./small-pr-plan.md) - Detailed 13-PR breakdown addressing audit fixes
 
