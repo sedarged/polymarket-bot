@@ -412,14 +412,15 @@ export class BacktestEngine {
     }
     
     // Build strategy config from backtest config
+    const seed = config.seed ?? config.strategyConfig?.seed;
     const strategyConfig = {
       strategyId: config.strategyId,
       type: strategyType,
       enabled: true,
       params: {
         ...config.strategyConfig,
-        // Pass seed from backtest config to strategy for reproducibility
-        seed: config.seed,
+        // Prefer explicit backtest seed; fall back to strategyConfig.seed.
+        ...(seed !== undefined ? { seed } : {}),
       },
     };
 
