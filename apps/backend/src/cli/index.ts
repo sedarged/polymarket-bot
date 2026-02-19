@@ -449,14 +449,14 @@ export async function backtestCommand(options: Record<string, unknown>): Promise
     // Run backtest
     const backtestId = await backtestEngine.runBacktest({
       strategyId,
-      strategyConfig: { ...strategyConfig, seed },
+      strategyConfig: { ...strategyConfig, seed: seed ?? strategyConfig?.seed },
       startDate,
       endDate,
       markets: marketIds,
       initialBalance,
       slippage,
       feeRate,
-      seed,
+      seed: seed ?? strategyConfig?.seed,
     });
 
     // Get results
