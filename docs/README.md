@@ -77,6 +77,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Development Workflow](./DEV_WORKFLOW.md) - Mandatory documentation maintenance procedures
+- [Strategy Hot-Reload](./STRATEGY_HOT_RELOAD.md) - Update strategies without restarting
 - [Configuration Management](./configuration-management.md) - 🔧 Runtime configuration management with hot-reload (GAP-003)
 - [Logging Guide](./LOGGING.md) - 📝 Categorized logging with Pino (best practices, examples, categories)
 - [Logging Migration Guide](./LOGGING_MIGRATION.md) - 🔄 Examples for migrating to categorized logging
