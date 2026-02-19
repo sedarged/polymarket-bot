@@ -29,7 +29,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.992.0",
+    "@aws-sdk/client-secrets-manager": "^3.993.0",
     "@azure/identity": "^4.13.0",
     "@azure/keyvault-secrets": "^4.10.0",
     "@ethersproject/wallet": "^5.8.0",
@@ -51,7 +51,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.0",
     "@vitest/coverage-v8": "^4.0.18",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
