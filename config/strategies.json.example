@@ -17,7 +17,6 @@
     "enabled": true,
     "params": {
       "lookbackPeriod": 15,
-      "stdDevThreshold": 2.0,
       "entryThreshold": 2.5,
       "exitThreshold": 0.5,
       "maxPositionSize": 75,

@@ -64,7 +64,6 @@ export function registerStrategies(): void {
       enabled: true,
       params: {
         lookbackPeriod: 20,
-        stdDevThreshold: 2.0,
         minSpread: 0.01,
         maxPositionSize: 50,
         entryThreshold: 2.0,

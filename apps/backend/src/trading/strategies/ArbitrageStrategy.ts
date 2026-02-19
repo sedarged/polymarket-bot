@@ -37,6 +37,7 @@ interface ArbitrageOpportunity {
   yesPrice: number;
   noPrice: number;
   profitBps: number;
+  profitPerUnit: number; // Profit per unit after fees
   maxSize: number;
 }
 
@@ -186,6 +187,7 @@ export class ArbitrageStrategy extends BaseStrategy {
         yesPrice: yesAsk,
         noPrice: noAsk,
         profitBps: buyBothProfitBps,
+        profitPerUnit: buyBothProfit,
         maxSize,
       };
     }
@@ -212,6 +214,7 @@ export class ArbitrageStrategy extends BaseStrategy {
         yesPrice: yesBid,
         noPrice: noBid,
         profitBps: sellBothProfitBps,
+        profitPerUnit: sellBothProfit,
         maxSize,
       };
     }
@@ -245,7 +248,7 @@ export class ArbitrageStrategy extends BaseStrategy {
         noPrice: opportunity.noPrice,
         totalCost: opportunity.yesPrice + opportunity.noPrice,
         profitBps: opportunity.profitBps,
-        expectedProfit: (1.0 - (opportunity.yesPrice + opportunity.noPrice)) * size,
+        expectedProfit: opportunity.profitPerUnit * size,
         needsNoLeg: true, // Signal that we need to also buy NO tokens
       },
     };
@@ -289,7 +292,7 @@ export class ArbitrageStrategy extends BaseStrategy {
         noPrice: opportunity.noPrice,
         totalRevenue: opportunity.yesPrice + opportunity.noPrice,
         profitBps: opportunity.profitBps,
-        expectedProfit: ((opportunity.yesPrice + opportunity.noPrice) - 1.0) * size,
+        expectedProfit: opportunity.profitPerUnit * size,
         needsNoLeg: true, // Signal that we need to also sell NO tokens
       },
     };
