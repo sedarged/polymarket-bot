@@ -139,7 +139,7 @@ interface StrategyOrchestratorConfig {
 
 1. **highest-confidence**: Select the decision with the highest confidence score
 2. **first-wins**: Use the first strategy's decision (useful for priority-based orchestration)
-3. **merge**: Combine decisions using weighted average based on confidence
+3. **merge**: Combine decisions using confidence-weighted averaging (each strategy's contribution is weighted by its confidence)
 
 ## Events
 
