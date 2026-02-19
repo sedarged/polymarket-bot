@@ -17,7 +17,6 @@
  */
 
 import http from 'http';
-import { parse as parseUrl } from 'url';
 import { logger } from '../utils/logger';
 import type { StrategyManager } from '../trading/strategies/StrategyManager';
 
@@ -25,7 +24,7 @@ import type { StrategyManager } from '../trading/strategies/StrategyManager';
  * Handle GET /api/strategies - List all loaded strategies
  */
 export async function handleGetStrategiesInfo(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager
 ): Promise<void> {
@@ -73,7 +72,7 @@ export async function handleGetStrategiesInfo(
  * Handle GET /api/strategies/:id - Get strategy details
  */
 export async function handleGetStrategyInfo(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager,
   strategyId: string
@@ -255,7 +254,7 @@ export async function handleReloadStrategy(
  * Handle POST /api/strategies/reload-all - Reload all strategies
  */
 export async function handleReloadAllStrategies(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager
 ): Promise<void> {
@@ -311,7 +310,7 @@ export async function handleReloadAllStrategies(
  * Handle DELETE /api/strategies/:id - Unload a strategy
  */
 export async function handleUnloadStrategy(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager,
   strategyId: string
@@ -348,7 +347,7 @@ export async function handleUnloadStrategy(
  * Handle GET /api/strategies/watching - Get watching status
  */
 export async function handleGetWatchingStatus(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager
 ): Promise<void> {
@@ -383,7 +382,7 @@ export async function handleGetWatchingStatus(
  * Handle POST /api/strategies/watching/start - Start watching
  */
 export async function handleStartWatching(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager
 ): Promise<void> {
@@ -417,7 +416,7 @@ export async function handleStartWatching(
  * Handle POST /api/strategies/watching/stop - Stop watching
  */
 export async function handleStopWatching(
-  req: http.IncomingMessage,
+  _req: http.IncomingMessage,
   res: http.ServerResponse,
   strategyManager: StrategyManager
 ): Promise<void> {

@@ -456,9 +456,39 @@ export class StrategyManager extends EventEmitter {
   }
 
   /**
+   * Check if rate limit has been exceeded
+   */
+  private isRateLimitExceeded(): boolean {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60000;
+    
+    // Remove timestamps older than 1 minute
+    this.fileChangeTimestamps = this.fileChangeTimestamps.filter(ts => ts > oneMinuteAgo);
+    
+    // Check if we've exceeded the limit
+    if (this.fileChangeTimestamps.length >= this.config.maxFileChangesPerMinute) {
+      logger.warn('File change rate limit exceeded, ignoring changes', {
+        category: 'security',
+        count: this.fileChangeTimestamps.length,
+        limit: this.config.maxFileChangesPerMinute,
+      });
+      return true;
+    }
+    
+    // Track this event
+    this.fileChangeTimestamps.push(now);
+    return false;
+  }
+
+  /**
    * Handle file change event with debouncing
    */
   private handleFileChange(fullPath: string, filename: string): void {
+    // Check rate limit for DoS protection
+    if (this.isRateLimitExceeded()) {
+      return;
+    }
+
     // Clear existing debounce timer
     const existingTimer = this.debounceTimers.get(fullPath);
     if (existingTimer) {
