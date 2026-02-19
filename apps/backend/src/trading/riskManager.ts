@@ -63,7 +63,9 @@ export class RiskManager {
     this.markets = new Map();
     if (this.config.markets) {
       for (const market of this.config.markets) {
-        this.markets.set(market.tokenId, market);
+        if (market.tokenId) {
+          this.markets.set(market.tokenId, market);
+        }
       }
     }
 
@@ -423,7 +425,9 @@ export class RiskManager {
     this.markets.clear();
     if (markets) {
       for (const market of markets) {
-        this.markets.set(market.tokenId, market);
+        if (market.tokenId) {
+          this.markets.set(market.tokenId, market);
+        }
       }
       logger.info('Updated per-market config', { marketCount: markets.length });
     } else {

@@ -393,7 +393,7 @@ The `maxPositionSize` field in markets configuration is automatically applied by
 3. **Order Validation**: For each order, RiskManager checks:
    - If the market has a specific `maxPositionSize` configured, use that limit
    - Otherwise, fall back to the global `RISK_MAX_EXPOSURE_PER_MARKET` limit
-4. **Hot-Reload**: When markets.json is updated, RiskManager automatically applies the new limits
+4. **Hot-Reload**: RiskManager provides an `updateMarkets()` method to apply new limits when markets.json changes (to be wired with ConfigManager's `configChanged` event in future work)
 
 **Example:**
 
