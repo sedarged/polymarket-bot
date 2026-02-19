@@ -1,5 +1,5 @@
 /**
- * Order Execution Service (GAP-006)
+ * Order Execution Service (GAP-006, GAP-014)
  * 
  * Provides a unified interface for executing market, limit, and conditional orders
  * with robust error handling, retry logic, and comprehensive logging.
@@ -10,11 +10,13 @@
  * - Order rejection handling with fallback strategies
  * - Comprehensive execution logging and audit trail
  * - Integration with existing TradingClient, RiskManager, and AuditTrail
+ * - Pre-trade liquidity validation (GAP-014)
  * 
  * Architecture:
  * - Thin abstraction layer over existing TradingClient
  * - Leverages existing validation, retry, and audit infrastructure
  * - Provides order type-specific execution strategies
+ * - Optional liquidity validation before order placement
  * 
  * @see {@link ../../../../REPORTS/AUDIT.md}
  * @see {@link ../../../../REPORTS/GAP_ANALYSIS.md}
@@ -24,6 +26,8 @@ import { TradingClient } from '../clients/tradingClient';
 import { logger } from '../utils/logger';
 import { retry } from '../utils/retry';
 import { Order, Fill } from '@polymarket/shared';
+import { LiquidityValidator } from './liquidityValidator';
+import type { marketFeedService } from '../server/marketFeedService';
 
 /**
  * Order types supported by the execution service
@@ -169,7 +173,8 @@ export class InsufficientLiquidityError extends Error {
   constructor(
     message: string,
     public orderParams: OrderParams,
-    public availableLiquidity?: string
+    public availableLiquidity?: string,
+    public requiredLiquidity?: string
   ) {
     super(message);
     this.name = 'InsufficientLiquidityError';
@@ -191,11 +196,28 @@ export class ExecutionTimeoutError extends Error {
  * Order Execution Service
  * 
  * Main service class for executing orders with robust error handling and retry logic.
+ * Optionally validates liquidity before placing orders (GAP-014).
  */
 export class ExecutionService {
+  private liquidityValidator: LiquidityValidator | null;
+  private marketFeedService: typeof marketFeedService | null;
+
   constructor(
-    private tradingClient: TradingClient
-  ) {}
+    private tradingClient: TradingClient,
+    options?: {
+      liquidityValidator?: LiquidityValidator;
+      marketFeedService?: typeof marketFeedService;
+    }
+  ) {
+    this.liquidityValidator = options?.liquidityValidator ?? null;
+    this.marketFeedService = options?.marketFeedService ?? null;
+
+    if (this.liquidityValidator && !this.marketFeedService) {
+      throw new Error(
+        'ExecutionService misconfiguration: LiquidityValidator requires MarketFeedService (GAP-014)'
+      );
+    }
+  }
 
   /**
    * Execute an order with the specified parameters and context
@@ -297,6 +319,93 @@ export class ExecutionService {
   }
 
   /**
+   * Check liquidity for an order (GAP-014)
+   * 
+   * Validates that sufficient market liquidity exists before placing an order.
+   * This check is optional and only performed if liquidityValidator and marketFeedService
+   * are both configured.
+   * 
+   * @param tokenId - Token ID for the order
+   * @param side - Order side (BUY or SELL)
+   * @param size - Order size
+   * @param executionId - Execution ID for logging
+   * @param orderParams - Full order parameters for error context
+   * @throws InsufficientLiquidityError if liquidity check fails
+   */
+  private checkLiquidity(
+    tokenId: string,
+    side: 'BUY' | 'SELL',
+    size: string,
+    executionId: string,
+    orderParams: OrderParams
+  ): void {
+    // Skip liquidity check if validator or market feed is not configured
+    if (!this.liquidityValidator || !this.marketFeedService) {
+      return;
+    }
+
+    logger.debug('Checking liquidity for order', {
+      category: 'ORDER_FLOW',
+      executionId,
+      tokenId,
+      side,
+      size,
+      gap: 'GAP-014',
+    });
+
+    // Get orderbook from market feed
+    const orderbook = this.marketFeedService.getOrderbook(tokenId);
+    
+    // Get orderbook timestamp from cache
+    // Note: MarketFeedService doesn't expose getLastUpdate directly,
+    // so we use the timestamp from the orderbook itself
+    const orderbookTimestamp = orderbook?.timestamp;
+
+    // Perform liquidity check
+    const result = this.liquidityValidator.checkLiquidity(
+      tokenId,
+      side,
+      size,
+      orderbook,
+      orderbookTimestamp
+    );
+
+    // If check fails, throw error
+    if (!result.allowed) {
+      logger.warn('Order rejected due to insufficient liquidity', {
+        category: 'ORDER_FLOW',
+        executionId,
+        tokenId,
+        side,
+        size,
+        reason: result.reason,
+        availableLiquidity: result.availableLiquidity,
+        requiredLiquidity: result.requiredLiquidity,
+        gap: 'GAP-014',
+      });
+
+      throw new InsufficientLiquidityError(
+        result.reason || 'Insufficient liquidity',
+        orderParams,
+        result.availableLiquidity,
+        result.requiredLiquidity
+      );
+    }
+
+    logger.debug('Liquidity check passed', {
+      category: 'ORDER_FLOW',
+      executionId,
+      tokenId,
+      side,
+      size,
+      availableLiquidity: result.availableLiquidity,
+      requiredLiquidity: result.requiredLiquidity,
+      bestPrice: result.bestPrice,
+      gap: 'GAP-014',
+    });
+  }
+
+  /**
    * Execute a market order (immediate execution at best available price)
    */
   private async executeMarketOrder(
@@ -304,6 +413,15 @@ export class ExecutionService {
     startTime: number
   ): Promise<OrderExecutionResult> {
     const params = request.params as MarketOrderParams;
+
+    // GAP-014: Check liquidity before placing order
+    this.checkLiquidity(
+      params.tokenId,
+      params.side,
+      params.size,
+      request.context.executionId,
+      params
+    );
 
     // Get best available price from order book
     // For market orders, we use a limit order at a price that ensures immediate execution
@@ -352,6 +470,15 @@ export class ExecutionService {
   ): Promise<OrderExecutionResult> {
     const params = request.params as LimitOrderParams;
 
+    // GAP-014: Check liquidity before placing order
+    this.checkLiquidity(
+      params.tokenId,
+      params.side,
+      params.size,
+      request.context.executionId,
+      params
+    );
+
     logger.info('Executing limit order', {
       category: 'ORDER_FLOW',
       executionId: request.context.executionId,
@@ -393,6 +520,9 @@ export class ExecutionService {
     startTime: number
   ): Promise<OrderExecutionResult> {
     const params = request.params as ConditionalOrderParams;
+
+    // Note: Liquidity should be checked when the trigger fires, not at setup time.
+    // Once conditional orders are implemented, add liquidity check in the trigger handler.
 
     logger.info('Setting up conditional order', {
       category: 'ORDER_FLOW',
