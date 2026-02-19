@@ -928,6 +928,7 @@ export async function startServer(): Promise<http.Server> {
     circuitBreakerFailureThreshold: config.circuitBreakerFailureThreshold,
     circuitBreakerResetTimeoutMs: config.circuitBreakerResetTimeoutMs,
     circuitBreakerSuccessThreshold: config.circuitBreakerSuccessThreshold,
+    maxFeeRateBps: config.riskMaxFeeRateBps,
   });
   logger.info('Risk manager initialized');
   
