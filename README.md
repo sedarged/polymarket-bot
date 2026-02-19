@@ -88,7 +88,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - 📈 Metrics gating for strategy promotion
 - 🎯 REST API for learning system integration
 - 🎲 Strategy abstract factory with pluggable trading strategies
-- 📝 Built-in example strategies (random, trend-following, market-making)
+- 📝 Built-in strategies (arbitrage, mean-reversion, market-making, random)
 
 ### Development & Quality
 - 🧪 1100+ tests (unit, integration, backtest) with Vitest

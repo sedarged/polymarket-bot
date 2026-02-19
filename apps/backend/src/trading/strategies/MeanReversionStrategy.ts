@@ -12,7 +12,6 @@
  * 
  * Parameters:
  * - lookbackPeriod: Number of price updates for mean calculation (default: 20)
- * - stdDevThreshold: Standard deviations from mean to trigger (default: 2.0)
  * - minSpread: Minimum spread to trade (default: 0.01)
  * - maxPositionSize: Maximum position size (default: 50)
  * - entryThreshold: Z-score threshold for entry (default: 2.0)
@@ -27,7 +26,6 @@ import type { MarketContext, Position, TradingDecision, StrategyConfig } from '.
 
 interface MeanReversionParams {
   lookbackPeriod?: number;
-  stdDevThreshold?: number;
   minSpread?: number;
   maxPositionSize?: number;
   entryThreshold?: number;
@@ -68,7 +66,6 @@ export class MeanReversionStrategy extends BaseStrategy {
     
     this.params = {
       lookbackPeriod: params.lookbackPeriod ?? 20,
-      stdDevThreshold: params.stdDevThreshold ?? 2.0,
       minSpread: params.minSpread ?? 0.01,
       maxPositionSize: params.maxPositionSize ?? 50,
       entryThreshold: params.entryThreshold ?? 2.0,
@@ -79,9 +76,6 @@ export class MeanReversionStrategy extends BaseStrategy {
     // Validate parameters
     if (this.params.lookbackPeriod < 5) {
       throw new Error('lookbackPeriod must be at least 5');
-    }
-    if (this.params.stdDevThreshold <= 0) {
-      throw new Error('stdDevThreshold must be positive');
     }
     if (this.params.entryThreshold <= this.params.exitThreshold) {
       throw new Error('entryThreshold must be greater than exitThreshold');

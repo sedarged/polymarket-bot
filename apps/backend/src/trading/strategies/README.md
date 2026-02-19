@@ -30,12 +30,12 @@ The strategies framework follows the **Strategy Pattern** and **Factory Pattern*
 │  (Interface)  │←──────│ (Abstract)    │
 └───────────────┘       └───────────────┘
                               ↑
-        ┌─────────────────────┼─────────────────────┐
-        ↓                     ↓                     ↓
-┌──────────────┐   ┌──────────────────┐   ┌──────────────┐
-│   Random     │   │ TrendFollowing   │   │ MarketMaking │
-│  Strategy    │   │    Strategy      │   │   Strategy   │
-└──────────────┘   └──────────────────┘   └──────────────┘
+        ┌──────────────────────┼───────────────────────┬───────────────────────┐
+        ↓                      ↓                       ↓                       ↓
+┌──────────────┐   ┌────────────────────┐   ┌──────────────────────┐   ┌──────────────┐
+│ Arbitrage    │   │ MeanReversion      │   │ MarketMaking         │   │   Random     │
+│  Strategy    │   │    Strategy        │   │   Strategy           │   │  Strategy    │
+└──────────────┘   └────────────────────┘   └──────────────────────┘   └──────────────┘
 ```
 
 ## Quick Start
@@ -146,7 +146,6 @@ console.log(decision);
 
 **Parameters:**
 - `lookbackPeriod` (number): Price updates for mean calculation (default: 20)
-- `stdDevThreshold` (number): Standard deviations from mean (default: 2.0)
 - `minSpread` (number): Minimum spread to trade (default: 0.01)
 - `maxPositionSize` (number): Maximum position size (default: 50)
 - `entryThreshold` (number): Z-score threshold for entry (default: 2.0)

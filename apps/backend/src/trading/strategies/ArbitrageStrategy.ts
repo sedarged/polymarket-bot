@@ -167,7 +167,8 @@ export class ArbitrageStrategy extends BaseStrategy {
 
     // Buy both sides arbitrage: YES_ask + NO_ask < 1.00
     const buyBothCost = yesAsk + noAsk;
-    const buyBothFees = buyBothCost * this.params.feeRate * 2; // Fee on both sides
+    // Fees are applied per-side on Polymarket
+    const buyBothFees = (yesAsk * this.params.feeRate) + (noAsk * this.params.feeRate);
     const buyBothTotalCost = buyBothCost + buyBothFees;
     const buyBothProfit = 1.0 - buyBothTotalCost;
     const buyBothProfitBps = (buyBothProfit / buyBothTotalCost) * 10000;
@@ -192,7 +193,8 @@ export class ArbitrageStrategy extends BaseStrategy {
     // Sell both sides arbitrage: YES_bid + NO_bid > 1.00
     // This requires existing positions, so we check if we have inventory
     const sellBothRevenue = yesBid + noBid;
-    const sellBothFees = sellBothRevenue * this.params.feeRate * 2;
+    // Fees are applied per-side on Polymarket
+    const sellBothFees = (yesBid * this.params.feeRate) + (noBid * this.params.feeRate);
     const sellBothNetRevenue = sellBothRevenue - sellBothFees;
     const sellBothProfit = sellBothNetRevenue - 1.0;
     const sellBothProfitBps = (sellBothProfit / 1.0) * 10000;

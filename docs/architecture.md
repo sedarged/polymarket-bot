@@ -225,9 +225,10 @@ const isLive = config.liveTrading;
 - **BaseStrategy** - Abstract base class with common functionality
 - **StrategyFactory** - Factory pattern for strategy instantiation
 - **Built-in Strategies**:
-  - RandomStrategy - Random trading for testing
-  - TrendFollowingStrategy - Momentum-based trading
+  - ArbitrageStrategy - Exploit YES + NO price discrepancies
+  - MeanReversionStrategy - Statistical approach for prediction markets
   - MarketMakingStrategy - Liquidity provision
+  - RandomStrategy - Testing only
 
 **Usage:**
 ```typescript
@@ -239,9 +240,9 @@ registerStrategies();
 // Create from config
 const strategy = await StrategyFactory.create({
   strategyId: 'my-strategy',
-  type: 'trend-following',
+  type: 'arbitrage',
   enabled: true,
-  params: { lookbackPeriod: 20 }
+  params: { minProfitBps: 50, feeRate: 0.02 }
 });
 
 // Evaluate market

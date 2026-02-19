@@ -19,6 +19,7 @@
  */
 
 import { BaseStrategy } from './BaseStrategy';
+import { logger } from '../../utils/logger';
 import type { MarketContext, Position, TradingDecision, StrategyConfig } from './types';
 
 interface MarketMakingParams {
@@ -107,8 +108,10 @@ export class MarketMakingStrategy extends BaseStrategy {
       }
     }
 
-    // Balanced or no skewing - alternate randomly
-    if (Math.random() < 0.5) {
+    // Balanced or no skewing - alternate based on timestamp for determinism
+    // This ensures same inputs -> same outputs while still varying behavior
+    const timestamp = Date.parse(context.timestamp);
+    if (timestamp % 2 === 0) {
       return this.createBuyQuote(context, inventoryRatio);
     } else {
       return this.createSellQuote(context, inventoryRatio);
@@ -130,8 +133,19 @@ export class MarketMakingStrategy extends BaseStrategy {
     
     const bidPrice = context.mid - (targetSpread / 2) + skewFactor;
     
-    // Ensure price is valid
+    // Ensure price is valid - log if clamping occurs
     const finalPrice = Math.max(0.01, Math.min(0.99, bidPrice));
+    
+    if (finalPrice !== bidPrice) {
+      logger.warn('Market making bid price clamped', {
+        strategyId: this.id,
+        marketId: context.marketId,
+        originalPrice: bidPrice,
+        clampedPrice: finalPrice,
+        mid: context.mid,
+        inventoryRatio,
+      });
+    }
 
     return {
       action: 'buy',
@@ -164,8 +178,19 @@ export class MarketMakingStrategy extends BaseStrategy {
     
     const askPrice = context.mid + (targetSpread / 2) + skewFactor;
     
-    // Ensure price is valid
+    // Ensure price is valid - log if clamping occurs
     const finalPrice = Math.max(0.01, Math.min(0.99, askPrice));
+    
+    if (finalPrice !== askPrice) {
+      logger.warn('Market making ask price clamped', {
+        strategyId: this.id,
+        marketId: context.marketId,
+        originalPrice: askPrice,
+        clampedPrice: finalPrice,
+        mid: context.mid,
+        inventoryRatio,
+      });
+    }
 
     return {
       action: 'sell',

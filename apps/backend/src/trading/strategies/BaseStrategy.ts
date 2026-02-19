@@ -165,7 +165,7 @@ export abstract class BaseStrategy implements IStrategy {
     }
     
     if (decision.action !== 'hold' && decision.action !== 'cancel') {
-      if (typeof decision.price !== 'number' || decision.price <= 0 || decision.price > 1) {
+      if (typeof decision.price !== 'number' || decision.price < 0 || decision.price > 1) {
         throw new Error(`Invalid price: ${decision.price}`);
       }
       if (typeof decision.size !== 'number' || decision.size <= 0) {
