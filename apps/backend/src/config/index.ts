@@ -162,6 +162,10 @@ const envSchema = z.object({
     z.number().nonnegative().max(1),
   ),
   RISK_ERROR_RATE_WINDOW: numberFromEnv(100, z.number().int().positive()),
+  // Maximum fee rate in basis points (GAP-019)
+  // Default: 50 bps (0.5%) - Protects against excessive trading costs
+  // Example: 50 bps = 0.5%, 100 bps = 1.0%
+  RISK_MAX_FEE_RATE_BPS: numberFromEnv(50, z.number().nonnegative().max(10000)),
   // Circuit Breaker Configuration (Audit Finding A-018)
   CIRCUIT_BREAKER_FAILURE_THRESHOLD: numberFromEnv(
     5,
@@ -496,6 +500,7 @@ const configSchema = envSchema
     riskMaxDrawdown: env.RISK_MAX_DRAWDOWN,
     riskErrorRateThreshold: env.RISK_ERROR_RATE_THRESHOLD,
     riskErrorRateWindow: env.RISK_ERROR_RATE_WINDOW,
+    riskMaxFeeRateBps: env.RISK_MAX_FEE_RATE_BPS,
     circuitBreakerFailureThreshold: env.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
     circuitBreakerResetTimeoutMs: env.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
     circuitBreakerSuccessThreshold: env.CIRCUIT_BREAKER_SUCCESS_THRESHOLD,

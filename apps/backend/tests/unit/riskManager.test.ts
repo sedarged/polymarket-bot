@@ -153,6 +153,76 @@ describe('RiskManager', () => {
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('Circuit breaker');
     });
+
+    it('should allow order with fee rate below maximum', () => {
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        [],
+        25 // 25 bps = 0.25%, below default 50 bps
+      );
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should allow order with fee rate equal to maximum', () => {
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        [],
+        50 // 50 bps = 0.5%, equal to default
+      );
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should reject order with fee rate above maximum', () => {
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        [],
+        100 // 100 bps = 1.0%, above default 50 bps
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Fee rate');
+      expect(result.reason).toContain('100 bps');
+      expect(result.reason).toContain('exceeds maximum');
+      expect(result.reason).toContain('50 bps');
+    });
+
+    it('should allow order with undefined fee rate (no fee)', () => {
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        [],
+        undefined
+      );
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should reject order with negative fee rate', () => {
+      const result = riskManager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '10',
+        [],
+        [],
+        -10
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Invalid fee rate');
+    });
   });
 
   describe('checkDrawdown', () => {

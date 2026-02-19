@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '../utils/statePersistence';
 import { CircuitBreaker, CircuitState } from '../utils/circuitBreaker';
 import { getAlertingService } from '../utils/alerting';
+import { FeeRateValidator } from './feeRateValidator';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -13,6 +14,7 @@ export interface RiskManagerConfig {
   circuitBreakerFailureThreshold?: number;
   circuitBreakerResetTimeoutMs?: number;
   circuitBreakerSuccessThreshold?: number;
+  maxFeeRateBps?: number;
 }
 
 export interface RiskCheckResult {
@@ -26,6 +28,7 @@ export interface RiskCheckResult {
  * - Max open orders
  * - Max drawdown
  * - Circuit breaker with auto-reset (Audit Finding A-018)
+ * - Fee rate checking (GAP-019)
  */
 export class RiskManager {
   private config: RiskManagerConfig;
@@ -33,6 +36,7 @@ export class RiskManager {
   private killed = false;
   private pendingPersistenceOps: Promise<void>[] = [];
   private circuitBreaker: CircuitBreaker;
+  private feeRateValidator: FeeRateValidator;
 
   constructor(config?: Partial<RiskManagerConfig>) {
     this.config = {
@@ -44,6 +48,7 @@ export class RiskManager {
       circuitBreakerFailureThreshold: config?.circuitBreakerFailureThreshold ?? 5,
       circuitBreakerResetTimeoutMs: config?.circuitBreakerResetTimeoutMs ?? 60000,
       circuitBreakerSuccessThreshold: config?.circuitBreakerSuccessThreshold ?? 2,
+      maxFeeRateBps: config?.maxFeeRateBps ?? 50,
     };
 
     // Initialize circuit breaker with auto-reset capability (Audit Finding A-018)
@@ -53,6 +58,9 @@ export class RiskManager {
       resetTimeout: this.config.circuitBreakerResetTimeoutMs,
       successThreshold: this.config.circuitBreakerSuccessThreshold,
     });
+
+    // Initialize fee rate validator (GAP-019)
+    this.feeRateValidator = new FeeRateValidator(this.config.maxFeeRateBps);
 
     // Set up circuit breaker event listeners for logging
     this.circuitBreaker.on('open', (metrics) => {
@@ -81,6 +89,7 @@ export class RiskManager {
       maxDrawdown: this.config.maxDrawdown,
       errorRateThreshold: this.config.errorRateThreshold,
       errorRateWindow: this.config.errorRateWindow,
+      maxFeeRateBps: this.config.maxFeeRateBps,
       circuitBreaker: {
         failureThreshold: this.config.circuitBreakerFailureThreshold,
         resetTimeoutMs: this.config.circuitBreakerResetTimeoutMs,
@@ -138,7 +147,8 @@ export class RiskManager {
     side: 'BUY' | 'SELL',
     size: string,
     orders: Order[],
-    positions: Position[]
+    positions: Position[],
+    feeRateBps?: number
   ): RiskCheckResult {
     // Check if killed
     if (this.killed) {
@@ -161,6 +171,15 @@ export class RiskManager {
       return {
         allowed: false,
         reason: 'Circuit breaker tripped: error rate too high',
+      };
+    }
+
+    // Check fee rate (GAP-019)
+    const feeCheck = this.feeRateValidator.checkFeeRate(feeRateBps, tokenId);
+    if (!feeCheck.allowed) {
+      return {
+        allowed: false,
+        reason: feeCheck.reason,
       };
     }
 
@@ -421,6 +440,13 @@ export class RiskManager {
    */
   getCircuitBreaker(): CircuitBreaker {
     return this.circuitBreaker;
+  }
+
+  /**
+   * Get the fee rate validator instance for standalone fee rate checks (GAP-019)
+   */
+  getFeeRateValidator(): FeeRateValidator {
+    return this.feeRateValidator;
   }
 
   /**
