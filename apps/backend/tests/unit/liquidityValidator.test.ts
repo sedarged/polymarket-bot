@@ -100,7 +100,7 @@ describe('LiquidityValidator', () => {
     });
 
     it('should reject when orderbook is undefined', () => {
-      const result = validator.checkLiquidity('0xtoken123', 'BUY', '10', null);
+      const result = validator.checkLiquidity('0xtoken123', 'BUY', '10', undefined as unknown as Orderbook);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain('Orderbook data missing');
     });

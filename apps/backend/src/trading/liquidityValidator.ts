@@ -149,22 +149,32 @@ export class LiquidityValidator {
     }
 
     // Check if orderbook data is stale
+    // Use provided timestamp, fall back to orderbook.timestamp, then skip check if neither available
     const now = Date.now();
-    const dataAge = orderbookTimestamp ? now - orderbookTimestamp : null;
-    if (dataAge !== null && dataAge > this.maxOrderbookAgeMs) {
-      logger.warn('Orderbook data is stale', {
-        tokenId,
-        side,
-        size,
-        dataAgeMs: dataAge,
-        maxAgeMs: this.maxOrderbookAgeMs,
-        gap: 'GAP-014',
-        category: 'orderFlow',
-      });
-      return {
-        allowed: false,
-        reason: `Orderbook data is stale (${dataAge}ms old, max ${this.maxOrderbookAgeMs}ms)`,
-      };
+    const effectiveTimestamp =
+      orderbookTimestamp !== undefined
+        ? orderbookTimestamp
+        : orderbook.timestamp !== undefined
+          ? orderbook.timestamp
+          : undefined;
+
+    if (effectiveTimestamp !== undefined) {
+      const dataAge = now - effectiveTimestamp;
+      if (dataAge > this.maxOrderbookAgeMs) {
+        logger.warn('Orderbook data is stale', {
+          tokenId,
+          side,
+          size,
+          dataAgeMs: dataAge,
+          maxAgeMs: this.maxOrderbookAgeMs,
+          gap: 'GAP-014',
+          category: 'orderFlow',
+        });
+        return {
+          allowed: false,
+          reason: `Orderbook data is stale (${dataAge}ms old, max ${this.maxOrderbookAgeMs}ms)`,
+        };
+      }
     }
 
     // Select the correct side of the book to check

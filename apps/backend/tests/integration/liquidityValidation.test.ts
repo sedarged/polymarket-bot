@@ -309,29 +309,12 @@ describe('ExecutionService - Liquidity Integration', () => {
   });
 
   describe('with validator but without market feed', () => {
-    beforeEach(() => {
-      executionService = new ExecutionService(tradingClient, {
-        liquidityValidator,
-      });
-    });
-
-    it('should skip liquidity check and place order', async () => {
-      const result = await executionService.executeOrder({
-        params: {
-          orderType: OrderTypeEnum.LIMIT,
-          tokenId: '0xtoken123',
-          side: 'BUY',
-          size: '10',
-          price: '0.50',
-        },
-        context: {
-          executionId: 'exec-010',
-          executionStrategy: 0, // IMMEDIATE
-        },
-      });
-
-      expect(result.status).toBe(ExecutionStatus.SUCCESS);
-      expect(tradingClient.createOrder).toHaveBeenCalled();
+    it('should throw error on construction', () => {
+      expect(() => {
+        new ExecutionService(tradingClient, {
+          liquidityValidator,
+        });
+      }).toThrow('ExecutionService misconfiguration: LiquidityValidator requires MarketFeedService (GAP-014)');
     });
   });
 });

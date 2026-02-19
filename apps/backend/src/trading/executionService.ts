@@ -173,7 +173,8 @@ export class InsufficientLiquidityError extends Error {
   constructor(
     message: string,
     public orderParams: OrderParams,
-    public availableLiquidity?: string
+    public availableLiquidity?: string,
+    public requiredLiquidity?: string
   ) {
     super(message);
     this.name = 'InsufficientLiquidityError';
@@ -212,9 +213,9 @@ export class ExecutionService {
     this.marketFeedService = options?.marketFeedService ?? null;
 
     if (this.liquidityValidator && !this.marketFeedService) {
-      logger.warn('LiquidityValidator provided without MarketFeedService - liquidity checks will fail', {
-        gap: 'GAP-014',
-      });
+      throw new Error(
+        'ExecutionService misconfiguration: LiquidityValidator requires MarketFeedService (GAP-014)'
+      );
     }
   }
 
@@ -328,13 +329,15 @@ export class ExecutionService {
    * @param side - Order side (BUY or SELL)
    * @param size - Order size
    * @param executionId - Execution ID for logging
+   * @param orderParams - Full order parameters for error context
    * @throws InsufficientLiquidityError if liquidity check fails
    */
   private checkLiquidity(
     tokenId: string,
     side: 'BUY' | 'SELL',
     size: string,
-    executionId: string
+    executionId: string,
+    orderParams: OrderParams
   ): void {
     // Skip liquidity check if validator or market feed is not configured
     if (!this.liquidityValidator || !this.marketFeedService) {
@@ -383,8 +386,9 @@ export class ExecutionService {
 
       throw new InsufficientLiquidityError(
         result.reason || 'Insufficient liquidity',
-        { orderType: OrderTypeEnum.LIMIT, tokenId, side, size, price: '0' } as OrderParams,
-        result.availableLiquidity
+        orderParams,
+        result.availableLiquidity,
+        result.requiredLiquidity
       );
     }
 
@@ -415,7 +419,8 @@ export class ExecutionService {
       params.tokenId,
       params.side,
       params.size,
-      request.context.executionId
+      request.context.executionId,
+      params
     );
 
     // Get best available price from order book
@@ -470,7 +475,8 @@ export class ExecutionService {
       params.tokenId,
       params.side,
       params.size,
-      request.context.executionId
+      request.context.executionId,
+      params
     );
 
     logger.info('Executing limit order', {
@@ -515,13 +521,8 @@ export class ExecutionService {
   ): Promise<OrderExecutionResult> {
     const params = request.params as ConditionalOrderParams;
 
-    // GAP-014: Check liquidity before placing order
-    this.checkLiquidity(
-      params.tokenId,
-      params.side,
-      params.size,
-      request.context.executionId
-    );
+    // Note: Liquidity should be checked when the trigger fires, not at setup time.
+    // Once conditional orders are implemented, add liquidity check in the trigger handler.
 
     logger.info('Setting up conditional order', {
       category: 'ORDER_FLOW',
