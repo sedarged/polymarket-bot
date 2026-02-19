@@ -678,4 +678,227 @@ describe('RiskManager', () => {
       ).rejects.toThrow('API error');
     });
   });
+
+  describe('Per-market config (GAP-001)', () => {
+    it('should use global limit when no per-market config is set', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+      });
+
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '90',
+        averagePrice: '0.50',
+      }];
+
+      const result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '20',
+        [],
+        positions
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Max exposure per market exceeded: 110 > 100');
+    });
+
+    it('should use per-market maxPositionSize when configured', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100, // Global limit
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+        markets: [
+          {
+            tokenId: '0xtoken123',
+            maxPositionSize: 200, // Market-specific limit (higher than global)
+          },
+        ],
+      });
+
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '150',
+        averagePrice: '0.50',
+      }];
+
+      // With global limit (100), this would fail
+      // With market-specific limit (200), this should pass
+      const result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '40',
+        [],
+        positions
+      );
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should reject order when per-market limit is exceeded', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 1000, // Global limit (high)
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+        markets: [
+          {
+            tokenId: '0xtoken123',
+            maxPositionSize: 50, // Market-specific limit (lower than global)
+          },
+        ],
+      });
+
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '40',
+        averagePrice: '0.50',
+      }];
+
+      // With global limit (1000), this would pass
+      // With market-specific limit (50), this should fail
+      const result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '20',
+        [],
+        positions
+      );
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Max exposure per market exceeded: 60 > 50');
+    });
+
+    it('should use global limit for markets without specific config', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+        markets: [
+          {
+            tokenId: '0xtoken-with-config',
+            maxPositionSize: 200,
+          },
+        ],
+      });
+
+      // Check order for a market without specific config
+      const positions: Position[] = [{
+        tokenId: '0xtoken-without-config',
+        size: '90',
+        averagePrice: '0.50',
+      }];
+
+      const result = manager.checkOrder(
+        '0xtoken-without-config',
+        'BUY',
+        '20',
+        [],
+        positions
+      );
+
+      // Should use global limit (100), not the config for the other market
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Max exposure per market exceeded: 110 > 100');
+    });
+
+    it('should update market config dynamically', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+      });
+
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '90',
+        averagePrice: '0.50',
+      }];
+
+      // Initially should fail with global limit
+      let result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '20',
+        [],
+        positions
+      );
+      expect(result.allowed).toBe(false);
+
+      // Update market config with higher limit
+      manager.updateMarkets([
+        {
+          tokenId: '0xtoken123',
+          maxPositionSize: 200,
+        },
+      ]);
+
+      // Now should pass with market-specific limit
+      result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '20',
+        [],
+        positions
+      );
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should clear market config when updated with undefined', () => {
+      const manager = new RiskManager({
+        maxExposurePerMarket: 100,
+        maxOpenOrders: 5,
+        maxDrawdown: 0.20,
+        errorRateThreshold: 0.10,
+        errorRateWindow: 10,
+        markets: [
+          {
+            tokenId: '0xtoken123',
+            maxPositionSize: 200,
+          },
+        ],
+      });
+
+      const positions: Position[] = [{
+        tokenId: '0xtoken123',
+        size: '150',
+        averagePrice: '0.50',
+      }];
+
+      // Initially should pass with market-specific limit
+      let result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '40',
+        [],
+        positions
+      );
+      expect(result.allowed).toBe(true);
+
+      // Clear market config
+      manager.updateMarkets(undefined);
+
+      // Now should fail with global limit
+      result = manager.checkOrder(
+        '0xtoken123',
+        'BUY',
+        '40',
+        [],
+        positions
+      );
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain('Max exposure per market exceeded: 190 > 100');
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { saveKillSwitchState, loadKillSwitchState, clearKillSwitchState } from '
 import { CircuitBreaker, CircuitState } from '../utils/circuitBreaker';
 import { getAlertingService } from '../utils/alerting';
 import { FeeRateValidator } from './feeRateValidator';
+import type { MarketConfigEntry } from '../config';
 
 export interface RiskManagerConfig {
   maxExposurePerMarket: number;
@@ -15,6 +16,7 @@ export interface RiskManagerConfig {
   circuitBreakerResetTimeoutMs?: number;
   circuitBreakerSuccessThreshold?: number;
   maxFeeRateBps?: number;
+  markets?: MarketConfigEntry[];
 }
 
 export interface RiskCheckResult {
@@ -29,6 +31,7 @@ export interface RiskCheckResult {
  * - Max drawdown
  * - Circuit breaker with auto-reset (Audit Finding A-018)
  * - Fee rate checking (GAP-019)
+ * - Per-market config overrides (GAP-001)
  */
 export class RiskManager {
   private config: RiskManagerConfig;
@@ -37,6 +40,7 @@ export class RiskManager {
   private pendingPersistenceOps: Promise<void>[] = [];
   private circuitBreaker: CircuitBreaker;
   private feeRateValidator: FeeRateValidator;
+  private markets: Map<string, MarketConfigEntry>;
 
   constructor(config?: Partial<RiskManagerConfig>) {
     this.config = {
@@ -49,7 +53,16 @@ export class RiskManager {
       circuitBreakerResetTimeoutMs: config?.circuitBreakerResetTimeoutMs ?? 60000,
       circuitBreakerSuccessThreshold: config?.circuitBreakerSuccessThreshold ?? 2,
       maxFeeRateBps: config?.maxFeeRateBps ?? 50,
+      markets: config?.markets,
     };
+
+    // Initialize per-market config map for efficient lookup (GAP-001)
+    this.markets = new Map();
+    if (this.config.markets) {
+      for (const market of this.config.markets) {
+        this.markets.set(market.tokenId, market);
+      }
+    }
 
     // Initialize circuit breaker with auto-reset capability (Audit Finding A-018)
     this.circuitBreaker = new CircuitBreaker({
@@ -192,7 +205,7 @@ export class RiskManager {
       };
     }
 
-    // Check max exposure per market
+    // Check max exposure per market (GAP-001: use per-market override if available)
     const orderSize = Number(size);
     const currentPosition = positions.find(p => p.tokenId === tokenId);
     const currentSignedSize = currentPosition ? Number(currentPosition.size) : 0;
@@ -201,10 +214,14 @@ export class RiskManager {
     const newSignedSize = currentSignedSize + (side === 'BUY' ? orderSize : -orderSize);
     const newExposure = Math.abs(newSignedSize);
 
-    if (newExposure > this.config.maxExposurePerMarket) {
+    // Get per-market limit or fall back to global limit
+    const marketConfig = this.markets.get(tokenId);
+    const maxExposure = marketConfig?.maxPositionSize ?? this.config.maxExposurePerMarket;
+
+    if (newExposure > maxExposure) {
       return {
         allowed: false,
-        reason: `Max exposure per market exceeded: ${newExposure} > ${this.config.maxExposurePerMarket}`,
+        reason: `Max exposure per market exceeded: ${newExposure} > ${maxExposure}`,
       };
     }
 
@@ -391,6 +408,23 @@ export class RiskManager {
     if (this.pendingPersistenceOps.length > 0) {
       await Promise.all(this.pendingPersistenceOps);
       this.pendingPersistenceOps = [];
+    }
+  }
+
+  /**
+   * Update per-market config (for hot-reload support)
+   * GAP-001: Allows updating market config without restarting
+   */
+  updateMarkets(markets: MarketConfigEntry[] | undefined): void {
+    this.config.markets = markets;
+    this.markets.clear();
+    if (markets) {
+      for (const market of markets) {
+        this.markets.set(market.tokenId, market);
+      }
+      logger.info('Updated per-market config', { marketCount: markets.length });
+    } else {
+      logger.info('Cleared per-market config');
     }
   }
 
