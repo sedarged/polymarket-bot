@@ -39,6 +39,8 @@ export interface StrategyManagerConfig {
   autoReload?: boolean;
   /** Directory to watch for strategy source files */
   watchDirectory?: string;
+  /** Maximum file change events per minute (DoS protection) */
+  maxFileChangesPerMinute?: number;
 }
 
 export interface StrategyInstance {
@@ -78,6 +80,11 @@ export class StrategyManager extends EventEmitter {
   private debounceTimers = new Map<string, NodeJS.Timeout>();
   private config: Required<StrategyManagerConfig>;
   private isWatching = false;
+  
+  // DoS protection: track file change events
+  private fileChangeTimestamps: number[] = [];
+  private consecutiveErrors = 0;
+  private readonly MAX_CONSECUTIVE_ERRORS = 5;
 
   constructor(config: StrategyManagerConfig = {}) {
     super();
@@ -87,6 +94,7 @@ export class StrategyManager extends EventEmitter {
       debounceDelayMs: config.debounceDelayMs ?? 500,
       autoReload: config.autoReload ?? true,
       watchDirectory: config.watchDirectory ?? path.join(__dirname),
+      maxFileChangesPerMinute: config.maxFileChangesPerMinute ?? 60,
     };
 
     logger.info('StrategyManager initialized', {
@@ -198,21 +206,30 @@ export class StrategyManager extends EventEmitter {
     });
 
     try {
-      // Cleanup old instance
+      // Create new instance FIRST before cleaning up old one
+      // This ensures we can rollback if creation fails
+      const newStrategy = await StrategyFactory.create(configToUse);
+
+      // Only cleanup old instance after new one is successfully created
       if (existing.strategy.cleanup) {
         await existing.strategy.cleanup();
       }
 
-      // Create new instance
-      const newStrategy = await StrategyFactory.create(configToUse);
-
-      // Store new instance with reference to old one
+      // Store new instance with reference to old one (but break the chain to prevent memory leak)
       const newInstance: StrategyInstance = {
         strategy: newStrategy,
         config: configToUse,
         loadedAt: new Date(),
         reloadCount: existing.reloadCount + 1,
-        previousInstance: existing,
+        // Only keep immediate previous instance, not the full chain
+        previousInstance: {
+          strategy: existing.strategy,
+          config: existing.config,
+          loadedAt: existing.loadedAt,
+          reloadCount: existing.reloadCount,
+          // Break the chain - don't keep previousInstance's previousInstance
+          previousInstance: undefined,
+        },
       };
 
       this.strategies.set(strategyId, newInstance);
@@ -356,6 +373,9 @@ export class StrategyManager extends EventEmitter {
       logger.error('Failed to start strategy watching', {
         error: error instanceof Error ? error.message : String(error),
       });
+      
+      // Clean up any partially created watchers
+      await this.stopWatching();
       throw error;
     }
   }
@@ -452,6 +472,8 @@ export class StrategyManager extends EventEmitter {
 
         if (this.config.autoReload) {
           await this.handleAutoReload(filename);
+          // Reset error counter on success
+          this.consecutiveErrors = 0;
         } else {
           // Just emit event, let consumer decide
           this.emit('fileChanged', {
@@ -461,10 +483,29 @@ export class StrategyManager extends EventEmitter {
           });
         }
       } catch (error) {
+        this.consecutiveErrors++;
+        
         logger.error('Failed to handle file change', {
           filename,
+          consecutiveErrors: this.consecutiveErrors,
           error: error instanceof Error ? error.message : String(error),
         });
+        
+        // Circuit breaker: disable auto-reload after too many errors
+        if (this.consecutiveErrors >= this.MAX_CONSECUTIVE_ERRORS) {
+          logger.error('Too many consecutive reload errors, disabling auto-reload', {
+            category: 'security',
+            consecutiveErrors: this.consecutiveErrors,
+          });
+          
+          this.config.autoReload = false;
+          
+          this.emit('autoReloadDisabled', {
+            reason: 'Too many consecutive errors',
+            consecutiveErrors: this.consecutiveErrors,
+            timestamp: new Date().toISOString(),
+          });
+        }
       } finally {
         this.debounceTimers.delete(fullPath);
       }
@@ -474,14 +515,68 @@ export class StrategyManager extends EventEmitter {
   }
 
   /**
+   * Extract a strategy type name from a source filename.
+   *
+   * Expected pattern: "<TypeName>Strategy[Version].ts"
+   *   - e.g. "ArbitrageStrategy.ts"   -> "arbitrage"
+   *   - e.g. "ArbitrageStrategyV2.ts" -> "arbitrage"
+   *   - e.g. "MeanReversionStrategy.ts" -> "mean-reversion"
+   *
+   * Returns null if the filename does not follow the expected convention.
+   */
+  private extractStrategyTypeFromFilename(filename: string): string | null {
+    const parsed = path.parse(filename);
+    const baseName = parsed.name; // filename without extension
+
+    if (!baseName) {
+      logger.debug('Cannot derive strategy type: empty filename base', {
+        filename,
+      });
+      return null;
+    }
+
+    // Reject generic or non-conforming names like "Strategy.ts"
+    if (baseName === 'Strategy' || !baseName.endsWith('Strategy')) {
+      logger.debug('Filename does not follow expected *Strategy pattern', {
+        filename,
+        baseName,
+      });
+      return null;
+    }
+
+    // Strip the "Strategy" suffix
+    const withoutSuffix = baseName.slice(0, -'Strategy'.length);
+
+    // Strip optional trailing version segment like "V2", "v3", etc.
+    const withoutVersion = withoutSuffix.replace(/V\d+$/i, '');
+    
+    // Convert to kebab-case (handle camelCase)
+    // e.g., "MeanReversion" -> "mean-reversion"
+    const kebabCase = withoutVersion
+      .replace(/([a-z])([A-Z])/g, '$1-$2')
+      .toLowerCase();
+
+    if (!kebabCase) {
+      logger.debug('Could not derive non-empty strategy type from filename', {
+        filename,
+        baseName,
+      });
+      return null;
+    }
+
+    return kebabCase;
+  }
+
+  /**
    * Handle automatic reload when a file changes
    */
   private async handleAutoReload(filename: string): Promise<void> {
-    // Extract strategy name from filename (e.g., "ArbitrageStrategy.ts" -> "arbitrage")
-    const strategyName = filename
-      .replace('.ts', '')
-      .replace('Strategy', '')
-      .toLowerCase();
+    const strategyName = this.extractStrategyTypeFromFilename(filename);
+
+    if (!strategyName) {
+      // Filename did not map cleanly to a strategy type; nothing to reload.
+      return;
+    }
 
     // Find strategies that match this type
     const matchingStrategies: string[] = [];

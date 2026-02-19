@@ -5,7 +5,7 @@
  * Demonstrates how to use the StrategyManager for hot-reloading strategies.
  * 
  * Usage:
- *   npm run strategy:demo
+ *   npm run example:hotreload
  * 
  * This example:
  * 1. Loads multiple strategies
@@ -154,6 +154,12 @@ async function main() {
         }
       }
     }
+  });
+
+  // Handle stdin errors
+  process.stdin.on('error', (error) => {
+    console.error('stdin error:', error);
+    manager.cleanup().finally(() => process.exit(1));
   });
 
   // Keep process alive

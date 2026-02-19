@@ -9,6 +9,11 @@
  * - DELETE /api/strategies/:id - Unload a strategy
  * 
  * Design follows RESTful conventions.
+ * 
+ * ⚠️ SECURITY NOTE: These handlers are NOT integrated into the main server yet.
+ * When integrating, these endpoints MUST be protected with authentication/authorization
+ * as they allow administrative operations that can modify trading strategies.
+ * See server/index.ts for the admin token authentication pattern.
  */
 
 import http from 'http';
@@ -85,6 +90,15 @@ export async function handleGetStrategyInfo(
       return;
     }
 
+    // Sanitize config to avoid exposing sensitive parameters
+    const sanitizedConfig = {
+      strategyId: instance.config.strategyId,
+      type: instance.config.type,
+      enabled: instance.config.enabled,
+      // Only expose param keys, not values which may be sensitive
+      params: instance.config.params ? Object.keys(instance.config.params) : [],
+    };
+
     const response = {
       success: true,
       strategy: {
@@ -94,7 +108,7 @@ export async function handleGetStrategyInfo(
         version: instance.strategy.version,
         description: instance.strategy.description,
         enabled: instance.config.enabled,
-        config: instance.config,
+        config: sanitizedConfig,
         loadedAt: instance.loadedAt.toISOString(),
         reloadCount: instance.reloadCount,
         metrics: instance.strategy.getMetrics ? instance.strategy.getMetrics() : null,
@@ -134,13 +148,72 @@ export async function handleReloadStrategy(
   strategyId: string
 ): Promise<void> {
   try {
-    // Read request body for optional new config
-    let body = '';
-    for await (const chunk of req) {
-      body += chunk.toString();
+    // Validate strategyId format
+    if (!/^[a-zA-Z0-9-_]+$/.test(strategyId)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Invalid strategy ID format',
+      }));
+      return;
     }
 
-    const newConfig = body ? JSON.parse(body) : undefined;
+    // Read request body with size limit (1MB for strategy config)
+    const MAX_BODY_SIZE_BYTES = 1 * 1024 * 1024;
+    let body = '';
+    let bodySize = 0;
+
+    for await (const chunk of req) {
+      const chunkStr = chunk.toString();
+      bodySize += Buffer.byteLength(chunkStr);
+
+      if (bodySize > MAX_BODY_SIZE_BYTES) {
+        logger.warn('Reload strategy request body too large', {
+          category: 'api',
+          strategyId,
+          maxBytes: MAX_BODY_SIZE_BYTES,
+        });
+
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Payload too large',
+        }));
+
+        req.destroy();
+        return;
+      }
+
+      body += chunkStr;
+    }
+
+    // Parse and validate config if provided
+    let newConfig;
+    if (body) {
+      try {
+        newConfig = JSON.parse(body);
+        
+        // Basic validation of config structure
+        if (newConfig && typeof newConfig === 'object') {
+          if (newConfig.strategyId && typeof newConfig.strategyId !== 'string') {
+            throw new Error('strategyId must be a string');
+          }
+          if (newConfig.type && typeof newConfig.type !== 'string') {
+            throw new Error('type must be a string');
+          }
+          if (newConfig.enabled !== undefined && typeof newConfig.enabled !== 'boolean') {
+            throw new Error('enabled must be a boolean');
+          }
+        }
+      } catch (error) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: `Invalid config: ${error instanceof Error ? error.message : String(error)}`,
+        }));
+        return;
+      }
+    }
 
     const strategy = await strategyManager.reloadStrategy(strategyId, newConfig);
 

@@ -7,9 +7,11 @@ The Polymarket bot supports hot-reloading of trading strategies, allowing you to
 The **StrategyManager** provides:
 - **Hot-reload**: Automatically detect and reload strategy changes
 - **State preservation**: Maintain strategy state across reloads
-- **Safe rollback**: Automatically revert to previous version if reload fails
+- **Safe reload**: Validate new strategies before applying changes
 - **File watching**: Monitor strategy source files for changes
 - **Multi-strategy**: Manage multiple strategies independently
+
+**Note on Rollback**: If a reload fails, the previous strategy instance remains active. The new strategy is only applied after successful creation and validation.
 
 ## Quick Start
 

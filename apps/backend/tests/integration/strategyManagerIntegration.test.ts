@@ -250,7 +250,7 @@ describe('StrategyManager Integration', () => {
       expect(instance?.reloadCount).toBe(3);
     });
 
-    it('should maintain history of previous instances', async () => {
+    it('should maintain history of previous instance (not full chain)', async () => {
       manager = new StrategyManager({ watchEnabled: false });
 
       const config: StrategyConfig = {
@@ -278,8 +278,10 @@ describe('StrategyManager Integration', () => {
       expect(current?.config.params.buyProbability).toBe(0.5);
       expect(current?.previousInstance).toBeDefined();
       expect(current?.previousInstance?.config.params.buyProbability).toBe(0.4);
-      expect(current?.previousInstance?.previousInstance).toBeDefined();
-      expect(current?.previousInstance?.previousInstance?.config.params.buyProbability).toBe(0.3);
+      
+      // Chain is intentionally broken to prevent memory leak
+      // Only immediate previous instance is kept
+      expect(current?.previousInstance?.previousInstance).toBeUndefined();
     });
   });
 
