@@ -155,7 +155,7 @@ export class StrategyOrchestrator extends EventEmitter {
     logger.info('[Orchestrator] Strategy added', {
       strategyId,
       strategyName: strategy.name,
-      strategyType: strategy.id,
+      strategyType: strategyConfig.type,
       totalStrategies: this.strategies.size,
     });
 
@@ -220,11 +220,11 @@ export class StrategyOrchestrator extends EventEmitter {
 
     const results = await Promise.all(evaluationPromises);
 
-    // Log results summary
+    // Log results summary at debug level to reduce log volume
     const successful = results.filter(r => !r.error).length;
     const failed = results.filter(r => r.error).length;
 
-    logger.info('[Orchestrator] Evaluation complete', {
+    logger.debug('[Orchestrator] Evaluation complete', {
       marketId: context.marketId,
       total: results.length,
       successful,
@@ -381,15 +381,28 @@ export class StrategyOrchestrator extends EventEmitter {
         execContext.isolatedState.lastDecision = decision;
       }
 
-      logger.info('[Strategy] Decision made', {
-        strategyId,
-        strategyName: execContext.strategy.name,
-        marketId: marketContext.marketId,
-        action: decision.action,
-        confidence: decision.confidence,
-        rationale: decision.rationale,
-        executionTimeMs,
-      });
+      // Log at info level only for actionable decisions (not hold/cancel)
+      if (decision.action === 'hold' || decision.action === 'cancel') {
+        logger.debug('[Strategy] Decision made', {
+          strategyId,
+          strategyName: execContext.strategy.name,
+          marketId: marketContext.marketId,
+          action: decision.action,
+          confidence: decision.confidence,
+          rationale: decision.rationale,
+          executionTimeMs,
+        });
+      } else {
+        logger.info('[Strategy] Decision made', {
+          strategyId,
+          strategyName: execContext.strategy.name,
+          marketId: marketContext.marketId,
+          action: decision.action,
+          confidence: decision.confidence,
+          rationale: decision.rationale,
+          executionTimeMs,
+        });
+      }
 
       return {
         strategyId,
@@ -402,7 +415,8 @@ export class StrategyOrchestrator extends EventEmitter {
       const executionTimeMs = Date.now() - startTime;
       const err = error instanceof Error ? error : new Error(String(error));
 
-      // Update stats for failure
+      // Update stats and evaluation count for failure
+      execContext.evaluationCount++;
       execContext.stats.totalEvaluations++;
       execContext.stats.failedEvaluations++;
 
@@ -477,7 +491,7 @@ export class StrategyOrchestrator extends EventEmitter {
 
   /**
    * Merge multiple decisions into a single decision
-   * Uses weighted average based on confidence
+   * Uses confidence-weighted averaging for merged outputs
    */
   private mergeDecisions(results: EvaluationResult[]): EvaluationResult {
     // Count votes for buy vs sell
@@ -497,21 +511,29 @@ export class StrategyOrchestrator extends EventEmitter {
     const action = buyConfidence > sellConfidence ? 'buy' : 'sell';
     const side = action === 'buy' ? 'BUY' : 'SELL';
 
-    // Calculate merged confidence as average of winning side's confidences
+    // Calculate merged confidence using confidence-weighted averaging
     const relevantResults = action === 'buy' ? buyVotes : sellVotes;
-    const mergedConfidence = relevantResults.length > 0
-      ? relevantResults.reduce((sum, r) => sum + r.decision.confidence, 0) / relevantResults.length
+    const totalWeight = relevantResults.reduce((sum, r) => sum + r.decision.confidence, 0);
+    const mergedConfidence = totalWeight > 0
+      ? relevantResults.reduce((sum, r) => sum + (r.decision.confidence * r.decision.confidence), 0) / totalWeight
       : 0;
 
-    // Calculate average price and size (only from results with valid prices)
-    const withPrice = relevantResults.filter(r => typeof r.decision.price === 'number' && r.decision.price > 0);
-    const avgPrice = withPrice.length > 0
-      ? withPrice.reduce((sum, r) => sum + (r.decision.price || 0), 0) / withPrice.length
+    // Calculate confidence-weighted average price (only from results with valid prices)
+    const withPrice = relevantResults.filter(
+      r => typeof r.decision.price === 'number' && r.decision.price > 0 && r.decision.confidence > 0
+    );
+    const priceWeightSum = withPrice.reduce((sum, r) => sum + r.decision.confidence, 0);
+    const avgPrice = priceWeightSum > 0
+      ? withPrice.reduce((sum, r) => sum + (r.decision.price || 0) * r.decision.confidence, 0) / priceWeightSum
       : undefined;
 
-    const withSize = relevantResults.filter(r => typeof r.decision.size === 'number' && r.decision.size > 0);
-    const avgSize = withSize.length > 0
-      ? withSize.reduce((sum, r) => sum + (r.decision.size || 0), 0) / withSize.length
+    // Calculate confidence-weighted average size (only from results with valid sizes)
+    const withSize = relevantResults.filter(
+      r => typeof r.decision.size === 'number' && r.decision.size > 0 && r.decision.confidence > 0
+    );
+    const sizeWeightSum = withSize.reduce((sum, r) => sum + r.decision.confidence, 0);
+    const avgSize = sizeWeightSum > 0
+      ? withSize.reduce((sum, r) => sum + (r.decision.size || 0) * r.decision.confidence, 0) / sizeWeightSum
       : undefined;
 
     return {

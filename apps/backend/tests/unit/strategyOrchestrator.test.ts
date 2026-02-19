@@ -817,8 +817,8 @@ describe('StrategyOrchestrator', () => {
 
       expect(result.hasConflicts).toBe(true);
       expect(result.resolvedDecision).toBeDefined();
-      // First-wins should select the first strategy, regardless of confidence
-      expect([strategyId1, strategyId2]).toContain(result.resolvedDecision?.strategyId);
+      // First-wins should select the first-added strategy (strategy1)
+      expect(result.resolvedDecision?.strategyId).toBe(strategyId1);
 
       await firstOrchestrator.cleanup();
     });

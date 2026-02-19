@@ -177,49 +177,75 @@ describe('StrategyOrchestrator - Integration', () => {
     });
 
     it('should detect and resolve conflicts between strategies', async () => {
-      // Create strategies with opposite biases
-      const strategies = await StrategyFactory.createAll([
-        {
-          strategyId: 'random-buy-biased',
-          type: 'random',
-          enabled: true,
-          params: {
-            buyProbability: 0.9, // Very likely to buy
-            sellProbability: 0.0,
-            seed: 111,
-          },
+      // Create strategies with deterministic opposite directions to ensure conflict
+      const buyStrategy: IStrategy = {
+        id: 'buy-strategy',
+        name: 'BuyStrategy',
+        version: '1.0.0',
+        description: 'Always buys',
+        async initialize() {},
+        async evaluate() {
+          return {
+            action: 'buy',
+            side: 'BUY',
+            price: 0.48,
+            size: 10,
+            confidence: 0.8,
+            rationale: 'Buy signal',
+          };
         },
-        {
-          strategyId: 'random-sell-biased',
-          type: 'random',
-          enabled: true,
-          params: {
-            buyProbability: 0.0,
-            sellProbability: 0.9, // Very likely to sell
-            seed: 222,
-          },
+        getConfig() {
+          return {
+            strategyId: 'deterministic-buy',
+            type: 'buy',
+            enabled: true,
+            params: {},
+          };
         },
-      ]);
+      };
 
-      for (const strategy of strategies) {
-        await orchestrator.addStrategy(strategy);
-      }
+      const sellStrategy: IStrategy = {
+        id: 'sell-strategy',
+        name: 'SellStrategy',
+        version: '1.0.0',
+        description: 'Always sells',
+        async initialize() {},
+        async evaluate() {
+          return {
+            action: 'sell',
+            side: 'SELL',
+            price: 0.52,
+            size: 10,
+            confidence: 0.7,
+            rationale: 'Sell signal',
+          };
+        },
+        getConfig() {
+          return {
+            strategyId: 'deterministic-sell',
+            type: 'sell',
+            enabled: true,
+            params: {},
+          };
+        },
+      };
+
+      await orchestrator.addStrategy(buyStrategy);
+      await orchestrator.addStrategy(sellStrategy);
 
       // Run conflict detection
       const result = await orchestrator.evaluateWithConflictDetection(mockMarketContext);
 
-      // Should detect conflicts (may not always be present due to randomness)
-      // But the system should handle it gracefully either way
+      // Should detect conflict with opposing directions
       expect(result).toBeDefined();
-      expect(result.hasConflicts).toBeDefined();
+      expect(result.hasConflicts).toBe(true);
       expect(result.conflicts).toBeDefined();
-      expect(Array.isArray(result.conflicts)).toBe(true);
-
-      if (result.hasConflicts) {
-        // If conflicts detected, should have resolved decision
-        expect(result.resolvedDecision).toBeDefined();
-        expect(result.resolvedDecision?.decision.action).toBeDefined();
-      }
+      expect(result.conflicts.length).toBeGreaterThan(0);
+      expect(result.conflicts[0].reason).toContain('Opposing trade directions');
+      
+      // Should have resolved decision
+      expect(result.resolvedDecision).toBeDefined();
+      expect(result.resolvedDecision?.decision.action).toBeDefined();
     });
 
     it('should track performance metrics per strategy', async () => {
