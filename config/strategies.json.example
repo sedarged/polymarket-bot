@@ -1,0 +1,48 @@
+[
+  {
+    "strategyId": "arbitrage-main",
+    "type": "arbitrage",
+    "enabled": true,
+    "params": {
+      "minProfitBps": 50,
+      "feeRate": 0.02,
+      "maxOrderSize": 100,
+      "minLiquidity": 50,
+      "priceUpdateWindow": 5000
+    }
+  },
+  {
+    "strategyId": "mean-reversion-aggressive",
+    "type": "mean-reversion",
+    "enabled": true,
+    "params": {
+      "lookbackPeriod": 15,
+      "entryThreshold": 2.5,
+      "exitThreshold": 0.5,
+      "maxPositionSize": 75,
+      "cooldownPeriod": 60000
+    }
+  },
+  {
+    "strategyId": "market-maker-tight",
+    "type": "market-making",
+    "enabled": true,
+    "params": {
+      "spreadBps": 80,
+      "orderSize": 20,
+      "maxInventory": 150,
+      "inventorySkew": true,
+      "minSpread": 0.005
+    }
+  },
+  {
+    "strategyId": "random-test",
+    "type": "random",
+    "enabled": false,
+    "params": {
+      "buyProbability": 0.3,
+      "sellProbability": 0.3,
+      "maxSize": 5
+    }
+  }
+]
