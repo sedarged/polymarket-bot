@@ -406,6 +406,87 @@ See `tests/integration/strategyFramework.test.ts` for complete examples.
 5. **Validate inputs** - Check market context validity
 6. **Test thoroughly** - Unit tests + integration tests + backtests
 
+### Validation Before Deployment
+
+**⚠️ IMPORTANT: Always validate strategies before production use.**
+
+The framework includes automated validation to ensure strategies are safe and correctly implemented:
+
+```typescript
+import { StrategyValidator, validateStrategy } from './trading/strategies';
+
+// Quick validation
+const strategy = await StrategyFactory.create(config);
+const isValid = await validateStrategy(strategy);
+
+if (!isValid) {
+  console.error('Strategy validation failed!');
+  process.exit(1);
+}
+
+// Detailed validation with custom criteria
+const validator = new StrategyValidator({
+  requiredParams: ['minProfitBps', 'maxOrderSize'],
+  paramBounds: {
+    minProfitBps: { min: 10, max: 1000 },
+    maxOrderSize: { min: 1, max: 1000 },
+  },
+  minConfidence: 0.1,
+  maxDecisionTime: 5000,
+  validateBehavior: true,
+});
+
+const report = await validator.validate(strategy);
+
+if (!report.valid) {
+  console.error('Strategy validation failed:');
+  console.error(StrategyValidator.formatReport(report));
+  process.exit(1);
+}
+
+console.log('Strategy validated successfully!');
+console.log(`Warnings: ${report.warningCount}`);
+```
+
+**Validation checks:**
+1. **Configuration** - Required fields present and valid
+2. **Interface compliance** - Implements all required methods
+3. **Parameter bounds** - Values within acceptable ranges
+4. **Behavioral** - Decision timing, structure, price/size bounds
+5. **Confidence** - Confidence scores in valid range [0, 1]
+
+**Integration with StrategyFactory:**
+
+By default, the factory validates all strategies before deployment:
+
+```typescript
+// Validation enabled by default
+const strategy = await StrategyFactory.create(config);
+// ✅ Throws error if validation fails
+
+// Skip validation (not recommended)
+const strategy = await StrategyFactory.create(config, true);
+
+// Disable validation globally (for testing only)
+StrategyFactory.setValidationEnabled(false);
+
+// Set custom validation criteria
+StrategyFactory.setValidationCriteria({
+  paramBounds: {
+    minProfitBps: { min: 50, max: 500 },
+  },
+});
+```
+
+**Pre-deployment checklist:**
+- [ ] All unit tests pass
+- [ ] Strategy validated with StrategyValidator
+- [ ] Backtested on historical data
+- [ ] Tested in paper trading mode
+- [ ] Risk limits configured
+- [ ] Monitoring alerts set up
+- [ ] Rollback plan in place
+
 ### Configuration
 
 1. **Use sensible defaults** - Strategy should work out-of-the-box

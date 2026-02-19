@@ -24,9 +24,12 @@
 
 import { logger } from '../../utils/logger';
 import type { IStrategy, StrategyConfig, StrategyRegistration } from './types';
+import { StrategyValidator, type ValidationCriteria } from './validator';
 
 export class StrategyFactory {
   private static strategies = new Map<string, StrategyRegistration>();
+  private static validationEnabled = true;
+  private static validationCriteria: ValidationCriteria = {};
 
   /**
    * Register a strategy type
@@ -86,13 +89,43 @@ export class StrategyFactory {
   }
 
   /**
+   * Set validation criteria for all strategy creation
+   * 
+   * @param criteria - Validation criteria to apply
+   */
+  static setValidationCriteria(criteria: ValidationCriteria): void {
+    this.validationCriteria = criteria;
+    logger.info('Strategy validation criteria updated', {
+      hasRequiredParams: !!criteria.requiredParams,
+      hasParamBounds: !!criteria.paramBounds,
+      validateBehavior: criteria.validateBehavior,
+    });
+  }
+
+  /**
+   * Enable or disable validation
+   * 
+   * @param enabled - Whether to enable validation
+   */
+  static setValidationEnabled(enabled: boolean): void {
+    this.validationEnabled = enabled;
+    logger.info('Strategy validation', {
+      enabled: this.validationEnabled,
+    });
+  }
+
+  /**
    * Create a strategy instance from configuration
    * 
    * @param config - Strategy configuration
+   * @param skipValidation - Skip validation for this strategy (optional)
    * @returns Initialized strategy instance
-   * @throws Error if strategy type not registered
+   * @throws Error if strategy type not registered or validation fails
    */
-  static async create(config: StrategyConfig): Promise<IStrategy> {
+  static async create(
+    config: StrategyConfig,
+    skipValidation = false
+  ): Promise<IStrategy> {
     // Validate config
     if (!config.type) {
       throw new Error('Strategy type is required');
@@ -128,6 +161,46 @@ export class StrategyFactory {
 
       // Initialize with config
       await strategy.initialize(fullConfig);
+
+      // Validate strategy before returning (if enabled)
+      if (this.validationEnabled && !skipValidation) {
+        logger.info('Validating strategy before deployment', {
+          strategyId: strategy.id,
+          type: config.type,
+        });
+
+        const validator = new StrategyValidator(this.validationCriteria);
+        const report = await validator.validate(strategy);
+
+        if (!report.valid) {
+          const formattedReport = StrategyValidator.formatReport(report);
+          logger.error('Strategy validation failed', {
+            strategyId: strategy.id,
+            errors: report.errorCount,
+            warnings: report.warningCount,
+            report: formattedReport,
+          });
+          
+          throw new Error(
+            `Strategy validation failed with ${report.errorCount} error(s). ` +
+            `Review validation report for details.`
+          );
+        }
+
+        logger.info('Strategy validation passed', {
+          strategyId: strategy.id,
+          warnings: report.warningCount,
+        });
+
+        if (report.warningCount > 0) {
+          const formattedReport = StrategyValidator.formatReport(report);
+          logger.warn('Strategy has warnings', {
+            strategyId: strategy.id,
+            warnings: report.warningCount,
+            report: formattedReport,
+          });
+        }
+      }
 
       logger.info('Strategy instance created successfully', {
         type: config.type,
