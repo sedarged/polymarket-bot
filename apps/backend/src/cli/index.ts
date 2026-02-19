@@ -7,6 +7,9 @@ import { Token } from '@polymarket/shared';
 import { config } from '../config';
 import { BackupService, BackupConfig } from '../utils/backup';
 import { AlertingService } from '../utils/alerting';
+import { BacktestEngine } from '../learning/backtestEngine';
+import { EventStore } from '../learning/eventStore';
+import { registerStrategies } from '../trading/strategies';
 import axios from 'axios';
 import path from 'path';
 
@@ -388,6 +391,133 @@ export async function ratesCommand(options: Record<string, string | boolean>): P
   }
 }
 
+export async function backtestCommand(options: Record<string, unknown>): Promise<void> {
+  try {
+    // Validate required parameters
+    const strategyId = options.strategy as string;
+    const startDate = options.start as string;
+    const endDate = options.end as string;
+    const markets = options.markets as string;
+
+    if (!strategyId) {
+      console.error('Error: --strategy is required (e.g., random, arbitrage, mean-reversion, market-making)');
+      process.exit(1);
+    }
+    if (!startDate || !endDate) {
+      console.error('Error: --start and --end dates are required (ISO format)');
+      process.exit(1);
+    }
+    if (!markets) {
+      console.error('Error: --markets is required (comma-separated market IDs)');
+      process.exit(1);
+    }
+
+    // Parse optional parameters
+    const initialBalance = options.balance ? parseFloat(options.balance as string) : 10000;
+    const slippage = options.slippage ? parseFloat(options.slippage as string) : 0.01;
+    const feeRate = options.feeRate ? parseFloat(options.feeRate as string) : 0.002;
+    const seed = options.seed ? parseInt(options.seed as string, 10) : undefined;
+    const marketIds = markets
+      .split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
+
+    if (marketIds.length === 0) {
+      console.error('Error: --markets must include at least one valid market ID');
+      process.exit(1);
+    }
+    // Parse strategy config if provided
+    let strategyConfig: Record<string, unknown> = {};
+    if (options.config) {
+      try {
+        strategyConfig = JSON.parse(options.config as string);
+      } catch (error) {
+        console.error('Error: Invalid JSON for --config parameter');
+        process.exit(1);
+      }
+    }
+
+    console.log('\n🧪 Starting Backtest');
+    console.log('==================\n');
+    console.log(`Strategy:        ${strategyId}`);
+    console.log(`Markets:         ${marketIds.join(', ')}`);
+    console.log(`Period:          ${startDate} to ${endDate}`);
+    console.log(`Initial Balance: $${initialBalance.toFixed(2)}`);
+    console.log(`Slippage:        ${(slippage * 100).toFixed(2)}%`);
+    console.log(`Fee Rate:        ${(feeRate * 100).toFixed(2)}%`);
+    if (seed) console.log(`Seed:            ${seed}`);
+    console.log('');
+
+    // Initialize components
+    registerStrategies();
+    const eventStore = new EventStore();
+    const backtestEngine = new BacktestEngine({ eventStore });
+
+    // Run backtest
+    const backtestId = await backtestEngine.runBacktest({
+      strategyId,
+      strategyConfig: { ...strategyConfig, seed: seed ?? strategyConfig?.seed },
+      startDate,
+      endDate,
+      markets: marketIds,
+      initialBalance,
+      slippage,
+      feeRate,
+      seed: seed ?? strategyConfig?.seed,
+    });
+
+    // Get results
+    const result = backtestEngine.getBacktest(backtestId);
+    
+    if (!result) {
+      console.error('✗ Backtest failed - no results available');
+      process.exit(1);
+    }
+
+    // Display results
+    console.log('✓ Backtest Complete\n');
+    console.log('Results');
+    console.log('=======\n');
+    console.log(`Backtest ID:     ${result.backtestId}`);
+    console.log(`Completed:       ${new Date(result.completedAt).toLocaleString()}\n`);
+    
+    console.log('Performance Metrics:');
+    console.log(`  Total PnL:      $${result.metrics.pnl.toFixed(2)}`);
+    console.log(`  Return:         ${((result.metrics.pnl / initialBalance) * 100).toFixed(2)}%`);
+    console.log(`  Sharpe Ratio:   ${result.metrics.sharpe.toFixed(3)}`);
+    console.log(`  Max Drawdown:   ${(result.metrics.maxDrawdown * 100).toFixed(2)}%`);
+    console.log(`  Win Rate:       ${(result.metrics.winRate * 100).toFixed(2)}%`);
+    console.log(`  Total Trades:   ${result.metrics.totalTrades}`);
+    console.log(`  Avg Trade Size: ${result.metrics.avgTradeSize.toFixed(2)}`);
+    console.log('');
+
+    // Show recent trades
+    if (result.trades.length > 0) {
+      console.log('Recent Trades (last 5):');
+      const recentTrades = result.trades.slice(-5);
+      recentTrades.forEach(trade => {
+        const sign = trade.pnl >= 0 ? '+' : '';
+        console.log(`  ${new Date(trade.timestamp).toLocaleTimeString()} | ${trade.side.toUpperCase().padEnd(4)} | ` +
+          `Price: ${trade.price.toFixed(4)} | Size: ${trade.size.toString().padStart(3)} | ` +
+          `PnL: ${sign}$${trade.pnl.toFixed(2)}`);
+      });
+      console.log('');
+    }
+
+    // Cleanup
+    backtestEngine.close();
+    eventStore.close();
+    
+    console.log('✓ Results saved to backtest database\n');
+  } catch (error) {
+    logger.error('Backtest command failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    console.error(`\n✗ Error: ${error instanceof Error ? error.message : String(error)}\n`);
+    throw error;
+  }
+}
+
 export async function run(args: string[]): Promise<void> {
   const { command, options } = parseArgs(args);
 
@@ -418,6 +548,10 @@ export async function run(args: string[]): Promise<void> {
       await ratesCommand(options);
       break;
     }
+    case 'backtest': {
+      await backtestCommand(options);
+      break;
+    }
     default:
       console.log('Usage:');
       console.log('  npm run markets [--limit <number>]');
@@ -425,6 +559,9 @@ export async function run(args: string[]): Promise<void> {
       console.log('  npm run kill');
       console.log('  npm run backup [--list]');
       console.log('  npm run rates [--from <currency> --to <currency>] [--batch] [--stats]');
+      console.log('  npm run backtest --strategy <type> --start <date> --end <date> --markets <ids>');
+      console.log('    [--balance <number>] [--slippage <number>] [--feeRate <number>]');
+      console.log('    [--seed <number>] [--config <json>]');
       process.exit(1);
   }
 }
