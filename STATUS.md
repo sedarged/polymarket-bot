@@ -46,8 +46,9 @@ To update this status:
 - #377 [GAP-042] Staging Environment
 - #374 [GAP-045] Strategy Validation Framework
 - #373 [GAP-040] Infrastructure as Code
+- #370 [GAP-011] Strategy Hot-Reload
 
-*Last updated: 2026-02-19T17:17:24.656Z*
+*Last updated: 2026-02-19T18:45:27.783Z*
 
 <!-- STATUS_SYNC_END -->
 
