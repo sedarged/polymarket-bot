@@ -274,6 +274,86 @@ describe('StrategyValidator', () => {
       expect(confidenceResult?.passed).toBe(true);
     });
 
+    it('should fail validation for NaN confidence', async () => {
+      // Create a strategy that returns NaN confidence
+      class NaNConfidenceStrategy extends BaseStrategy {
+        constructor() {
+          super('nan-confidence-strategy', 'NaNConfidence', '1.0.0', 'NaN confidence strategy');
+        }
+
+        protected validateDecision(): void {
+          // Override to skip built-in validation
+        }
+
+        protected async onInitialize(): Promise<void> {
+          // No-op
+        }
+
+        protected async onEvaluate(): Promise<TradingDecision> {
+          return {
+            action: 'hold',
+            confidence: NaN,
+            rationale: 'Test decision',
+          };
+        }
+      }
+
+      const strategy = new NaNConfidenceStrategy();
+      await strategy.initialize({
+        strategyId: 'nan-1',
+        type: 'nan',
+        enabled: true,
+        params: {},
+      });
+
+      const report = await validator.validate(strategy);
+
+      expect(report.valid).toBe(false);
+      const confidenceResult = report.results.find(r => r.check === 'behavior.confidence');
+      expect(confidenceResult?.passed).toBe(false);
+      expect(confidenceResult?.message).toContain('finite number');
+    });
+
+    it('should fail validation for Infinity confidence', async () => {
+      // Create a strategy that returns Infinity confidence
+      class InfinityConfidenceStrategy extends BaseStrategy {
+        constructor() {
+          super('infinity-confidence-strategy', 'InfinityConfidence', '1.0.0', 'Infinity confidence strategy');
+        }
+
+        protected validateDecision(): void {
+          // Override to skip built-in validation
+        }
+
+        protected async onInitialize(): Promise<void> {
+          // No-op
+        }
+
+        protected async onEvaluate(): Promise<TradingDecision> {
+          return {
+            action: 'hold',
+            confidence: Infinity,
+            rationale: 'Test decision',
+          };
+        }
+      }
+
+      const strategy = new InfinityConfidenceStrategy();
+      await strategy.initialize({
+        strategyId: 'inf-1',
+        type: 'inf',
+        enabled: true,
+        params: {},
+      });
+
+      const report = await validator.validate(strategy);
+
+      expect(report.valid).toBe(false);
+      const confidenceResult = report.results.find(r => r.check === 'behavior.confidence');
+      expect(confidenceResult?.passed).toBe(false);
+      expect(confidenceResult?.message).toContain('finite number');
+    });
+
     it('should validate price bounds for buy/sell actions', async () => {
       // Create a strategy that returns buy/sell decisions
       class TestStrategy extends BaseStrategy {

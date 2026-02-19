@@ -412,14 +412,18 @@ export class StrategyValidator {
 
       // Test 3: Confidence bounds
       if (
+        !Number.isFinite(decision.confidence) ||
         decision.confidence < (this.criteria.minConfidence || 0) ||
         decision.confidence > 1
       ) {
+        const issue = !Number.isFinite(decision.confidence)
+          ? `Confidence must be a finite number (got ${decision.confidence})`
+          : `Confidence ${decision.confidence} outside valid range [${this.criteria.minConfidence || 0}, 1]`;
         results.push({
           check: 'behavior.confidence',
           passed: false,
           severity: 'error',
-          message: `Confidence ${decision.confidence} outside valid range [${this.criteria.minConfidence}, 1]`,
+          message: issue,
         });
       } else {
         results.push({
