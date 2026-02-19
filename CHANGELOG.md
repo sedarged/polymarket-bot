@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0](https://github.com/sedarged/polymarket-bot/compare/v3.0.0...v3.1.0) (2026-02-19)
+
+
+### Features
+
+* implement strategy validation framework (GAP-045) ([bdd06b4](https://github.com/sedarged/polymarket-bot/commit/bdd06b426b15c51c79c6d01409d78dcf2f69c6fa))
+
+
+### Bug Fixes
+
+* add NaN and Infinity checks to confidence validation ([d846d2a](https://github.com/sedarged/polymarket-bot/commit/d846d2abf783a8a49b462c13c10b55d3795bb67a))
+* address code review feedback ([8c9742a](https://github.com/sedarged/polymarket-bot/commit/8c9742ae156d59acdf9094f8d9c2c1e68efe90f4))
+
 ## [3.0.0](https://github.com/sedarged/polymarket-bot/compare/v2.9.0...v3.0.0) (2026-02-19)
 
 
