@@ -380,6 +380,52 @@ interface StrategyConfigEntry {
 }
 ```
 
+## Per-Market Configuration Usage (GAP-001)
+
+### Risk Manager Integration
+
+The `maxPositionSize` field in markets configuration is automatically applied by the RiskManager to enforce per-market position limits. This allows you to set different position limits for different markets without code changes.
+
+**How it works:**
+
+1. **Loading**: When `MARKETS_CONFIG_PATH` is set, the bot loads markets.json at startup
+2. **Integration**: The markets config is passed to RiskManager during initialization
+3. **Order Validation**: For each order, RiskManager checks:
+   - If the market has a specific `maxPositionSize` configured, use that limit
+   - Otherwise, fall back to the global `RISK_MAX_EXPOSURE_PER_MARKET` limit
+4. **Hot-Reload**: When markets.json is updated, RiskManager automatically applies the new limits
+
+**Example:**
+
+```typescript
+// Global limit (via .env)
+RISK_MAX_EXPOSURE_PER_MARKET=1000
+
+// markets.json
+[
+  {
+    "tokenId": "0xhighVolatility",
+    "maxPositionSize": 500  // Lower limit for risky market
+  },
+  {
+    "tokenId": "0xlowVolatility",
+    "maxPositionSize": 2000  // Higher limit for stable market
+  }
+  // Markets without specific config use global limit of 1000
+]
+```
+
+**Result:**
+- Orders for `0xhighVolatility` are limited to 500 units
+- Orders for `0xlowVolatility` are limited to 2000 units
+- Orders for other markets are limited to 1000 units (global default)
+
+### Strategy Integration
+
+The `spread` field in markets configuration is available for strategy implementations but is not automatically enforced. Strategies can access per-market spread values through the markets config to customize their behavior per market.
+
+**Note:** Strategy integration for per-market spread is implementation-specific and depends on your strategy design.
+
 ## Usage Examples
 
 ### Example 1: Basic Setup with File Watching
