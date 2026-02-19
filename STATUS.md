@@ -20,7 +20,6 @@ To update this status:
 *No P0 issues*
 
 ## Next — P1 (High Priority)
-- [P1] #408 [GAP-019] Fee-Rate Checking
 - [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
 
@@ -32,6 +31,7 @@ To update this status:
 
 ## Recently Closed (Last 14 Days)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
+- [P1] #408 [GAP-019] Fee-Rate Checking
 - [P1] #406 [GAP-017] DB Backup Script
 - [P1] #404 [GAP-015] Deployment Workflow
 - [P2] #400 [GAP-021] Data Pipeline Enhancement
@@ -45,7 +45,7 @@ To update this status:
 - #377 [GAP-042] Staging Environment
 - #373 [GAP-040] Infrastructure as Code
 
-*Last updated: 2026-02-19T06:59:58.894Z*
+*Last updated: 2026-02-19T12:30:24.360Z*
 
 <!-- STATUS_SYNC_END -->
 
