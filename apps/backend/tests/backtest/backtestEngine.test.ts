@@ -4,9 +4,10 @@
  * Tests for historical replay and metrics computation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import { BacktestEngine } from '../../src/learning/backtestEngine';
 import { EventStore } from '../../src/learning/eventStore';
+import { registerStrategies, StrategyFactory } from '../../src/trading/strategies';
 import type { MarketEvent } from '../../src/learning/types';
 import fs from 'fs';
 import path from 'path';
@@ -25,6 +26,11 @@ describe('BacktestEngine', () => {
       }
     }
   };
+
+  beforeAll(() => {
+    // Register strategies for backtesting
+    registerStrategies();
+  });
 
   beforeEach(() => {
     // Clean up any existing test databases (main files + WAL/SHM sidecars)
@@ -45,6 +51,10 @@ describe('BacktestEngine', () => {
     // Clean up test databases (main files + WAL/SHM sidecars)
     deleteTestDbFiles(testBacktestDbPath);
     deleteTestDbFiles(testEventsDbPath);
+    
+    // Clear and re-register strategies for next test
+    StrategyFactory.clear();
+    registerStrategies();
   });
 
   describe('initialization', () => {
@@ -58,13 +68,15 @@ describe('BacktestEngine', () => {
   describe('runBacktest', () => {
     it('should execute a backtest and return ID', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+        seed: 42,
       });
 
       expect(backtestId).toBeDefined();
@@ -76,13 +88,15 @@ describe('BacktestEngine', () => {
 
     it('should compute metrics correctly', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+        seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
@@ -98,13 +112,15 @@ describe('BacktestEngine', () => {
 
     it('should replay events chronologically', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
@@ -120,13 +136,15 @@ describe('BacktestEngine', () => {
 
     it('should handle multiple markets', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1', 'market-2'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
@@ -135,13 +153,15 @@ describe('BacktestEngine', () => {
 
     it('should filter by time range', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:30:00.000Z',
         endDate: '2026-02-06T11:30:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
@@ -160,19 +180,21 @@ describe('BacktestEngine', () => {
   describe('getBacktest', () => {
     it('should retrieve backtest result by ID', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
       expect(result).toBeDefined();
       expect(result?.backtestId).toBe(backtestId);
-      expect(result?.strategyId).toBe('strategy-1');
+      expect(result?.strategyId).toBe('random');
     });
 
     it('should return null for non-existent backtest', () => {
@@ -184,55 +206,63 @@ describe('BacktestEngine', () => {
   describe('listBacktests', () => {
     it('should list backtests for a strategy', async () => {
       await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-07T10:00:00.000Z',
         endDate: '2026-02-07T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
-      const backtests = engine.listBacktests('strategy-1');
+      const backtests = engine.listBacktests('random');
       expect(backtests).toHaveLength(2);
       expect(backtests.every((b) => b.status === 'completed')).toBe(true);
     });
 
     it('should order by created date descending', async () => {
       const id1 = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       // Small delay to ensure different timestamps
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       const id2 = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-07T10:00:00.000Z',
         endDate: '2026-02-07T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
-      const backtests = engine.listBacktests('strategy-1');
+      const backtests = engine.listBacktests('random');
       expect(backtests[0].backtestId).toBe(id2); // Most recent first
       expect(backtests[1].backtestId).toBe(id1);
     });
@@ -241,13 +271,15 @@ describe('BacktestEngine', () => {
   describe('getStats', () => {
     it('should return comprehensive stats', async () => {
       await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const stats = engine.getStats();
@@ -261,13 +293,15 @@ describe('BacktestEngine', () => {
   describe('metrics computation', () => {
     it('should calculate win rate correctly', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);
@@ -278,13 +312,15 @@ describe('BacktestEngine', () => {
 
     it('should calculate max drawdown correctly', async () => {
       const backtestId = await engine.runBacktest({
-        strategyId: 'strategy-1',
+        strategyId: 'random',
+        strategyConfig: { seed: 42 },
         startDate: '2026-02-06T10:00:00.000Z',
         endDate: '2026-02-06T12:00:00.000Z',
         markets: ['market-1'],
         initialBalance: 10000,
         slippage: 0.01,
         feeRate: 0.002,
+      seed: 42,
       });
 
       const result = engine.getBacktest(backtestId);

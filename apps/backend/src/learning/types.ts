@@ -154,6 +154,7 @@ export interface SignalDefinition {
 export interface BacktestConfig {
   backtestId: string;
   strategyId: string;
+  strategyConfig?: Record<string, unknown>; // Strategy-specific configuration
   startDate: string; // ISO timestamp
   endDate: string; // ISO timestamp
   markets: string[]; // market IDs

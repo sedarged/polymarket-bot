@@ -21,6 +21,8 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import { EventStore } from './eventStore';
+import { StrategyFactory } from '../trading/strategies/StrategyFactory';
+import type { IStrategy, MarketContext, Position } from '../trading/strategies/types';
 import type {
   BacktestConfig,
   BacktestResult,
@@ -28,23 +30,6 @@ import type {
   EventEnvelope,
   MarketEvent,
 } from './types';
-
-/**
- * Simple seeded random number generator for reproducible backtests
- */
-class SeededRandom {
-  private seed: number;
-
-  constructor(seed: number) {
-    this.seed = seed;
-  }
-
-  next(): number {
-    // Linear congruential generator
-    this.seed = (this.seed * 9301 + 49297) % 233280;
-    return this.seed / 233280;
-  }
-}
 
 export interface BacktestEngineConfig {
   path?: string;
@@ -208,6 +193,9 @@ export class BacktestEngine {
    * Execute the backtest simulation
    */
   private async executeBacktest(config: BacktestConfig): Promise<BacktestResult> {
+    // Create strategy instance for this backtest
+    const strategy = await this.createStrategy(config);
+
     // Fetch historical events for the time range and markets
     const events: EventEnvelope<MarketEvent>[] = [];
     
@@ -230,10 +218,6 @@ export class BacktestEngine {
       eventCount: events.length,
     });
 
-    // Initialize seeded random if seed provided
-    const random = config.seed !== undefined ? new SeededRandom(config.seed) : null;
-    const getRandomValue = () => (random ? random.next() : Math.random());
-
     // Simulate trading with proper position tracking
     const trades: BacktestResult['trades'] = [];
     let balance = config.initialBalance;
@@ -244,18 +228,30 @@ export class BacktestEngine {
     let maxDrawdown = 0;
     const pnlHistory: number[] = [];
 
-    // Placeholder: In real implementation, strategy would generate signals
-    // For now, simple random trading to demonstrate metrics calculation
+    // Replay each market event and let the strategy decide what to do
     for (const event of events) {
       const marketEvent = event.payload;
       const markPrice = marketEvent.mid;
 
-      // Example trade logic (replace with actual strategy)
-      // This is a placeholder for demonstration
-      if (getRandomValue() < 0.01) {
-        // 1% chance to trade per event
-        const side: 'buy' | 'sell' = getRandomValue() < 0.5 ? 'buy' : 'sell';
-        const size = 10;
+      // Convert MarketEvent to MarketContext for strategy evaluation
+      const context: MarketContext = this.convertEventToContext(event);
+      
+      // Build position info for strategy
+      const position: Position | undefined = positionSize !== 0 ? {
+        tokenId: event.marketId,
+        size: positionSize,
+        avgPrice: positionAvgPrice,
+        unrealizedPnl: positionSize * (markPrice - positionAvgPrice),
+        realizedPnl,
+      } : undefined;
+
+      // Ask strategy for trading decision
+      const decision = await strategy.evaluate(context, position);
+
+      // Execute trade if strategy decided to trade
+      if (decision.action === 'buy' || decision.action === 'sell') {
+        const side = decision.action;
+        const size = decision.size || 10; // Use strategy's size or default
 
         // Apply slippage to get execution price
         const execPrice =
@@ -359,6 +355,11 @@ export class BacktestEngine {
       }
     }
 
+    // Clean up strategy
+    if (strategy.cleanup) {
+      await strategy.cleanup();
+    }
+
     // Compute metrics
     const winningTrades = trades.filter((t) => t.pnl > 0).length;
     const winRate = trades.length > 0 ? winningTrades / trades.length : 0;
@@ -387,6 +388,63 @@ export class BacktestEngine {
     };
 
     return result;
+  }
+
+  /**
+   * Create a strategy instance from the backtest configuration
+   */
+  private async createStrategy(config: BacktestConfig): Promise<IStrategy> {
+    // Determine strategy type from strategyId
+    // Expected format: "random", "arbitrage", "mean-reversion", "market-making"
+    // Or with suffix: "random-1", "arbitrage-test", etc.
+    let strategyType = config.strategyId;
+    
+    // If strategyId contains a hyphen and is not a known type, extract the prefix
+    const knownTypes = ['random', 'arbitrage', 'mean-reversion', 'market-making'];
+    if (!knownTypes.includes(strategyType)) {
+      // Try to match known types by prefix
+      for (const knownType of knownTypes) {
+        if (strategyType.startsWith(knownType)) {
+          strategyType = knownType;
+          break;
+        }
+      }
+    }
+    
+    // Build strategy config from backtest config
+    const strategyConfig = {
+      strategyId: config.strategyId,
+      type: strategyType,
+      enabled: true,
+      params: {
+        ...config.strategyConfig,
+        // Pass seed from backtest config to strategy for reproducibility
+        seed: config.seed,
+      },
+    };
+
+    return await StrategyFactory.create(strategyConfig);
+  }
+
+  /**
+   * Convert a MarketEvent to a MarketContext for strategy evaluation
+   */
+  private convertEventToContext(event: EventEnvelope<MarketEvent>): MarketContext {
+    const marketEvent = event.payload;
+    
+    return {
+      marketId: event.marketId,
+      tokenId: event.marketId, // Use marketId as tokenId for now
+      bestBid: marketEvent.bestBid,
+      bestAsk: marketEvent.bestAsk,
+      mid: marketEvent.mid,
+      spread: marketEvent.spread,
+      liquidity: {
+        bidSize: marketEvent.liquidity,
+        askSize: marketEvent.liquidity,
+      },
+      timestamp: event.occurredAt,
+    };
   }
 
   /**
