@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0](https://github.com/sedarged/polymarket-bot/compare/v3.2.0...v3.3.0) (2026-02-19)
+
+
+### Features
+
+* implement multi-strategy orchestration (GAP-013) ([9126c10](https://github.com/sedarged/polymarket-bot/commit/9126c10a4c8e459a4118e075044addffa3545814))
+* multi-strategy orchestration with conflict detection and state isolation ([27ea418](https://github.com/sedarged/polymarket-bot/commit/27ea418ec830a725e922b3f91fe64bd3a1698b93))
+
+
+### Bug Fixes
+
+* address PR review feedback ([b94f7c1](https://github.com/sedarged/polymarket-bot/commit/b94f7c15afbc135b691a6708db3ee866e3204af3))
+* address PR review feedback round 2 ([ce91984](https://github.com/sedarged/polymarket-bot/commit/ce91984d2b4881e64e09dd4fdf21c2ad5a3203b9))
+* remove unused StrategyConfig import to resolve build warning ([51dff02](https://github.com/sedarged/polymarket-bot/commit/51dff02c38960637717deffadb78337e06d49a41))
+* use config strategyId as orchestrator key for unique strategy identification ([01619ae](https://github.com/sedarged/polymarket-bot/commit/01619ae2539969ffe5d74885e878555e667ebbc6))
+
 ## [3.2.0](https://github.com/sedarged/polymarket-bot/compare/v3.1.0...v3.2.0) (2026-02-19)
 
 
