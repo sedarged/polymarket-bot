@@ -493,7 +493,7 @@ describe('StrategyOrchestrator', () => {
   });
 
   describe('Conflict Detection', () => {
-    it('should detect no conflicts when strategies agree', async () => {
+    it('should detect conflicts when multiple strategies want same action', async () => {
       // Create two strategies that both want to buy
       const buyStrategy1: IStrategy = {
         id: 'buy-strategy-1',

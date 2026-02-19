@@ -267,7 +267,7 @@ export class StrategyOrchestrator extends EventEmitter {
 
     const conflicts: ConflictDetectionResult['conflicts'] = [];
 
-    // If we have both buy and sell signals, that's a conflict
+    // If we have both buy and sell signals, that's a conflict (opposing directions)
     if (buyDecisions.length > 0 && sellDecisions.length > 0) {
       conflicts.push({
         strategies: [
@@ -277,23 +277,24 @@ export class StrategyOrchestrator extends EventEmitter {
         marketId: context.marketId,
         reason: 'Opposing trade directions',
       });
-    }
+    } else {
+      // Only check for same-side conflicts if there's no opposing direction conflict
+      // (to avoid redundant conflict reporting)
+      if (buyDecisions.length > 1) {
+        conflicts.push({
+          strategies: buyDecisions.map(d => d.strategyId),
+          marketId: context.marketId,
+          reason: `Multiple buy signals (${buyDecisions.length} strategies)`,
+        });
+      }
 
-    // If we have multiple strategies wanting to trade the same side, that's also a potential conflict
-    if (buyDecisions.length > 1) {
-      conflicts.push({
-        strategies: buyDecisions.map(d => d.strategyId),
-        marketId: context.marketId,
-        reason: `Multiple buy signals (${buyDecisions.length} strategies)`,
-      });
-    }
-
-    if (sellDecisions.length > 1) {
-      conflicts.push({
-        strategies: sellDecisions.map(d => d.strategyId),
-        marketId: context.marketId,
-        reason: `Multiple sell signals (${sellDecisions.length} strategies)`,
-      });
+      if (sellDecisions.length > 1) {
+        conflicts.push({
+          strategies: sellDecisions.map(d => d.strategyId),
+          marketId: context.marketId,
+          reason: `Multiple sell signals (${sellDecisions.length} strategies)`,
+        });
+      }
     }
 
     const hasConflicts = conflicts.length > 0;
@@ -479,8 +480,6 @@ export class StrategyOrchestrator extends EventEmitter {
    * Uses weighted average based on confidence
    */
   private mergeDecisions(results: EvaluationResult[]): EvaluationResult {
-    const totalConfidence = results.reduce((sum, r) => sum + r.decision.confidence, 0);
-
     // Count votes for buy vs sell
     const buyVotes = results.filter(
       r => r.decision.action === 'buy' || r.decision.side === 'BUY'
@@ -493,6 +492,8 @@ export class StrategyOrchestrator extends EventEmitter {
     const sellConfidence = sellVotes.reduce((sum, r) => sum + r.decision.confidence, 0);
 
     // Select action based on weighted votes
+    // Note: On exact ties we default to 'sell' as a conservative, risk-off choice
+    // This keeps behavior deterministic and backwards compatible
     const action = buyConfidence > sellConfidence ? 'buy' : 'sell';
     const side = action === 'buy' ? 'BUY' : 'SELL';
 
