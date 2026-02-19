@@ -24,6 +24,9 @@ export interface RiskCheckResult {
   reason?: string;
 }
 
+// Default values for risk manager configuration
+const DEFAULT_MAX_FEE_RATE_BPS = 50;
+
 /**
  * Risk Manager with circuit breakers
  * - Max exposure per market
@@ -52,7 +55,7 @@ export class RiskManager {
       circuitBreakerFailureThreshold: config?.circuitBreakerFailureThreshold ?? 5,
       circuitBreakerResetTimeoutMs: config?.circuitBreakerResetTimeoutMs ?? 60000,
       circuitBreakerSuccessThreshold: config?.circuitBreakerSuccessThreshold ?? 2,
-      maxFeeRateBps: config?.maxFeeRateBps ?? 50,
+      maxFeeRateBps: config?.maxFeeRateBps ?? DEFAULT_MAX_FEE_RATE_BPS,
       markets: config?.markets,
     };
 
@@ -73,7 +76,7 @@ export class RiskManager {
     });
 
     // Initialize fee rate validator (GAP-019)
-    this.feeRateValidator = new FeeRateValidator(this.config.maxFeeRateBps ?? 50);
+    this.feeRateValidator = new FeeRateValidator(this.config.maxFeeRateBps ?? DEFAULT_MAX_FEE_RATE_BPS);
 
     // Set up circuit breaker event listeners for logging
     this.circuitBreaker.on('open', (metrics) => {

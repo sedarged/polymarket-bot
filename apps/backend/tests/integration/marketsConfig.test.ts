@@ -195,9 +195,10 @@ describe('Markets Config Integration (GAP-001)', () => {
       TOKEN_IDS: '0xfallback', // This won't be used if markets config loads
     });
 
-    // Should only include entries with valid tokenId
+    // Should only include entries with valid tokenId in tokenIds array
+    // But all entries are preserved in markets array (even if missing tokenId)
     expect(config.tokenIds).toEqual(['0xvalid1', '0xvalid2']);
-    expect(config.markets).toHaveLength(3); // All entries are kept in markets array
+    expect(config.markets).toHaveLength(3); // All entries preserved
   });
 
   it('should extract tokenIds from markets config', () => {
