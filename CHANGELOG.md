@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0](https://github.com/sedarged/polymarket-bot/compare/v2.6.0...v2.7.0) (2026-02-19)
+
+
+### Features
+
+* implement order execution service with market and limit orders (GAP-006) ([81f352f](https://github.com/sedarged/polymarket-bot/commit/81f352fb4921b2380da9c8d00dfd9909e4b95555))
+
+
+### Bug Fixes
+
+* correct createOrder parameter passing and implement retry logic (GAP-006) ([fcb1107](https://github.com/sedarged/polymarket-bot/commit/fcb110748093d1f8558a00660a29db8370369311))
+* implement order execution service with retry logic and correct API usage (GAP-006) ([b570d3f](https://github.com/sedarged/polymarket-bot/commit/b570d3f623b01ad3c9a6b5a1155a05ef99b11d1d))
+
 ## [2.6.0](https://github.com/sedarged/polymarket-bot/compare/v2.5.0...v2.6.0) (2026-02-19)
 
 
