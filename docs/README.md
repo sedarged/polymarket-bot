@@ -125,6 +125,12 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 ### Learning & Experimentation
 - [Learning System Guide](./learning-system.md) - Event store, signal catalog, and backtesting framework
 - [Learning System Design](../REPORTS/LEARNING_SYSTEM.md) - Complete architecture and design specification
+- **[Backtest Integration Guide](./BACKTEST_INTEGRATION.md)** - 🧪 Complete guide to backtesting strategies on historical data (GAP-012)
+  - **Zero-code strategy backtesting** (all strategies work without modification)
+  - CLI and programmatic usage with examples
+  - Strategy-specific configuration for all 4 strategy types
+  - Comprehensive metrics and standard output format
+  - Integration with analytics pipeline
 - [Data Pipeline](./data-pipeline.md) - Market-feed ingestion into EventStore (GAP-021)
 
 ### AI & Automation
