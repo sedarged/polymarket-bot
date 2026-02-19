@@ -4,6 +4,7 @@ This guide demonstrates how to use the `ExecutionService` for placing and managi
 
 ## Table of Contents
 - [Basic Setup](#basic-setup)
+- [Liquidity Validation](#liquidity-validation)
 - [Market Orders](#market-orders)
 - [Limit Orders](#limit-orders)
 - [Conditional Orders](#conditional-orders)
@@ -26,6 +27,122 @@ await tradingClient.initialize();
 // Create execution service
 const executionService = new ExecutionService(tradingClient);
 ```
+
+## Liquidity Validation
+
+The ExecutionService supports optional pre-trade liquidity validation to ensure sufficient market liquidity exists before placing orders. This helps prevent failed executions and improves fill quality.
+
+### Enabling Liquidity Validation
+
+```typescript
+import { ExecutionService } from './trading/executionService';
+import { LiquidityValidator } from './trading/liquidityValidator';
+import { marketFeedService } from './server/marketFeedService';
+import { TradingClient } from './clients/tradingClient';
+
+// Initialize trading client
+const tradingClient = new TradingClient();
+await tradingClient.initialize();
+
+// Create liquidity validator with custom configuration
+const liquidityValidator = new LiquidityValidator({
+  minLiquidityMultiplier: 1.5,  // Require 1.5x order size in liquidity
+  maxPriceLevels: 10,            // Check top 10 price levels
+  maxOrderbookAgeMs: 5000,       // Maximum 5 second data age
+});
+
+// Create execution service with liquidity validation
+const executionService = new ExecutionService(tradingClient, {
+  liquidityValidator,
+  marketFeedService,
+});
+```
+
+### Configuration Options
+
+**minLiquidityMultiplier** (default: 1.0)
+- Minimum liquidity as a multiple of order size
+- 1.0 = order size must not exceed available liquidity
+- 1.5 = available liquidity must be at least 1.5x order size
+- Higher values provide more safety but may reject valid orders
+
+**maxPriceLevels** (default: 10)
+- Maximum number of orderbook price levels to check
+- Higher values provide more accurate depth analysis
+- Lower values improve performance
+
+**maxOrderbookAgeMs** (default: 5000)
+- Maximum age of orderbook data in milliseconds
+- Orders rejected if orderbook data is older than this
+- Should match or be lower than orderbook cache TTL
+
+### How It Works
+
+1. **Before placing each order**, ExecutionService calls LiquidityValidator
+2. **Validator checks orderbook data** from MarketFeedService:
+   - For BUY orders: checks ASK side liquidity (sellers)
+   - For SELL orders: checks BID side liquidity (buyers)
+3. **Aggregates liquidity** across multiple price levels
+4. **Compares** available liquidity against required threshold
+5. **Rejects order** if:
+   - Insufficient liquidity exists
+   - Orderbook data is missing
+   - Orderbook data is stale
+
+### Example: Order Rejection
+
+```typescript
+// This order will be rejected if insufficient liquidity
+const result = await executionService.executeOrder({
+  params: {
+    orderType: OrderTypeEnum.LIMIT,
+    tokenId: 'token-abc-123',
+    side: 'BUY',
+    size: '1000',  // Large order
+    price: '0.50',
+  },
+  context: {
+    executionId: uuidv4(),
+    executionStrategy: ExecutionStrategy.IMMEDIATE,
+  },
+});
+
+if (result.status === ExecutionStatus.FAILED && 
+    result.error?.name === 'InsufficientLiquidityError') {
+  console.log('Order rejected due to insufficient liquidity');
+  console.log('Available:', result.error.availableLiquidity);
+  console.log('Required:', result.error.requiredLiquidity);
+}
+```
+
+### Dynamic Configuration
+
+You can update validation thresholds at runtime:
+
+```typescript
+liquidityValidator.updateConfig({
+  minLiquidityMultiplier: 2.0,  // Increase to 2x for more conservative trading
+});
+```
+
+### Disabling Validation
+
+To disable liquidity validation, simply don't provide the validator when creating ExecutionService:
+
+```typescript
+// No liquidity validation
+const executionService = new ExecutionService(tradingClient);
+```
+
+### Best Practices
+
+1. **Start conservative**: Use higher multipliers (1.5-2.0) initially
+2. **Monitor rejections**: Track how often orders are rejected
+3. **Tune thresholds**: Adjust based on your strategy's needs and market conditions
+4. **Use with market feed**: Liquidity validation requires WebSocket market feed to be running
+5. **Consider volatility**: More volatile markets may need higher multipliers
+
+See [ADR-0010](./adr/0010-pre-trade-liquidity-validation.md) for technical details.
 
 ## Market Orders
 
