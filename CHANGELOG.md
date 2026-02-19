@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0](https://github.com/sedarged/polymarket-bot/compare/v3.1.0...v3.2.0) (2026-02-19)
+
+
+### Features
+
+* add integration tests, API handlers, demo, and documentation ([276024b](https://github.com/sedarged/polymarket-bot/commit/276024bdfe17d95f85544098ddfa9b839adefe35))
+* implement strategy hot-reload with security hardening (GAP-011) ([f7608ae](https://github.com/sedarged/polymarket-bot/commit/f7608ae36954a16333a68a3f2b39e54a3a6b4706))
+* implement StrategyManager with hot-reload capability ([acd9522](https://github.com/sedarged/polymarket-bot/commit/acd9522167f08f1e9024cd4ebf153954586fcff7))
+
+
+### Bug Fixes
+
+* address security and reliability issues from code review ([b46c67a](https://github.com/sedarged/polymarket-bot/commit/b46c67af4c5b81da3cbb3e5f9af7fd006e85e94b))
+* resolve TypeScript compilation errors ([0960fc6](https://github.com/sedarged/polymarket-bot/commit/0960fc6579479eaa706fa77eb9fd057ffa4769f5))
+* use __dirname for default watch directory ([dfc309a](https://github.com/sedarged/polymarket-bot/commit/dfc309ab70771914394d51d57b7ebcf8c7cf5ae2))
+
 ## [3.1.0](https://github.com/sedarged/polymarket-bot/compare/v3.0.0...v3.1.0) (2026-02-19)
 
 
