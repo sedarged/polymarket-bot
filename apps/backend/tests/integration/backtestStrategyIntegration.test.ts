@@ -246,8 +246,10 @@ describe('Backtest Engine + Strategy Framework Integration', () => {
       expect(result).toBeDefined();
       
       // Should have trades from multiple markets
-      const marketIds = new Set(result?.trades.map(t => t.marketId));
-      expect(marketIds.size).toBeGreaterThan(0);
+      const trades = result?.trades ?? [];
+      expect(trades.length).toBeGreaterThan(0);
+      const marketIds = new Set(trades.map(t => t.marketId));
+      expect(marketIds.size).toBeGreaterThan(1);
     });
   });
 
