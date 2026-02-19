@@ -21,7 +21,7 @@
 
 import { EventEmitter } from 'events';
 import { logger } from '../../utils/logger';
-import type { IStrategy, MarketContext, Position, TradingDecision, StrategyConfig } from './types';
+import type { IStrategy, MarketContext, Position, TradingDecision } from './types';
 
 export interface StrategyOrchestratorConfig {
   /** Maximum number of concurrent strategies */
