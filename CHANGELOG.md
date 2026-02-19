@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0](https://github.com/sedarged/polymarket-bot/compare/v2.5.0...v2.6.0) (2026-02-19)
+
+
+### Features
+
+* implement strategy abstract factory (GAP-005) ([7dc720f](https://github.com/sedarged/polymarket-bot/commit/7dc720fe78851dda0e09cd1bce31d662b2cf2763))
+* replace test strategies with real Polymarket strategies ([d4b7535](https://github.com/sedarged/polymarket-bot/commit/d4b75351f9c168a1c5e0ee88f3acc2980ea4fa67))
+* strategy abstract factory with production Polymarket strategies (GAP-005) ([7eb1f73](https://github.com/sedarged/polymarket-bot/commit/7eb1f730f8bb68c174a6db9dc6fc25865541f9ef))
+
+
+### Bug Fixes
+
+* address code review comments ([48ed25b](https://github.com/sedarged/polymarket-bot/commit/48ed25b163c8cc83bbed29e345ad4d56c8edd77b))
+* correct expectedProfit calculations and remove unused stdDevThreshold ([37fbe89](https://github.com/sedarged/polymarket-bot/commit/37fbe89e6448ef8e07084e0621411bd1ca656ba1))
+* resolve TypeScript compilation errors in RandomStrategy ([a513048](https://github.com/sedarged/polymarket-bot/commit/a513048ea5d28b69b02e75ce4b15948e1aeed3bd))
+
 ## [2.5.0](https://github.com/sedarged/polymarket-bot/compare/v2.4.0...v2.5.0) (2026-02-18)
 
 
