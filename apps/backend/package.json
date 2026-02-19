@@ -20,6 +20,7 @@
     "rates": "tsx src/index.ts rates",
     "backup": "tsx src/index.ts backup",
     "backup:list": "tsx src/index.ts backup --list",
+    "example:execution": "tsx examples/execution-service-example.ts",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
