@@ -290,7 +290,7 @@ Get details for a specific strategy.
     "version": "1.0.0",
     "description": "Intra-market arbitrage strategy",
     "enabled": true,
-    "config": { /* full config */ },
+    "config": { /* sanitized config: parameter keys only, values omitted for security */ },
     "loadedAt": "2026-02-19T17:00:00.000Z",
     "reloadCount": 2,
     "metrics": { /* metrics */ },
