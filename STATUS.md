@@ -20,7 +20,6 @@ To update this status:
 *No P0 issues*
 
 ## Next — P1 (High Priority)
-- [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
 
 ## Next — P2 (Normal Priority)
@@ -34,6 +33,7 @@ To update this status:
 - [P1] #408 [GAP-019] Fee-Rate Checking
 - [P1] #406 [GAP-017] DB Backup Script
 - [P1] #404 [GAP-015] Deployment Workflow
+- [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P2] #400 [GAP-021] Data Pipeline Enhancement
 - #399 [GAP-004] Market Synchronization Module
 - #398 [GAP-005] Bot Strategy Abstract Factory
@@ -45,7 +45,7 @@ To update this status:
 - #377 [GAP-042] Staging Environment
 - #373 [GAP-040] Infrastructure as Code
 
-*Last updated: 2026-02-19T13:04:40.665Z*
+*Last updated: 2026-02-19T14:04:38.723Z*
 
 <!-- STATUS_SYNC_END -->
 
