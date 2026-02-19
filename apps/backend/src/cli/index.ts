@@ -417,8 +417,15 @@ export async function backtestCommand(options: Record<string, unknown>): Promise
     const slippage = options.slippage ? parseFloat(options.slippage as string) : 0.01;
     const feeRate = options.feeRate ? parseFloat(options.feeRate as string) : 0.002;
     const seed = options.seed ? parseInt(options.seed as string, 10) : undefined;
-    const marketIds = markets.split(',').map(m => m.trim());
+    const marketIds = markets
+      .split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0);
 
+    if (marketIds.length === 0) {
+      console.error('Error: --markets must include at least one valid market ID');
+      process.exit(1);
+    }
     // Parse strategy config if provided
     let strategyConfig: Record<string, unknown> = {};
     if (options.config) {
