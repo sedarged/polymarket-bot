@@ -58,11 +58,24 @@ const marketConfigSchema = z.array(
   }),
 );
 
-const strategyConfigSchema = z.object({
+// GAP-002: Support both single global config and per-strategy configs
+const globalStrategyConfigSchema = z.object({
   spread: z.number().nonnegative().max(1).optional(),
   maxPositionSize: z.number().positive().optional(),
   inventorySkew: z.boolean().optional(),
 });
+
+const perStrategyConfigSchema = z.array(
+  z.object({
+    strategyId: z.string().min(1, "Strategy ID cannot be empty"),
+    type: z.string().min(1, "Strategy type cannot be empty"),
+    enabled: z.boolean(),
+    params: z.record(z.unknown()),
+  }),
+);
+
+// Union type for strategy config - supports both formats
+const strategyConfigSchema = z.union([globalStrategyConfigSchema, perStrategyConfigSchema]);
 
 export class ConfigManager extends EventEmitter {
   private static instance: ConfigManager | null = null;
@@ -142,6 +155,48 @@ export class ConfigManager extends EventEmitter {
       });
       return null;
     }
+  }
+
+  /**
+   * Get configuration for a specific strategy by ID (GAP-002)
+   * @param strategyId - The ID of the strategy
+   * @returns Strategy configuration or null if not found
+   */
+  public getStrategyConfig(strategyId: string): import('../config').PerStrategyConfig | null {
+    const strategyConfig = this.currentConfig.strategy;
+    
+    if (!strategyConfig) {
+      return null;
+    }
+    
+    // If it's an array (per-strategy configs), find the matching strategy
+    if (Array.isArray(strategyConfig)) {
+      const config = strategyConfig.find(s => s.strategyId === strategyId);
+      return config || null;
+    }
+    
+    // If it's a global config, return null (no per-strategy routing)
+    return null;
+  }
+
+  /**
+   * Get all strategy configurations (GAP-002)
+   * @returns Array of strategy configs, or empty array if none configured
+   */
+  public getAllStrategyConfigs(): import('../config').PerStrategyConfig[] {
+    const strategyConfig = this.currentConfig.strategy;
+    
+    if (!strategyConfig) {
+      return [];
+    }
+    
+    // If it's an array (per-strategy configs), return it
+    if (Array.isArray(strategyConfig)) {
+      return strategyConfig;
+    }
+    
+    // If it's a global config, return empty (no per-strategy routing)
+    return [];
   }
 
   /**

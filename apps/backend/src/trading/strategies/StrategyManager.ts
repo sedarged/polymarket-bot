@@ -187,6 +187,48 @@ export class StrategyManager extends EventEmitter {
   }
 
   /**
+   * Load strategies from ConfigManager (GAP-002)
+   * Automatically loads per-strategy configs from STRATEGY_CONFIG_PATH
+   */
+  async loadStrategiesFromConfig(): Promise<Map<string, IStrategy>> {
+    const { ConfigManager } = await import('../../config/configManager');
+    const configManager = ConfigManager.getInstance();
+    
+    const configs = configManager.getAllStrategyConfigs();
+    
+    if (configs.length === 0) {
+      logger.warn('No per-strategy configs found in STRATEGY_CONFIG_PATH', {
+        hint: 'Set STRATEGY_CONFIG_PATH to config/strategies.json with per-strategy configs',
+      });
+      return new Map();
+    }
+    
+    logger.info('Loading strategies from ConfigManager', {
+      count: configs.length,
+      strategies: configs.map(c => ({ id: c.strategyId, type: c.type, enabled: c.enabled })),
+    });
+    
+    // Filter enabled strategies and convert to StrategyConfig format
+    const enabledConfigs = configs
+      .filter(c => c.enabled)
+      .map(c => ({
+        strategyId: c.strategyId,
+        type: c.type,
+        params: c.params,
+        enabled: c.enabled,
+      }));
+    
+    if (enabledConfigs.length === 0) {
+      logger.warn('No enabled strategies found', {
+        totalConfigs: configs.length,
+      });
+      return new Map();
+    }
+    
+    return this.loadStrategies(enabledConfigs);
+  }
+
+  /**
    * Reload a strategy with a new configuration
    * Preserves the previous instance for rollback
    */

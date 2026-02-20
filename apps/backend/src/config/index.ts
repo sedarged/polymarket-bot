@@ -21,6 +21,17 @@ export interface StrategyConfigEntry {
   inventorySkew?: boolean;
 }
 
+/** Per-strategy configuration entry (GAP-002) */
+export interface PerStrategyConfig {
+  strategyId: string;
+  type: string;
+  enabled: boolean;
+  params: Record<string, unknown>;
+}
+
+/** Strategies configuration - can be single global config or array of per-strategy configs (GAP-002) */
+export type StrategiesConfig = StrategyConfigEntry | PerStrategyConfig[];
+
 const booleanFromEnv = z.preprocess((value) => {
   if (value === undefined || value === null || value === "") {
     return undefined;
@@ -437,7 +448,8 @@ const configSchema = envSchema
         });
       }
     }
-    let strategy: StrategyConfigEntry | undefined;
+    // GAP-002: Support both single global config and per-strategy configs
+    let strategy: StrategiesConfig | undefined;
     if (env.STRATEGY_CONFIG_PATH) {
       try {
         const resolved = path.isAbsolute(env.STRATEGY_CONFIG_PATH)
@@ -445,9 +457,24 @@ const configSchema = envSchema
           : path.resolve(process.cwd(), env.STRATEGY_CONFIG_PATH);
         if (fs.existsSync(resolved)) {
           const raw = fs.readFileSync(resolved, "utf-8");
-          const parsed = JSON.parse(raw) as StrategyConfigEntry;
-          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-            strategy = parsed;
+          const parsed = JSON.parse(raw) as unknown;
+          
+          // Support both formats:
+          // 1. Single global config: { spread, maxPositionSize, inventorySkew }
+          // 2. Per-strategy configs: [{ strategyId, type, params, enabled }, ...]
+          if (Array.isArray(parsed)) {
+            // Per-strategy configs (GAP-002)
+            strategy = parsed as PerStrategyConfig[];
+            logger.info("Loaded per-strategy configs", {
+              count: parsed.length,
+              strategies: parsed.map((s: PerStrategyConfig) => ({ id: s.strategyId, type: s.type, enabled: s.enabled }))
+            });
+          } else if (parsed && typeof parsed === "object") {
+            // Single global config (backward compatibility)
+            strategy = parsed as StrategyConfigEntry;
+            logger.info("Loaded global strategy config", {
+              keys: Object.keys(parsed)
+            });
           }
         }
       } catch (err) {
