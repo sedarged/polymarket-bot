@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0](https://github.com/sedarged/polymarket-bot/compare/v3.7.0...v3.8.0) (2026-02-20)
+
+
+### Features
+
+* add performance benchmarks for critical operations (GAP-034) ([4740421](https://github.com/sedarged/polymarket-bot/commit/4740421397d6ae69cd3203e71503d9436e2c4a52))
+* add performance benchmarks for critical operations (GAP-034) ([cc1d56d](https://github.com/sedarged/polymarket-bot/commit/cc1d56d3e7ecaccfc9d50e30c9512bd3e6384871))
+
+
+### Bug Fixes
+
+* address code review feedback for benchmarks (GAP-034) ([17c1abe](https://github.com/sedarged/polymarket-bot/commit/17c1abe54fe6de67a97cb7a491e31b1bbbcf1ded))
+* simplify benchmark CI workflow (GAP-034) ([1534995](https://github.com/sedarged/polymarket-bot/commit/1534995e0d95a4e460caccc198a377adfd209b31))
+
 ## [3.7.0](https://github.com/sedarged/polymarket-bot/compare/v3.6.0...v3.7.0) (2026-02-20)
 
 
