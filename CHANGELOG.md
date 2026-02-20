@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0](https://github.com/sedarged/polymarket-bot/compare/v3.5.0...v3.6.0) (2026-02-20)
+
+
+### Features
+
+* add comprehensive pre-deployment environment verification script (GAP-016) ([983bac6](https://github.com/sedarged/polymarket-bot/commit/983bac6cc831088afb460c4a2f5b65ee90497593))
+* add comprehensive pre-deployment verification script with tests and documentation ([e813e74](https://github.com/sedarged/polymarket-bot/commit/e813e74558f7819f04a3cfe012217a61f657a6bb))
+
+
+### Bug Fixes
+
+* address security and usability feedback from code review ([8015e4b](https://github.com/sedarged/polymarket-bot/commit/8015e4bfaf0a1cdb9cd7257f357537fcc60f4a2f))
+* improve help extraction and DNS check robustness in verify-environment script ([c9bfb15](https://github.com/sedarged/polymarket-bot/commit/c9bfb15bd2a49d8e496998a83419ca021fe6ea82))
+
 ## [3.5.0](https://github.com/sedarged/polymarket-bot/compare/v3.4.0...v3.5.0) (2026-02-20)
 
 
