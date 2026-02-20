@@ -88,7 +88,11 @@ apps/backend/
 │   └── ...
 └── tests/
     ├── setup.ts              # Global setup (e.g. ADMIN_TOKEN)
-    ├── fixtures/              # Shared test helpers (e.g. websocket.ts)
+    ├── fixtures/              # Shared test helpers and data generators
+    │   ├── index.ts           # Central export for all fixtures
+    │   ├── generators.ts      # Test data generators (GAP-035)
+    │   ├── websocket.ts       # WebSocket message generators
+    │   └── README.md          # Generator documentation
     ├── unit/                 # Unit tests (mocked deps)
     │   ├── clob.test.ts
     │   ├── gamma.test.ts
@@ -105,6 +109,67 @@ apps/backend/
     └── backtest/             # Backtest engine tests
         └── backtestEngine.test.ts
 ```
+
+## Test Data Generators (GAP-035)
+
+The project provides comprehensive test data generators to simplify test data construction. Instead of manually creating test objects, use factory functions with sensible defaults.
+
+### Available Generators
+
+Located in `tests/fixtures/generators.ts`, exported via `tests/fixtures/index.ts`:
+
+```typescript
+import { 
+  createMockOrder,
+  createMockFill,
+  createMockPosition,
+  createMockBalance,
+  createMockAccount,
+  createMockMarket,
+  createMockToken,
+  resetGeneratorCounters
+} from '../fixtures';
+```
+
+### Usage Examples
+
+```typescript
+describe('My Test Suite', () => {
+  beforeEach(() => {
+    resetGeneratorCounters(); // Ensure unique IDs per test
+  });
+
+  it('should process order', () => {
+    // Create order with defaults
+    const order = createMockOrder();
+    
+    // Create order with overrides
+    const customOrder = createMockOrder({
+      side: 'SELL',
+      price: '0.75',
+      size: '25'
+    });
+    
+    // Use type-specific generators
+    const openOrder = createMockOpenOrder();
+    const matchedOrder = createMockMatchedOrder();
+    
+    // Bulk creation
+    const orders = createMockOrders(5);
+  });
+});
+```
+
+### Benefits
+
+- **Reduced boilerplate:** No need to manually specify all fields
+- **Type safety:** Full TypeScript support with autocomplete
+- **Consistency:** Standardized test data across all tests
+- **Flexibility:** Easy overrides for specific test scenarios
+- **Uniqueness:** Auto-incrementing IDs prevent collisions
+
+See `tests/fixtures/README.md` for complete documentation.
+
 
 ## Critical Components Tested
 
