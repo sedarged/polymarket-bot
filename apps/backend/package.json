@@ -29,7 +29,9 @@
     "test:integration": "vitest run tests/integration",
     "test:backtest": "vitest run tests/backtest",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench",
+    "bench:compare": "vitest bench --reporter=verbose"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.994.0",

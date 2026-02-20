@@ -72,6 +72,29 @@ Coverage reports are generated in:
 - **HTML:** `apps/backend/coverage/index.html`
 - **JSON:** `apps/backend/coverage/coverage-final.json`
 
+### Performance Benchmarks (GAP-034)
+
+Run performance benchmarks to measure critical operations:
+
+```bash
+npm run bench          # Run all benchmarks
+npm run bench:compare  # Run with verbose output
+```
+
+Benchmarks measure performance of:
+- **Orderbook processing**: Calculate and format orderbook summaries
+- **Order validation**: Validate order parameters (Audit Finding A-015)
+- **Rate limiting**: Check rate limits (Audit Finding A-008)
+- **Retry logic**: Error classification and retry execution
+- **Circuit breaker**: Execute requests with circuit breaker protection
+
+**CI Integration**: Benchmarks run automatically on PRs and main branch:
+- **PRs**: Compare performance against main branch (fails if >50% slower)
+- **Main**: Store results and track historical performance
+- **Alerts**: Comments posted to PR if performance regresses
+
+**See also**: [Benchmarking Guide](./benchmarking.md) for detailed documentation
+
 ## Test File Organization
 
 ### Naming Convention
@@ -106,8 +129,14 @@ apps/backend/
     │   ├── integration-reconnect.test.ts
     │   ├── signalRouting.test.ts  # Signal routing and error handling
     │   └── ...
-    └── backtest/             # Backtest engine tests
-        └── backtestEngine.test.ts
+    ├── backtest/             # Backtest engine tests
+    │   └── backtestEngine.test.ts
+    └── benchmark/            # Performance benchmarks (GAP-034)
+        ├── orderbook.bench.ts
+        ├── orderValidation.bench.ts
+        ├── rateLimiter.bench.ts
+        ├── retry.bench.ts
+        └── circuitBreaker.bench.ts
 ```
 
 ## Test Data Generators (GAP-035)

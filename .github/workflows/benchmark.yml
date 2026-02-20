@@ -1,0 +1,71 @@
+name: Performance Benchmarks
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Run Performance Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history for comparison
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run benchmarks
+        run: |
+          cd apps/backend
+          npm run bench -- --reporter=json --outputFile=benchmark-results.json
+        continue-on-error: false
+        
+      - name: Display benchmark results
+        run: |
+          cd apps/backend
+          npm run bench -- --reporter=verbose
+        
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: Performance Benchmarks
+          tool: 'vitest'
+          output-file-path: apps/backend/benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+          alert-comment-cc-users: '@sedarged'
+          
+      - name: Compare PR benchmarks
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'pull_request'
+        with:
+          name: Performance Benchmarks
+          tool: 'vitest'
+          output-file-path: apps/backend/benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: true
+          alert-comment-cc-users: '@sedarged'

@@ -321,7 +321,31 @@ npm run dev book -- --tokenId <TOKEN_ID>
 
 # Start server with WebSocket market feed
 npm run dev
+
+# Run performance benchmarks (GAP-034)
+npm run bench
 ```
+
+### Performance Benchmarking (GAP-034)
+
+Measure and monitor performance of critical operations:
+
+```bash
+cd apps/backend
+npm run bench          # Run all performance benchmarks
+npm run bench:compare  # Run with verbose output
+```
+
+Benchmarks measure:
+- **Orderbook processing**: Calculate and format orderbook summaries
+- **Order validation**: Validate order parameters (Audit Finding A-015)
+- **Rate limiting**: Check rate limits (Audit Finding A-008)
+- **Retry logic**: Error classification and retry execution
+- **Circuit breaker**: Execute requests with circuit breaker protection
+
+**CI Integration**: Benchmarks run automatically on PRs and detect performance regressions > 50%.
+
+See [Benchmarking Guide](docs/benchmarking.md) for complete documentation.
 
 ### Real-Time Market Feed Server
 

@@ -93,6 +93,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [Automation Scripts Guide](../scripts/README.md) - 🤖 Helper scripts for verification, quality checks, and validation
 - [Automation Guide](./automation.md) - GitHub automation, CI/CD, and release management
 - [Testing Guide](./testing.md) - Test strategy, infrastructure, and best practices
+- **[Benchmarking Guide](./benchmarking.md)** - 📊 **Performance benchmarks for critical operations (GAP-034)**
+  - Run benchmarks locally and in CI
+  - Measure orderbook, validation, rate limiting, retry, and circuit breaker performance
+  - Detect performance regressions automatically
+  - Track historical performance trends
 - [Environment Setup](./environment.md) - Complete development environment and command reference
 - [Master Development Plan](./master-plan.md) - Comprehensive task list and roadmap
 - [Implementation Checklist](./implementation-checklist.md) - Detailed development checklist
