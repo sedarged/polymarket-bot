@@ -354,7 +354,11 @@ export function createMockTradingScenario(options?: {
 }) {
   const orderSize = options?.orderSize || '10';
   const fillCount = options?.fillCount !== undefined ? options.fillCount : 2;
-  const fillSize = options?.fillSize || (parseFloat(orderSize) / fillCount).toFixed(2);
+  const fillSize = options?.fillSize
+    ? options.fillSize
+    : fillCount === 0
+    ? '0'
+    : (parseFloat(orderSize) / fillCount).toFixed(2);
   const side = options?.side || 'BUY';
   const price = options?.price || '0.55';
   
