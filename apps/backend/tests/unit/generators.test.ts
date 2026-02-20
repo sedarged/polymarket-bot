@@ -477,6 +477,25 @@ describe('Test Data Generators', () => {
       expect(scenario.order.remainingSize).toBe('100.00');
       expect(scenario.fills).toHaveLength(0);
     });
+
+    it('should allow customizing side and price', () => {
+      const scenario = createMockTradingScenario({
+        orderSize: '50',
+        fillCount: 2,
+        fillSize: '25',
+        side: 'SELL',
+        price: '0.45',
+      });
+
+      expect(scenario.order.side).toBe('SELL');
+      expect(scenario.order.price).toBe('0.45');
+      expect(scenario.fills).toHaveLength(2);
+      
+      scenario.fills.forEach(fill => {
+        expect(fill.side).toBe('SELL');
+        expect(fill.price).toBe('0.45');
+      });
+    });
   });
 
   describe('Counter Reset', () => {

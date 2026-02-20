@@ -349,10 +349,14 @@ export function createMockTradingScenario(options?: {
   orderSize?: string;
   fillCount?: number;
   fillSize?: string;
+  side?: 'BUY' | 'SELL';
+  price?: string;
 }) {
   const orderSize = options?.orderSize || '10';
   const fillCount = options?.fillCount !== undefined ? options.fillCount : 2;
   const fillSize = options?.fillSize || (parseFloat(orderSize) / fillCount).toFixed(2);
+  const side = options?.side || 'BUY';
+  const price = options?.price || '0.55';
   
   const orderId = generateOrderId();
   const tokenId = generateTokenId();
@@ -362,8 +366,8 @@ export function createMockTradingScenario(options?: {
       orderId,
       tokenId,
       size: fillSize,
-      side: 'BUY',
-      price: '0.55',
+      side,
+      price,
     })
   );
   
@@ -385,8 +389,8 @@ export function createMockTradingScenario(options?: {
     status,
     filledSize: totalFilled.toFixed(2),
     remainingSize: remaining.toFixed(2),
-    side: fills.length > 0 ? fills[0].side : 'BUY',
-    price: fills.length > 0 ? fills[0].price : '0.55',
+    side,
+    price,
   });
   
   return { order, fills };

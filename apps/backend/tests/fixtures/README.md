@@ -118,10 +118,12 @@ import { createMockTradingScenario } from '../fixtures';
 const scenario = createMockTradingScenario({
   orderSize: '100',
   fillCount: 4,
-  fillSize: '25'
+  fillSize: '25',
+  side: 'SELL',    // Optional: defaults to 'BUY'
+  price: '0.45'    // Optional: defaults to '0.55'
 });
-// scenario.order - the order
-// scenario.fills - array of related fills with matching IDs
+// scenario.order - the order with calculated status and fill amounts
+// scenario.fills - array of related fills with matching IDs, side, and price
 ```
 
 ## Counter Management
