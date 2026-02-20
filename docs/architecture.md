@@ -261,6 +261,8 @@ const decision = await strategy.evaluate(marketContext);
 
 **Purpose:** Central signal processing, prioritization, and risk validation
 
+**Status:** Framework implemented and tested. Runtime integration into server signal/execution flow is planned for future work.
+
 **Architecture:**
 ```
 StrategyOrchestrator → SignalEngine → ExecutionService
@@ -287,6 +289,13 @@ StrategyOrchestrator → SignalEngine → ExecutionService
 ```typescript
 import { SignalEngine } from './trading/SignalEngine';
 import { RiskManager } from './trading/riskManager';
+
+// Initialize risk manager
+const riskManager = new RiskManager({
+  maxExposurePerMarket: 1000,
+  maxOpenOrders: 10,
+  maxDrawdown: 0.2,
+});
 
 // Initialize signal engine
 const signalEngine = new SignalEngine(

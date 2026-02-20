@@ -7,7 +7,7 @@
  * - Signals are filtered, prioritized, and risk-checked
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignalEngine, Signal } from '../../src/trading/SignalEngine';
 import { StrategyOrchestrator } from '../../src/trading/strategies/StrategyOrchestrator';
 import { RandomStrategy } from '../../src/trading/strategies/RandomStrategy';

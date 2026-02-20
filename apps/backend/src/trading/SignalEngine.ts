@@ -18,6 +18,7 @@ import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
 import { RiskManager } from './riskManager';
 import type { TradingDecision } from './strategies/types';
+import type { Order, Position } from '@polymarket/shared';
 
 /**
  * Enhanced signal with metadata for processing
@@ -118,8 +119,8 @@ export class SignalEngine extends EventEmitter {
    */
   async processSignals(
     signals: Signal[],
-    currentOrders: any[] = [],
-    currentPositions: any[] = []
+    currentOrders: Order[] = [],
+    currentPositions: Position[] = []
   ): Promise<SignalResult[]> {
     if (!this.config.enabled) {
       logger.debug('SignalEngine is disabled, skipping processing');
@@ -258,6 +259,20 @@ export class SignalEngine extends EventEmitter {
     const buySignals = signals.filter(s => s.decision.action === 'buy');
     const sellSignals = signals.filter(s => s.decision.action === 'sell');
     const holdSignals = signals.filter(s => s.decision.action === 'hold');
+    const cancelSignals = signals.filter(s => s.decision.action === 'cancel');
+
+    // If we only have cancel signals, emit a single cancel signal
+    if (
+      cancelSignals.length > 0 &&
+      buySignals.length === 0 &&
+      sellSignals.length === 0 &&
+      holdSignals.length === 0
+    ) {
+      logger.debug('Only cancel signals present, emitting cancel action', {
+        cancelCount: cancelSignals.length,
+      });
+      return [cancelSignals[0]];
+    }
 
     // If hold signals dominate, return empty (no action)
     if (holdSignals.length > buySignals.length + sellSignals.length) {
@@ -272,6 +287,12 @@ export class SignalEngine extends EventEmitter {
     // Aggregate buy signals
     if (buySignals.length > sellSignals.length) {
       const aggregated = this.aggregateBuySignals(buySignals);
+      
+      if (!aggregated) {
+        logger.warn('Failed to aggregate buy signals, no action');
+        return [];
+      }
+      
       logger.debug('Aggregated buy signals', {
         count: buySignals.length,
         avgConfidence: aggregated.confidence,
@@ -282,6 +303,12 @@ export class SignalEngine extends EventEmitter {
     // Aggregate sell signals
     if (sellSignals.length > buySignals.length) {
       const aggregated = this.aggregateSellSignals(sellSignals);
+      
+      if (!aggregated) {
+        logger.warn('Failed to aggregate sell signals, no action');
+        return [];
+      }
+      
       logger.debug('Aggregated sell signals', {
         count: sellSignals.length,
         avgConfidence: aggregated.confidence,
@@ -300,23 +327,27 @@ export class SignalEngine extends EventEmitter {
   /**
    * Aggregate multiple buy signals
    */
-  private aggregateBuySignals(signals: Signal[]): AggregatedSignal {
+  private aggregateBuySignals(signals: Signal[]): AggregatedSignal | null {
     const prices = signals
       .map(s => s.decision.price)
-      .filter((p): p is number => p !== undefined);
+      .filter((p): p is number => p !== undefined && Number.isFinite(p) && p > 0);
     
     const sizes = signals
       .map(s => s.decision.size)
-      .filter((s): s is number => s !== undefined);
+      .filter((s): s is number => s !== undefined && Number.isFinite(s) && s > 0);
 
-    const avgPrice = prices.length > 0
-      ? prices.reduce((sum, p) => sum + p, 0) / prices.length
-      : 0;
+    // Reject aggregation if no valid price or size inputs exist
+    if (prices.length === 0 || sizes.length === 0) {
+      logger.warn('Cannot aggregate buy signals: no valid prices or sizes', {
+        signalCount: signals.length,
+        validPrices: prices.length,
+        validSizes: sizes.length,
+      });
+      return null;
+    }
 
-    const totalSize = sizes.length > 0
-      ? sizes.reduce((sum, s) => sum + s, 0)
-      : 0;
-
+    const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+    const totalSize = sizes.reduce((sum, s) => sum + s, 0);
     const avgConfidence = signals.reduce((sum, s) => sum + s.decision.confidence, 0) / signals.length;
 
     return {
@@ -332,23 +363,27 @@ export class SignalEngine extends EventEmitter {
   /**
    * Aggregate multiple sell signals
    */
-  private aggregateSellSignals(signals: Signal[]): AggregatedSignal {
+  private aggregateSellSignals(signals: Signal[]): AggregatedSignal | null {
     const prices = signals
       .map(s => s.decision.price)
-      .filter((p): p is number => p !== undefined);
+      .filter((p): p is number => p !== undefined && Number.isFinite(p) && p > 0);
     
     const sizes = signals
       .map(s => s.decision.size)
-      .filter((s): s is number => s !== undefined);
+      .filter((s): s is number => s !== undefined && Number.isFinite(s) && s > 0);
 
-    const avgPrice = prices.length > 0
-      ? prices.reduce((sum, p) => sum + p, 0) / prices.length
-      : 0;
+    // Reject aggregation if no valid price or size inputs exist
+    if (prices.length === 0 || sizes.length === 0) {
+      logger.warn('Cannot aggregate sell signals: no valid prices or sizes', {
+        signalCount: signals.length,
+        validPrices: prices.length,
+        validSizes: sizes.length,
+      });
+      return null;
+    }
 
-    const totalSize = sizes.length > 0
-      ? sizes.reduce((sum, s) => sum + s, 0)
-      : 0;
-
+    const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+    const totalSize = sizes.reduce((sum, s) => sum + s, 0);
     const avgConfidence = signals.reduce((sum, s) => sum + s.decision.confidence, 0) / signals.length;
 
     return {
@@ -403,8 +438,8 @@ export class SignalEngine extends EventEmitter {
    */
   private async evaluateSignal(
     signal: Signal,
-    currentOrders: any[],
-    currentPositions: any[]
+    currentOrders: Order[],
+    currentPositions: Position[]
   ): Promise<SignalResult> {
     // Check active signals limit per token
     const activeForToken = this.activeSignals.get(signal.tokenId) || [];
@@ -424,9 +459,49 @@ export class SignalEngine extends EventEmitter {
 
     // Apply risk manager checks (skip for hold/cancel actions)
     if (signal.decision.action === 'buy' || signal.decision.action === 'sell') {
+      // Validate size: must be a positive numeric value for buy/sell signals
+      const rawSize = signal.decision.size;
+      const numericSize = typeof rawSize === 'string' ? Number(rawSize) : (rawSize as number);
+
+      if (!Number.isFinite(numericSize) || numericSize <= 0) {
+        const reason = 'Invalid or missing size for buy/sell signal';
+        logger.warn(reason, {
+          tokenId: signal.tokenId,
+          strategyId: signal.strategyId,
+          action: signal.decision.action,
+          size: signal.decision.size,
+        });
+
+        return {
+          signal,
+          approved: false,
+          reason,
+        };
+      }
+
+      // Validate price: must be a positive numeric value for buy/sell signals
+      const rawPrice = signal.decision.price;
+      const numericPrice = typeof rawPrice === 'string' ? Number(rawPrice) : (rawPrice as number);
+
+      if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+        const reason = 'Invalid or missing price for buy/sell signal';
+        logger.warn(reason, {
+          tokenId: signal.tokenId,
+          strategyId: signal.strategyId,
+          action: signal.decision.action,
+          price: signal.decision.price,
+        });
+
+        return {
+          signal,
+          approved: false,
+          reason,
+        };
+      }
+
       // Type guard ensures we have the correct action
       const side: 'BUY' | 'SELL' = signal.decision.action === 'buy' ? 'BUY' : 'SELL';
-      const size = String(signal.decision.size || 0);
+      const size = String(numericSize);
       
       const riskCheck = this.riskManager.checkOrder(
         signal.tokenId,
