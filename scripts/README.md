@@ -8,6 +8,7 @@ This repository includes several automation scripts to streamline the developmen
 
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
+| `verify-environment.sh` | Pre-deployment environment validation | Before deploying to any environment |
 | `verify-codespaces.sh` | Automated Codespaces verification | Before creating/updating PRs |
 | `quality-check.sh` | Pre-commit quality checks | Before committing code |
 | `check-docs-links.sh` | Validate documentation links | After updating docs |
@@ -15,7 +16,125 @@ This repository includes several automation scripts to streamline the developmen
 
 ---
 
-## Script 1: Codespaces Verification Helper
+## Script 1: Pre-Deployment Environment Verification (GAP-016)
+
+**Location:** `scripts/verify-environment.sh`
+
+**Purpose:** Validates all environment variables, credentials, connectivity, and cloud resources before deploying the bot to any environment.
+
+### What It Checks
+
+- ✅ Prerequisites (curl, jq, Node.js >= 20.0.0)
+- ✅ Required environment variables (API URLs, WebSocket URL)
+- ✅ Trading gates and compliance settings
+- ✅ Secret management configuration (env, encrypted, aws, vault, azure)
+- ✅ Server configuration (ports, chain ID)
+- ✅ Risk management settings
+- ✅ Circuit breaker configuration
+- ✅ Rate limiting configuration
+- ✅ Alerting configuration (Telegram)
+- ✅ Backup configuration (S3, GCS, Azure)
+- ✅ External service connectivity (APIs, WebSocket, cloud services)
+- ✅ Configuration validation (file existence, JSON validity)
+- ✅ Security checks (.gitignore, LOG_LEVEL)
+
+### Usage
+
+```bash
+# Basic usage - validate .env file
+./scripts/verify-environment.sh
+
+# Check specific environment file
+./scripts/verify-environment.sh --env-file .env.production
+
+# Skip connectivity checks (useful for air-gapped environments)
+./scripts/verify-environment.sh --skip-connectivity
+
+# Show verbose output including skipped checks
+./scripts/verify-environment.sh --verbose
+
+# Get help
+./scripts/verify-environment.sh --help
+```
+
+### Output
+
+Provides color-coded output with clear pass/fail/warning indicators:
+
+- 🟢 **Green checkmark (✓)**: Check passed
+- 🔴 **Red X (✗)**: Check failed - must be fixed before deployment
+- 🟡 **Yellow warning (⚠)**: Check passed with warnings - review recommended
+- ⚪ **Yellow dash (⊘)**: Check skipped (only shown with `--verbose`)
+
+### Exit Codes
+
+- `0` - All checks passed (with or without warnings)
+- `1` - One or more checks failed - environment is NOT ready
+- `2` - Invalid usage or missing dependencies
+
+### When to Use
+
+- **Before deployment to any environment** - Validates configuration is correct
+- **After changing .env files** - Ensures changes are valid
+- **In CI/CD pipelines** - Automated pre-deployment validation
+- **When troubleshooting** - Identifies configuration issues
+
+### Integration with CI/CD
+
+```yaml
+# GitHub Actions example
+- name: Verify environment configuration
+  run: ./scripts/verify-environment.sh --env-file .env.production
+```
+
+### Example Output
+
+```
+================================================
+Pre-Deployment Environment Verification (GAP-016)
+================================================
+
+Environment file: .env
+Skip connectivity: false
+
+━━━ Prerequisites ━━━
+✓ curl is available
+✓ jq installed
+✓ Node.js v20.11.0 (>= 20.0.0 required)
+
+━━━ Required Environment Variables ━━━
+✓ GAMMA_API_URL is set and valid: https://gamma-api.polymarket.com
+✓ CLOB_API_URL is set and valid: https://clob.polymarket.com
+✓ WS_MARKET_URL is set and valid: wss://ws-subscriptions-clob...
+
+━━━ Trading Gates & Compliance ━━━
+✓ LIVE_TRADING=false (paper trading mode - safe default)
+
+[... more checks ...]
+
+━━━ Summary ━━━
+
+Total checks: 42
+Passed: 39
+Failed: 0
+Warnings: 3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠ Environment verification PASSED with warnings
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment is ready for deployment, but review warnings above.
+```
+
+### Related Documentation
+
+- [verify-environment.md](../docs/verify-environment.md) - Complete guide with examples
+- [ENV_VARIABLE_REFERENCE.md](../docs/ENV_VARIABLE_REFERENCE.md) - All environment variables
+- [pre-deployment-verification.md](../docs/pre-deployment-verification.md) - Manual checklist
+
+---
+
+## Script 2: Codespaces Verification Helper
 
 **Location:** `scripts/verify-codespaces.sh`
 
@@ -96,7 +215,7 @@ See [CODESPACES_VERIFICATION_CHECKLIST.md](../docs/CODESPACES_VERIFICATION_CHECK
 
 ---
 
-## Script 2: Pre-Commit Quality Check
+## Script 3: Pre-Commit Quality Check
 
 **Location:** `scripts/quality-check.sh`
 
@@ -187,7 +306,7 @@ You can set up as a pre-commit hook:
 
 ---
 
-## Script 3: Documentation Link Checker
+## Script 4: Documentation Link Checker
 
 **Location:** `scripts/check-docs-links.sh`
 
@@ -246,7 +365,7 @@ The script automatically skips:
 
 ---
 
-## Script 4: Deployment Verification
+## Script 5: Deployment Verification
 
 **Location:** `scripts/verify-deployment.sh`
 
@@ -457,6 +576,10 @@ ssh server.example.com "docker logs polymarket-bot | grep -i error | tail -20"
 ./scripts/quality-check.sh && \
 ./scripts/verify-codespaces.sh && \
 ./scripts/check-docs-links.sh
+
+# Phase 7: Pre-Deployment (when deploying)
+# Validate environment configuration:
+./scripts/verify-environment.sh --env-file .env.production
 ```
 
 ### For Human Contributors
@@ -622,7 +745,10 @@ To add new checks to scripts:
 # After doc changes
 ./scripts/check-docs-links.sh
 
-# After deployment
+# Before deployment (validate environment)
+./scripts/verify-environment.sh --env-file .env.production
+
+# After deployment (verify running service)
 ./scripts/verify-deployment.sh production https://prod.example.com
 
 # Full verification (before PR)
@@ -630,7 +756,9 @@ To add new checks to scripts:
 ./scripts/verify-codespaces.sh && \
 ./scripts/check-docs-links.sh
 
-# Full deployment verification (after deploy)
+# Full deployment flow
+./scripts/verify-environment.sh --env-file .env.production && \
+# ... deploy ... && \
 ./scripts/verify-deployment.sh production https://prod.example.com
 ```
 

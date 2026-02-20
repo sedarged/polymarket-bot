@@ -59,6 +59,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - Monitoring and verification
   - Multiple deployment methods (SSH, Kubernetes, ECS, Docker Compose)
 - **[Pre-deployment verification](./pre-deployment-verification.md)** - Checklist and script (Research §12.2)
+- **[Pre-deployment environment verification](./verify-environment.md)** - 🔍 **Environment validation script (GAP-016)**
+  - Validates all environment variables, credentials, and connectivity
+  - Checks external services (APIs, WebSocket, cloud services)
+  - Security checks and configuration validation
+  - Pass/fail summary with clear output
 - **[Deploy](./deploy.md)** - Quick deployment overview and options (Research §6.1)
 - **[Cost scenarios](./cost-scenarios.md)** - Monthly cost estimates (Research §3)
 - **[Docker Deployment Guide](./docker.md)** - 🐳 Container deployment and orchestration
