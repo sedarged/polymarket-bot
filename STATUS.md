@@ -25,12 +25,12 @@ To update this status:
 ## Next — P2 (Normal Priority)
 - [P2] #409 [GAP-020] Cost Scenarios Documentation
 - [P2] #407 [GAP-018] UMA Resolution Documentation
-- [P2] #405 [GAP-016] Pre-Deployment Verification Script
 
 ## Recently Closed (Last 14 Days)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
 - [P1] #408 [GAP-019] Fee-Rate Checking
 - [P1] #406 [GAP-017] DB Backup Script
+- [P2] #405 [GAP-016] Pre-Deployment Verification Script
 - [P1] #404 [GAP-015] Deployment Workflow
 - [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P2] #402 [GAP-013] Multi-Strategy Orchestration
@@ -50,7 +50,7 @@ To update this status:
 - #368 [GAP-002] Wire STRATEGY_CONFIG_PATH
 - #367 [GAP-001] Wire MARKETS_CONFIG_PATH
 
-*Last updated: 2026-02-20T05:01:56.381Z*
+*Last updated: 2026-02-20T12:39:19.675Z*
 
 <!-- STATUS_SYNC_END -->
 
