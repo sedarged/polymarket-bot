@@ -197,7 +197,6 @@ When adding new generators:
 
 ## Related Documentation
 
-- [GAP-035 Issue](https://github.com/sedarged/polymarket-bot/issues/xxx) - Original issue
 - [Shared Types](../../packages/shared/src/index.ts) - Type definitions
 - [Vitest Documentation](https://vitest.dev/) - Testing framework
 

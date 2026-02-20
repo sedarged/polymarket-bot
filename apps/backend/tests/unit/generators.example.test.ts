@@ -2,7 +2,7 @@
  * Test Data Generators - Quick Example
  * 
  * This file demonstrates the usage of test data generators.
- * Run this example with: npm test -- tests/examples/generators.example.test.ts
+ * Run this example with: npm test -- tests/unit/generators.example.test.ts
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
