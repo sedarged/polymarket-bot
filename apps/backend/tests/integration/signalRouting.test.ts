@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SignalCatalog } from '../../src/learning/signalCatalog';
 import { StrategyOrchestrator } from '../../src/trading/strategies/StrategyOrchestrator';
 import { registerStrategies, StrategyFactory } from '../../src/trading/strategies';
-import type { IStrategy, MarketContext, TradingDecision, Position } from '../../src/trading/strategies/types';
+import type { IStrategy, MarketContext, TradingDecision, Position, StrategyConfig } from '../../src/trading/strategies/types';
 import type { SignalDefinition } from '../../src/learning/types';
 import path from 'path';
 import fs from 'fs';
@@ -41,15 +41,22 @@ class SignalAwareStrategy implements IStrategy {
   readonly version = '1.0.0';
   readonly description = 'Test strategy that uses signals';
   
-  private config: any;
+  private config: StrategyConfig;
   private receivedSignals: Record<string, unknown>[] = [];
   private shouldThrowOnSignalUpdate = false;
   
   constructor(id: string) {
     this.id = id;
+    // Initialize with default config
+    this.config = {
+      strategyId: id,
+      type: 'test',
+      params: {},
+      enabled: true,
+    };
   }
 
-  async initialize(config: any): Promise<void> {
+  async initialize(config: StrategyConfig): Promise<void> {
     this.config = config;
   }
 
@@ -78,7 +85,7 @@ class SignalAwareStrategy implements IStrategy {
     this.receivedSignals.push(signals);
   }
 
-  getConfig(): any {
+  getConfig(): StrategyConfig {
     return this.config;
   }
 
