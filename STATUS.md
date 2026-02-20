@@ -42,13 +42,11 @@ To update this status:
 - #394 [GAP-003] Implement Configuration Management Interface
 - #392 [GAP-023] Secret Management Status Clarity
 - #385 [GAP-033] Integration Test Coverage
+- #383 [GAP-035] Test Data Generators
 - #380 [GAP-038] Secrets Rotation
 - #378 [GAP-041] Container Registry Workflow
-- #377 [GAP-042] Staging Environment
-- #374 [GAP-045] Strategy Validation Framework
-- #373 [GAP-040] Infrastructure as Code
 
-*Last updated: 2026-02-20T13:36:23.910Z*
+*Last updated: 2026-02-20T15:55:33.124Z*
 
 <!-- STATUS_SYNC_END -->
 
