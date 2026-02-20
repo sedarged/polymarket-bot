@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0](https://github.com/sedarged/polymarket-bot/compare/v3.4.0...v3.5.0) (2026-02-20)
+
+
+### Features
+
+* add strategy loading from ConfigManager (GAP-002) ([f2cfa74](https://github.com/sedarged/polymarket-bot/commit/f2cfa742f4d7f5714ead748722978e5b340b291a))
+* implement per-strategy config routing (GAP-002) ([788401f](https://github.com/sedarged/polymarket-bot/commit/788401fdd19ac47f04883ef7673d34cd1ec93d2b))
+* per-strategy configuration routing (GAP-002) ([1c4c163](https://github.com/sedarged/polymarket-bot/commit/1c4c16397e71e4745caedf6d9590ae3220a13a30))
+
+
+### Bug Fixes
+
+* address code review feedback (GAP-002) ([a57f965](https://github.com/sedarged/polymarket-bot/commit/a57f9658abf555201ab85d04c77de1e93ae4891d))
+* correct documentation links and verification status ([d7b5af2](https://github.com/sedarged/polymarket-bot/commit/d7b5af217f13feb192ce45676cd6d8b8b326b97e))
+
 ## [3.4.0](https://github.com/sedarged/polymarket-bot/compare/v3.3.0...v3.4.0) (2026-02-20)
 
 
