@@ -47,9 +47,10 @@ To update this status:
 - #374 [GAP-045] Strategy Validation Framework
 - #373 [GAP-040] Infrastructure as Code
 - #370 [GAP-011] Strategy Hot-Reload
+- #368 [GAP-002] Wire STRATEGY_CONFIG_PATH
 - #367 [GAP-001] Wire MARKETS_CONFIG_PATH
 
-*Last updated: 2026-02-20T00:04:11.147Z*
+*Last updated: 2026-02-20T05:01:56.381Z*
 
 <!-- STATUS_SYNC_END -->
 
