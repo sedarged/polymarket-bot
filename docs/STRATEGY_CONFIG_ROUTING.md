@@ -365,9 +365,9 @@ STRATEGY_CONFIG_PATH → ConfigManager → StrategyFactory → Strategy Instance
 
 ## Related Documentation
 
-- [Configuration Management](../ARCHITECTURE.md#configuration)
-- [Strategy Framework](../ARCHITECTURE.md#strategy-framework)
-- [Multi-Strategy Orchestration](./trading/strategies/ORCHESTRATOR.md)
+- [Configuration Layer](../architecture.md#configuration-layer)
+- [Strategy Framework](../architecture.md#strategy-modules)
+- [Multi-Strategy Orchestration](../apps/backend/src/trading/strategies/ORCHESTRATOR.md)
 
 ## References
 
