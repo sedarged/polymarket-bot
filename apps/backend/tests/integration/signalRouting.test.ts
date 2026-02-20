@@ -22,6 +22,18 @@ import type { SignalDefinition } from '../../src/learning/types';
 import path from 'path';
 import fs from 'fs';
 
+/**
+ * Helper to safely call updateSignals on a strategy
+ * Provides type-safe handling of the optional updateSignals hook
+ */
+function updateStrategySignals(strategy: IStrategy, signals: Record<string, unknown>): void {
+  if (strategy.updateSignals) {
+    strategy.updateSignals(signals);
+  } else {
+    throw new Error(`Strategy ${strategy.id} does not implement updateSignals hook`);
+  }
+}
+
 // Mock strategy that implements updateSignals hook
 class SignalAwareStrategy implements IStrategy {
   readonly id: string;
@@ -168,7 +180,12 @@ describe('Signal Routing - Integration', () => {
         value: 0.75,
         timestamp: new Date().toISOString(),
       };
-      strategy.updateSignals!(signalData);
+      // SignalAwareStrategy is guaranteed to have updateSignals
+      if (strategy.updateSignals) {
+        strategy.updateSignals(signalData);
+      } else {
+        throw new Error('Test strategy missing updateSignals hook');
+      }
 
       // 6. Evaluate strategy - should use signals
       const results = await orchestrator.evaluateAll(mockMarketContext);
@@ -217,8 +234,8 @@ describe('Signal Routing - Integration', () => {
       await orchestrator.addStrategy(strategy);
 
       // Route multiple signals
-      strategy.updateSignals!({ signalName: 'momentum', value: 0.8 });
-      strategy.updateSignals!({ signalName: 'volatility', value: 0.3 });
+      updateStrategySignals(strategy, { signalName: 'momentum', value: 0.8 });
+      updateStrategySignals(strategy, { signalName: 'volatility', value: 0.3 });
 
       // Evaluate
       const results = await orchestrator.evaluateAll(mockMarketContext);
@@ -268,7 +285,7 @@ describe('Signal Routing - Integration', () => {
       });
 
       // Route specific version
-      strategy.updateSignals!({
+      updateStrategySignals(strategy, {
         signalName: 'alpha_score',
         version: '1.0.0',
         value: 0.6,
@@ -370,7 +387,7 @@ describe('Signal Routing - Integration', () => {
 
       // Attempting to update signals should throw
       expect(() => {
-        strategy.updateSignals!({ test: 'data' });
+        updateStrategySignals(strategy, { test: 'data' });
       }).toThrow('Signal processing error');
 
       // But orchestrator should still be able to evaluate (strategy falls back)
@@ -401,7 +418,7 @@ describe('Signal Routing - Integration', () => {
       for (const input of malformedInputs) {
         // Should not throw - strategy implementation decides how to handle
         expect(() => {
-          strategy.updateSignals!(input as any);
+          updateStrategySignals(strategy, input as any);
         }).not.toThrow();
       }
 
@@ -432,9 +449,9 @@ describe('Signal Routing - Integration', () => {
       expect(results).toHaveLength(1);
       expect(results[0].error).toBeUndefined();
       
-      // updateSignals should be undefined or not cause issues
+      // updateSignals should be undefined or not cause issues if it exists
       if (strategy.updateSignals) {
-        expect(() => strategy.updateSignals!({})).not.toThrow();
+        expect(() => updateStrategySignals(strategy, {})).not.toThrow();
       }
 
       StrategyFactory.clear();
@@ -467,7 +484,7 @@ describe('Signal Routing - Integration', () => {
       // Initial signal routing works
       const signal = catalog.getSignal('cascade_test', '1.0.0');
       expect(signal).not.toBeNull();
-      strategy.updateSignals!({ value: 0.5 });
+      updateStrategySignals(strategy, { value: 0.5 });
 
       // Evaluate successfully
       let results = await orchestrator.evaluateAll(mockMarketContext);
@@ -510,8 +527,8 @@ describe('Signal Routing - Integration', () => {
       strategy2.setShouldThrowOnSignalUpdate(true);
 
       // Route signals - strategy-1 succeeds, strategy-2 fails
-      strategy1.updateSignals!({ value: 0.6 });
-      expect(() => strategy2.updateSignals!({ value: 0.7 })).toThrow();
+      updateStrategySignals(strategy1, { value: 0.6 });
+      expect(() => updateStrategySignals(strategy2, { value: 0.7 })).toThrow();
 
       // Both strategies should still evaluate
       const results = await orchestrator.evaluateAll(mockMarketContext);

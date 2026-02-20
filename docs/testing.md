@@ -10,7 +10,7 @@ The project uses [Vitest](https://vitest.dev/) as the testing framework. Tests a
 
 ### Current Status
 
-- **Total test files:** 89 (67 unit, 21 integration, 1 backtest)
+- **Total test files:** 89 (67 unit, 22 integration, 1 backtest)
 - **Total tests:** 1630+ tests (1617 passed + 13 skipped)
 - **Target coverage:** >80% code coverage
 - **Test framework:** Vitest 4.0.18
