@@ -40,6 +40,10 @@ VERBOSE=false
 while [[ $# -gt 0 ]]; do
   case $1 in
     --env-file)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --env-file option requires a path argument" >&2
+        exit 2
+      fi
       ENV_FILE="$2"
       shift 2
       ;;
@@ -53,7 +57,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       # Extract help from comment header
-      sed -n '/^# Validates/,/^# Exit codes:/p' "$0" | sed 's/^# //'
+      sed -n '/^# Validates/,/^$/p' "$0" | sed 's/^# //'
       exit 0
       ;;
     *)
@@ -94,11 +98,38 @@ section() {
 # Load environment file if it exists
 load_env_file() {
   if [ -f "$ENV_FILE" ]; then
-    # Export variables from .env file, handling quotes and comments
-    set -a
-    # shellcheck disable=SC1090
-    source <(grep -v '^#' "$ENV_FILE" | grep -v '^$' | sed 's/\r$//')
-    set +a
+    # Safely load variables from .env file as data (not executable shell)
+    # Supports simple KEY=VALUE pairs, ignores comments/blank lines, and
+    # rejects unsafe shell metacharacters in values to prevent code execution.
+    while IFS= read -r line || [ -n "$line" ]; do
+      # Strip trailing CR for Windows-style line endings
+      line=${line%$'\r'}
+
+      # Skip comments and blank lines
+      case "$line" in
+        ''|'#'*) continue ;;
+      esac
+
+      # Require KEY=VALUE format with a valid shell-style identifier for KEY
+      if ! printf '%s\n' "$line" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*='; then
+        echo -e "${RED}✗${NC} Invalid line in env file '$ENV_FILE': $line" >&2
+        return 1
+      fi
+
+      key=${line%%=*}
+      value=${line#*=}
+
+      # Disallow dangerous shell metacharacters in values to avoid triggering
+      # command substitution or other unintended shell behavior.
+      # Check for: backticks, dollar signs, ampersand, pipes, semicolons, redirects, parens, brackets, braces
+      if printf '%s' "$value" | grep -qE '`|\$|&|\||;|<|>|\(|\)|\[|\]|\{|\}'; then
+        echo -e "${RED}✗${NC} Unsafe characters in value for '$key' in env file '$ENV_FILE'" >&2
+        return 1
+      fi
+
+      # Export as a simple key/value pair (no evaluation)
+      export "${key}=${value}"
+    done < "$ENV_FILE"
     return 0
   else
     return 1
@@ -627,7 +658,7 @@ if [ -f "$ENV_FILE" ]; then
   
   # Check if .env is in .gitignore
   if [ -f .gitignore ]; then
-    if grep -q "^\.env$" .gitignore || grep -q "^\.env" .gitignore; then
+    if grep -qE '^[[:space:]]*\.env[[:space:]]*$' .gitignore || grep -qE '^[[:space:]]*\*\.env[[:space:]]*$' .gitignore; then
       check_pass ".env is in .gitignore"
     else
       check_fail ".env is not in .gitignore (SECURITY RISK)"
@@ -688,7 +719,7 @@ else
   echo -e "${RED}Please fix the failed checks above before deploying.${NC}"
   echo ""
   echo "For help, see:"
-  echo "  - docs/pre-deployment-verification.md"
+  echo "  - docs/verify-environment.md"
   echo "  - docs/ENV_VARIABLE_REFERENCE.md"
   echo "  - .env.example"
   exit 1
