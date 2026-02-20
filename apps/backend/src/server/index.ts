@@ -966,6 +966,7 @@ export async function startServer(): Promise<http.Server> {
     circuitBreakerResetTimeoutMs: config.circuitBreakerResetTimeoutMs,
     circuitBreakerSuccessThreshold: config.circuitBreakerSuccessThreshold,
     maxFeeRateBps: config.riskMaxFeeRateBps,
+    markets: config.markets, // GAP-001: Pass per-market config
   });
   logger.info('Risk manager initialized');
   
