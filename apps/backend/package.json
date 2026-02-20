@@ -32,11 +32,11 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.993.0",
+    "@aws-sdk/client-secrets-manager": "^3.994.0",
     "@azure/identity": "^4.13.0",
     "@azure/keyvault-secrets": "^4.10.0",
     "@ethersproject/wallet": "^5.8.0",
-    "@polymarket/clob-client": "^5.2.3",
+    "@polymarket/clob-client": "^5.2.4",
     "@polymarket/shared": "file:../../packages/shared",
     "@types/ws": "^8.18.1",
     "axios": "^1.13.5",
