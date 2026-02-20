@@ -63,9 +63,10 @@ function generateFillId(): string {
  */
 function generateTokenId(): string {
   // Use modulo to ensure we stay within 40 hex digits (max value: 2^160)
+  // Use BigInt for safe arithmetic with large numbers
   const maxValue = BigInt('0x' + 'f'.repeat(40));
-  const id = (tokenIdCounter++ % Number(maxValue)).toString();
-  return '0x' + id.padStart(40, '0');
+  const id = BigInt(tokenIdCounter++) % maxValue;
+  return '0x' + id.toString(16).padStart(40, '0');
 }
 
 /**
