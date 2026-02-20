@@ -31,7 +31,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "bench": "vitest bench",
-    "bench:compare": "vitest bench --reporter=verbose"
+    "bench:verbose": "vitest bench --reporter=verbose"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.994.0",

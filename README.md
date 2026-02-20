@@ -333,7 +333,7 @@ Measure and monitor performance of critical operations:
 ```bash
 cd apps/backend
 npm run bench          # Run all performance benchmarks
-npm run bench:compare  # Run with verbose output
+npm run bench:verbose  # Run with verbose output
 ```
 
 Benchmarks measure:
@@ -343,7 +343,7 @@ Benchmarks measure:
 - **Retry logic**: Error classification and retry execution
 - **Circuit breaker**: Execute requests with circuit breaker protection
 
-**CI Integration**: Benchmarks run automatically on PRs and detect performance regressions > 50%.
+**CI Integration**: Benchmarks run automatically on PRs and publish results for manual performance review (no automated regression gate yet).
 
 See [Benchmarking Guide](docs/benchmarking.md) for complete documentation.
 

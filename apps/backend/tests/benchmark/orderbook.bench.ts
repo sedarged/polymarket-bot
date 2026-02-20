@@ -63,9 +63,11 @@ describe('Orderbook Processing Performance', () => {
     calculateOrderbookSummary(emptyOrderbook);
   });
 
-  bench('formatOrderbookSummary', () => {
-    const summary = calculateOrderbookSummary(smallOrderbook);
-    formatOrderbookSummary(summary);
+  // Pre-calculate summary for formatting-only benchmark
+  const smallSummary = calculateOrderbookSummary(smallOrderbook);
+
+  bench('formatOrderbookSummary - formatting only', () => {
+    formatOrderbookSummary(smallSummary);
   });
 
   bench('full orderbook processing pipeline', () => {

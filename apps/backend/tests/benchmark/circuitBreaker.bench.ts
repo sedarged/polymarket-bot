@@ -24,15 +24,15 @@ describe('Circuit Breaker Performance', () => {
     breaker.getMetrics();
   });
 
-  // Benchmark batch operations
+  // Benchmark batch operations - pre-create breaker to measure execution only
+  const breaker2 = new CircuitBreaker({
+    name: 'test-breaker-2',
+    failureThreshold: 5,
+    resetTimeout: 60000,
+    successThreshold: 2,
+  });
+
   bench('execute - 10 successful requests', async () => {
-    const breaker2 = new CircuitBreaker({
-      name: 'test-breaker-2',
-      failureThreshold: 5,
-      resetTimeout: 60000,
-      successThreshold: 2,
-    });
-    
     for (let i = 0; i < 10; i++) {
       await breaker2.execute(async () => 'success');
     }

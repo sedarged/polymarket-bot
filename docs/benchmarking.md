@@ -23,7 +23,7 @@ npm run bench
 
 Run with verbose output:
 ```bash
-npm run bench:compare
+npm run bench:verbose
 ```
 
 Run specific benchmark files:
@@ -34,9 +34,9 @@ npm run bench -- tests/benchmark/orderbook.bench.ts
 ### CI/CD Integration
 
 Benchmarks run automatically on:
-- **Pull Requests**: Compares PR performance against the main branch
-- **Main branch pushes**: Stores results and tracks historical performance
-- **Manual trigger**: Can be triggered via GitHub Actions UI
+- **Pull Requests**: Runs benchmarks and posts completion notification for manual review via Actions logs
+- **Main branch pushes**: Runs benchmarks to track baseline and historical performance via Actions logs
+- **Manual trigger**: Can be triggered via GitHub Actions UI for ad-hoc benchmark runs
 
 ## Benchmark Organization
 
@@ -120,18 +120,18 @@ Based on trading requirements:
 
 The benchmark workflow automatically:
 
-1. **Runs on PRs**: Executes all benchmarks and posts results to PR
+1. **Runs on PRs**: Executes all benchmarks and posts completion notification to PR
 2. **Runs on main**: Tracks baseline performance over time
-3. **Provides visibility**: Results available in GitHub Actions logs
+3. **Provides visibility**: Results available in GitHub Actions logs for manual review
 
 ### Manual Review Process
 
-Since automated regression detection requires manual review of benchmark results:
+Since automated regression detection is not yet implemented, benchmark results must be reviewed manually:
 
 1. **Review PR benchmarks**: Check the Actions tab for benchmark results
 2. **Compare with baseline**: Look for significant performance changes
 3. **Investigate regressions**: If operations are >50% slower, investigate root cause
-4. **Accept or reject**: Approve PR only if performance is acceptable
+4. **Accept or reject**: Approve PR only if performance is acceptable based on this manual review; the CI workflow does not currently enforce performance thresholds automatically
 
 ### Threshold Guidelines
 

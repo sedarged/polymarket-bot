@@ -53,7 +53,7 @@ Created 5 benchmark files in `apps/backend/tests/benchmark/`:
 ### 2. Infrastructure
 
 **Package Configuration**:
-- Added `bench` and `bench:compare` npm scripts
+- Added `bench` and `bench:verbose` npm scripts
 - Updated `vitest.config.ts` to include benchmark tests
 - Configured benchmark test pattern: `tests/benchmark/**/*.bench.ts`
 
@@ -66,7 +66,7 @@ Created 5 benchmark files in `apps/backend/tests/benchmark/`:
 **Development Tools**:
 ```bash
 npm run bench          # Run all benchmarks
-npm run bench:compare  # Run with verbose output
+npm run bench:verbose  # Run with verbose output
 ```
 
 ### 3. Documentation
@@ -209,7 +209,7 @@ feat: add performance benchmarks for critical operations (GAP-034)
 Implements comprehensive performance benchmarking infrastructure:
 
 - Created 5 benchmark suites (orderbook, validation, rate limiting, retry, circuit breaker)
-- Added npm scripts: bench, bench:compare
+- Added npm scripts: bench, bench:verbose
 - Configured vitest for benchmark tests
 - Added GitHub Actions workflow for CI integration
 - Created comprehensive benchmarking guide

@@ -78,7 +78,7 @@ Run performance benchmarks to measure critical operations:
 
 ```bash
 npm run bench          # Run all benchmarks
-npm run bench:compare  # Run with verbose output
+npm run bench:verbose  # Run with verbose output
 ```
 
 Benchmarks measure performance of:
@@ -88,10 +88,10 @@ Benchmarks measure performance of:
 - **Retry logic**: Error classification and retry execution
 - **Circuit breaker**: Execute requests with circuit breaker protection
 
-**CI Integration**: Benchmarks run automatically on PRs and main branch:
-- **PRs**: Compare performance against main branch (fails if >50% slower)
-- **Main**: Store results and track historical performance
-- **Alerts**: Comments posted to PR if performance regresses
+**CI Integration**: Benchmarks run automatically on PRs and the `main` branch:
+- **PRs**: Run benchmarks and post a completion summary comment (no automatic failure on regressions yet)
+- **Main**: Run benchmarks to track baseline and historical performance
+- **Alerts**: Threshold-based regression alerts and failures are planned but not yet enforced in CI
 
 **See also**: [Benchmarking Guide](./benchmarking.md) for detailed documentation
 
