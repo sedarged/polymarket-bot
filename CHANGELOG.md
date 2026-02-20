@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0](https://github.com/sedarged/polymarket-bot/compare/v3.3.0...v3.4.0) (2026-02-20)
+
+
+### Features
+
+* **GAP-001:** Wire per-market config to RiskManager ([3649424](https://github.com/sedarged/polymarket-bot/commit/36494244df8aa908a4c5f3bb048fa61ff35f4333))
+
+
+### Bug Fixes
+
+* **GAP-001:** Address PR review feedback ([27f8baa](https://github.com/sedarged/polymarket-bot/commit/27f8baab9b464473f79951fc2af2beee4d3c9332))
+* **GAP-001:** Fix TypeScript error in FeeRateValidator init ([399729c](https://github.com/sedarged/polymarket-bot/commit/399729c520d68afab16557d4b2e05325ef760f32))
+
 ## [3.3.0](https://github.com/sedarged/polymarket-bot/compare/v3.2.0...v3.3.0) (2026-02-19)
 
 
