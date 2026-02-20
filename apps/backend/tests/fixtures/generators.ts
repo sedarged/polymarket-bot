@@ -60,7 +60,7 @@ function generateFillId(): string {
  * Generate a unique token ID (hex format)
  */
 function generateTokenId(): string {
-  return `0x${tokenIdCounter++}`.padEnd(42, '0');
+  return '0x' + (tokenIdCounter++).toString().padStart(40, '0');
 }
 
 /**
@@ -334,6 +334,10 @@ export function createMockMarkets(count: number, overrides?: Partial<Market>): M
 
 /**
  * Create a complete trading scenario with related Order and Fills
+ * 
+ * Note: When fillSize is auto-calculated from orderSize/fillCount,
+ * the fills may not sum exactly to orderSize due to decimal precision.
+ * For precise scenarios, explicitly provide fillSize.
  */
 export function createMockTradingScenario(options?: {
   orderSize?: string;
