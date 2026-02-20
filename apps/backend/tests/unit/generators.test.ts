@@ -240,7 +240,7 @@ describe('Test Data Generators', () => {
     it('should create a valid token with defaults', () => {
       const token = createMockToken();
 
-      expect(token.token_id).toMatch(/^0x/);
+      expect(token.token_id).toMatch(/^0x[0-9a-f]{40}$/);
       expect(token.outcome).toBe('Yes');
       expect(token.price).toBe('0.55');
       expect(token.winner).toBe(false);
