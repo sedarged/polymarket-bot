@@ -10,8 +10,8 @@ The project uses [Vitest](https://vitest.dev/) as the testing framework. Tests a
 
 ### Current Status
 
-- **Total test files:** 58 (48 unit, 9 integration, 1 backtest)
-- **Total tests:** 1100+ tests
+- **Total test files:** 89 (67 unit, 22 integration, 1 backtest)
+- **Total tests:** 1630+ tests (1617 passed + 13 skipped)
 - **Target coverage:** >80% code coverage
 - **Test framework:** Vitest 4.0.18
 - **Coverage provider:** V8
@@ -100,6 +100,7 @@ apps/backend/
     │   ├── auth.test.ts
     │   ├── database.test.ts
     │   ├── integration-reconnect.test.ts
+    │   ├── signalRouting.test.ts  # Signal routing and error handling
     │   └── ...
     └── backtest/             # Backtest engine tests
         └── backtestEngine.test.ts
@@ -152,6 +153,25 @@ The following critical components now have comprehensive test coverage:
   - Circuit breaker integration
   - Live trading status reporting
   - Overall status determination
+
+#### Signal Routing and Error Handling (`src/learning/signalCatalog.ts`, `src/trading/strategies/`)
+- **14 integration tests** in `tests/integration/signalRouting.test.ts` covering:
+  - End-to-end signal flow from catalog to strategies
+  - Signal propagation via `updateSignals()` hook
+  - Multiple signals routed to same strategy
+  - Signal versioning compatibility
+  - Missing signal handling
+  - Version mismatch handling
+  - Duplicate signal registration rejection
+  - Catalog unavailability scenarios
+  - Strategy signal processing errors
+  - Malformed signal data handling
+  - Strategies without updateSignals hook
+  - Cascading failures (catalog failure during active trading)
+  - Partial signal routing failures with multiple strategies
+  - Signal query by feature group and metadata operations
+
+**Resolution of GAP-033:** Comprehensive integration test coverage for signal routing and error handling flows.
 
 ### Previously Covered Components
 
