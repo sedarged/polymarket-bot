@@ -351,28 +351,43 @@ export function createMockTradingScenario(options?: {
   fillSize?: string;
 }) {
   const orderSize = options?.orderSize || '10';
-  const fillCount = options?.fillCount || 2;
+  const fillCount = options?.fillCount !== undefined ? options.fillCount : 2;
   const fillSize = options?.fillSize || (parseFloat(orderSize) / fillCount).toFixed(2);
   
   const orderId = generateOrderId();
   const tokenId = generateTokenId();
-  
-  const order = createMockOrder({
-    orderId,
-    tokenId,
-    size: orderSize,
-    status: fillCount > 0 ? 'PARTIALLY_FILLED' : 'OPEN',
-  });
   
   const fills = Array.from({ length: fillCount }, () =>
     createMockFill({
       orderId,
       tokenId,
       size: fillSize,
-      side: order.side,
-      price: order.price,
+      side: 'BUY',
+      price: '0.55',
     })
   );
+  
+  // Calculate filled and remaining amounts based on actual fills
+  const totalFilled = fills.reduce((acc, fill) => acc + parseFloat(fill.size), 0);
+  const remaining = Math.max(0, parseFloat(orderSize) - totalFilled);
+  
+  // Determine status based on whether order is completely filled
+  let status: Order['status'] = 'OPEN';
+  if (fillCount > 0) {
+    // Only set to MATCHED/PARTIALLY_FILLED if there are actually fills
+    status = remaining === 0 ? 'MATCHED' : 'PARTIALLY_FILLED';
+  }
+  
+  const order = createMockOrder({
+    orderId,
+    tokenId,
+    size: orderSize,
+    status,
+    filledSize: totalFilled.toFixed(2),
+    remainingSize: remaining.toFixed(2),
+    side: fills.length > 0 ? fills[0].side : 'BUY',
+    price: fills.length > 0 ? fills[0].price : '0.55',
+  });
   
   return { order, fills };
 }

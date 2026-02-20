@@ -419,6 +419,64 @@ describe('Test Data Generators', () => {
         expect(fill.price).toBe(scenario.order.price);
       });
     });
+
+    it('should set order status to MATCHED when fills completely fill the order', () => {
+      const scenario = createMockTradingScenario({
+        orderSize: '100',
+        fillCount: 4,
+        fillSize: '25',
+      });
+
+      const totalFilled = scenario.fills.reduce((acc, fill) => acc + parseFloat(fill.size), 0);
+      
+      expect(scenario.order.status).toBe('MATCHED');
+      expect(scenario.order.filledSize).toBe('100.00');
+      expect(scenario.order.remainingSize).toBe('0.00');
+      expect(totalFilled).toBe(100);
+    });
+
+    it('should set order status to PARTIALLY_FILLED when fills do not completely fill the order', () => {
+      const scenario = createMockTradingScenario({
+        orderSize: '100',
+        fillCount: 3,
+        fillSize: '25',
+      });
+
+      const totalFilled = scenario.fills.reduce((acc, fill) => acc + parseFloat(fill.size), 0);
+      
+      expect(scenario.order.status).toBe('PARTIALLY_FILLED');
+      expect(scenario.order.filledSize).toBe('75.00');
+      expect(scenario.order.remainingSize).toBe('25.00');
+      expect(totalFilled).toBe(75);
+    });
+
+    it('should correctly calculate filledSize and remainingSize based on actual fills', () => {
+      const scenario = createMockTradingScenario({
+        orderSize: '50',
+        fillCount: 2,
+        fillSize: '20',
+      });
+
+      const totalFilled = scenario.fills.reduce((acc, fill) => acc + parseFloat(fill.size), 0);
+      const expectedRemaining = parseFloat(scenario.order.size) - totalFilled;
+
+      expect(scenario.order.filledSize).toBe(totalFilled.toFixed(2));
+      expect(scenario.order.remainingSize).toBe(expectedRemaining.toFixed(2));
+      expect(parseFloat(scenario.order.filledSize)).toBe(40);
+      expect(parseFloat(scenario.order.remainingSize)).toBe(10);
+    });
+
+    it('should set order status to OPEN when fillCount is 0', () => {
+      const scenario = createMockTradingScenario({
+        orderSize: '100',
+        fillCount: 0,
+      });
+
+      expect(scenario.order.status).toBe('OPEN');
+      expect(scenario.order.filledSize).toBe('0.00');
+      expect(scenario.order.remainingSize).toBe('100.00');
+      expect(scenario.fills).toHaveLength(0);
+    });
   });
 
   describe('Counter Reset', () => {
