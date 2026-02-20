@@ -120,19 +120,39 @@ Based on trading requirements:
 
 The benchmark workflow automatically:
 
-1. **Runs on PRs**: Compares PR performance against main branch
-2. **Alerts on regressions**: Fails CI if performance degrades > 150%
-3. **Posts comments**: Adds benchmark comparison to PR
-4. **Tracks history**: Stores results on main branch for trending
+1. **Runs on PRs**: Executes all benchmarks and posts results to PR
+2. **Runs on main**: Tracks baseline performance over time
+3. **Provides visibility**: Results available in GitHub Actions logs
 
-### Threshold Configuration
+### Manual Review Process
+
+Since automated regression detection requires manual review of benchmark results:
+
+1. **Review PR benchmarks**: Check the Actions tab for benchmark results
+2. **Compare with baseline**: Look for significant performance changes
+3. **Investigate regressions**: If operations are >50% slower, investigate root cause
+4. **Accept or reject**: Approve PR only if performance is acceptable
+
+### Threshold Guidelines
+
+**Performance change thresholds**:
+- ✅ **Within 10%**: Normal variance, acceptable
+- ⚠️ **10-50% slower**: Review and understand why
+- 🚨 **>50% slower**: Likely regression, investigate before merging
+
+**When performance degradation is acceptable**:
+- Correctness fixes that require more checks
+- Security improvements that add validation
+- Feature additions with documented performance cost
+
+### CI Configuration
 
 Current settings in `.github/workflows/benchmark.yml`:
-- **Alert threshold**: 150% (fails if 50% slower)
-- **Failure mode**: PR benchmarks fail CI on regression
-- **Main branch**: Records results but doesn't fail
+- **Trigger**: PR and main branch pushes
+- **Output**: Detailed results in GitHub Actions logs
+- **Comment**: PR gets notification that benchmarks completed
 
-To adjust thresholds, edit `alert-threshold` in the workflow file.
+To customize, edit the workflow file.
 
 ## Writing New Benchmarks
 
@@ -244,21 +264,41 @@ npm run bench      # Benchmarks
 
 ### GitHub Actions Results
 
-- **PR Comments**: Benchmark results posted automatically
-- **Check Status**: Pass/fail based on regression threshold
-- **History**: Trend graphs available in Actions tab
+- **PR Comments**: Notification posted when benchmarks complete
+- **Detailed Logs**: Full benchmark results in Actions tab
+- **Check Status**: Pass (benchmarks completed successfully)
+- **History**: Track performance over time by comparing logs across commits
 
-### Local Comparison
+### Local Baseline Comparison
 
-Save baseline:
+Create a baseline for comparison:
+
 ```bash
-npm run bench -- --reporter=json --outputFile=baseline.json
+# Before making changes
+npm run bench > baseline.txt
+
+# Make your changes...
+
+# After changes
+npm run bench > current.txt
+
+# Compare manually
+diff baseline.txt current.txt
 ```
 
-Compare after changes:
+### Automated Trend Analysis
+
+For more sophisticated regression detection, consider:
+
+1. **Save results**: Export benchmark results to a database or file storage
+2. **Track over time**: Plot performance metrics across commits
+3. **Set alerts**: Notify team when performance degrades beyond threshold
+4. **Dashboard**: Create Grafana/Prometheus dashboard for visualization
+
+Example integration (future enhancement):
 ```bash
-npm run bench -- --reporter=json --outputFile=current.json
-# Manually compare baseline.json vs current.json
+# Export results with commit info
+npm run bench > benchmarks/$(git rev-parse --short HEAD).txt
 ```
 
 ## Related Documentation
