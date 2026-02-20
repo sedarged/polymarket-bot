@@ -52,7 +52,8 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -h|--help)
-      head -n 20 "$0" | tail -n 18 | sed 's/^# //'
+      # Extract help from comment header
+      sed -n '/^# Validates/,/^# Exit codes:/p' "$0" | sed 's/^# //'
       exit 0
       ;;
     *)
@@ -491,16 +492,20 @@ if [ "$SKIP_CONNECTIVITY" = false ]; then
     fi
   fi
   
-  # Check WebSocket endpoint (just verify DNS resolves and port is open)
+  # Check WebSocket endpoint (just verify DNS resolves)
   if [ -n "${WS_MARKET_URL:-}" ]; then
     # Extract hostname from WebSocket URL
     WS_HOST=$(echo "$WS_MARKET_URL" | sed -E 's|wss?://([^/:]+).*|\1|')
     if [ -n "$WS_HOST" ]; then
       echo -n "Checking WebSocket endpoint DNS... "
-      if host "$WS_HOST" > /dev/null 2>&1 || nslookup "$WS_HOST" > /dev/null 2>&1 || ping -c 1 -W 2 "$WS_HOST" > /dev/null 2>&1; then
+      # Use getent hosts for portability, with fallbacks for systems that don't have it
+      # Note: DNS checks may fail in restricted environments or due to firewall rules
+      if getent hosts "$WS_HOST" > /dev/null 2>&1 || \
+         host "$WS_HOST" > /dev/null 2>&1 || \
+         nslookup "$WS_HOST" > /dev/null 2>&1; then
         check_pass "WebSocket endpoint DNS resolves ($WS_HOST)"
       else
-        check_fail "WebSocket endpoint DNS does not resolve ($WS_HOST)"
+        check_warn "Cannot verify WebSocket endpoint DNS ($WS_HOST) - may be blocked or unavailable"
       fi
     fi
   fi
