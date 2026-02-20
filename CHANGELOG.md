@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0](https://github.com/sedarged/polymarket-bot/compare/v3.6.0...v3.7.0) (2026-02-20)
+
+
+### Features
+
+* add comprehensive test data generators (GAP-035) ([cc89f26](https://github.com/sedarged/polymarket-bot/commit/cc89f26ac6510d57d46f2e4f0d84e36edddd9e3f))
+* Add comprehensive test data generators with accurate order state tracking (GAP-035) ([d1a4923](https://github.com/sedarged/polymarket-bot/commit/d1a492346a2887559f779c83bb3d5bcb5a6f4ea3))
+* add side and price parameters to trading scenario generator ([70d96fa](https://github.com/sedarged/polymarket-bot/commit/70d96faa280e548f0ba697f714adca7574fc441f))
+
+
+### Bug Fixes
+
+* correct token ID generation and document fillSize precision ([cab9f6c](https://github.com/sedarged/polymarket-bot/commit/cab9f6ced9f1e86d8c099dced4dffed0a636f989))
+* correct trading scenario status calculation and validate fill fields ([8cdecf8](https://github.com/sedarged/polymarket-bot/commit/8cdecf80f00e6d8e05ddbe943a5ceba61c1cce52))
+* ensure token IDs stay 42 chars and fix relative path ([7b8dc04](https://github.com/sedarged/polymarket-bot/commit/7b8dc04e10f0c4f147c384832d3d7df91af76164))
+* use proper BigInt hex conversion for token IDs ([85c8bb3](https://github.com/sedarged/polymarket-bot/commit/85c8bb3a47a96dbe722d2711772e7f347e425a4e))
+
 ## [3.6.0](https://github.com/sedarged/polymarket-bot/compare/v3.5.0...v3.6.0) (2026-02-20)
 
 
