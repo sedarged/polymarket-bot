@@ -41,16 +41,14 @@ To update this status:
 - #397 [GAP-006] Order Execution Service
 - #394 [GAP-003] Implement Configuration Management Interface
 - #392 [GAP-023] Secret Management Status Clarity
+- #385 [GAP-033] Integration Test Coverage
 - #380 [GAP-038] Secrets Rotation
 - #378 [GAP-041] Container Registry Workflow
 - #377 [GAP-042] Staging Environment
 - #374 [GAP-045] Strategy Validation Framework
 - #373 [GAP-040] Infrastructure as Code
-- #370 [GAP-011] Strategy Hot-Reload
-- #368 [GAP-002] Wire STRATEGY_CONFIG_PATH
-- #367 [GAP-001] Wire MARKETS_CONFIG_PATH
 
-*Last updated: 2026-02-20T12:39:19.675Z*
+*Last updated: 2026-02-20T13:36:23.910Z*
 
 <!-- STATUS_SYNC_END -->
 
