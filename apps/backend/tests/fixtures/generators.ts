@@ -62,7 +62,7 @@ function generateFillId(): string {
  * For very large counter values, we use modulo to keep within 40 hex digits.
  */
 function generateTokenId(): string {
-  // Use modulo to ensure we stay within 40 hex digits (max value: 2^160)
+  // Use modulo to ensure we stay within 40 hex digits (max value representable in 40 hex digits: 2^160 - 1)
   // Use BigInt for safe arithmetic with large numbers
   const maxValue = BigInt('0x' + 'f'.repeat(40));
   const id = BigInt(tokenIdCounter++) % maxValue;
