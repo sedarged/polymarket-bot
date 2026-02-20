@@ -224,6 +224,7 @@ export class SignalEngine extends EventEmitter {
 
   /**
    * Resolve by selecting the signal with highest confidence
+   * If multiple signals have the same highest confidence, the first one is selected
    */
   private resolveByHighestConfidence(signals: Signal[]): Signal[] {
     const highest = signals.reduce((prev, curr) =>
@@ -423,7 +424,8 @@ export class SignalEngine extends EventEmitter {
 
     // Apply risk manager checks (skip for hold/cancel actions)
     if (signal.decision.action === 'buy' || signal.decision.action === 'sell') {
-      const side = signal.decision.action === 'buy' ? 'BUY' : 'SELL';
+      // Type guard ensures we have the correct action
+      const side: 'BUY' | 'SELL' = signal.decision.action === 'buy' ? 'BUY' : 'SELL';
       const size = String(signal.decision.size || 0);
       
       const riskCheck = this.riskManager.checkOrder(

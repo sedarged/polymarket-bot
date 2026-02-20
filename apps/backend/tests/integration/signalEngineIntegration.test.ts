@@ -138,6 +138,11 @@ describe('SignalEngine Integration with StrategyOrchestrator', () => {
           qualityScore: r.decision.confidence,
         }));
 
+      // Mock risk manager to always approve for deterministic test
+      vi.spyOn(riskManager, 'checkOrder').mockReturnValue({
+        allowed: true,
+      });
+
       // Process through signal engine with highest-confidence resolution
       const signalResults = await signalEngine.processSignals(signals);
 
@@ -145,11 +150,11 @@ describe('SignalEngine Integration with StrategyOrchestrator', () => {
       expect(signalResults.length).toBeGreaterThan(0);
       
       const approved = signalResults.filter(r => r.approved);
-      if (approved.length > 0) {
-        // If signals were approved, the highest confidence one should be selected
-        expect(approved[0].signal.decision.action).toBe('sell');
-        expect(approved[0].signal.strategyId).toBe('sell-strategy');
-      }
+      expect(approved.length).toBeGreaterThan(0);
+      
+      // The highest confidence signal should be selected (sell strategy)
+      expect(approved[0].signal.decision.action).toBe('sell');
+      expect(approved[0].signal.strategyId).toBe('sell-strategy');
     });
 
     it('should filter low confidence signals', async () => {

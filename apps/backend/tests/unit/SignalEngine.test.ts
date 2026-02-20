@@ -217,16 +217,33 @@ describe('SignalEngine', () => {
     });
 
     it('should enforce max signals per token limit', async () => {
+      // Create signals for different tokens to avoid conflict resolution
       const signals: Signal[] = [];
       for (let i = 0; i < 5; i++) {
-        signals.push(createTestSignal(`strategy-${i}`, 'buy', 0.8, 'token-1'));
+        signals.push(createTestSignal(`strategy-${i}`, 'buy', 0.8, `token-${i}`));
       }
 
       const results = await signalEngine.processSignals(signals);
 
-      // Should only approve up to maxSignalsPerToken (3)
+      // All signals should be approved (different tokens, no conflicts)
       const approved = results.filter(r => r.approved);
-      expect(approved.length).toBeLessThanOrEqual(config.maxSignalsPerToken);
+      expect(approved.length).toBe(5);
+      
+      // Now test with multiple signals for the same token
+      const sameTokenSignals: Signal[] = [];
+      for (let i = 0; i < 5; i++) {
+        sameTokenSignals.push(createTestSignal(`strategy-same-${i}`, 'buy', 0.8, 'same-token'));
+      }
+      
+      const sameTokenResults = await signalEngine.processSignals(sameTokenSignals);
+      
+      // After conflict resolution, only 1 signal remains (highest-confidence mode)
+      // Then it should be approved if it passes risk checks
+      expect(sameTokenResults.length).toBeGreaterThan(0);
+      
+      // The approved signals should be limited
+      const sameTokenApproved = sameTokenResults.filter(r => r.approved);
+      expect(sameTokenApproved.length).toBeLessThanOrEqual(config.maxSignalsPerToken);
     });
   });
 
