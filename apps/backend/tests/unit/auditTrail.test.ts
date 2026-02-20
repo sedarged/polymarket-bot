@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AuditTrail } from '../../src/trading/auditTrail';
 import { Order, Fill } from '@polymarket/shared';
+import {
+  createMockOrder,
+  createMockOpenOrder,
+  createMockMatchedOrder,
+  createMockFill,
+} from '../fixtures';
 import fs from 'fs';
 import path from 'path';
 
@@ -24,17 +30,10 @@ describe('AuditTrail', () => {
 
   describe('recordOrder', () => {
     it('should record a new order', () => {
-      const order: Order = {
+      const order = createMockOpenOrder({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      });
 
       auditTrail.recordOrder(order);
 
@@ -49,17 +48,10 @@ describe('AuditTrail', () => {
     });
 
     it('should update an existing order', () => {
-      const order: Order = {
+      const order = createMockOpenOrder({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      });
 
       auditTrail.recordOrder(order);
 
@@ -79,28 +71,16 @@ describe('AuditTrail', () => {
   describe('recordFill', () => {
     it('should record a fill', () => {
       // First create the order that the fill references
-      const order: Order = {
+      const order = createMockOpenOrder({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      });
       auditTrail.recordOrder(order);
 
-      const fill: Fill = {
+      const fill = createMockFill({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        timestamp: Date.now(),
-        fee: '0.011',
-      };
+      });
 
       auditTrail.recordFill(fill);
 
@@ -116,38 +96,26 @@ describe('AuditTrail', () => {
 
     it('should record multiple fills for the same order', () => {
       // First create the order
-      const order: Order = {
+      const order = createMockOpenOrder({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      });
       auditTrail.recordOrder(order);
 
-      const fill1: Fill = {
+      const fill1 = createMockFill({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
         size: '5',
-        timestamp: Date.now(),
         fee: '0.0055',
-      };
+      });
 
-      const fill2: Fill = {
+      const fill2 = createMockFill({
         orderId: 'test-order-1',
         tokenId: '0xtoken123',
-        side: 'BUY',
         price: '0.56',
         size: '5',
-        timestamp: Date.now(),
         fee: '0.0056',
-      };
+      });
 
       auditTrail.recordFill(fill1);
       auditTrail.recordFill(fill2);
@@ -160,17 +128,7 @@ describe('AuditTrail', () => {
   describe('recordOrderEvent', () => {
     it('should record an order event', () => {
       // First create the order
-      const order: Order = {
-        orderId: 'test-order-1',
-        tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      const order = createMockOpenOrder({ orderId: 'test-order-1' });
       auditTrail.recordOrder(order);
       
       auditTrail.recordOrderEvent('test-order-1', 'CREATED', 'Order created');
@@ -183,17 +141,7 @@ describe('AuditTrail', () => {
 
     it('should record multiple events for an order', () => {
       // First create the order
-      const order: Order = {
-        orderId: 'test-order-1',
-        tokenId: '0xtoken123',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '10',
-      };
+      const order = createMockOpenOrder({ orderId: 'test-order-1' });
       auditTrail.recordOrder(order);
       
       auditTrail.recordOrderEvent('test-order-1', 'CREATED', 'Order created');
@@ -211,29 +159,20 @@ describe('AuditTrail', () => {
   describe('getOrders', () => {
     beforeEach(() => {
       // Add some test data
-      const order1: Order = {
+      const order1 = createMockMatchedOrder({
         orderId: 'order-1',
         tokenId: '0xtoken1',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'MATCHED',
         createdAt: Date.now() - 1000,
-        filledSize: '10',
-        remainingSize: '0',
-      };
+      });
 
-      const order2: Order = {
+      const order2 = createMockOpenOrder({
         orderId: 'order-2',
         tokenId: '0xtoken2',
         side: 'SELL',
         price: '0.45',
         size: '5',
-        status: 'OPEN',
         createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '5',
-      };
+      });
 
       auditTrail.recordOrder(order1);
       auditTrail.recordOrder(order2);
@@ -265,45 +204,30 @@ describe('AuditTrail', () => {
   describe('getFills', () => {
     beforeEach(() => {
       // Add orders first
-      const order1: Order = {
+      const order1 = createMockMatchedOrder({
         orderId: 'order-1',
         tokenId: '0xtoken1',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'MATCHED',
-        createdAt: Date.now(),
-        filledSize: '10',
-        remainingSize: '0',
-      };
+      });
 
-      const order2: Order = {
+      const order2 = createMockMatchedOrder({
         orderId: 'order-2',
         tokenId: '0xtoken2',
         side: 'SELL',
         price: '0.45',
         size: '5',
-        status: 'MATCHED',
-        createdAt: Date.now(),
-        filledSize: '5',
-        remainingSize: '0',
-      };
+      });
 
       auditTrail.recordOrder(order1);
       auditTrail.recordOrder(order2);
       
       // Add some test data
-      const fill1: Fill = {
+      const fill1 = createMockFill({
         orderId: 'order-1',
         tokenId: '0xtoken1',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
         timestamp: Date.now() - 1000,
-        fee: '0.011',
-      };
+      });
 
-      const fill2: Fill = {
+      const fill2 = createMockFill({
         orderId: 'order-2',
         tokenId: '0xtoken2',
         side: 'SELL',
@@ -311,7 +235,7 @@ describe('AuditTrail', () => {
         size: '5',
         timestamp: Date.now(),
         fee: '0.0045',
-      };
+      });
 
       auditTrail.recordFill(fill1);
       auditTrail.recordFill(fill2);
@@ -338,43 +262,27 @@ describe('AuditTrail', () => {
   describe('getStatistics', () => {
     beforeEach(() => {
       // Add test orders
-      const order1: Order = {
+      const order1 = createMockMatchedOrder({
         orderId: 'order-1',
         tokenId: '0xtoken1',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        status: 'MATCHED',
-        createdAt: Date.now(),
-        filledSize: '10',
-        remainingSize: '0',
-      };
+      });
 
-      const order2: Order = {
+      const order2 = createMockOpenOrder({
         orderId: 'order-2',
         tokenId: '0xtoken1',
         side: 'SELL',
         price: '0.45',
         size: '5',
-        status: 'OPEN',
-        createdAt: Date.now(),
-        filledSize: '0',
-        remainingSize: '5',
-      };
+      });
 
       auditTrail.recordOrder(order1);
       auditTrail.recordOrder(order2);
 
       // Add test fills
-      const fill1: Fill = {
+      const fill1 = createMockFill({
         orderId: 'order-1',
         tokenId: '0xtoken1',
-        side: 'BUY',
-        price: '0.55',
-        size: '10',
-        timestamp: Date.now(),
-        fee: '0.011',
-      };
+      });
 
       auditTrail.recordFill(fill1);
     });
