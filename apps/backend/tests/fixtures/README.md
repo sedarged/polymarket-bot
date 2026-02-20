@@ -197,7 +197,7 @@ When adding new generators:
 
 ## Related Documentation
 
-- [Shared Types](../../packages/shared/src/index.ts) - Type definitions
+- [Shared Types](../../../../packages/shared/src/index.ts) - Type definitions
 - [Vitest Documentation](https://vitest.dev/) - Testing framework
 
 ## Questions?

@@ -58,9 +58,14 @@ function generateFillId(): string {
 
 /**
  * Generate a unique token ID (hex format)
+ * Token IDs are exactly 42 characters (0x + 40 hex digits).
+ * For very large counter values, we use modulo to keep within 40 hex digits.
  */
 function generateTokenId(): string {
-  return '0x' + (tokenIdCounter++).toString().padStart(40, '0');
+  // Use modulo to ensure we stay within 40 hex digits (max value: 2^160)
+  const maxValue = BigInt('0x' + 'f'.repeat(40));
+  const id = (tokenIdCounter++ % Number(maxValue)).toString();
+  return '0x' + id.padStart(40, '0');
 }
 
 /**
