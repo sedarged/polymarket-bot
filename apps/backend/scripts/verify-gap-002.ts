@@ -25,11 +25,11 @@ const colors = {
   red: '\x1b[31m',
 };
 
-function log(message, color = colors.reset) {
+function log(message: string, color: string = colors.reset) {
   console.log(`${color}${message}${colors.reset}`);
 }
 
-function header(message) {
+function header(message: string) {
   console.log();
   log(`${'='.repeat(60)}`, colors.bright);
   log(message, colors.bright);

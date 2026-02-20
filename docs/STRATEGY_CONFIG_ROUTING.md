@@ -365,10 +365,9 @@ STRATEGY_CONFIG_PATH → ConfigManager → StrategyFactory → Strategy Instance
 
 ## Related Documentation
 
-- [Configuration Management (GAP-003)](./GAP-003-config-management.md)
+- [Configuration Management](../ARCHITECTURE.md#configuration)
 - [Strategy Framework](../ARCHITECTURE.md#strategy-framework)
-- [Multi-Strategy Orchestration (GAP-013)](./GAP-013-multi-strategy.md)
-- [Strategy Hot-Reload (GAP-011)](./GAP-011-strategy-hot-reload.md)
+- [Multi-Strategy Orchestration](./trading/strategies/ORCHESTRATOR.md)
 
 ## References
 

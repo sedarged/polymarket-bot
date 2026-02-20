@@ -54,7 +54,7 @@ describe('Per-Strategy Config Loading Integration (GAP-002)', () => {
 
     // Remove test directory
     if (fs.existsSync(testDir)) {
-      fs.rmdirSync(testDir);
+      fs.rmSync(testDir, { recursive: true });
     }
 
     // Clean up environment

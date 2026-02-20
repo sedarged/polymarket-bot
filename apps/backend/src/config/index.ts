@@ -467,7 +467,7 @@ const configSchema = envSchema
             strategy = parsed as PerStrategyConfig[];
             logger.info("Loaded per-strategy configs", {
               count: parsed.length,
-              strategies: parsed.map((s: any) => ({ id: s.strategyId, type: s.type, enabled: s.enabled }))
+              strategies: parsed.map((s: PerStrategyConfig) => ({ id: s.strategyId, type: s.type, enabled: s.enabled }))
             });
           } else if (parsed && typeof parsed === "object") {
             // Single global config (backward compatibility)
