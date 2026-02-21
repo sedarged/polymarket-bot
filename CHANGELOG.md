@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.2](https://github.com/sedarged/polymarket-bot/compare/v3.9.1...v3.9.2) (2026-02-21)
+
+
+### Bug Fixes
+
+* correct API endpoints and Market interface usage in UMA docs ([5b00824](https://github.com/sedarged/polymarket-bot/commit/5b008242d0ff1dcbc392470e67031fa33f443d7e))
+* improve accuracy and error handling in UMA documentation ([9e8b188](https://github.com/sedarged/polymarket-bot/commit/9e8b1884f38501692d1f4e4e4a2c4268e50bf5e0))
+
 ## [3.9.1](https://github.com/sedarged/polymarket-bot/compare/v3.9.0...v3.9.1) (2026-02-21)
 
 
