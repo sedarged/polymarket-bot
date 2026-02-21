@@ -2016,7 +2016,7 @@ See [Emergency Secret Revocation](./security.md#emergency-secret-revocation) for
 Markets resolve via the UMA Optimistic Oracle. After resolution, winning shares can be redeemed for $1.00 USDC.
 
 **Quick Reference:**
-- **Typical resolution:** Proposal → 2-hour challenge period → settlement. If disputed, UMA DVM can take ~48–96 hours.
+- **Typical resolution:** Proposal → configurable challenge period (typically 2–24 hours) → settlement. If disputed, UMA DVM can take ~48–96 hours.
 - **Auto-redemption:** Winning positions are typically redeemable via the Polymarket UI or API after settlement. The bot does not auto-redeem; plan to redeem manually or add a monitor that triggers redemption.
 - **Settlement buffer:** If you hold positions to resolution, allow for dispute delays (up to ~96 hours) before treating value as final.
 

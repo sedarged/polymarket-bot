@@ -305,7 +305,7 @@ This process is called **market resolution** and is handled by UMA's Optimistic 
 
 ### Capital Management
 
-**Challenge:** Funds locked in resolved positions
+**Challenge:** Funds locked in closed/unresolved positions
 
 **Solutions:**
 1. **Reserve Buffer**  
@@ -414,9 +414,9 @@ async function monitorAndRedeem() {
 #### Q: How do I check resolution status?
 **A:** Query Polymarket API or Gamma API for market status:
 ```bash
-# Check if market resolved
+# Check if market is closed (note: Market type only exposes "closed", not full resolution data)
 curl "https://gamma-api.polymarket.com/market/<market_id>"
-# Look for "closed": true and resolution data
+# Look for "closed": true
 ```
 
 #### Q: What if my position isn't redeemable?
@@ -454,8 +454,8 @@ Most bots should exit **before resolution** unless strategy requires holding (e.
 #### Q: How to monitor resolution programmatically?
 **A:**
 ```typescript
-// Example: Poll resolution/closure status
-async function checkResolution(marketId: string): Promise<boolean> {
+// Example: Poll market closure status
+async function checkMarketClosed(marketId: string): Promise<boolean> {
   const market = await gammaApi.getMarket(marketId);
   // Gamma's Market type exposes `closed`; full resolution/dispute status requires additional logic.
   return market.closed;
@@ -463,9 +463,13 @@ async function checkResolution(marketId: string): Promise<boolean> {
 
 // Check every hour
 setInterval(async () => {
-  const resolved = await checkResolution('your-market-id');
-  if (resolved) {
-    console.log('Market resolved, can redeem now');
+  try {
+    const closed = await checkMarketClosed('your-market-id');
+    if (closed) {
+      console.log('Market closed, check if resolved and ready for redemption');
+    }
+  } catch (error) {
+    console.error('Error while checking market status', error);
   }
 }, 60 * 60 * 1000);
 ```
@@ -544,10 +548,10 @@ Not recommended as a primary strategy—only when legitimately wrong.
 ### API Endpoints
 
 ```bash
-# Check market resolution status
+# Check market closure status (note: "closed" != "resolved")
 GET https://gamma-api.polymarket.com/market/{market_id}
 
-# Get all markets (filter by closed/resolved)
+# Get all markets filtered by "closed" flag (note: "closed" != "resolved")
 GET https://gamma-api.polymarket.com/markets?closed=true
 
 # CLOB API - market metadata (tick size by token)
@@ -576,6 +580,5 @@ This document will be updated as:
 
 ---
 
-**Last Updated:** 2026-02-21  
 **Maintainer:** Polymarket Bot Contributors  
 **Issue Reference:** [GAP-018] UMA Resolution Documentation
