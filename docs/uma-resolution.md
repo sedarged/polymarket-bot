@@ -415,7 +415,7 @@ async function monitorAndRedeem() {
 **A:** Query Polymarket API or Gamma API for market status:
 ```bash
 # Check if market resolved
-curl "https://gamma-api.polymarket.com/markets/<market_id>"
+curl "https://gamma-api.polymarket.com/market/<market_id>"
 # Look for "closed": true and resolution data
 ```
 
@@ -454,10 +454,11 @@ Most bots should exit **before resolution** unless strategy requires holding (e.
 #### Q: How to monitor resolution programmatically?
 **A:**
 ```typescript
-// Example: Poll resolution status
+// Example: Poll resolution/closure status
 async function checkResolution(marketId: string): Promise<boolean> {
   const market = await gammaApi.getMarket(marketId);
-  return market.closed && market.resolved;
+  // Gamma's Market type exposes `closed`; full resolution/dispute status requires additional logic.
+  return market.closed;
 }
 
 // Check every hour
@@ -544,13 +545,13 @@ Not recommended as a primary strategy—only when legitimately wrong.
 
 ```bash
 # Check market resolution status
-GET https://gamma-api.polymarket.com/markets/{market_id}
+GET https://gamma-api.polymarket.com/market/{market_id}
 
 # Get all markets (filter by closed/resolved)
 GET https://gamma-api.polymarket.com/markets?closed=true
 
-# CLOB API - market metadata
-GET https://clob.polymarket.com/markets/{condition_id}
+# CLOB API - market metadata (tick size by token)
+GET https://clob.polymarket.com/tick-size?token_id={token_id}
 ```
 
 ---
