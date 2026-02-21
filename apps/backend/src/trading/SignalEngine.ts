@@ -436,7 +436,7 @@ export class SignalEngine extends EventEmitter {
   /**
    * Validate that a value is a positive finite number
    */
-  private validatePositiveNumber(value: unknown, fieldName: string): number | null {
+  private validatePositiveNumber(value: unknown): number | null {
     const numericValue = typeof value === 'string' ? Number(value) : (value as number);
     
     if (!Number.isFinite(numericValue) || numericValue <= 0) {
@@ -473,7 +473,7 @@ export class SignalEngine extends EventEmitter {
     // Apply risk manager checks (skip for hold/cancel actions)
     if (signal.decision.action === 'buy' || signal.decision.action === 'sell') {
       // Validate size: must be a positive numeric value for buy/sell signals
-      const numericSize = this.validatePositiveNumber(signal.decision.size, 'size');
+      const numericSize = this.validatePositiveNumber(signal.decision.size);
       
       if (numericSize === null) {
         const reason = 'Invalid or missing size for buy/sell signal';
@@ -492,7 +492,7 @@ export class SignalEngine extends EventEmitter {
       }
 
       // Validate price: must be a positive numeric value for buy/sell signals
-      const numericPrice = this.validatePositiveNumber(signal.decision.price, 'price');
+      const numericPrice = this.validatePositiveNumber(signal.decision.price);
       
       if (numericPrice === null) {
         const reason = 'Invalid or missing price for buy/sell signal';
