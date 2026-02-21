@@ -371,10 +371,12 @@ Nothing in this software or documentation constitutes financial, legal, or tax a
 - [Security Guide](./security.md) - Private key security and best practices
 - [Runbook](./runbook.md) - Operational procedures and emergency response
 - [Architecture](./architecture.md) - Technical system design
+- [UMA Resolution Guide](./uma-resolution.md) - Market resolution & dispute process
 - [Troubleshooting](./troubleshooting.md) - Common issues and solutions
 
 **External Resources:**
 - [Polymarket Documentation](https://docs.polymarket.com/)
+- [UMA Protocol Documentation](https://docs.uma.xyz/)
 - [U.S. Treasury OFAC Sanctions List](https://sanctionssearch.ofac.treas.gov/)
 - [CFTC - Prediction Markets](https://www.cftc.gov/IndustryOversight/TradingOrganizations/EventMarkets/index.htm)
 

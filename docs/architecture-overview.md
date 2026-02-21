@@ -35,6 +35,15 @@ Polymarket uses a **hybrid CLOB (Central Limit Order Book)** system:
 - **No gas fees for most markets**: Trading is free for users in most cases
 - **Maker rebates**: In some markets (like 15-minute crypto markets), you can earn small rebates for providing liquidity
 
+### Market Resolution
+
+Markets are resolved using **UMA's Optimistic Oracle**:
+- **Normal resolution:** 2-24 hours after market closes
+- **Disputed resolution:** 48-96 hours if outcome is challenged
+- **Winning shares:** Redeemable for $1.00 USDC after resolution
+
+**See [UMA Resolution Guide](./uma-resolution.md) for complete details on how market outcomes are determined and the dispute process.**
+
 ---
 
 ## 🤖 What Does This Bot Do?

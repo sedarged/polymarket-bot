@@ -29,6 +29,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
 - [README](../README.md) - Project overview, installation, and quick start
 - [STATUS](../STATUS.md) - Current work status and priorities (auto-updated from Issues)
 - [System Overview](./architecture-overview.md) - Plain language explanation of how the system works
+- [UMA Resolution Guide](./uma-resolution.md) - 📜 **Market resolution & dispute process** (GAP-018)
+  - How Polymarket markets are resolved using UMA Optimistic Oracle
+  - Resolution timeline and process (normal vs disputed)
+  - Roles, responsibilities, and bot implications
+  - FAQ and troubleshooting for resolution issues
 - [Examples](./examples.md) - CLI usage examples and common patterns
 
 ### Security & Audits
@@ -78,6 +83,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - WebSocket, API, authentication errors
   - Order placement, kill switch, balance issues
   - Debug mode and logging
+- **[UMA Resolution Guide](./uma-resolution.md)** - 📜 **Market resolution & dispute process** (GAP-018)
+  - How Polymarket markets are resolved using UMA Optimistic Oracle
+  - Resolution timeline (2-24 hours normal, 48-96 hours if disputed)
+  - Roles, responsibilities, and bot implications
+  - FAQ and troubleshooting for resolution issues
 
 ### Development
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
