@@ -19,6 +19,9 @@ export { StrategyManager, type StrategyManagerConfig, type StrategyInstance, typ
 export { StrategyOrchestrator, type StrategyOrchestratorConfig, type StrategyExecutionContext, type StrategyState, type EvaluationResult, type ConflictDetectionResult } from './StrategyOrchestrator';
 export { StrategyValidator, validateStrategy, type ValidationResult, type ValidationReport, type ValidationCriteria } from './validator';
 
+// Signal Engine (GAP-010)
+export { SignalEngine, type Signal, type SignalResult, type SignalEngineConfig } from '../SignalEngine';
+
 // Strategy implementations
 export { ArbitrageStrategy } from './ArbitrageStrategy';
 export { MeanReversionStrategy } from './MeanReversionStrategy';

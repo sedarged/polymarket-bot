@@ -224,6 +224,8 @@ const isLive = config.liveTrading;
 - **IStrategy Interface** - Contract for all trading strategies
 - **BaseStrategy** - Abstract base class with common functionality
 - **StrategyFactory** - Factory pattern for strategy instantiation
+- **StrategyOrchestrator** - Coordinates multiple strategies running in parallel
+- **StrategyManager** - Lifecycle management with hot-reload support
 - **Built-in Strategies**:
   - ArbitrageStrategy - Exploit YES + NO price discrepancies
   - MeanReversionStrategy - Statistical approach for prediction markets
@@ -254,7 +256,96 @@ const decision = await strategy.evaluate(marketContext);
 - Implement `IStrategy` interface or extend `BaseStrategy`
 - Load strategies from configuration files
 
-### 2. Paper Trading Engine
+### 2. Signal Generation Framework (GAP-010)
+**Location:** `apps/backend/src/trading/SignalEngine.ts`
+
+**Purpose:** Central signal processing, prioritization, and risk validation
+
+**Status:** Framework implemented and tested. Runtime integration into server signal/execution flow is planned for future work.
+
+**Architecture:**
+```
+StrategyOrchestrator → SignalEngine → ExecutionService
+  (Generate signals)   (Process)      (Execute orders)
+```
+
+**Components:**
+- **SignalEngine** - Core signal processing engine
+- **Signal Interface** - Wraps TradingDecision with metadata
+- **SignalResult** - Processing outcome (approved/rejected)
+
+**Features:**
+- **Signal Collection** - Aggregate signals from multiple strategies
+- **Confidence Filtering** - Filter signals below minimum confidence threshold
+- **Conflict Resolution** - Three strategies:
+  - `highest-confidence` - Select signal with highest confidence
+  - `first-wins` - FIFO processing
+  - `aggregate` - Combine multiple signals (average price, sum size)
+- **Risk Validation** - Integration with RiskManager for pre-execution checks
+- **Performance Tracking** - Per-strategy metrics and signal history
+- **Event Emission** - Real-time monitoring of signal processing
+
+**Usage:**
+```typescript
+import { SignalEngine } from './trading/SignalEngine';
+import { RiskManager } from './trading/riskManager';
+
+// Initialize risk manager
+const riskManager = new RiskManager({
+  maxExposurePerMarket: 1000,
+  maxOpenOrders: 10,
+  maxDrawdown: 0.2,
+});
+
+// Initialize signal engine
+const signalEngine = new SignalEngine(
+  {
+    enabled: true,
+    maxSignalsPerToken: 3,
+    minConfidence: 0.5,
+    conflictResolution: 'highest-confidence',
+  },
+  riskManager
+);
+
+// Process signals from strategies
+const signals = evaluationResults.map(r => ({
+  decision: r.decision,
+  strategyId: r.strategyId,
+  strategyName: r.strategyName,
+  tokenId: marketContext.tokenId,
+  timestamp: r.timestamp,
+  qualityScore: r.decision.confidence,
+}));
+
+const results = await signalEngine.processSignals(signals);
+
+// Execute approved signals
+for (const result of results) {
+  if (result.approved) {
+    const orderId = await executeOrder(result.signal.decision);
+    signalEngine.markExecuted(result.signal, orderId);
+  }
+}
+
+// Monitor performance
+const metrics = signalEngine.getMetrics();
+console.log(`Approval rate: ${metrics.approvalRate}`);
+```
+
+**Conflict Resolution Examples:**
+
+*Highest Confidence:*
+- Strategy A: BUY @ 0.50 (confidence: 0.7)
+- Strategy B: BUY @ 0.52 (confidence: 0.9) ← Selected
+- Strategy C: BUY @ 0.51 (confidence: 0.8)
+
+*Aggregate:*
+- Strategy A: BUY @ 0.50, size 10 (confidence: 0.7)
+- Strategy B: BUY @ 0.60, size 15 (confidence: 0.8)
+- Result: BUY @ 0.55, size 25 (confidence: 0.75)
+
+### 3. Paper Trading Engine
 **Location:** `apps/backend/src/trading/paperTradingEngine.ts`
 
 **Purpose:** Simulate trading without real funds
@@ -285,7 +376,7 @@ interface EngineState {
 4. Update position and balance
 5. Calculate PnL
 
-### 3. Risk Manager
+### 4. Risk Manager
 **Location:** `apps/backend/src/trading/riskManager.ts`
 
 **Purpose:** Enforce risk limits and circuit breakers
@@ -320,7 +411,7 @@ interface RiskCheckResult {
 }
 ```
 
-### 4. Trading Client (Live)
+### 5. Trading Client (Live)
 **Location:** `apps/backend/src/clients/tradingClient.ts`
 
 **Purpose:** Interface for live trading on Polymarket
