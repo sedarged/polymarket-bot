@@ -38,10 +38,8 @@ To update this status:
 - [P2] #400 [GAP-021] Data Pipeline Enhancement
 - #399 [GAP-004] Market Synchronization Module
 - #398 [GAP-005] Bot Strategy Abstract Factory
-- #397 [GAP-006] Order Execution Service
-- #394 [GAP-003] Implement Configuration Management Interface
 
-*Last updated: 2026-02-21T00:34:02.613Z*
+*Last updated: 2026-02-21T12:09:58.044Z*
 
 <!-- STATUS_SYNC_END -->
 
