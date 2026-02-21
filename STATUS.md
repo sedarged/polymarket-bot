@@ -24,22 +24,19 @@ To update this status:
 
 ## Next — P2 (Normal Priority)
 - [P2] #409 [GAP-020] Cost Scenarios Documentation
-- [P2] #407 [GAP-018] UMA Resolution Documentation
 
 ## Recently Closed (Last 14 Days)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
 - [P1] #408 [GAP-019] Fee-Rate Checking
+- [P2] #407 [GAP-018] UMA Resolution Documentation
 - [P1] #406 [GAP-017] DB Backup Script
 - [P2] #405 [GAP-016] Pre-Deployment Verification Script
 - [P1] #404 [GAP-015] Deployment Workflow
 - [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
 - [P2] #402 [GAP-013] Multi-Strategy Orchestration
 - [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
-- [P2] #400 [GAP-021] Data Pipeline Enhancement
-- #399 [GAP-004] Market Synchronization Module
-- #398 [GAP-005] Bot Strategy Abstract Factory
 
-*Last updated: 2026-02-21T12:09:58.044Z*
+*Last updated: 2026-02-21T18:51:48.875Z*
 
 <!-- STATUS_SYNC_END -->
 
