@@ -967,24 +967,25 @@ The Learning System provides an advanced framework for strategy optimization, ba
 
 **Schema:**
 ```typescript
-interface Event {
-  id: string;
-  timestamp: number;
-  type: 'ORDER' | 'FILL' | 'SIGNAL' | 'MARKET_DATA';
-  data: Record<string, any>;
-  metadata: {
-    strategyId?: string;
-    marketId?: string;
-    sessionId?: string;
-  };
+// Event envelope - common fields for all events
+// See apps/backend/src/learning/types.ts for full definition
+interface EventEnvelope<T = unknown> {
+  eventId: string;           // UUID
+  eventType: EventType;      // 'MarketEvent' | 'OrderBookUpdateEvent' | 'SignalEvent' | etc.
+  eventVersion: number;
+  occurredAt: string;        // ISO timestamp
+  receivedAt: string;        // ISO timestamp
+  marketId: string;
+  source: EventSource;       // 'websocket' | 'rest' | 'strategy' | 'simulation'
+  payload: T;
 }
 ```
 
 **Key Operations:**
-- `append(event)`: Add new event
-- `query(filters)`: Retrieve events with filtering
-- `getRange(start, end)`: Time-based queries
-- `export()`: Export for analysis
+- `writeEvent(...)`: Append new event to the store
+- `writeEventsIdempotent(...)`: Write multiple events with deduplication
+- `queryEvents(filters)`: Retrieve events with filtering (by type, market, time range)
+- Export functionality for offline analysis
 
 ### 2. Backtest Engine
 
@@ -1010,12 +1011,18 @@ interface Event {
 
 **Configuration:**
 ```typescript
+// See apps/backend/src/learning/types.ts for full definition
 interface BacktestConfig {
+  backtestId: string;
   strategyId: string;
-  startDate: Date;
-  endDate: Date;
-  initialCapital: number;
-  marketIds?: string[];
+  strategyConfig?: Record<string, unknown>; // Strategy-specific params
+  startDate: string;         // ISO timestamp
+  endDate: string;           // ISO timestamp
+  markets: string[];         // Market IDs
+  initialBalance: number;
+  slippage: number;
+  feeRate: number;
+  seed?: number;             // For reproducibility
 }
 ```
 
@@ -1033,17 +1040,14 @@ interface BacktestConfig {
 
 **Signal Schema:**
 ```typescript
-interface Signal {
-  id: string;
-  type: string;
-  timestamp: number;
-  confidence: number; // 0.0 to 1.0
-  metadata: {
-    source: string;
-    marketId: string;
-    strategyId: string;
-  };
-  payload: Record<string, any>;
+// See apps/backend/src/learning/types.ts for full definition
+interface SignalEvent {
+  signalId: string;
+  signalName: string;
+  signalValue: number | string | boolean;
+  signalVersion: string;
+  featureSetId: string;
+  metadata: Record<string, unknown>;
 }
 ```
 
@@ -1067,11 +1071,14 @@ interface Signal {
 
 **Configuration:**
 ```typescript
-interface BanditConfig {
-  algorithm: 'epsilon-greedy' | 'ucb1' | 'thompson-sampling';
-  epsilon?: number; // For epsilon-greedy (default: 0.1)
+// See apps/backend/src/learning/types.ts for full definition
+interface AllocationConfig {
+  totalCapital: number;      // Total capital the allocator can distribute
+  minAllocation: number;     // Minimum fraction or amount per strategy
+  maxAllocation: number;     // Maximum fraction or amount per strategy
+  algorithm?: 'epsilon-greedy' | 'ucb1' | 'thompson-sampling';
+  epsilon?: number;          // For epsilon-greedy
   explorationFactor?: number; // For UCB1
-  updateInterval: number; // How often to rebalance (seconds)
 }
 ```
 
@@ -1115,12 +1122,14 @@ Backtest → Pass Gates? → Paper Trade → Pass Gates? → Shadow → Producti
 **Location:** `apps/backend/src/learning/metricsGating.ts`
 
 **Metrics Evaluated:**
-- **Sharpe Ratio**: Risk-adjusted return (target: > 1.0)
-- **Maximum Drawdown**: Peak-to-trough decline (target: < 20%)
-- **Win Rate**: Percentage of profitable trades (target: > 55%)
-- **Profit Factor**: Gross profit / gross loss (target: > 1.5)
-- **Trade Count**: Statistical significance (target: > 100 trades)
-- **Consistency**: Standard deviation of daily returns
+
+_Note: Thresholds below show default values from `apps/backend/src/learning/metricsGating.ts`. These can be overridden via configuration._
+
+- **Sharpe Ratio**: Risk-adjusted return (default: > 1.0)
+- **Maximum Drawdown**: Peak-to-trough decline (default: < 10%)
+- **Trade Count**: Statistical significance (default: > 30 trades)
+- **Minimum Days**: Data collection period (default: > 30 days)
+- **Error Rate**: Maximum error rate (default: < 1%)
 
 **Decision Logic:**
 ```typescript
@@ -1147,11 +1156,10 @@ interface GateDecision {
 5. BanditAllocator → StrategyManager (dynamic allocation)
 
 **API Endpoints:**
-- `POST /learning/backtest` - Run backtest
-- `GET /learning/signals` - List signal catalog
-- `POST /learning/promote` - Trigger promotion workflow
-- `GET /learning/allocations` - Get current bandit allocations
-- `GET /learning/events` - Query event store
+- `GET /api/learning/experiments` - List learning experiments
+- `GET /api/learning/strategies` - List strategies in learning system
+- `GET /api/learning/best` - Get current best strategy/allocation
+- `GET /api/learning/status` - Get learning system status
 
 **Related Documentation:**
 - [Strategy Hot Reload](./STRATEGY_HOT_RELOAD.md)
@@ -1312,11 +1320,13 @@ interface Discrepancy {
 - **Exchange State**: CLOB API endpoints (orders, positions, balances)
 - **Blockchain State**: Optional on-chain verification (future)
 
-**API Endpoints:**
-- `POST /sync/reconcile` - Trigger manual reconciliation
-- `GET /sync/status` - Get last sync status
-- `GET /sync/discrepancies` - View detected discrepancies
-- `POST /sync/recover` - Execute recovery procedures
+**Integration:**
+
+_Note: Sync operations are currently integrated within the trading system. Dedicated API endpoints are planned for future releases._
+
+- Automatic reconciliation on startup and WebSocket reconnect
+- Periodic scheduled checks (configured via `RECONCILIATION_INTERVAL_SECONDS`)
+- Accessed programmatically through `SyncManager` in code
 
 **Related Documentation:**
 - [Sync Module Test Procedure](./SYNC_MODULE_TEST_PROCEDURE.md)
@@ -1479,21 +1489,22 @@ docker build -t polymarket-bot:latest .
 | Service | Port | Purpose |
 |---------|------|---------|
 | **backend** | 3000 | Trading bot HTTP API |
-| **frontend** | 8080 | React dashboard UI |
+| **frontend** | 8080 | Static dashboard UI (served via http-server) |
 | **prometheus** | 9092 | Metrics collection |
 | **grafana** | 3001 | Monitoring dashboard |
 
-**Network:** All services on `polymarket_network` bridge
+**Network:** All services on `polymarket-network` bridge
 
 **Volumes:**
-- `learning-data`: Persistent EventStore database
-- `grafana-storage`: Dashboard configurations
+- `./data` (bind mount): Backend persistent state (EventStore, logs, artifacts)
+- `frontend-static`: Built frontend assets served by the frontend container
+- `prometheus-data`: Prometheus time-series database storage
+- `grafana-data`: Grafana dashboards and configuration
 
 **Health Checks:**
-- Backend: `GET /health` every 30s
-- Frontend: TCP check on port 8080
-- Prometheus: TCP check on port 9090
-- Grafana: HTTP check on port 3000
+- Backend: HTTP `GET /health` every 30s
+- Frontend: HTTP GET healthcheck (wget) every 30s
+- Prometheus & Grafana: No healthchecks configured in `docker-compose.yml`
 
 **Start all services:**
 ```bash
@@ -1522,7 +1533,7 @@ docker-compose up -d
 
 **Alerting:**
 - **Service**: AlertingService (Telegram integration)
-- **Location**: `apps/backend/src/services/alertingService.ts`
+- **Location**: `apps/backend/src/utils/alerting.ts`
 - **Triggers**:
   - Trading losses exceed threshold
   - Circuit breaker activates
@@ -1541,7 +1552,7 @@ docker-compose up -d
 - **Instance Type**: t3.medium (2 vCPU, 4GB RAM)
 
 **Kubernetes:**
-- **Location**: `infrastructure/k8s/`
+- **Location**: `infrastructure/kubernetes/`
 - **Manifests**: Deployment, Service, ConfigMap, Secret
 - **Scaling**: HPA (Horizontal Pod Autoscaler) configured
 - **Storage**: PersistentVolumeClaim for EventStore
@@ -1561,7 +1572,7 @@ terraform init
 terraform apply
 
 # Kubernetes
-kubectl apply -f infrastructure/k8s/
+kubectl apply -f infrastructure/kubernetes/
 
 # Ansible
 cd infrastructure/ansible
@@ -1611,11 +1622,10 @@ The HTTP server exposes REST API endpoints for system control, monitoring, and c
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
+| `/state` | GET | View current trading state (orders, fills, positions, balances) |
 | `/orders` | GET | List active orders |
-| `/orders` | POST | Place new order |
-| `/orders/:id` | DELETE | Cancel order |
-| `/positions` | GET | View current positions |
-| `/balance` | GET | Check account balance |
+| `/orders` | POST | Place new order (requires admin auth) |
+| `/fills` | GET | View fill history |
 
 ### Strategy Management
 
@@ -1630,28 +1640,33 @@ The HTTP server exposes REST API endpoints for system control, monitoring, and c
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/learning/backtest` | POST | Run backtest |
-| `/learning/signals` | GET | List signal catalog |
-| `/learning/promote` | POST | Trigger promotion workflow |
-| `/learning/allocations` | GET | Get bandit allocations |
-| `/learning/events` | GET | Query event store |
+| `/api/learning/experiments` | GET | List learning experiments and their configurations |
+| `/api/learning/strategies` | GET | List strategies participating in learning/experiments |
+| `/api/learning/best` | GET | Retrieve currently selected "best" strategy/allocation |
+| `/api/learning/status` | GET | Get learning system health and experiment status |
 
 ### Sync & Reconciliation
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/sync/reconcile` | POST | Trigger reconciliation |
-| `/sync/status` | GET | Last sync status |
-| `/sync/discrepancies` | GET | View discrepancies |
-| `/sync/recover` | POST | Execute recovery |
+_Note: Sync operations are currently integrated within the trading system. Dedicated API endpoints are planned for future releases._
+
+**Current Integration:**
+- Automatic reconciliation on startup and WebSocket reconnect
+- Periodic scheduled checks (configured via `RECONCILIATION_INTERVAL_SECONDS`)
+- Accessed programmatically through `SyncManager` in code
 
 ### Configuration
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/config` | GET | View current config |
-| `/config` | PUT | Update config (hot-reload) |
-| `/config/reload` | POST | Reload from environment |
+| `/api/config` | GET | View current config |
+| `/api/config/:type` | GET | Get specific config file (strategies, signals, markets) |
+| `/api/config/:type` | PUT | Update config file (hot-reload) |
+| `/api/config/:type` | DELETE | Delete config file |
+| `/api/config/validate/:type` | POST | Validate config before applying |
+| `/api/config/reload` | POST | Reload all config from environment |
+| `/api/config/watching` | GET | Get config file watching status |
+| `/api/config/watching/start` | POST | Start watching config files |
+| `/api/config/watching/stop` | POST | Stop watching config files |
 
 ### Safety & Control
 
@@ -1669,23 +1684,27 @@ The HTTP server exposes REST API endpoints for system control, monitoring, and c
 | `/logs` | GET | Recent logs (query params) |
 
 **Authentication:**
-- Local development: No auth required
-- Production: Bearer token authentication (future)
+- **Public endpoints**: `/health`, `/ready`, `/metrics` (no auth required)
+- **Admin endpoints**: Most operational endpoints require `Authorization: Bearer <ADMIN_TOKEN>` header
+  - Examples: `/orders` (POST), `/kill-switch`, `/api/config/*`, `/api/learning/*`
+- Token configured via `ADMIN_TOKEN` environment variable
 
 **Rate Limiting:**
-- 100 requests per minute per client
+- 100 requests per minute per client (configurable)
 - Circuit breaker protects backend
 
-**Example Request:**
+**Example Requests:**
 ```bash
-# Check health
+# Public endpoint - no auth
 curl http://localhost:3000/health
 
-# Get positions
-curl http://localhost:3000/positions
+# Admin endpoint - requires token
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/state
 
-# Trigger reconciliation
-curl -X POST http://localhost:3000/sync/reconcile
+# Config management - requires token
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/api/config
 ```
 
 **Related Documentation:**

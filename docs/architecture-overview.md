@@ -259,7 +259,7 @@ The bot uses several strategies to make money:
 - **SEV-2 (High)**: Prompt attention needed (WebSocket unstable, high error rate)
 - **SEV-3 (Low)**: Informational (minor retries, performance degradation)
 
-**Alert Destinations:** Telegram, Slack, Discord, email, or SMS (configurable)
+**Alert Destinations:** Telegram (currently implemented). Slack, Discord, email, and SMS are planned future options.
 
 **Monitoring Stack:**
 - **Prometheus**: Metrics collection and time-series database
