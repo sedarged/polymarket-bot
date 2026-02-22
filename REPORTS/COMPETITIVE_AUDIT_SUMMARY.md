@@ -224,7 +224,6 @@ pub async fn analyze_sentiment(text: &str) -> SentimentResult {
 | **REC-010** | Add 5-min quickstart | 1 hour | P2 | Still relevant |
 | **REC-NEW-4** | List on Polycatalog.io | 1 hour | P2 | **NEW** - Ecosystem visibility |
 | **REC-NEW-5** | Security audit process | 2-3 days | P2 | **NEW** - Community trust |
-| **REC-010** | Add 5-min quickstart | 1 hour | P2 |
 
 ---
 
@@ -333,9 +332,9 @@ Top by stars:
 
 ### 2026 Ecosystem Resources
 
-- **[Polycatalog.io](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026)** - 170+ tools catalog
+- **[Polycatalog.io ecosystem article](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026)** - 170+ tools catalog
 - **[Awesome Prediction Market Tools](https://defiprime.com/definitive-guide-to-the-polymarket-ecosystem)** - Community list
-- **[US API Documentation](https://www.quantvps.com/blog/polymarket-us-api-available)** - CFTC-regulated API
+- **[US API coverage – QuantVPS](https://www.quantvps.com/blog/polymarket-us-api-available)** - Third-party report on CFTC-regulated API
 - **[Security Alert](https://cryptonews.net/news/security/32170648/)** - Malicious bot warnings
 - **[Polycopytrade.net](https://www.polycopytrade.net/)** - Commercial copy trading service
 - **[Forseen.io](https://forseen.io/)** - Privacy-focused copy trading
@@ -365,18 +364,6 @@ Top by stars:
 **Total:** 8-10 weeks to feature parity + superior infrastructure (was 6-8 weeks)
 
 **Note:** Timeline extended to account for 2026 market advances including US API compliance, AI signals, and advanced copy-trading features.
-4. 🔄 Enforce encrypted keys (REC-002)
-5. 🔄 Plan copy trading architecture (REC-003)
-
----
-
-## Timeline
-
-**Phase 1:** 1-2 weeks (critical fixes)  
-**Phase 2:** 3-4 weeks (high-priority features)  
-**Phase 3:** 1-2 weeks (enhancements)
-
-**Total:** 6-8 weeks to feature parity + superior infrastructure
 
 ---
 
@@ -387,12 +374,12 @@ Per issue #220 requirements:
 - ✅ **Competitive review includes links/sources** - 5+ repos analyzed (original) + 4 new (2026 update) with links
 - ✅ **Deficiencies are evidence-based** - All gaps cite code, file paths, line numbers, market data
 - ✅ **Recommendations are actionable** - 15 recommendations (10 original + 5 new) with effort estimates and implementation plans
-- ✅ **Results documented thoroughly** - 1,857-line comprehensive report (updated) with code samples
+- ✅ **Results documented thoroughly** - 2,071-line comprehensive report (updated) with code samples
 - ✅ **Test/review sheets added** - Comparison tables, metric tables, feature matrices
 - ✅ **[2026]** Latest competitor advances documented - US API, AI signals, security warnings, ecosystem growth
 
 ---
 
-**Full Report:** [REPORTS/COMPETITIVE_AUDIT.md](./COMPETITIVE_AUDIT.md) (~1,900 lines with 2026 updates)
+**Full Report:** [REPORTS/COMPETITIVE_AUDIT.md](./COMPETITIVE_AUDIT.md) (2,071 lines with 2026 updates)
 
 **Status:** ✅ Updated and ready for review (2026-02-22)

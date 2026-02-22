@@ -61,9 +61,9 @@ This audit compares the `sedarged/polymarket-bot` repository against the Polymar
 
 **Ecosystem Growth (2026 Update):**
 - **170+ tools** now exist in the Polymarket ecosystem (up from ~30 surveyed in original audit)
-- New resource: [Polycatalog.io](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - comprehensive mapping of all tools, bots, analytics dashboards, and AI agents
+- New resource: [ZenWriting: "Polycatalog.io – Mapping the Polymarket Tooling Ecosystem in 2026"](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - comprehensive mapping of all tools, bots, analytics dashboards, and AI agents
 - **Security Alert:** Multiple malicious bots detected in late 2025/early 2026 (e.g., "Trust412" copy-trading bot with private key theft)
-- Community-maintained list: "Awesome Prediction Market Tools" on GitHub for vetted projects
+- Community-maintained list: **"Awesome Prediction Market Tools"** – curated list of vetted projects ([DeFi Prime guide](https://defiprime.com/definitive-guide-to-the-polymarket-ecosystem))
 
 ---
 
@@ -84,7 +84,7 @@ This audit compares the `sedarged/polymarket-bot` repository against the Polymar
 - **Competitors Already Adapting:** Multiple bots now advertise US compliance
 - **Our Status:** ❌ No documented US API compliance strategy
 
-**Source:** [Polymarket US API Announcement](https://www.quantvps.com/blog/polymarket-us-api-available)
+**Source (third-party report):** [Polymarket US API coverage – QuantVPS](https://www.quantvps.com/blog/polymarket-us-api-available)
 
 #### 2. Advanced Copy Trading Features
 **Impact:** CRITICAL - 70% of market demands these features
@@ -1888,7 +1888,7 @@ npm run strategy -- --type flash-crash --coin BTC
 3. Enhance usability (Phase 3) to attract non-developer traders
 4. **[2026 Update]** Address US API compliance, AI signals, and security hardening
 
-**Timeline:** 6-8 weeks to achieve feature parity with leading competitors while maintaining superior infrastructure quality.
+**Timeline:** 8-10 weeks to achieve feature parity with leading competitors while maintaining superior infrastructure quality (updated from 6-8 weeks to account for 2026 market advances including US API compliance, AI signals, and security hardening).
 
 ---
 
