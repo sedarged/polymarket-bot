@@ -1073,12 +1073,12 @@ interface SignalEvent {
 ```typescript
 // See apps/backend/src/learning/types.ts for full definition
 interface AllocationConfig {
-  totalCapital: number;      // Total capital the allocator can distribute
-  minAllocation: number;     // Minimum fraction or amount per strategy
-  maxAllocation: number;     // Maximum fraction or amount per strategy
-  algorithm?: 'epsilon-greedy' | 'ucb1' | 'thompson-sampling';
-  epsilon?: number;          // For epsilon-greedy
-  explorationFactor?: number; // For UCB1
+  totalCapital: number;       // Total capital the allocator can distribute
+  minAllocation: number;      // Minimum fraction or amount per strategy
+  maxAllocation: number;      // Maximum fraction or amount per strategy
+  algorithm: BanditAlgorithm; // Bandit algorithm used for allocation
+  explorationFactor: number;  // Exploration intensity parameter (e.g. for UCB1)
+  minTradeCount: number;      // Minimum trades before relying heavily on performance
 }
 ```
 
