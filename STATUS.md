@@ -26,10 +26,9 @@ To update this status:
 *No P2 issues*
 
 ## Recently Closed (Last 14 Days)
-- [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
-- [P2] #409 [GAP-020] Cost Scenarios Documentation
+*No recently closed issues*
 
-*Last updated: 2026-02-22T02:12:05.366Z*
+*Last updated: 2026-02-22T04:36:29.800Z*
 
 <!-- STATUS_SYNC_END -->
 
