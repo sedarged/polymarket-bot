@@ -30,9 +30,8 @@ To update this status:
 - [P2] #409 [GAP-020] Cost Scenarios Documentation
 - [P1] #408 [GAP-019] Fee-Rate Checking
 - [P2] #407 [GAP-018] UMA Resolution Documentation
-- [P1] #406 [GAP-017] DB Backup Script
 
-*Last updated: 2026-02-22T00:08:57.824Z*
+*Last updated: 2026-02-22T00:29:31.974Z*
 
 <!-- STATUS_SYNC_END -->
 
