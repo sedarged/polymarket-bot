@@ -23,20 +23,16 @@ To update this status:
 *No P1 issues*
 
 ## Next — P2 (Normal Priority)
-- [P2] #409 [GAP-020] Cost Scenarios Documentation
+*No P2 issues*
 
 ## Recently Closed (Last 14 Days)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
+- [P2] #409 [GAP-020] Cost Scenarios Documentation
 - [P1] #408 [GAP-019] Fee-Rate Checking
 - [P2] #407 [GAP-018] UMA Resolution Documentation
 - [P1] #406 [GAP-017] DB Backup Script
-- [P2] #405 [GAP-016] Pre-Deployment Verification Script
-- [P1] #404 [GAP-015] Deployment Workflow
-- [P1] #403 [GAP-014] Pre-Trade Liquidity Validation
-- [P2] #402 [GAP-013] Multi-Strategy Orchestration
-- [P1] #401 [GAP-012] Integrate Backtest with Strategy Framework
 
-*Last updated: 2026-02-21T18:51:48.875Z*
+*Last updated: 2026-02-22T00:08:57.824Z*
 
 <!-- STATUS_SYNC_END -->
 
