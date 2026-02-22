@@ -30,6 +30,7 @@ An autonomous trading bot for Polymarket prediction markets. Currently features 
 - **[Security Guide](./docs/security.md)** - Private key security and best practices
 
 **For Contributors:**
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - 📋 Start here! PR guidelines, commit format, and contribution workflow
 - **[AGENTS.md](./AGENTS.md)** - Guidelines and contract for AI agents working on this project
 - **[Codespaces Verification Checklist](./docs/CODESPACES_VERIFICATION_CHECKLIST.md)** - 🚨 MANDATORY verification for all PRs
 - **[Development Workflow](./docs/DEV_WORKFLOW.md)** - Documentation maintenance and PR requirements

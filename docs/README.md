@@ -94,6 +94,7 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - FAQ and troubleshooting for resolution issues
 
 ### Development
+- [CONTRIBUTING](../CONTRIBUTING.md) - 📋 **Start here!** PR guidelines, commit format, and contribution workflow
 - [AGENTS](../AGENTS.md) - Guidelines for AI agents working on this project
 - [Development Workflow](./DEV_WORKFLOW.md) - Mandatory documentation maintenance procedures
 - [Strategy Hot-Reload](./STRATEGY_HOT_RELOAD.md) - Update strategies without restarting
@@ -229,9 +230,10 @@ polymarket-bot/
 
 ### For New Contributors
 1. Start with [System Overview](./architecture-overview.md) for the big picture
-2. Review [AGENTS.md](../AGENTS.md) for contribution guidelines
-3. Check [STATUS.md](../STATUS.md) for current priorities
-4. Read [Environment Setup](./environment.md) or [Codespaces Setup Guide](./CODESPACES_SETUP.md) to get your dev environment ready
+2. Read [CONTRIBUTING.md](../CONTRIBUTING.md) for PR guidelines and development workflow
+3. Review [AGENTS.md](../AGENTS.md) for complete contribution guidelines
+4. Check [STATUS.md](../STATUS.md) for current priorities
+5. Read [Environment Setup](./environment.md) or [Codespaces Setup Guide](./CODESPACES_SETUP.md) to get your dev environment ready
 
 ### For Developers
 1. [Architecture Map](./architecture.md) - Understand the technical design
