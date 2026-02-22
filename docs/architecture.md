@@ -1691,7 +1691,6 @@ curl -X POST http://localhost:3000/sync/reconcile
 **Related Documentation:**
 - [API Alignment Verification](./api-alignment-verification.md)
 - [Dashboard Usage Guide](./dashboard-usage-guide.md)
-- [Server Implementation](../apps/backend/src/server/README.md)
 
 ---
 
