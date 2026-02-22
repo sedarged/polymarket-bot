@@ -70,7 +70,11 @@ Welcome to the Polymarket Trading Bot documentation. This index provides navigat
   - Security checks and configuration validation
   - Pass/fail summary with clear output
 - **[Deploy](./deploy.md)** - Quick deployment overview and options (Research §6.1)
-- **[Cost scenarios](./cost-scenarios.md)** - Monthly cost estimates (Research §3)
+- **[Cost Scenarios](./cost-scenarios.md)** - 💰 **Trading and infrastructure costs (GAP-020)**
+  - Spread, fees, slippage, and withdrawal cost explanations
+  - Practical examples and calculations for each cost type
+  - Fee rate validation and optimization tips
+  - Monthly infrastructure cost estimates (Research §3)
 - **[Docker Deployment Guide](./docker.md)** - 🐳 Container deployment and orchestration
   - Quick start with Docker and Docker Compose
   - Production deployment best practices
