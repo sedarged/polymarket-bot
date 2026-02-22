@@ -28,10 +28,8 @@ To update this status:
 ## Recently Closed (Last 14 Days)
 - [P1] #410 [GAP-007] Exchange Rate Fetcher Integration
 - [P2] #409 [GAP-020] Cost Scenarios Documentation
-- [P1] #408 [GAP-019] Fee-Rate Checking
-- [P2] #407 [GAP-018] UMA Resolution Documentation
 
-*Last updated: 2026-02-22T00:29:31.974Z*
+*Last updated: 2026-02-22T02:12:05.366Z*
 
 <!-- STATUS_SYNC_END -->
 
