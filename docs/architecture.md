@@ -1,7 +1,7 @@
 # Architecture Map - Polymarket Trading Bot
 
-**Version:** 1.0  
-**Last Updated:** 2026-01-31  
+**Version:** 1.1  
+**Last Updated:** 2026-02-22  
 **Audience:** Developers, architects, technical leads
 
 ---
@@ -15,10 +15,14 @@
 5. [Execution Layer](#execution-layer)
 6. [Adapters](#adapters)
 7. [Persistence Layer](#persistence-layer)
-8. [Monitoring & Dashboard](#monitoring--dashboard)
-9. [Critical Paths](#critical-paths)
-10. [Technology Stack](#technology-stack)
-11. [Module Dependency Graph](#module-dependency-graph)
+8. [Learning System](#learning-system)
+9. [Sync & Reconciliation](#sync--reconciliation)
+10. [Monitoring & Dashboard](#monitoring--dashboard)
+11. [Infrastructure & Deployment](#infrastructure--deployment)
+12. [API Endpoints](#api-endpoints)
+13. [Critical Paths](#critical-paths)
+14. [Technology Stack](#technology-stack)
+15. [Module Dependency Graph](#module-dependency-graph)
 
 ---
 
@@ -68,19 +72,35 @@
 │  └───────────────────────────────┬───────────────────────────────────────┘ │
 │                                  │                                          │
 │  ┌───────────────────────────────▼───────────────────────────────────────┐ │
-│  │                   PERSISTENCE LAYER (In-Memory)                       │ │
+│  │                   PERSISTENCE LAYER                                   │ │
 │  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │ │
-│  │  │ Orderbook Cache  │  │  Trading State   │  │  Market State    │  │ │
-│  │  │   (Map<ID, OB>)  │  │ (Orders, Fills,  │  │  (Active         │  │ │
-│  │  │                  │  │  Positions, PnL) │  │   Markets)       │  │ │
+│  │  │ In-Memory Cache  │  │  Trading State   │  │  Event Store DB  │  │ │
+│  │  │  (Orderbooks)    │  │ (Orders, Fills,  │  │  (ML Training    │  │ │
+│  │  │                  │  │  Positions, PnL) │  │   Data)          │  │ │
+│  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                      LEARNING SYSTEM                                  │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │ │
+│  │  │ Backtest     │  │ Bandit       │  │ Promotion    │  │  Signal  │ │ │
+│  │  │ Engine       │  │ Allocator    │  │ Workflow     │  │ Catalog  │ │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘ │ │
+│  └───────────────────────────────┬───────────────────────────────────────┘ │
+│                                  │                                          │
+│  ┌───────────────────────────────▼───────────────────────────────────────┐ │
+│  │                   SYNC & RECONCILIATION                               │ │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │ │
+│  │  │  Sync Manager    │  │  Discrepancy     │  │  Recovery        │  │ │
+│  │  │  (Orchestrator)  │  │  Detector        │  │  Procedures      │  │ │
 │  │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │ │
 │  └───────────────────────────────┬───────────────────────────────────────┘ │
 │                                  │                                          │
 │  ┌───────────────────────────────▼───────────────────────────────────────┐ │
 │  │                   MONITORING & OBSERVABILITY                          │ │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ │ │
-│  │  │  Structured  │  │ Health Check │  │  API Status  │  │  Kill    │ │ │
-│  │  │   Logger     │  │   Endpoint   │  │  Endpoints   │  │  Switch  │ │ │
+│  │  │  Prometheus  │  │   Grafana    │  │  Alerting    │  │  Kill    │ │ │
+│  │  │   Metrics    │  │  Dashboard   │  │  (Telegram)  │  │  Switch  │ │ │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘ │ │
 │  └─────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
@@ -903,6 +923,418 @@ class OrderbookCache {
 
 ---
 
+## Learning System
+
+The Learning System provides an advanced framework for strategy optimization, backtesting, and automated allocation using machine learning techniques. This subsystem enables data-driven strategy selection and performance optimization.
+
+**Location:** `apps/backend/src/learning/`
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      LEARNING SYSTEM                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐   │
+│  │ Event Store │─────▶│  Backtest   │─────▶│  Metrics    │   │
+│  │  (SQLite)   │      │   Engine    │      │   Gating    │   │
+│  └─────────────┘      └─────────────┘      └──────┬──────┘   │
+│         │                                           │          │
+│         │             ┌─────────────┐              │          │
+│         └────────────▶│   Signal    │              │          │
+│                       │  Catalog    │              │          │
+│                       └─────────────┘              │          │
+│                                                     ▼          │
+│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐   │
+│  │   Bandit    │◀─────│  Promotion  │◀─────│  Strategy   │   │
+│  │ Allocator   │      │  Workflow   │      │  Selection  │   │
+│  └─────────────┘      └─────────────┘      └─────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 1. Event Store
+
+**Purpose:** Persistent event database for ML training data and audit trail
+
+**Location:** `apps/backend/src/learning/eventStore.ts`
+
+**Implementation:**
+- SQLite database for event sourcing
+- Stores all trading events: orders, fills, market data, signals
+- Enables replay and historical backtesting
+
+**Schema:**
+```typescript
+// Event envelope - common fields for all events
+// See apps/backend/src/learning/types.ts for full definition
+interface EventEnvelope<T = unknown> {
+  eventId: string;           // UUID
+  eventType: EventType;      // 'MarketEvent' | 'OrderBookUpdateEvent' | 'SignalEvent' | etc.
+  eventVersion: number;
+  occurredAt: string;        // ISO timestamp
+  receivedAt: string;        // ISO timestamp
+  marketId: string;
+  source: EventSource;       // 'websocket' | 'rest' | 'strategy' | 'simulation'
+  payload: T;
+}
+```
+
+**Key Operations:**
+- `writeEvent(...)`: Append new event to the store
+- `writeEventsIdempotent(...)`: Write multiple events with deduplication
+- `queryEvents(filters)`: Retrieve events with filtering (by type, market, time range)
+- Export functionality for offline analysis
+
+### 2. Backtest Engine
+
+**Purpose:** Historical backtesting framework for strategy validation
+
+**Location:** `apps/backend/src/learning/backtestEngine.ts`
+
+**Features:**
+- Replays historical events from EventStore
+- Simulates strategy execution with historical data
+- Calculates performance metrics (Sharpe, drawdown, win rate)
+- Validates strategies before live deployment
+
+**Workflow:**
+```
+1. Load historical events from EventStore
+2. Initialize strategy with backtest configuration
+3. Replay events chronologically
+4. Collect strategy signals and simulated trades
+5. Calculate performance metrics
+6. Generate backtest report
+```
+
+**Configuration:**
+```typescript
+// See apps/backend/src/learning/types.ts for full definition
+interface BacktestConfig {
+  backtestId: string;
+  strategyId: string;
+  strategyConfig?: Record<string, unknown>; // Strategy-specific params
+  startDate: string;         // ISO timestamp
+  endDate: string;           // ISO timestamp
+  markets: string[];         // Market IDs
+  initialBalance: number;
+  slippage: number;
+  feeRate: number;
+  seed?: number;             // For reproducibility
+}
+```
+
+### 3. Signal Catalog
+
+**Purpose:** Catalog of trading signals with validation and metadata
+
+**Location:** `apps/backend/src/learning/signalCatalog.ts`
+
+**Features:**
+- Registry of available trading signals
+- Signal validation and schema enforcement
+- Performance tracking per signal type
+- Signal discovery and documentation
+
+**Signal Schema:**
+```typescript
+// See apps/backend/src/learning/types.ts for full definition
+interface SignalEvent {
+  signalId: string;
+  signalName: string;
+  signalValue: number | string | boolean;
+  signalVersion: string;
+  featureSetId: string;
+  metadata: Record<string, unknown>;
+}
+```
+
+### 4. Bandit Allocator
+
+**Purpose:** Multi-armed bandit strategy allocation for adaptive optimization
+
+**Location:** `apps/backend/src/learning/banditAllocator.ts`
+
+**Algorithms Supported:**
+- **Epsilon-Greedy**: Explore with probability ε, exploit best strategy otherwise
+- **UCB1 (Upper Confidence Bound)**: Balance exploration vs exploitation with confidence intervals
+- **Thompson Sampling**: Bayesian approach using beta distributions
+
+**How It Works:**
+1. Track performance metrics for each strategy
+2. Calculate allocation weights using selected algorithm
+3. Dynamically adjust capital allocation based on recent performance
+4. Explore underperforming strategies to detect improvements
+5. Exploit high-performing strategies with larger allocations
+
+**Configuration:**
+```typescript
+// See apps/backend/src/learning/types.ts for full definition
+interface AllocationConfig {
+  totalCapital: number;       // Total capital the allocator can distribute
+  minAllocation: number;      // Minimum fraction or amount per strategy
+  maxAllocation: number;      // Maximum fraction or amount per strategy
+  algorithm: BanditAlgorithm; // Bandit algorithm used for allocation
+  explorationFactor: number;  // Exploration intensity parameter (e.g. for UCB1)
+  minTradeCount: number;      // Minimum trades before relying heavily on performance
+}
+```
+
+### 5. Promotion Workflow
+
+**Purpose:** Automated strategy promotion pipeline from backtest to production
+
+**Location:** `apps/backend/src/learning/promotionWorkflow.ts`
+
+**Stages:**
+1. **Backtest**: Validate strategy with historical data
+2. **Metrics Gating**: Check performance against thresholds
+3. **Paper Trading**: Test in simulation mode
+4. **Shadow Mode**: Run alongside live strategies without execution
+5. **Staged Rollout**: Gradual capital allocation increase
+6. **Production**: Full allocation
+
+**Promotion Gates:**
+```typescript
+interface PromotionGates {
+  minSharpeRatio: number;
+  maxDrawdown: number;
+  minWinRate: number;
+  minTrades: number;
+  minBacktestDays: number;
+  minPaperTradingDays: number;
+}
+```
+
+**Workflow:**
+```
+Backtest → Pass Gates? → Paper Trade → Pass Gates? → Shadow → Production
+             ↓ No                        ↓ No
+          Reject                      Demote to Backtest
+```
+
+### 6. Metrics Gating
+
+**Purpose:** Performance gate validation for strategy promotion
+
+**Location:** `apps/backend/src/learning/metricsGating.ts`
+
+**Metrics Evaluated:**
+
+_Note: Thresholds below show default values from `apps/backend/src/learning/metricsGating.ts`. These can be overridden via configuration._
+
+- **Sharpe Ratio**: Risk-adjusted return (default: > 1.0)
+- **Maximum Drawdown**: Peak-to-trough decline (default: < 10%)
+- **Trade Count**: Statistical significance (default: > 30 trades)
+- **Minimum Days**: Data collection period (default: > 30 days)
+- **Error Rate**: Maximum error rate (default: < 1%)
+
+**Decision Logic:**
+```typescript
+interface GateDecision {
+  passed: boolean;
+  metrics: {
+    sharpeRatio: number;
+    maxDrawdown: number;
+    winRate: number;
+    profitFactor: number;
+    tradeCount: number;
+  };
+  failedGates: string[];
+}
+```
+
+### Integration with Trading System
+
+**Data Flow:**
+1. Trading events → EventStore (persistent log)
+2. EventStore → BacktestEngine (historical validation)
+3. BacktestEngine → MetricsGating (performance check)
+4. MetricsGating → PromotionWorkflow (advance stage)
+5. BanditAllocator → StrategyManager (dynamic allocation)
+
+**API Endpoints:**
+- `GET /api/learning/experiments` - List learning experiments
+- `GET /api/learning/strategies` - List strategies in learning system
+- `GET /api/learning/best` - Get current best strategy/allocation
+- `GET /api/learning/status` - Get learning system status
+
+**Related Documentation:**
+- [Strategy Hot Reload](./STRATEGY_HOT_RELOAD.md)
+- [Signal Engine](./SIGNAL_ENGINE.md)
+- [Backtest Integration](./BACKTEST_INTEGRATION.md)
+- [Learning System](./learning-system.md)
+
+---
+
+## Sync & Reconciliation
+
+The Sync & Reconciliation subsystem ensures consistency between the bot's local state and the external exchange state. It detects discrepancies and performs automated recovery procedures.
+
+**Location:** `apps/backend/src/sync/`
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  SYNC & RECONCILIATION SYSTEM                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐   │
+│  │   Local     │      │    Sync     │      │  Exchange   │   │
+│  │   State     │─────▶│  Manager    │◀─────│   State     │   │
+│  │  (Memory)   │      │             │      │  (CLOB API) │   │
+│  └─────────────┘      └──────┬──────┘      └─────────────┘   │
+│                              │                                 │
+│                              ▼                                 │
+│                       ┌─────────────┐                          │
+│                       │ Discrepancy │                          │
+│                       │  Detector   │                          │
+│                       └──────┬──────┘                          │
+│                              │                                 │
+│                              ▼                                 │
+│                       ┌─────────────┐                          │
+│                       │  Recovery   │                          │
+│                       │ Procedures  │                          │
+│                       └─────────────┘                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 1. Sync Manager
+
+**Purpose:** Orchestrates state reconciliation between local and exchange state
+
+**Location:** `apps/backend/src/sync/syncManager.ts`
+
+**Key Responsibilities:**
+- Schedule periodic sync checks
+- Trigger sync on startup and reconnection
+- Coordinate discrepancy detection and recovery
+- Emit sync events for monitoring
+
+**Sync Triggers:**
+- **Startup**: Initial reconciliation on bot start
+- **Reconnection**: After WebSocket reconnect
+- **Scheduled**: Periodic checks (e.g., every 5 minutes)
+- **Manual**: Triggered via API or CLI
+- **Event-Driven**: On fill notifications or order updates
+
+**Workflow:**
+```
+1. Fetch local state (orders, positions, balances)
+2. Fetch exchange state via CLOB API
+3. Compare and detect discrepancies
+4. Execute recovery procedures if needed
+5. Update local state to match exchange
+6. Log reconciliation results
+7. Emit sync completion event
+```
+
+### 2. Discrepancy Detector
+
+**Purpose:** Detects differences between local and exchange state
+
+**Location:** `apps/backend/src/sync/discrepancyDetector.ts`
+
+**Discrepancy Types:**
+
+**Order Discrepancies:**
+- **Phantom Orders**: Local order missing on exchange (likely cancelled)
+- **Ghost Orders**: Exchange order missing locally (missed notification)
+- **Status Mismatch**: Order status differs (e.g., local=OPEN, exchange=FILLED)
+- **Attribute Mismatch**: Price, size, or side differs
+
+**Position Discrepancies:**
+- **Size Mismatch**: Local position size differs from exchange
+- **Missing Position**: Position exists on exchange but not locally
+- **Phantom Position**: Position exists locally but not on exchange
+
+**Balance Discrepancies:**
+- **Balance Drift**: Available balance differs from exchange
+- **Reserved Mismatch**: Locked funds differ from open orders
+
+**Detection Algorithm:**
+```typescript
+interface Discrepancy {
+  type: 'ORDER' | 'POSITION' | 'BALANCE';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  local: any;
+  exchange: any;
+  action: 'UPDATE_LOCAL' | 'UPDATE_EXCHANGE' | 'MANUAL_REVIEW';
+}
+```
+
+### 3. Recovery Procedures
+
+**Purpose:** Automated recovery workflows to resolve discrepancies
+
+**Location:** `apps/backend/src/sync/recoveryProcedures.ts`
+
+**Recovery Actions:**
+
+**For Order Discrepancies:**
+- **Phantom Orders**: Mark local order as cancelled, update state
+- **Ghost Orders**: Fetch order details from exchange, add to local state
+- **Status Mismatch**: Update local status to match exchange
+- **Attribute Mismatch**: Log error, prefer exchange state (source of truth)
+
+**For Position Discrepancies:**
+- **Size Mismatch**: Update local position to match exchange
+- **Missing Position**: Add position to local state with exchange data
+- **Phantom Position**: Remove from local state, log warning
+
+**For Balance Discrepancies:**
+- **Balance Drift**: Update local balance from exchange
+- **Reserved Mismatch**: Recalculate based on current open orders
+
+**Recovery Workflow:**
+```
+1. Classify discrepancy by type and severity
+2. Determine appropriate recovery action
+3. Execute recovery procedure
+4. Verify recovery success
+5. Log recovery results
+6. Alert if manual review needed
+```
+
+**Safety Guardrails:**
+- Critical discrepancies trigger alerts
+- Large position mismatches require manual approval
+- Recovery actions are logged to audit trail
+- Failed recoveries escalate to operators
+
+### Integration with Trading System
+
+**Sync Points:**
+1. **Startup**: Full reconciliation before trading begins
+2. **WebSocket Reconnect**: Re-sync after connection loss
+3. **Order Fill**: Verify fill matches expectation
+4. **Periodic Check**: Regular state validation
+5. **Error Recovery**: After API errors or timeouts
+
+**Data Sources:**
+- **Local State**: In-memory trading state, EventStore
+- **Exchange State**: CLOB API endpoints (orders, positions, balances)
+- **Blockchain State**: Optional on-chain verification (future)
+
+**Integration:**
+
+_Note: Sync operations are currently integrated within the trading system. Dedicated API endpoints are planned for future releases._
+
+- Automatic reconciliation on startup and WebSocket reconnect
+- Periodic scheduled checks (configured via `RECONCILIATION_INTERVAL_SECONDS`)
+- Accessed programmatically through `SyncManager` in code
+
+**Related Documentation:**
+- [Sync Module Test Procedure](./SYNC_MODULE_TEST_PROCEDURE.md)
+- [Order State Machine](./order-state-machine.md)
+- [Runbook - Reconciliation](./runbook.md#reconciliation-procedures)
+
+---
+
 ## Monitoring & Dashboard
 
 ### 1. Structured Logging
@@ -1027,6 +1459,257 @@ logger.error('API error', { error: err.message });
 - Connection status indicators
 - Kill switch button
 - Log viewer
+
+---
+
+## Infrastructure & Deployment
+
+The bot includes comprehensive infrastructure components for containerization, monitoring, and deployment automation.
+
+### 1. Docker Infrastructure
+
+**Multi-Stage Dockerfile:**
+- **Builder Stage**: Compiles TypeScript, installs dependencies
+- **Production Stage**: Minimal runtime image with compiled code only
+- Size optimization: ~200MB final image
+
+**Location:** `Dockerfile`
+
+**Build:**
+```bash
+docker build -t polymarket-bot:latest .
+```
+
+### 2. Docker Compose Services
+
+**Location:** `docker-compose.yml`
+
+**Services:**
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **backend** | 3000 | Trading bot HTTP API |
+| **frontend** | 8080 | Static dashboard UI (served via http-server) |
+| **prometheus** | 9092 | Metrics collection |
+| **grafana** | 3001 | Monitoring dashboard |
+
+**Network:** All services on `polymarket-network` bridge
+
+**Volumes:**
+- `./data` (bind mount): Backend persistent state (EventStore, logs, artifacts)
+- `frontend-static`: Built frontend assets served by the frontend container
+- `prometheus-data`: Prometheus time-series database storage
+- `grafana-data`: Grafana dashboards and configuration
+
+**Health Checks:**
+- Backend: HTTP `GET /health` every 30s
+- Frontend: HTTP GET healthcheck (wget) every 30s
+- Prometheus & Grafana: No healthchecks configured in `docker-compose.yml`
+
+**Start all services:**
+```bash
+docker-compose up -d
+```
+
+### 3. Monitoring Stack
+
+**Prometheus Configuration:**
+- **Metrics Endpoint**: `http://backend:9090/metrics`
+- **Scrape Interval**: 15 seconds
+- **Retention**: 15 days
+- **Storage**: Local TSDB in container
+
+**Grafana Dashboard:**
+- **Location**: `grafana/polymarket-dashboard.json`
+- **Datasource**: Prometheus
+- **Panels**:
+  - Trading volume and PnL
+  - Order success/failure rates
+  - WebSocket connection health
+  - API latency percentiles
+  - Circuit breaker status
+  - Active positions by market
+  - Strategy performance comparison
+
+**Alerting:**
+- **Service**: AlertingService (Telegram integration)
+- **Location**: `apps/backend/src/utils/alerting.ts`
+- **Triggers**:
+  - Trading losses exceed threshold
+  - Circuit breaker activates
+  - WebSocket disconnect
+  - Kill switch activated
+  - API error rate spike
+
+### 4. Deployment Options
+
+**Cloud Deployment:**
+
+**Terraform (AWS EC2):**
+- **Location**: `infrastructure/terraform/`
+- **Resources**: EC2 instance, security groups, EBS volumes
+- **Region**: Configurable
+- **Instance Type**: t3.medium (2 vCPU, 4GB RAM)
+
+**Kubernetes:**
+- **Location**: `infrastructure/kubernetes/`
+- **Manifests**: Deployment, Service, ConfigMap, Secret
+- **Scaling**: HPA (Horizontal Pod Autoscaler) configured
+- **Storage**: PersistentVolumeClaim for EventStore
+
+**Ansible Playbooks:**
+- **Location**: `infrastructure/ansible/`
+- **Playbooks**:
+  - `setup.yml`: Install dependencies
+  - `deploy.yml`: Deploy application
+  - `backup.yml`: Backup state and logs
+
+**Deployment Commands:**
+```bash
+# Terraform
+cd infrastructure/terraform
+terraform init
+terraform apply
+
+# Kubernetes
+kubectl apply -f infrastructure/kubernetes/
+
+# Ansible
+cd infrastructure/ansible
+ansible-playbook -i inventory setup.yml
+ansible-playbook -i inventory deploy.yml
+```
+
+### 5. Environment Configuration
+
+**Environment Files:**
+- `.env.example`: Template with all variables documented
+- `.env.codespaces.example`: GitHub Codespaces configuration
+- `.env`: Local development (not committed)
+
+**Key Variables:**
+- `LIVE_TRADING`: Enable live trading mode
+- `COMPLIANCE_ACCEPTED`: Compliance acknowledgment
+- `LOG_LEVEL`: Logging verbosity
+- `TELEGRAM_BOT_TOKEN`: Alerting integration
+- API credentials (see [Secret Management](./SECRET_MANAGEMENT_QUICK_REFERENCE.md))
+
+**Related Documentation:**
+- [Deployment Guide](./deployment-guide.md)
+- [Docker Implementation Summary](./docker-implementation-summary.md)
+- [Infrastructure](./infrastructure.md)
+- [Observability](./observability.md)
+
+---
+
+## API Endpoints
+
+The HTTP server exposes REST API endpoints for system control, monitoring, and configuration.
+
+**Server:** `apps/backend/src/server/index.ts`
+
+**Base URL:** `http://localhost:3000`
+
+### Health & Status
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Health check (liveness probe) |
+| `/ready` | GET | Readiness check (system initialized) |
+| `/status` | GET | System status and metrics |
+
+### Trading Operations
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/state` | GET | View current trading state (orders, fills, positions, balances) |
+| `/orders` | GET | List active orders |
+| `/orders` | POST | Place new order (requires admin auth) |
+| `/fills` | GET | View fill history |
+
+### Strategy Management
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/strategies` | GET | List loaded strategies |
+| `/strategies/:id/enable` | POST | Enable strategy |
+| `/strategies/:id/disable` | POST | Disable strategy |
+| `/strategies/reload` | POST | Hot-reload strategies |
+
+### Learning System
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/learning/experiments` | GET | List learning experiments and their configurations |
+| `/api/learning/strategies` | GET | List strategies participating in learning/experiments |
+| `/api/learning/best` | GET | Retrieve currently selected "best" strategy/allocation |
+| `/api/learning/status` | GET | Get learning system health and experiment status |
+
+### Sync & Reconciliation
+
+_Note: Sync operations are currently integrated within the trading system. Dedicated API endpoints are planned for future releases._
+
+**Current Integration:**
+- Automatic reconciliation on startup and WebSocket reconnect
+- Periodic scheduled checks (configured via `RECONCILIATION_INTERVAL_SECONDS`)
+- Accessed programmatically through `SyncManager` in code
+
+### Configuration
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/config` | GET | View current config |
+| `/api/config/:type` | GET | Get specific config file (strategies, signals, markets) |
+| `/api/config/:type` | PUT | Update config file (hot-reload) |
+| `/api/config/:type` | DELETE | Delete config file |
+| `/api/config/validate/:type` | POST | Validate config before applying |
+| `/api/config/reload` | POST | Reload all config from environment |
+| `/api/config/watching` | GET | Get config file watching status |
+| `/api/config/watching/start` | POST | Start watching config files |
+| `/api/config/watching/stop` | POST | Stop watching config files |
+
+### Safety & Control
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/kill-switch` | POST | Emergency stop |
+| `/circuit-breaker/status` | GET | Circuit breaker status |
+| `/circuit-breaker/reset` | POST | Reset circuit breakers |
+
+### Monitoring
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/metrics` | GET | Prometheus metrics |
+| `/logs` | GET | Recent logs (query params) |
+
+**Authentication:**
+- **Public endpoints**: `/health`, `/ready`, `/metrics` (no auth required)
+- **Admin endpoints**: Most operational endpoints require `Authorization: Bearer <ADMIN_TOKEN>` header
+  - Examples: `/orders` (POST), `/kill-switch`, `/api/config/*`, `/api/learning/*`
+- Token configured via `ADMIN_TOKEN` environment variable
+
+**Rate Limiting:**
+- 100 requests per minute per client (configurable)
+- Circuit breaker protects backend
+
+**Example Requests:**
+```bash
+# Public endpoint - no auth
+curl http://localhost:3000/health
+
+# Admin endpoint - requires token
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/state
+
+# Config management - requires token
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  http://localhost:3000/api/config
+```
+
+**Related Documentation:**
+- [API Alignment Verification](./api-alignment-verification.md)
+- [Dashboard Usage Guide](./dashboard-usage-guide.md)
 
 ---
 
@@ -1633,8 +2316,18 @@ DATA FLOW SUMMARY:
 - **dotenv** (environment variables)
 
 ### Logging & Monitoring
-- **Custom logger** (JSON structured logs)
+- **Pino** (structured logging with rotation)
 - **prom-client** (Prometheus metrics)
+- **Grafana** (visualization and dashboards)
+
+### Persistence & Data
+- **SQLite** (EventStore for learning system)
+- **In-memory** (orderbooks, trading state)
+
+### Machine Learning & Optimization
+- **Custom bandit algorithms** (epsilon-greedy, UCB1, Thompson sampling)
+- **Backtest engine** (historical validation)
+- **Signal catalog** (trading signal registry)
 
 ### Testing
 - **Vitest** (unit and integration tests)
@@ -1650,11 +2343,17 @@ DATA FLOW SUMMARY:
   - Base: `node:20-alpine` (minimal footprint)
   - Init: `tini` (proper signal handling)
   - Security: Non-root user (`polymarket:1001`)
-- **Docker Compose** - Local orchestration
+- **Docker Compose** - Local orchestration (4 services)
+  - backend (port 3000)
+  - frontend (port 8080)
+  - prometheus (port 9092)
+  - grafana (port 3001)
 - **GitHub Actions** - CI/CD with security scanning
   - Trivy (vulnerability scanning)
   - TruffleHog (secret detection)
-- **Kubernetes** - Production orchestration (optional)
+- **Terraform** - Infrastructure as Code (AWS EC2)
+- **Kubernetes** - Production orchestration with HPA
+- **Ansible** - Configuration management and deployment automation
 
 **Deployment Options:**
 1. **Docker (Recommended):** `docker-compose up -d`

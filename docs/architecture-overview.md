@@ -1,7 +1,7 @@
 # System Overview - Polymarket Trading Bot
 
-**Version:** 1.0  
-**Last Updated:** 2026-01-30  
+**Version:** 1.1  
+**Last Updated:** 2026-02-22  
 **Audience:** Non-technical stakeholders, operators, and new developers
 
 ---
@@ -126,8 +126,20 @@ The bot uses several strategies to make money:
 │         │                                                  │
 │         ▼                                                  │
 │  ┌─────────────────────────────────────────────────────┐  │
+│  │         Learning System (ML Optimization)           │  │
+│  │  (Backtest, Bandit Allocation, Auto-Promotion)     │  │
+│  └─────────────────────────────────────────────────────┘  │
+│         │                                                  │
+│         ▼                                                  │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │      Sync & Reconciliation (State Consistency)      │  │
+│  │  (Discrepancy Detection, Auto-Recovery)            │  │
+│  └─────────────────────────────────────────────────────┘  │
+│         │                                                  │
+│         ▼                                                  │
+│  ┌─────────────────────────────────────────────────────┐  │
 │  │         Monitoring & Alerting                       │  │
-│  │  (Logs, Metrics, PnL Tracking, Alerts)             │  │
+│  │  (Prometheus, Grafana, Telegram Alerts)            │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -247,7 +259,46 @@ The bot uses several strategies to make money:
 - **SEV-2 (High)**: Prompt attention needed (WebSocket unstable, high error rate)
 - **SEV-3 (Low)**: Informational (minor retries, performance degradation)
 
-**Alert Destinations:** Slack, Discord, email, or SMS (configurable)
+**Alert Destinations:** Telegram (currently implemented). Slack, Discord, email, and SMS are planned future options.
+
+**Monitoring Stack:**
+- **Prometheus**: Metrics collection and time-series database
+- **Grafana**: Real-time dashboards with alerts
+- **Structured Logging**: JSON logs for debugging and audit
+
+#### 7. Learning System (Advanced)
+**Purpose:** Data-driven strategy optimization using machine learning
+
+**How it works:**
+- Records all trading events to a persistent database (EventStore)
+- Backtests strategies against historical data
+- Uses multi-armed bandit algorithms to allocate capital dynamically
+- Automatically promotes successful strategies from testing to production
+
+**Key Components:**
+- **Backtest Engine**: Validates strategies with historical data
+- **Bandit Allocator**: Adjusts capital allocation based on performance
+- **Promotion Workflow**: Gradual rollout from backtest → paper → production
+- **Metrics Gating**: Performance gates (Sharpe ratio, drawdown, win rate)
+
+**Benefits:** Adaptive optimization, data-driven decisions, automated strategy selection
+
+#### 8. Sync & Reconciliation
+**Purpose:** Ensures bot's local state matches exchange state
+
+**How it works:**
+- Periodically compares local state (orders, positions, balances) with exchange
+- Detects discrepancies (phantom orders, missing fills, position mismatches)
+- Automatically resolves differences using recovery procedures
+- Alerts operators when manual intervention is needed
+
+**Sync Triggers:**
+- Bot startup (initial reconciliation)
+- WebSocket reconnection (after disconnect)
+- Scheduled checks (every 5 minutes)
+- After suspicious events (fills, errors)
+
+**Benefits:** Prevents state corruption, automatic error recovery, operational reliability
 
 ---
 
@@ -640,20 +691,25 @@ The bot has two primary operating modes:
 
 ### Short-Term (Next 3 Months)
 - ✅ Complete MVP (paper trading)
-- 🔄 Implement authentication
-- 🔄 Build live trading engine
-- 🔄 Deploy risk controls
-- ⏳ Test in production with small capital
+- ✅ Implement authentication
+- ✅ Build live trading engine
+- ✅ Deploy risk controls
+- ✅ Learning system with backtesting
+- ✅ State reconciliation subsystem
+- 🔄 Test in production with small capital
 
 ### Medium-Term (3-6 Months)
-- Multi-market support
-- Advanced market making strategies
-- Internal arbitrage optimization
-- Web dashboard for monitoring
-- Mobile app for alerts
+- ✅ Multi-market support
+- ✅ Advanced market making strategies
+- ✅ Internal arbitrage optimization
+- ✅ Web dashboard for monitoring (Grafana)
+- ✅ Alert system (Telegram integration)
+- 🔄 Mobile app for alerts
+- 🔄 Automated strategy promotion
+- 🔄 Multi-armed bandit allocation
 
 ### Long-Term (6-12 Months)
-- Machine learning strategies
+- 🔄 Machine learning strategies (in progress)
 - Cross-platform arbitrage
 - Portfolio optimization
 - Automated share redemption
