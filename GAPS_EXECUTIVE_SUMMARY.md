@@ -31,7 +31,7 @@ The Polymarket Trading Bot continues to improve rapidly and is **fully functiona
 
 ### 📋 **Remaining Gaps**
 
-**27 gaps remaining** (down from 46) across 8 categories, primarily about:
+**26 gaps remaining** (down from 46) across 8 categories, primarily about:
 - **Advanced orchestration** - Pluggable strategy framework for complex multi-strategy scenarios
 - **Chaos testing** - Need dedicated chaos engineering test suite
 - **Minor config gaps** - Some learning system vars not wired
@@ -91,7 +91,7 @@ The Polymarket Trading Bot continues to improve rapidly and is **fully functiona
 
 - **Priority Distribution Now:**
   - 🔴 Critical: 2 gaps (same - only needed for advanced multi-strategy)
-  - 🟠 High: 2 gaps (4 resolved: GAP-001, GAP-002, GAP-011, GAP-012, GAP-040)
+  - 🟠 High: 1 gap (5 resolved: GAP-001, GAP-002, GAP-011, GAP-012, GAP-040)
   - 🟡 Medium: 9 gaps (4 resolved: GAP-015, GAP-034, GAP-041, GAP-042)
   - 🟢 Low: 14 gaps (11 resolved: GAP-004, GAP-014, GAP-016, GAP-017, GAP-018, GAP-020, GAP-025, GAP-026, GAP-027, GAP-028, plus 1 more)
 
@@ -103,7 +103,7 @@ The Polymarket Trading Bot continues to improve rapidly and is **fully functiona
 **Purpose:** Complete gap analysis with resolution tracking  
 **Content:** All 46 gaps with descriptions, impacts, priorities, and **resolution status**  
 **Use:** Understanding what's missing and what's been fixed  
-**Updates:** Now tracks 19 resolved gaps with dates and documentation links
+**Updates:** Now tracks 20 resolved gaps with dates and documentation links
 
 ### 2. IMPLEMENTATION_PLAN.md (4200+ lines)
 **Purpose:** Detailed implementation guide  
@@ -126,9 +126,10 @@ The Polymarket Trading Bot continues to improve rapidly and is **fully functiona
 
 **Note:** These only matter if you want to run multiple strategies simultaneously. Single-strategy deployment works perfectly without them.
 
-### 🟠 High Priority (2 gaps remaining, 4 resolved) - Recommended
+### 🟠 High Priority (1 gap remaining, 5 resolved) - Recommended
 - ✅ **GAP-001:** Markets config not loaded ✅ **RESOLVED**
 - ✅ **GAP-002:** Strategy config not loaded ✅ **RESOLVED**
+- ✅ **GAP-011:** Strategy hot-reload ✅ **RESOLVED**
 - ✅ **GAP-012:** Backtest not integrated with strategies ✅ **RESOLVED**
 - **GAP-032:** No chaos engineering tests (3 days) ⭐ High ROI
 - ✅ **GAP-040:** No infrastructure as code ✅ **RESOLVED**
