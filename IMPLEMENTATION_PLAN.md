@@ -2445,14 +2445,6 @@ if (config.learningSystemEnabled && strategyManager) {
 
 ---
 
-**Acceptance Criteria:**
-- ✅ Metrics can be disabled
-- ✅ Endpoint path configurable
-- ✅ No performance impact when disabled
-- ✅ Tests pass
-
----
-
 ### GAP-005: Wire WebSocket Config Vars 🟡 PARTIAL
 **Priority:** P2 (Medium)  
 **Effort:** 0.5 days  
