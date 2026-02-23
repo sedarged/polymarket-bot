@@ -42,7 +42,7 @@ This audit compares the `sedarged/polymarket-bot` repository against the Polymar
 |-----------|----------|-------|--------------|
 | [advaricorp/Polymarketbot](https://github.com/advaricorp/Polymarketbot) | TypeScript | Enterprise-grade AI/ML | Multi-database, firecrawl integration, modular strategies |
 | [Gabagool2-2/polymarket-trading-bot-python](https://github.com/Gabagool2-2/polymarket-trading-bot-python) | Python | WebSocket + Arbitrage | 1,500 markets monitoring, gasless trading, Slack notifications |
-| [TradeSEB/Polymarket-Trading-Bot](https://github.com/TradeSEB/Polymarket-Trading-Bot) | TypeScript | Copy Trading | Position difference detection, auto-redeem, actively maintained (4 days ago) |
+| [TradeSEB/Polymarket-Trading-Bot](https://github.com/TradeSEB/Polymarket-Trading-Bot) | TypeScript | Copy Trading | Position difference detection, auto-redeem, recently active |
 | [Desirosanti08/Polymarket-copy-trading-bot-2026](https://github.com/Desirosanti08/Polymarket-copy-trading-bot-2026) | TypeScript | Multi-trader copy | Portfolio management, real-time dashboards |
 
 ### Market Overview (30+ repos surveyed → 170+ tools catalogued)
@@ -117,7 +117,7 @@ This audit compares the `sedarged/polymarket-bot` repository against the Polymar
 **Our Status:** ⚠️ We have ML learning system (backtest, bandit) but no LLM/sentiment integration
 
 **Competitor Example:**
-- [Predly.ai](https://usethebitcoin.com/guides/ai-trading-bots-polymarket-2026/) - 7 AI trading bots profiled for Polymarket
+- [UseTheBitcoin guide profiling Predly.ai and other bots](https://usethebitcoin.com/guides/ai-trading-bots-polymarket-2026/) - 7 AI trading bots profiled for Polymarket
 
 #### 4. Advanced Execution & Market-Making
 **Impact:** MEDIUM - Professional trader features
@@ -2012,9 +2012,9 @@ npm run strategy -- --type flash-crash --coin BTC
 - [vvizardev/polymarket-arbitrage-bot](https://github.com/vvizardev/polymarket-arbitrage-bot) - 159 stars
 
 **Ecosystem Resources (2026):**
-- [Polycatalog.io](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - 170+ tools catalog
+- [Polycatalog ecosystem article (ZenWriting)](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - 170+ tools catalog
 - [Awesome Prediction Market Tools](https://defiprime.com/definitive-guide-to-the-polymarket-ecosystem) - Community-curated list
-- [Polymarket US API](https://www.quantvps.com/blog/polymarket-us-api-available) - CFTC-regulated API announcement
+- [QuantVPS: Polymarket US API coverage](https://www.quantvps.com/blog/polymarket-us-api-available) - Third-party coverage of CFTC-regulated US API availability
 - [Security Alert](https://cryptonews.net/news/security/32170648/) - Malicious bot warnings
 
 ---

@@ -39,7 +39,7 @@ Analyzed **30+ Polymarket trading bot repositories** with deep dive into 5 compe
 
 ### 🆕 Ecosystem Growth
 - **170+ tools** now exist (up from ~30 surveyed)
-- [Polycatalog.io](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - Comprehensive tool catalog
+- [ZenWriting article on Polycatalog.io](https://zenwriting.net/myiseo/polycatalog-io-mapping-the-polymarket-tooling-ecosystem-in-2026) - Comprehensive tool catalog
 - Community resource: "Awesome Prediction Market Tools"
 
 ### 🆕 Regulatory Development
@@ -57,7 +57,7 @@ Analyzed **30+ Polymarket trading bot repositories** with deep dive into 5 compe
 - Customizable copy ratios (0.1x to 1x)
 
 **New Competitors:**
-- [TradeSEB/Polymarket-Trading-Bot](https://github.com/TradeSEB/Polymarket-Trading-Bot) - Actively maintained (4 days ago)
+- [TradeSEB/Polymarket-Trading-Bot](https://github.com/TradeSEB/Polymarket-Trading-Bot) - Actively maintained (recently active)
 - [Gabagool2-2/polymarket-trading-bot-python](https://github.com/Gabagool2-2/polymarket-trading-bot-python) - 1,500 markets monitoring
 - [advaricorp/Polymarketbot](https://github.com/advaricorp/Polymarketbot) - Enterprise AI/ML
 
