@@ -28,7 +28,7 @@
     "_comment": "Example 5: Spread only - Specify only spread, use global position limit"
   },
   {
-    "tokenId": "0x2468ace0246ace02468ace024680ace2468ace02",
+    "tokenId": "0x2468ace02468ace02468ace02468ace02468ace0",
     "_comment": "Example 6: Minimal configuration - Include market in monitoring without specific limits, uses global defaults"
   }
 ]

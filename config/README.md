@@ -104,7 +104,7 @@ Specify only spread, use global position limit.
 #### Example 5: Minimal configuration
 ```json
 {
-  "tokenId": "0x2468ace0246ace02468ace024680ace2468ace02"
+  "tokenId": "0x2468ace02468ace02468ace02468ace02468ace0"
 }
 ```
 Include market in monitoring without specific limits. Uses global defaults.
