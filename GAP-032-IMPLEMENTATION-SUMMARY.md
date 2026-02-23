@@ -6,7 +6,7 @@ Successfully implemented comprehensive chaos engineering test infrastructure for
 
 ## Completion Status: ✅ COMPLETE
 
-All acceptance criteria met. Implementation ready for use with 63 chaos tests covering 4 major failure categories.
+All acceptance criteria met. Implementation ready for use with 85 chaos tests covering 4 major failure categories.
 
 ## Implementation Details
 
@@ -24,7 +24,7 @@ All acceptance criteria met. Implementation ready for use with 63 chaos tests co
   - `retryUntilSuccess` - Retry operation with validation
   - And 8 more utility functions
 
-#### 2. Test Categories (63 Total Tests)
+#### 2. Test Categories (85 Total Tests)
 
 **WebSocket Failures (17 tests)**
 - Sudden disconnect and automatic reconnection

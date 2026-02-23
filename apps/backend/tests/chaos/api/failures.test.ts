@@ -251,76 +251,80 @@ describe('Chaos: Circuit Breaker Activation', () => {
   it('should transition to half-open after timeout', async () => {
     vi.useFakeTimers();
 
-    const operation = async () => {
-      throw new Error('API Error');
-    };
+    try {
+      const operation = async () => {
+        throw new Error('API Error');
+      };
 
-    // Open circuit
-    for (let i = 0; i < 3; i++) {
-      try {
-        await breaker.execute(operation);
-      } catch (e) {
-        // Expected
+      // Open circuit
+      for (let i = 0; i < 3; i++) {
+        try {
+          await breaker.execute(operation);
+        } catch (e) {
+          // Expected
+        }
       }
+
+      expect(breaker.getState()).toBe(CircuitState.OPEN);
+
+      // Wait for timeout
+      await vi.advanceTimersByTimeAsync(1100);
+
+      // Should transition to half-open (or close if no more requests)
+      const state = breaker.getState();
+      expect([CircuitState.HALF_OPEN, CircuitState.CLOSED].includes(state)).toBe(true);
+    } finally {
+      vi.useRealTimers();
     }
-
-    expect(breaker.getState()).toBe(CircuitState.OPEN);
-
-    // Wait for timeout
-    await vi.advanceTimersByTimeAsync(1100);
-
-    // Should transition to half-open (or close if no more requests)
-    const state = breaker.getState();
-    expect([CircuitState.HALF_OPEN, CircuitState.CLOSED].includes(state)).toBe(true);
-
-    vi.useRealTimers();
   });
 
   it('should close circuit after successful recovery', async () => {
     vi.useFakeTimers();
 
-    let failCount = 0;
-    const operation = async () => {
-      if (failCount < 3) {
-        failCount++;
-        throw new Error('API Error');
-      }
-      return 'success';
-    };
-
-    // Open circuit
-    for (let i = 0; i < 3; i++) {
-      try {
-        await breaker.execute(operation);
-      } catch (e) {
-        // Expected
-      }
-    }
-
-    expect(breaker.getState()).toBe(CircuitState.OPEN);
-
-    // Wait for half-open - increased timeout to ensure state change
-    await vi.advanceTimersByTimeAsync(2000);
-
-    // Try to execute successful operations
-    // Circuit may need multiple successes to close
-    let successCount = 0;
-    for (let i = 0; i < 3; i++) {
-      try {
-        const result = await breaker.execute(operation);
-        if (result === 'success') {
-          successCount++;
+    try {
+      let failCount = 0;
+      const operation = async () => {
+        if (failCount < 3) {
+          failCount++;
+          throw new Error('API Error');
         }
-      } catch (e) {
-        // Circuit might still be open
+        return 'success';
+      };
+
+      // Open circuit
+      for (let i = 0; i < 3; i++) {
+        try {
+          await breaker.execute(operation);
+        } catch (e) {
+          // Expected
+        }
       }
-      await vi.advanceTimersByTimeAsync(100);
+
+      expect(breaker.getState()).toBe(CircuitState.OPEN);
+
+      // Wait for half-open - increased timeout to ensure state change
+      await vi.advanceTimersByTimeAsync(2000);
+
+      // Try to execute successful operations
+      // Circuit may need multiple successes to close
+      let successCount = 0;
+      for (let i = 0; i < 3; i++) {
+        try {
+          const result = await breaker.execute(operation);
+          if (result === 'success') {
+            successCount++;
+          }
+        } catch (e) {
+          // Circuit might still be open
+        }
+        await vi.advanceTimersByTimeAsync(100);
+      }
+
+      // Circuit should eventually close after successful operations
+      expect(successCount).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
     }
-
-    // Circuit should eventually close after successful operations
-    expect(successCount).toBeGreaterThan(0);
-
-    vi.useRealTimers();
   });
 });
 

@@ -205,7 +205,7 @@ describe('Chaos: WebSocket Disconnect During Operation', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -259,7 +259,7 @@ describe('Chaos: WebSocket Disconnect During Operation', () => {
     });
 
     let updateCount = 0;
-    client.on('book', () => updateCount++);
+    client.on('snapshot', () => updateCount++);
 
     client.connect();
     await waitForEvent(client, 'connected', 2000);
@@ -318,7 +318,7 @@ describe('Chaos: Multiple Rapid Disconnects', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());

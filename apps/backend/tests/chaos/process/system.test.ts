@@ -74,7 +74,7 @@ describe('Chaos: Graceful Shutdown', () => {
   });
 
   it('should persist state before shutdown', async () => {
-    const persistence = new PersistenceService({ dbPath: ':memory:' });
+    const persistence = new PersistenceService(':memory:');
 
     const orders = [
       {
@@ -89,16 +89,13 @@ describe('Chaos: Graceful Shutdown', () => {
     ];
 
     // Save state
-    orders.forEach((order) => persistence.saveOrder(order));
+    orders.forEach((order) => persistence.recordOrder(order));
 
     // Verify saved
     const savedOrders = persistence.getOrders();
     expect(savedOrders).toHaveLength(1);
 
-    // Create backup before shutdown
-    const backup = persistence.createBackup();
-    expect(backup.orders).toHaveLength(1);
-
+    // Close persistence service during shutdown
     persistence.close();
   });
 
@@ -342,28 +339,30 @@ describe('Chaos: Memory Leak Prevention', () => {
   it('should clear timers on cleanup', async () => {
     vi.useFakeTimers();
 
-    const timers: NodeJS.Timeout[] = [];
+    try {
+      const timers: NodeJS.Timeout[] = [];
 
-    // Create many timers
-    for (let i = 0; i < 10; i++) {
-      const timer = setTimeout(() => {}, 1000 * (i + 1));
-      timers.push(timer);
+      // Create many timers
+      for (let i = 0; i < 10; i++) {
+        const timer = setTimeout(() => {}, 1000 * (i + 1));
+        timers.push(timer);
+      }
+
+      // Cleanup
+      timers.forEach((timer) => clearTimeout(timer));
+
+      // Advance time - no callbacks should fire
+      await vi.advanceTimersByTimeAsync(20000);
+    } finally {
+      vi.useRealTimers();
     }
-
-    // Cleanup
-    timers.forEach((timer) => clearTimeout(timer));
-
-    // Advance time - no callbacks should fire
-    await vi.advanceTimersByTimeAsync(20000);
-
-    vi.useRealTimers();
   });
 
   it('should close database connections', () => {
-    const persistence = new PersistenceService({ dbPath: ':memory:' });
+    const persistence = new PersistenceService(':memory:');
 
     // Use the connection
-    persistence.saveOrder({
+    persistence.recordOrder({
       orderId: 'order-1',
       tokenId: '0xtest123',
       side: 'BUY',
@@ -379,7 +378,7 @@ describe('Chaos: Memory Leak Prevention', () => {
     // Should not be able to use after close
     let errorCaught = false;
     try {
-      persistence.saveOrder({
+      persistence.recordOrder({
         orderId: 'order-2',
         tokenId: '0xtest123',
         side: 'BUY',

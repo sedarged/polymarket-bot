@@ -122,9 +122,9 @@ Provides utilities for:
 
 ### WebSocket Reconnection
 - **Expected**: Automatic reconnection with exponential backoff
-- **Max Attempts**: Configurable (default: unlimited with max delay)
+- **Max Attempts**: Configurable (default: 10 attempts)
 - **Backoff**: 1s → 2s → 4s → 8s → 16s → 30s (max)
-- **Jitter**: ±50% to prevent thundering herd
+- **Jitter**: ±10% to prevent thundering herd
 - **Post-Reconnect**: Resync orderbook, positions, orders
 
 ### API Retry
@@ -161,7 +161,7 @@ When a chaos test fails:
 
 ## Related Documentation
 
-- [Testing Guide](../../../docs/testing.md)
-- [Decision Trees](../../../docs/ai/decision-trees.md)
-- [Common Pitfalls](../../../docs/ai/common-pitfalls.md)
-- [Troubleshooting](../../../docs/troubleshooting.md)
+- [Testing Guide](../../../../docs/testing.md)
+- [Decision Trees](../../../../docs/ai/decision-trees.md)
+- [Common Pitfalls](../../../../docs/ai/common-pitfalls.md)
+- [Troubleshooting](../../../../docs/troubleshooting.md)

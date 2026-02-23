@@ -38,7 +38,7 @@ describe('Chaos: WebSocket Heartbeat Timeout', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());

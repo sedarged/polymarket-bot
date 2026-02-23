@@ -149,7 +149,7 @@ LOG_LEVEL=debug npm run test:chaos -- -t "test name"
 ### Step 3: Investigate Root Cause
 
 **For WebSocket failures**:
-- Check reconnection logic in `src/clients/websocket.ts`
+- Check reconnection logic in `apps/backend/src/clients/websocket.ts`
 - Verify event handlers are properly attached
 - Review state management in reconnection path
 - Check timer cleanup in close() method
