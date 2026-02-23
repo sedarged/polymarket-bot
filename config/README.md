@@ -147,9 +147,10 @@ Some markets may be better suited for specific strategies:
 5. **Hot-Reload Testing:**
    Use the validation endpoint to test changes before applying:
    ```bash
+   # Replace <your-admin-token> with your actual ADMIN_TOKEN value
    curl -X POST http://localhost:3000/api/config/validate/markets \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+     -H "Authorization: Bearer <your-admin-token>" \
      -d @config/markets.json
    ```
 
@@ -207,8 +208,9 @@ await configManager.startWatching();
 
 **Or via API:**
 ```bash
+# Replace <your-admin-token> with your actual ADMIN_TOKEN value
 curl -X POST http://localhost:3000/api/config/watching/start \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
+  -H "Authorization: Bearer <your-admin-token>"
 ```
 
 ## strategy.json - Strategy Parameters
