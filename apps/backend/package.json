@@ -28,6 +28,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:backtest": "vitest run tests/backtest",
+    "test:chaos": "vitest run tests/chaos --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "bench": "vitest bench",

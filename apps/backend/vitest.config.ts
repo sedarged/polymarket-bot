@@ -10,6 +10,7 @@ export default defineConfig({
       'tests/unit/**/*.test.ts',
       'tests/integration/**/*.test.ts',
       'tests/backtest/**/*.test.ts',
+      'tests/chaos/**/*.test.ts',
     ],
     coverage: {
       provider: 'v8',
