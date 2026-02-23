@@ -1,7 +1,34 @@
 [
   {
-    "tokenId": "0x...",
-    "maxPositionSize": 100,
-    "spread": 0.02
+    "tokenId": "0x1234567890abcdef1234567890abcdef12345678",
+    "maxPositionSize": 2000,
+    "spread": 0.005,
+    "_comment": "Example 1: High-volume, low-volatility market - Use higher position limits for stable markets with good liquidity"
+  },
+  {
+    "tokenId": "0xabcdef1234567890abcdef1234567890abcdef12",
+    "maxPositionSize": 500,
+    "spread": 0.02,
+    "_comment": "Example 2: High-volatility market - Use lower limits for risky or volatile markets"
+  },
+  {
+    "tokenId": "0x567890abcdef1234567890abcdef1234567890ab",
+    "maxPositionSize": 1000,
+    "spread": 0.01,
+    "_comment": "Example 3: Medium liquidity market - Balanced settings for typical markets"
+  },
+  {
+    "tokenId": "0xfedcba0987654321fedcba0987654321fedcba09",
+    "maxPositionSize": 750,
+    "_comment": "Example 4: Position limit only - Specify only maxPositionSize, let strategy handle spread"
+  },
+  {
+    "tokenId": "0x0987654321fedcba0987654321fedcba09876543",
+    "spread": 0.015,
+    "_comment": "Example 5: Spread only - Specify only spread, use global position limit"
+  },
+  {
+    "tokenId": "0x2468ace0246ace02468ace024680ace2468ace02",
+    "_comment": "Example 6: Minimal configuration - Include market in monitoring without specific limits, uses global defaults"
   }
 ]
