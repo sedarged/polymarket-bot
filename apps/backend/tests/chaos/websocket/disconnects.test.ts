@@ -19,6 +19,8 @@ import {
 import { WSOrderbookSnapshot } from '@polymarket/shared';
 
 // Mock CLOB client to prevent real API calls
+// Note: This is a module-level mock shared across all tests in this file.
+// If tests need different behaviors, override in beforeEach or use vi.mock with factory.
 vi.mock('../../../src/clients/clob', () => {
   const mockGetOrderbook = vi.fn().mockResolvedValue({
     market: 'test-market',

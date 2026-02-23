@@ -42,7 +42,10 @@ describe('Chaos: Graceful Shutdown', () => {
     await shutdown();
 
     expect(allClosed).toBe(true);
-    expect(connections.every((c) => c.close)).toHaveBeenCalledTimes(5);
+    // Check each connection was closed
+    connections.forEach((conn) => {
+      expect(conn.close).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('should cancel all pending orders during shutdown', async () => {

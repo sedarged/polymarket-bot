@@ -76,8 +76,9 @@ describe('Chaos: API 500 Errors', () => {
       retryUntilSuccess(operation, 5, 50)
     ).rejects.toThrow();
 
-    // Should fail immediately, not retry
-    expect(attempts).toBe(5); // Will try all attempts since our helper doesn't distinguish
+    // Note: Our helper retries all errors. In production, 4xx errors should not be retried.
+    // This test documents current behavior; proper implementation would check status code.
+    expect(attempts).toBe(5); // Helper retries all errors regardless of status
   });
 });
 
@@ -341,7 +342,7 @@ describe('Chaos: Malformed API Responses', () => {
     await expect(
       retryUntilSuccess(operation, 2, 50)
     ).rejects.toThrow('Unexpected token');
-  }, 5000); // Shorter timeout for this test
+  }, 3000); // Allow time for retries (2 attempts * 50ms delay + overhead)
 
   it('should handle unexpected response structure', async () => {
     const operation = async () => {
