@@ -61,7 +61,7 @@ describe('Chaos: WebSocket Sudden Disconnect', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());

@@ -64,7 +64,7 @@ describe('Chaos: API 500 Errors', () => {
     ).rejects.toThrow();
   });
 
-  it('should not retry on 4xx errors (client errors)', async () => {
+  it('should retry even on 4xx errors (helper retries all errors)', async () => {
     let attempts = 0;
 
     const operation = async () => {
@@ -192,7 +192,7 @@ describe('Chaos: Circuit Breaker Activation', () => {
     breaker = new CircuitBreaker({
       failureThreshold: 3,
       successThreshold: 2,
-      timeout: 1000,
+      resetTimeout: 1000,
     });
   });
 

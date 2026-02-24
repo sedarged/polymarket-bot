@@ -61,8 +61,9 @@ describe('Chaos: Order Persistence Failure', () => {
   });
 
   it('should recover state from database after restart', async () => {
-    // Create persistence with file-based DB
-    const dbPath = ':memory:'; // In real scenario would be temp file
+    // Use temp file to simulate persistence across restarts
+    // Note: :memory: creates fresh DB, use temp file for real persistence test
+    const dbPath = '/tmp/chaos-test-db-' + Date.now() + '.sqlite';
     const persistence1 = new PersistenceService(dbPath);
 
     const orders = [
@@ -103,6 +104,16 @@ describe('Chaos: Order Persistence Failure', () => {
     const ordersAfter = persistence2.getOrders();
     expect(ordersAfter).toHaveLength(2);
     expect(ordersAfter[0].orderId).toBe('order-2'); // Ordered by created_at DESC
+
+    // Cleanup
+    persistence2.close();
+    try {
+      const fs = require('fs');
+      fs.unlinkSync(dbPath);
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  });
     expect(ordersAfter[1].orderId).toBe('order-1');
 
     persistence2.close();
