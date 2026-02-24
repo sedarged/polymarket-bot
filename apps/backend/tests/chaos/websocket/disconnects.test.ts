@@ -136,6 +136,19 @@ describe('Chaos: WebSocket Sudden Disconnect', () => {
 
     expect(disconnectCount).toBe(3);
     expect(reconnectTimes.length).toBe(3);
+    
+    // Validate exponential backoff by checking delays between reconnects
+    if (reconnectTimes.length >= 2) {
+      const delays = [];
+      for (let i = 1; i < reconnectTimes.length; i++) {
+        delays.push(reconnectTimes[i] - reconnectTimes[i - 1]);
+      }
+      // Delays should be increasing (exponential backoff)
+      // Allow some tolerance for timing variations
+      for (let i = 1; i < delays.length; i++) {
+        expect(delays[i]).toBeGreaterThanOrEqual(delays[i - 1] * 0.8);
+      }
+    }
   });
 
   it('should stop reconnecting after max attempts', async () => {

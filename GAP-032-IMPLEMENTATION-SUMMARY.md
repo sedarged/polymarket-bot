@@ -35,11 +35,6 @@ All acceptance criteria met. Implementation ready for use with **63 chaos tests*
 - Multiple rapid disconnects
 
 **API Failures (17 tests)**
-- Max reconnection attempts handling
-- State consistency after reconnect
-- Subscription recovery
-
-**API Failures (17 tests)**
 - 500/502/503 errors with retry and exponential backoff
 - Timeout detection and handling
 - Rate limiting (429) with retry-after headers
@@ -129,7 +124,7 @@ These are non-blocking and don't affect production code.
 
 ## Known Issues (Non-blocking)
 
-### 1. WebSocket Timing Issues (17 tests affected)
+### 1. WebSocket Timing Issues (14 tests affected)
 **Problem**: Tests using `vi.useFakeTimers` have timing issues  
 **Impact**: Tests fail but real-time functionality works  
 **Status**: Documented, non-blocking  
@@ -158,7 +153,7 @@ These are non-blocking and don't affect production code.
 2. **System Behavior Documentation**: Tests document expected behavior under failure
 3. **Failure Detection**: CI integration catches regressions automatically
 4. **Production Confidence**: Validates critical recovery paths work correctly
-5. **Baseline Metrics**: 78% pass rate provides baseline for improvement
+5. **Baseline Metrics**: 76% pass rate provides baseline for improvement
 
 ### Long-term Value
 1. **Continuous Validation**: Tests run on every PR

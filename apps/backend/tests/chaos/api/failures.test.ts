@@ -420,7 +420,7 @@ describe('Chaos: Concurrent API Failures', () => {
     const breaker = new CircuitBreaker({
       failureThreshold: 5,
       successThreshold: 2,
-      timeout: 1000,
+      resetTimeout: 1000,
     });
 
     let operation1Called = false;

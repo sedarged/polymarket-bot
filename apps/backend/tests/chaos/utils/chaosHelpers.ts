@@ -48,14 +48,19 @@ export function waitForEvent<T = any>(
   timeoutMs: number = 5000
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error(`Timeout waiting for event: ${eventName}`));
-    }, timeoutMs);
-    
-    emitter.once(eventName, (data: T) => {
+    let timeout: NodeJS.Timeout;
+
+    const handler = (data: T) => {
       clearTimeout(timeout);
       resolve(data);
-    });
+    };
+
+    timeout = setTimeout(() => {
+      emitter.off(eventName, handler);
+      reject(new Error(`Timeout waiting for event: ${eventName}`));
+    }, timeoutMs);
+
+    emitter.once(eventName, handler);
   });
 }
 

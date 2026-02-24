@@ -100,23 +100,22 @@ describe('Chaos: Order Persistence Failure', () => {
     // Create new instance (simulate restart)
     const persistence2 = new PersistenceService(dbPath);
 
-    // Should recover state
-    const ordersAfter = persistence2.getOrders();
-    expect(ordersAfter).toHaveLength(2);
-    expect(ordersAfter[0].orderId).toBe('order-2'); // Ordered by created_at DESC
-
-    // Cleanup
-    persistence2.close();
     try {
-      const fs = require('fs');
-      fs.unlinkSync(dbPath);
-    } catch (e) {
-      // Ignore cleanup errors
+      // Should recover state
+      const ordersAfter = persistence2.getOrders();
+      expect(ordersAfter).toHaveLength(2);
+      expect(ordersAfter[0].orderId).toBe('order-2'); // Ordered by created_at DESC
+      expect(ordersAfter[1].orderId).toBe('order-1');
+    } finally {
+      // Cleanup
+      persistence2.close();
+      try {
+        const fs = require('fs');
+        fs.unlinkSync(dbPath);
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     }
-  });
-    expect(ordersAfter[1].orderId).toBe('order-1');
-
-    persistence2.close();
   });
 
   it('should handle concurrent write failures', async () => {
