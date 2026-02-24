@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.3](https://github.com/sedarged/polymarket-bot/compare/v3.9.2...v3.9.3) (2026-02-24)
+
+
+### Bug Fixes
+
+* correct tokenId pattern consistency in example 6 ([5fcfb3c](https://github.com/sedarged/polymarket-bot/commit/5fcfb3cba44711f61a980c8011a6de1adc9be76a))
+
 ## [3.9.2](https://github.com/sedarged/polymarket-bot/compare/v3.9.1...v3.9.2) (2026-02-21)
 
 
