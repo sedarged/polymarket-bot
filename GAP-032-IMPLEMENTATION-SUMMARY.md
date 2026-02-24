@@ -283,18 +283,18 @@ See `docs/chaos-playbook.md` for detailed guidance on:
 - **Branch**: `copilot/add-chaos-engineering-tests`
 
 ### Documentation
-- [Chaos Test README](../apps/backend/tests/chaos/README.md) - Test structure
-- [Chaos Playbook](./chaos-playbook.md) - Procedures and guidance
-- [Testing Guide](./testing.md) - Overall testing strategy
+- [Chaos Test README](./apps/backend/tests/chaos/README.md) - Test structure
+- [Chaos Playbook](./docs/chaos-playbook.md) - Procedures and guidance
+- [Testing Guide](./docs/testing.md) - Overall testing strategy
 
 ### Related
-- [Decision Trees](./ai/decision-trees.md) - Troubleshooting scenarios
-- [Common Pitfalls](./ai/common-pitfalls.md) - Known issues
-- [Troubleshooting](./troubleshooting.md) - Recovery procedures
+- [Decision Trees](./docs/ai/decision-trees.md) - Troubleshooting scenarios
+- [Common Pitfalls](./docs/ai/common-pitfalls.md) - Known issues
+- [Troubleshooting](./docs/troubleshooting.md) - Recovery procedures
 
 ## Conclusion
 
-Successfully implemented comprehensive chaos engineering test infrastructure for the Polymarket trading bot. All acceptance criteria met with 63 tests across 4 categories, complete documentation, and CI integration. Tests provide continuous validation of system resilience and serve as living documentation of expected behavior under failure. Ready for production use with room for future improvements.
+Successfully implemented comprehensive chaos engineering test infrastructure for the Polymarket trading bot. All acceptance criteria met with 85 tests across 4 categories, complete documentation, and CI integration. Tests provide continuous validation of system resilience and serve as living documentation of expected behavior under failure. Ready for production use with room for future improvements.
 
 **Status**: ✅ COMPLETE  
 **Quality**: Production-ready  

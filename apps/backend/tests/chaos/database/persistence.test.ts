@@ -152,10 +152,10 @@ describe('Chaos: State Reconciliation After Failure', () => {
       orderbookStaleThresholdMs: 30000,
       autoRecoveryEnabled: true,
       maxRecoveryAttempts: 3,
-      enableOrderReconciliation: true,
-      enablePositionReconciliation: true,
-      enableBalanceReconciliation: true,
-      enableOrderbookResync: true,
+      syncOrdersEnabled: true,
+      syncPositionsEnabled: true,
+      syncBalancesEnabled: true,
+      syncOrderbooksEnabled: true,
     });
   });
 

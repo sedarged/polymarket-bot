@@ -156,7 +156,7 @@ describe('Chaos: WebSocket Network Partition', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -257,7 +257,7 @@ describe('Chaos: WebSocket Silent Connection Loss', () => {
 
   afterEach(async () => {
     if (client) {
-      client.close();
+      await client.close();
     }
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
