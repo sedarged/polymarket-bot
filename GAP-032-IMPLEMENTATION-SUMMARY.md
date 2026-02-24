@@ -166,10 +166,10 @@ These are non-blocking and don't affect production code.
 
 From issue [GAP-032]:
 - ✅ Chaos test directory created
-- ✅ WebSocket failure tests (17 scenarios - exceeds 10+ requirement)
-- ✅ API failure tests (30 scenarios - exceeds 10+ requirement)
-- ✅ Database failure tests (22 scenarios - exceeds 5+ requirement)
-- ✅ Process failure tests (16 scenarios - exceeds 5+ requirement)
+- ✅ WebSocket failure tests (14 scenarios - exceeds 10+ requirement)
+- ✅ API failure tests (17 scenarios - exceeds 10+ requirement)
+- ✅ Database failure tests (11 scenarios - exceeds 5+ requirement)
+- ✅ Process failure tests (17 scenarios - exceeds 5+ requirement)
 - ✅ All tests document expected behavior
 - ✅ CI integration complete
 - ✅ Chaos playbooks documented

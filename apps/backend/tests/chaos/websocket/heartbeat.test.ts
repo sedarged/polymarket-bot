@@ -302,11 +302,14 @@ describe('Chaos: WebSocket Silent Connection Loss', () => {
     });
 
     let recoverySuccessful = false;
+    let lostConnection = false;
+
+    client.on('close', () => {
+      lostConnection = true;
+    });
 
     client.on('open', () => {
-      if (!client.isConnected()) {
-        recoverySuccessful = false;
-      } else {
+      if (lostConnection && client.isConnected()) {
         recoverySuccessful = true;
       }
     });

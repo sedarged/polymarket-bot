@@ -73,8 +73,7 @@ Chaos tests run automatically in CI on every PR:
 **Purpose**: Validate API retry logic and circuit breaker
 
 **Expected Behaviors**:
-- Retry on 5xx errors with exponential backoff
-- No retry on 4xx errors (client errors)
+- Retry on all non-2xx errors (including 4xx and 5xx) with exponential backoff
 - Circuit breaker opens after 3 consecutive failures
 - Circuit breaker transitions to half-open after timeout
 - Rate limit (429) respected with backoff
