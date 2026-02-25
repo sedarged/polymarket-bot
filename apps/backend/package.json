@@ -34,7 +34,7 @@
     "bench:verbose": "vitest bench --reporter=verbose"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.996.0",
+    "@aws-sdk/client-secrets-manager": "^3.997.0",
     "@azure/identity": "^4.13.0",
     "@azure/keyvault-secrets": "^4.10.0",
     "@ethersproject/wallet": "^5.8.0",
