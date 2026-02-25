@@ -202,7 +202,7 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 19. Learning System (4 variables functional, 4 planned)
+## 19. Learning System (7 variables functional, 4 planned)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
@@ -211,6 +211,9 @@ This document provides an overview of environment variables used by the Polymark
 | `SIGNAL_CATALOG_PATH` | `./data/signals.db` | No | Signal catalog database path |
 | `BACKTEST_ENGINE_PATH` | `./data/backtests.db` | No | Backtest engine database path |
 | `PROMOTION_WORKFLOW_PATH` | `./data/promotions.db` | No | Promotion workflow database path |
+| `EVENT_STORE_MAX_EVENTS` | `0` (unlimited) | No | **(GAP-044)** Max events retained in EventStore; 0 = unlimited. Oldest events pruned when limit reached. |
+| `BACKTEST_MAX_CONCURRENT` | `3` | No | **(GAP-044)** Max concurrent backtests. Requests over limit are rejected immediately. |
+| `BACKTEST_MAX_DATE_RANGE_DAYS` | `365` | No | **(GAP-044)** Max date range in days for a single backtest run. |
 | `BANDIT_ALGORITHM` | `epsilon-greedy` | No | **(Planned)** Bandit algorithm type. Not yet wired into config. |
 | `BANDIT_EXPLORATION_FACTOR` | `0.1` | No | **(Planned)** Exploration factor (0-1). Not yet wired into config. |
 | `BANDIT_MIN_TRADE_COUNT` | `10` | No | **(Planned)** Minimum trades before allocation. Not yet wired into config. |

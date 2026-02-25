@@ -438,15 +438,94 @@ eventStore.writeEvent('ExecutionOutcomeEvent', marketId, 'simulation', outcome);
 - Check market event availability
 - Confirm slippage/fee parameters
 
+## Production Safeguards (GAP-044)
+
+All learning system components include production-grade validation and resource limits added in GAP-044. These run automatically — **no configuration required** — with sensible defaults.
+
+### EventStore
+
+| Safeguard | Default | Description |
+|-----------|---------|-------------|
+| `marketId` length | ≤ 256 chars | Rejects writes with oversized or empty market IDs |
+| `eventType` allowlist | — | Rejects writes for unknown event types |
+| `source` allowlist | — | Rejects writes from unknown sources |
+| Payload size | ≤ 1 MB | Rejects writes where serialized payload exceeds 1 MB |
+| Query result cap | 10,000 rows | All `queryEvents` calls are capped at 10,000 regardless of `limit` |
+| Query validation | — | Zod schema validates `startDate`/`endDate` are valid ISO timestamps |
+| `maxEvents` | `0` (unlimited) | Optional: configure to prune oldest events when limit is reached |
+
+```typescript
+// Bounded event store - keeps only the most recent 100,000 events
+const eventStore = new EventStore({
+  path: './data/events.db',
+  maxEvents: 100_000, // oldest events are pruned automatically
+});
+```
+
+### BanditAllocator
+
+Constructor rejects invalid config at startup:
+- `algorithm` must be one of: `epsilon-greedy`, `ucb1`, `thompson-sampling`
+- `totalCapital` must be a positive finite number
+- `explorationFactor` must be non-negative
+- `minAllocation` and `maxAllocation` must be in `[0, 1]`; `minAllocation ≤ maxAllocation`
+- `minTradeCount` must be a non-negative integer
+
+### MetricsGating
+
+Threshold validation on construction and `updateThresholds()`:
+- `minSharpe` must be a finite number
+- `maxDrawdown` and `maxErrorRate` must be in `[0, 1]`
+- `minSampleSize` and `minDays` must be non-negative integers
+- `updateThresholds` is atomic — invalid input leaves current thresholds unchanged
+
+### BacktestEngine
+
+| Safeguard | Default | Description |
+|-----------|---------|-------------|
+| Concurrent backtest limit | 3 | Requests over limit are rejected immediately |
+| Max date range | 365 days | Prevents unbounded historical replays |
+| Markets per backtest | ≤ 50 | Prevents excessively broad backtests |
+| Input validation | — | `strategyId`, dates, `initialBalance`, `slippage`, `feeRate` all validated |
+
+```typescript
+// Production backtest engine configuration
+const engine = new BacktestEngine({
+  path: './data/backtests.db',
+  eventStore,
+  maxConcurrentBacktests: 2,   // default: 3
+  maxDateRangeDays: 90,         // default: 365
+});
+```
+
+### PromotionWorkflow
+
+- `evaluate`: rejects empty `strategyId` or non-finite/negative `daysSinceStart`
+- `approve`: rejects empty `reviewedBy`; `reviewNotes` capped at 2000 characters
+- `reject`: same as `approve`, plus `reviewNotes` is required (non-empty)
+
+### Error Handling
+
+All validation errors throw synchronously with descriptive messages. Example:
+
+```
+BanditAllocator: totalCapital must be a positive number, got 0
+EventStore: marketId must be a non-empty string
+BacktestEngine: maximum concurrent backtests (3) reached. Try again later.
+MetricsGating: maxDrawdown must be between 0 and 1, got 1.5
+PromotionWorkflow: reviewNotes are required for rejection
+```
+
 ## Examples
 
 See `apps/backend/tests/unit/` and `apps/backend/tests/backtest/` for comprehensive examples:
 - `eventStore.test.ts` - Event storage and querying
 - `signalCatalog.test.ts` - Signal management
-- `backtestEngine.test.ts` - Backtest execution
+- `learningSystemSafeguards.test.ts` - Production safeguard validation (53 tests)
 
 ## Related Documentation
 
 - [REPORTS/LEARNING_SYSTEM.md](../REPORTS/LEARNING_SYSTEM.md) - Complete design specification
 - [docs/architecture.md](../docs/architecture.md) - System architecture
 - [docs/paper-trading.md](../docs/paper-trading.md) - Paper trading guide
+- [docs/ENV_VARIABLE_REFERENCE.md](ENV_VARIABLE_REFERENCE.md) - Environment variables
