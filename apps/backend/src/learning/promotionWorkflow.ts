@@ -266,7 +266,10 @@ export class PromotionWorkflow {
     if (!reviewedBy || typeof reviewedBy !== 'string' || reviewedBy.trim().length === 0) {
       throw new Error('PromotionWorkflow: reviewedBy must be a non-empty string');
     }
-    if (reviewNotes !== undefined && typeof reviewNotes === 'string' && reviewNotes.length > 2000) {
+    if (reviewNotes !== undefined && typeof reviewNotes !== 'string') {
+      throw new Error('PromotionWorkflow: reviewNotes must be a string when provided');
+    }
+    if (typeof reviewNotes === 'string' && reviewNotes.length > 2000) {
       throw new Error('PromotionWorkflow: reviewNotes must not exceed 2000 characters');
     }
 

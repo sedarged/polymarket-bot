@@ -61,7 +61,7 @@ const QueryOptionsSchema = z.object({
   endDate: z.string().datetime({ offset: true }).optional(),
   marketId: z.string().min(1).max(MAX_MARKET_ID_LENGTH).optional(),
   eventType: z.string().optional(),
-  limit: z.number().int().min(1).max(MAX_QUERY_LIMIT).optional(),
+  limit: z.number().int().min(1).optional(),
   offset: z.number().int().min(0).optional(),
 });
 

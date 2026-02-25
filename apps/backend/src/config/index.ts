@@ -111,6 +111,10 @@ const envSchema = z.object({
   METRICS_PORT: numberFromEnv(9090, z.number().int().positive()),
   // Learning system database paths (also used by data pipeline)
   EVENT_STORE_PATH: z.string().default("./data/events.db"),
+  // Learning system production safeguards (GAP-044)
+  EVENT_STORE_MAX_EVENTS: numberFromEnv(0, z.number().int().min(0)),
+  BACKTEST_MAX_CONCURRENT: numberFromEnv(3, z.number().int().min(1)),
+  BACKTEST_MAX_DATE_RANGE_DAYS: numberFromEnv(365, z.number().int().min(1)),
   // Trading credentials (optional - only required for live trading)
   // Private key must be 64 hex characters (optionally prefixed with 0x)
   // Addresses Audit Finding A-024: Private key format validation
@@ -504,6 +508,9 @@ const configSchema = envSchema
     port: env.PORT,
     metricsPort: env.METRICS_PORT,
     eventStorePath: env.EVENT_STORE_PATH,
+    eventStoreMaxEvents: env.EVENT_STORE_MAX_EVENTS,
+    backtestMaxConcurrent: env.BACKTEST_MAX_CONCURRENT,
+    backtestMaxDateRangeDays: env.BACKTEST_MAX_DATE_RANGE_DAYS,
     privateKey: env.PRIVATE_KEY,
     secretSource: env.SECRET_SOURCE,
     encryptionKey: env.ENCRYPTION_KEY,

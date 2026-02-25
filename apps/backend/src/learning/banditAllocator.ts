@@ -47,10 +47,10 @@ export class BanditAllocator {
     if (!Number.isFinite(explorationFactor) || explorationFactor < 0) {
       throw new Error(`BanditAllocator: explorationFactor must be a non-negative number, got ${explorationFactor}`);
     }
-    if (minAllocation < 0 || minAllocation > 1) {
+    if (!Number.isFinite(minAllocation) || minAllocation < 0 || minAllocation > 1) {
       throw new Error(`BanditAllocator: minAllocation must be between 0 and 1, got ${minAllocation}`);
     }
-    if (maxAllocation < 0 || maxAllocation > 1) {
+    if (!Number.isFinite(maxAllocation) || maxAllocation < 0 || maxAllocation > 1) {
       throw new Error(`BanditAllocator: maxAllocation must be between 0 and 1, got ${maxAllocation}`);
     }
     if (minAllocation > maxAllocation) {

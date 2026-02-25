@@ -263,6 +263,24 @@ export class BacktestEngine {
         `BacktestEngine: number of markets (${config.markets.length}) exceeds maximum of ${MAX_MARKETS_PER_BACKTEST}`
       );
     }
+    // Validate each market ID entry
+    for (let i = 0; i < config.markets.length; i++) {
+      const marketId = config.markets[i];
+      if (typeof marketId !== 'string') {
+        throw new Error(
+          `BacktestEngine: market id at index ${i} must be a non-empty string, got ${typeof marketId}`
+        );
+      }
+      const trimmed = marketId.trim();
+      if (trimmed.length === 0) {
+        throw new Error(`BacktestEngine: market id at index ${i} must be a non-empty string`);
+      }
+      if (trimmed.length > 256) {
+        throw new Error(
+          `BacktestEngine: market id at index ${i} exceeds maximum length of 256 characters`
+        );
+      }
+    }
     if (!Number.isFinite(config.initialBalance) || config.initialBalance <= 0) {
       throw new Error(`BacktestEngine: initialBalance must be a positive number, got ${config.initialBalance}`);
     }

@@ -137,9 +137,9 @@ describe('EventStore - production safeguards', () => {
         .toThrow();
     });
 
-    it('should reject limit exceeding MAX_QUERY_LIMIT', () => {
-      expect(() => store.queryEvents({ limit: 99999 }))
-        .toThrow();
+    it('should cap limit at MAX_QUERY_LIMIT instead of rejecting', () => {
+      // limit > 10,000 is silently capped to MAX_QUERY_LIMIT, not rejected
+      expect(() => store.queryEvents({ limit: 99999 })).not.toThrow();
     });
 
     it('should reject negative offset', () => {
@@ -261,6 +261,30 @@ describe('BanditAllocator - config validation', () => {
       totalCapital: 1000,
       minTradeCount: 2.5,
     })).toThrow('minTradeCount must be a non-negative integer');
+  });
+
+  it('should reject NaN minAllocation', () => {
+    expect(() => new BanditAllocator({
+      algorithm: 'epsilon-greedy',
+      totalCapital: 1000,
+      minAllocation: NaN,
+    })).toThrow('minAllocation must be between 0 and 1');
+  });
+
+  it('should reject NaN maxAllocation', () => {
+    expect(() => new BanditAllocator({
+      algorithm: 'epsilon-greedy',
+      totalCapital: 1000,
+      maxAllocation: NaN,
+    })).toThrow('maxAllocation must be between 0 and 1');
+  });
+
+  it('should reject Infinity minAllocation', () => {
+    expect(() => new BanditAllocator({
+      algorithm: 'epsilon-greedy',
+      totalCapital: 1000,
+      minAllocation: Infinity,
+    })).toThrow('minAllocation must be between 0 and 1');
   });
 
   it('should accept valid configuration', () => {
@@ -474,6 +498,42 @@ describe('BacktestEngine - production safeguards', () => {
         feeRate: 0.002,
       })).rejects.toThrow('invalid startDate');
     });
+
+    it('should reject non-string market id in array', async () => {
+      await expect(engine.runBacktest({
+        strategyId: 'random',
+        startDate: '2026-01-01T00:00:00Z',
+        endDate: '2026-01-10T00:00:00Z',
+        markets: [123 as any],
+        initialBalance: 1000,
+        slippage: 0.001,
+        feeRate: 0.002,
+      })).rejects.toThrow('must be a non-empty string');
+    });
+
+    it('should reject empty string market id in array', async () => {
+      await expect(engine.runBacktest({
+        strategyId: 'random',
+        startDate: '2026-01-01T00:00:00Z',
+        endDate: '2026-01-10T00:00:00Z',
+        markets: [''],
+        initialBalance: 1000,
+        slippage: 0.001,
+        feeRate: 0.002,
+      })).rejects.toThrow('must be a non-empty string');
+    });
+
+    it('should reject whitespace-only market id in array', async () => {
+      await expect(engine.runBacktest({
+        strategyId: 'random',
+        startDate: '2026-01-01T00:00:00Z',
+        endDate: '2026-01-10T00:00:00Z',
+        markets: ['   '],
+        initialBalance: 1000,
+        slippage: 0.001,
+        feeRate: 0.002,
+      })).rejects.toThrow('must be a non-empty string');
+    });
   });
 
   describe('concurrency limit', () => {
@@ -579,6 +639,11 @@ describe('PromotionWorkflow - input validation', () => {
     it('should reject empty reviewedBy', () => {
       expect(() => workflow.approve('strategy-1', ''))
         .toThrow('reviewedBy must be a non-empty string');
+    });
+
+    it('should reject non-string reviewNotes', () => {
+      expect(() => workflow.approve('strategy-1', 'reviewer', 123 as any))
+        .toThrow('reviewNotes must be a string when provided');
     });
 
     it('should reject reviewNotes exceeding 2000 characters', () => {
