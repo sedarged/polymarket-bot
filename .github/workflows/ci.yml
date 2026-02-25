@@ -39,6 +39,12 @@ jobs:
       - name: Run backend backtest tests
         run: npm run test:backtest
         working-directory: apps/backend
+      
+      - name: Run chaos tests
+        run: npm run test:chaos
+        working-directory: apps/backend
+        continue-on-error: true  # Allow chaos tests to fail initially
+      
       - name: Run test coverage
         run: npm run test:coverage
         working-directory: apps/backend

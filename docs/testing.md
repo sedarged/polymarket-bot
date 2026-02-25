@@ -10,8 +10,8 @@ The project uses [Vitest](https://vitest.dev/) as the testing framework. Tests a
 
 ### Current Status
 
-- **Total test files:** 89 (67 unit, 22 integration, 1 backtest)
-- **Total tests:** 1630+ tests (1617 passed + 13 skipped)
+- **Total test files:** 92 (67 unit, 22 integration, 1 backtest, 5 chaos)
+- **Total tests:** 1700+ tests (1630+ unit/integration/backtest + 63 chaos)
 - **Target coverage:** >80% code coverage
 - **Test framework:** Vitest 4.0.18
 - **Coverage provider:** V8
@@ -31,6 +31,11 @@ The project uses [Vitest](https://vitest.dev/) as the testing framework. Tests a
 - Historical replay and backtest engine
 - Event store and metrics computation
 
+#### Chaos Tests (`tests/chaos/`)
+- Artificial failure injection to validate resilience
+- WebSocket disconnects, API failures, database issues, process crashes
+- See [Chaos Playbook](./chaos-playbook.md) for details
+
 #### Shared
 - **Setup:** `tests/setup.ts` (runs before each file; e.g. sets `ADMIN_TOKEN`)
 - **Fixtures:** `tests/fixtures/` (e.g. `websocket.ts` for mock orderbook helpers)
@@ -49,6 +54,7 @@ npm test
 npm run test:unit          # tests/unit/**/*.test.ts
 npm run test:integration   # tests/integration/**/*.test.ts
 npm run test:backtest      # tests/backtest/**/*.test.ts
+npm run test:chaos         # tests/chaos/**/*.test.ts (resilience testing)
 ```
 
 ### Specific Test File
@@ -93,6 +99,32 @@ Benchmarks measure performance of:
 - **Main**: Run benchmarks to track baseline and historical performance
 - **Alerts**: Threshold-based regression alerts and failures are planned but not yet enforced in CI
 
+### Chaos Testing (GAP-032)
+
+Run chaos engineering tests to validate system resilience:
+
+```bash
+npm run test:chaos                    # Run all chaos tests
+npm run test:chaos -- websocket       # Run WebSocket chaos tests
+npm run test:chaos -- api             # Run API chaos tests
+npm run test:chaos -- database        # Run database chaos tests
+npm run test:chaos -- process         # Run process chaos tests
+npm run test:chaos -- --reporter=verbose  # Verbose output
+```
+
+Chaos tests inject artificial failures to validate:
+- **WebSocket failures**: Disconnects, reconnection, heartbeat timeout, network partition
+- **API failures**: 500 errors, timeouts, rate limiting, circuit breaker, malformed responses
+- **Database failures**: Persistence errors, state recovery, reconciliation, backup/restore
+- **Process failures**: Graceful shutdown, kill switch, startup reconciliation, resource cleanup
+
+**Documentation**:
+- [Chaos Test README](../apps/backend/tests/chaos/README.md) - Test structure and categories
+- [Chaos Playbook](./chaos-playbook.md) - Procedures for running tests, interpreting results, responding to failures
+
+**CI Integration**: Chaos tests run automatically on PRs with `continue-on-error: true` initially to gather baseline data without blocking PRs. Once stable, this will be removed.
+
+
 **See also**: [Benchmarking Guide](./benchmarking.md) for detailed documentation
 
 ## Test File Organization
@@ -131,6 +163,19 @@ apps/backend/
     │   └── ...
     ├── backtest/             # Backtest engine tests
     │   └── backtestEngine.test.ts
+    ├── chaos/                # Chaos engineering tests (GAP-032)
+    │   ├── README.md         # Chaos test documentation
+    │   ├── utils/            # Chaos test helpers
+    │   │   └── chaosHelpers.ts
+    │   ├── websocket/        # WebSocket failure tests
+    │   │   ├── disconnects.test.ts
+    │   │   └── heartbeat.test.ts
+    │   ├── api/              # API failure tests
+    │   │   └── failures.test.ts
+    │   ├── database/         # Database failure tests
+    │   │   └── persistence.test.ts
+    │   └── process/          # Process failure tests
+    │       └── system.test.ts
     └── benchmark/            # Performance benchmarks (GAP-034)
         ├── orderbook.bench.ts
         ├── orderValidation.bench.ts
