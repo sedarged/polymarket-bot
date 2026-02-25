@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.1](https://github.com/sedarged/polymarket-bot/compare/v3.12.0...v3.12.1) (2026-02-25)
+
+
+### Bug Fixes
+
+* address all PR review feedback — auth, slippage, docker, test determinism ([38cb69d](https://github.com/sedarged/polymarket-bot/commit/38cb69d2f2ed4f4f53926ff11af9387490b3f21f))
+* address PR review feedback — 401 auth flow, slippage math, Docker pruning, experiment endpoint, dedup test determinism ([ddb4ff0](https://github.com/sedarged/polymarket-bot/commit/ddb4ff0f8c68496ec0d3f4c9339d0af0014092bd))
+* deep audit and fix — security, trading correctness, reliability, frontend ([29d8675](https://github.com/sedarged/polymarket-bot/commit/29d8675b91c1238b1b954c3528801754cbbce7ca))
+
 ## [3.12.0](https://github.com/sedarged/polymarket-bot/compare/v3.11.0...v3.12.0) (2026-02-25)
 
 
