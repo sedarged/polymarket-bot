@@ -35,8 +35,32 @@ export class MetricsGating {
       ...DEFAULT_THRESHOLDS,
       ...config.thresholds,
     };
+
+    // Validate thresholds
+    MetricsGating.validateThresholds(this.thresholds);
     
     logger.info('MetricsGating initialized', { thresholds: this.thresholds });
+  }
+
+  /**
+   * Validate threshold values are in acceptable ranges
+   */
+  private static validateThresholds(t: MetricsThresholds): void {
+    if (!Number.isFinite(t.minSharpe)) {
+      throw new Error(`MetricsGating: minSharpe must be a finite number, got ${t.minSharpe}`);
+    }
+    if (!Number.isFinite(t.maxDrawdown) || t.maxDrawdown < 0 || t.maxDrawdown > 1) {
+      throw new Error(`MetricsGating: maxDrawdown must be between 0 and 1, got ${t.maxDrawdown}`);
+    }
+    if (!Number.isInteger(t.minSampleSize) || t.minSampleSize < 0) {
+      throw new Error(`MetricsGating: minSampleSize must be a non-negative integer, got ${t.minSampleSize}`);
+    }
+    if (!Number.isInteger(t.minDays) || t.minDays < 0) {
+      throw new Error(`MetricsGating: minDays must be a non-negative integer, got ${t.minDays}`);
+    }
+    if (!Number.isFinite(t.maxErrorRate) || t.maxErrorRate < 0 || t.maxErrorRate > 1) {
+      throw new Error(`MetricsGating: maxErrorRate must be between 0 and 1, got ${t.maxErrorRate}`);
+    }
   }
   
   /**
@@ -140,10 +164,12 @@ export class MetricsGating {
    * Update thresholds (useful for runtime configuration)
    */
   updateThresholds(newThresholds: Partial<MetricsThresholds>): void {
-    this.thresholds = {
+    const merged = {
       ...this.thresholds,
       ...newThresholds,
     };
+    MetricsGating.validateThresholds(merged);
+    this.thresholds = merged;
     
     logger.info('Metrics gating thresholds updated', { thresholds: this.thresholds });
   }

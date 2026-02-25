@@ -20,6 +20,7 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import crypto from 'crypto';
+import { z } from 'zod';
 import type {
   EventEnvelope,
   EventRow,
@@ -27,9 +28,48 @@ import type {
   EventSource,
 } from './types';
 
+/** Maximum serialized payload size in bytes (1 MB) */
+const MAX_PAYLOAD_BYTES = 1_048_576;
+
+/** Maximum number of events returned by a single query */
+const MAX_QUERY_LIMIT = 10_000;
+
+/** Maximum market ID length */
+const MAX_MARKET_ID_LENGTH = 256;
+
+/** Valid event types */
+const VALID_EVENT_TYPES = new Set<string>([
+  'MarketEvent',
+  'OrderBookUpdateEvent',
+  'SignalEvent',
+  'StrategyDecisionEvent',
+  'ExecutionOutcomeEvent',
+  'PerformanceMetricEvent',
+  'ExperimentResultEvent',
+]);
+
+/** Valid event sources */
+const VALID_EVENT_SOURCES = new Set<string>([
+  'websocket',
+  'rest',
+  'strategy',
+  'simulation',
+]);
+
+const QueryOptionsSchema = z.object({
+  startDate: z.string().datetime({ offset: true }).optional(),
+  endDate: z.string().datetime({ offset: true }).optional(),
+  marketId: z.string().min(1).max(MAX_MARKET_ID_LENGTH).optional(),
+  eventType: z.string().optional(),
+  limit: z.number().int().min(1).max(MAX_QUERY_LIMIT).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
 export interface EventStoreConfig {
   path?: string;
   readonly?: boolean;
+  /** Maximum total events before oldest are pruned (0 = unlimited) */
+  maxEvents?: number;
 }
 
 export interface QueryOptions {
@@ -43,10 +83,18 @@ export interface QueryOptions {
 
 export class EventStore {
   private db: Database.Database;
+  private readonly maxEvents: number;
 
   constructor(config: EventStoreConfig = {}) {
     const dbPath = config.path || path.join(process.cwd(), 'data', 'events.db');
     
+    // Validate maxEvents config
+    const maxEvents = config.maxEvents ?? 0;
+    if (maxEvents < 0 || !Number.isInteger(maxEvents)) {
+      throw new Error(`EventStore: maxEvents must be a non-negative integer, got ${maxEvents}`);
+    }
+    this.maxEvents = maxEvents;
+
     // Ensure parent directory exists
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
@@ -55,7 +103,7 @@ export class EventStore {
     }
     
     this.db = new Database(dbPath, { readonly: config.readonly ?? false });
-    logger.info('Event store initialized', { path: dbPath });
+    logger.info('Event store initialized', { path: dbPath, maxEvents: this.maxEvents });
 
     if (!config.readonly) {
       this.initializeSchema();
@@ -156,6 +204,47 @@ export class EventStore {
   }
 
   /**
+   * Validate inputs for writeEvent calls
+   */
+  private validateWriteInputs(
+    eventType: string,
+    marketId: string,
+    source: string,
+    payloadJson: string,
+  ): void {
+    if (!marketId || typeof marketId !== 'string' || marketId.trim().length === 0) {
+      throw new Error('EventStore: marketId must be a non-empty string');
+    }
+    if (marketId.length > MAX_MARKET_ID_LENGTH) {
+      throw new Error(`EventStore: marketId exceeds maximum length of ${MAX_MARKET_ID_LENGTH}`);
+    }
+    if (!VALID_EVENT_TYPES.has(eventType)) {
+      throw new Error(`EventStore: invalid eventType "${eventType}"`);
+    }
+    if (!VALID_EVENT_SOURCES.has(source)) {
+      throw new Error(`EventStore: invalid source "${source}"`);
+    }
+    if (Buffer.byteLength(payloadJson, 'utf8') > MAX_PAYLOAD_BYTES) {
+      throw new Error(`EventStore: payload exceeds maximum size of ${MAX_PAYLOAD_BYTES} bytes`);
+    }
+  }
+
+  /**
+   * Prune oldest events when maxEvents limit is reached.
+   * Called after each successful write when maxEvents > 0.
+   */
+  private pruneIfNeeded(): void {
+    if (this.maxEvents <= 0) return;
+    const count = (this.db.prepare('SELECT COUNT(*) as c FROM events').get() as { c: number }).c;
+    if (count <= this.maxEvents) return;
+    const excess = count - this.maxEvents;
+    this.db.prepare(
+      'DELETE FROM events WHERE id IN (SELECT id FROM events ORDER BY id ASC LIMIT ?)'
+    ).run(excess);
+    logger.info('Event store pruned old events', { removed: excess, remaining: this.maxEvents });
+  }
+
+  /**
    * Write an event to the store
    * Events are immutable once written (append-only)
    */
@@ -167,6 +256,9 @@ export class EventStore {
     occurredAt?: string,
     eventVersion: number = 1
   ): string {
+    const payloadJson = JSON.stringify(payload);
+    this.validateWriteInputs(eventType, marketId, source, payloadJson);
+
     const eventId = uuidv4();
     const now = new Date().toISOString();
     const occurred = occurredAt || now;
@@ -190,7 +282,7 @@ export class EventStore {
         now,
         marketId,
         source,
-        JSON.stringify(payload),
+        payloadJson,
         partitionKey,
         null
       );
@@ -202,6 +294,7 @@ export class EventStore {
         partitionKey,
       });
 
+      this.pruneIfNeeded();
       return eventId;
     } catch (error) {
       logger.error('Failed to write event', {
@@ -232,6 +325,12 @@ export class EventStore {
   ): { inserted: number; deduped: number } {
     if (events.length === 0) {
       return { inserted: 0, deduped: 0 };
+    }
+
+    // Validate all events before writing
+    for (const e of events) {
+      const payloadJson = JSON.stringify(e.payload);
+      this.validateWriteInputs(e.eventType, e.marketId, e.source, payloadJson);
     }
 
     const stmt = this.db.prepare(`
@@ -276,7 +375,11 @@ export class EventStore {
     });
 
     try {
-      return runTxn(events);
+      const result = runTxn(events);
+      if (result.inserted > 0) {
+        this.pruneIfNeeded();
+      }
+      return result;
     } catch (error) {
       logger.error('Failed to write events idempotently', {
         count: events.length,
@@ -308,6 +411,15 @@ export class EventStore {
    * Query events with flexible filtering
    */
   queryEvents(options: QueryOptions = {}): EventEnvelope[] {
+    // Validate options
+    const parsed = QueryOptionsSchema.safeParse(options);
+    if (!parsed.success) {
+      throw new Error(`EventStore: invalid query options: ${parsed.error.message}`);
+    }
+
+    // Enforce max query limit - cap to MAX_QUERY_LIMIT even if not specified
+    const effectiveLimit = Math.min(options.limit ?? MAX_QUERY_LIMIT, MAX_QUERY_LIMIT);
+
     let sql = 'SELECT * FROM events WHERE 1=1';
     const params: unknown[] = [];
 
@@ -333,10 +445,8 @@ export class EventStore {
 
     sql += ' ORDER BY occurred_at ASC';
 
-    if (options.limit) {
-      sql += ' LIMIT ?';
-      params.push(options.limit);
-    }
+    sql += ' LIMIT ?';
+    params.push(effectiveLimit);
 
     if (options.offset) {
       sql += ' OFFSET ?';

@@ -32,13 +32,41 @@ export class BanditAllocator {
   private state: Map<string, BanditState>; // Strategy ID -> bandit state
   
   constructor(config: BanditAllocatorConfig) {
+    const minAllocation = config.minAllocation ?? 0.05;
+    const maxAllocation = config.maxAllocation ?? 0.5;
+    const explorationFactor = config.explorationFactor ?? (config.algorithm === 'ucb1' ? 2.0 : 0.1);
+    const minTradeCount = config.minTradeCount ?? 10;
+
+    // Validate configuration
+    if (!config.algorithm || !['epsilon-greedy', 'ucb1', 'thompson-sampling'].includes(config.algorithm)) {
+      throw new Error(`BanditAllocator: invalid algorithm "${config.algorithm}"`);
+    }
+    if (!Number.isFinite(config.totalCapital) || config.totalCapital <= 0) {
+      throw new Error(`BanditAllocator: totalCapital must be a positive number, got ${config.totalCapital}`);
+    }
+    if (!Number.isFinite(explorationFactor) || explorationFactor < 0) {
+      throw new Error(`BanditAllocator: explorationFactor must be a non-negative number, got ${explorationFactor}`);
+    }
+    if (minAllocation < 0 || minAllocation > 1) {
+      throw new Error(`BanditAllocator: minAllocation must be between 0 and 1, got ${minAllocation}`);
+    }
+    if (maxAllocation < 0 || maxAllocation > 1) {
+      throw new Error(`BanditAllocator: maxAllocation must be between 0 and 1, got ${maxAllocation}`);
+    }
+    if (minAllocation > maxAllocation) {
+      throw new Error(`BanditAllocator: minAllocation (${minAllocation}) must not exceed maxAllocation (${maxAllocation})`);
+    }
+    if (!Number.isInteger(minTradeCount) || minTradeCount < 0) {
+      throw new Error(`BanditAllocator: minTradeCount must be a non-negative integer, got ${minTradeCount}`);
+    }
+
     this.config = {
       algorithm: config.algorithm,
       totalCapital: config.totalCapital,
-      explorationFactor: config.explorationFactor ?? (config.algorithm === 'ucb1' ? 2.0 : 0.1),
-      minAllocation: config.minAllocation ?? 0.05,
-      maxAllocation: config.maxAllocation ?? 0.5,
-      minTradeCount: config.minTradeCount ?? 10,
+      explorationFactor,
+      minAllocation,
+      maxAllocation,
+      minTradeCount,
     };
     
     this.state = new Map();
