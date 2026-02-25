@@ -1092,7 +1092,7 @@ async function init() {
   document.getElementById('logLevelFilter').addEventListener('change', renderLogs);
   
   // Learning system buttons
-  // AUDIT NOTE: Learning system backend endpoints exist (/learning/experiments, etc.)
+  // AUDIT NOTE: Learning system backend endpoints exist (/api/learning/experiments, etc.)
   // but are not yet fully wired to the UI controls below. These handlers attempt the
   // API call and show the result or an error if the endpoint is unavailable.
   document.getElementById('startExperimentBtn').addEventListener('click', async () => {
@@ -1100,7 +1100,7 @@ async function init() {
   });
   document.getElementById('viewExperimentsBtn').addEventListener('click', async () => {
     try {
-      const data = await fetchData('/learning/experiments', true);
+      const data = await fetchData('/api/learning/experiments', true);
       if (data && data.experiments) {
         showSuccess('Loaded ' + data.experiments.length + ' experiments');
       } else {

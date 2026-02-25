@@ -52,16 +52,16 @@ RUN addgroup -g 1001 -S polymarket && \
 
 WORKDIR /app
 
-# Copy package files and install production-only dependencies
+# Copy package files (kept for tooling and metadata; dependencies are copied from builder)
 COPY --from=builder --chown=polymarket:polymarket /app/package*.json ./
 COPY --from=builder --chown=polymarket:polymarket /app/apps/backend/package*.json ./apps/backend/
 COPY --from=builder --chown=polymarket:polymarket /app/apps/frontend/package*.json ./apps/frontend/
 COPY --from=builder --chown=polymarket:polymarket /app/packages/shared/package*.json ./packages/shared/
 
-# AUDIT FIX: Install only production dependencies to reduce image size and attack surface.
-# Use --ignore-scripts to avoid running postinstall in production (supply chain risk mitigation).
-# Note: better-sqlite3 needs native binaries copied from builder instead.
+# AUDIT FIX: Copy dependencies from builder, then prune devDependencies to reduce image size and attack surface.
+# Note: better-sqlite3 native binaries are compiled in the builder image and reused here.
 COPY --from=builder --chown=polymarket:polymarket /app/node_modules ./node_modules
+RUN npm prune --omit=dev
 
 # Copy built artifacts (dist directories contain compiled JS)
 COPY --from=builder --chown=polymarket:polymarket /app/apps/backend/dist ./apps/backend/dist

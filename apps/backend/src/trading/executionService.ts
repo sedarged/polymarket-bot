@@ -445,18 +445,27 @@ export class ExecutionService {
     );
 
     // TRADING SAFETY: Calculate aggressive price from orderbook for immediate execution.
-    // BUY: use best ask + slippage (cap at 0.99). SELL: use best bid - slippage (floor at 0.01).
+    // BUY: use best ask * (1 + slippageTolerance), cap at 0.99.
+    // SELL: use best bid * (1 - slippageTolerance), floor at 0.01.
     let price: string;
     const orderbook = this.marketFeedService?.getOrderbook(params.tokenId);
-    const slippage = params.slippageTolerance ?? 0.02;
+    const rawSlippage = params.slippageTolerance ?? 0.02;
+    const slippage = Number.isFinite(rawSlippage) && rawSlippage >= 0 ? rawSlippage : 0.02;
+
     if (params.side === 'BUY') {
-      const bestAsk = orderbook?.asks?.[0]?.price;
-      const askPrice = bestAsk ? parseFloat(bestAsk) : 0.99;
-      price = String(Math.min(askPrice + slippage, 0.99));
+      const bestAskStr = orderbook?.asks?.[0]?.price;
+      const parsedAsk = bestAskStr !== undefined ? parseFloat(bestAskStr) : 0.99;
+      const askPrice = Number.isFinite(parsedAsk) ? parsedAsk : 0.99;
+      const computedPrice = askPrice * (1 + slippage);
+      const boundedPrice = Math.min(computedPrice, 0.99);
+      price = String(Number.isFinite(boundedPrice) ? boundedPrice : 0.99);
     } else {
-      const bestBid = orderbook?.bids?.[0]?.price;
-      const bidPrice = bestBid ? parseFloat(bestBid) : 0.01;
-      price = String(Math.max(bidPrice - slippage, 0.01));
+      const bestBidStr = orderbook?.bids?.[0]?.price;
+      const parsedBid = bestBidStr !== undefined ? parseFloat(bestBidStr) : 0.01;
+      const bidPrice = Number.isFinite(parsedBid) ? parsedBid : 0.01;
+      const computedPrice = bidPrice * (1 - slippage);
+      const boundedPrice = Math.max(computedPrice, 0.01);
+      price = String(Number.isFinite(boundedPrice) ? boundedPrice : 0.01);
     }
 
     logger.info('Executing market order', {

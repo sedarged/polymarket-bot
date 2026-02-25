@@ -312,9 +312,11 @@ describe('WebSocket Message Deduplication - A-010', () => {
 
   describe('LRU cache behavior', () => {
     it('should allow reprocessing messages after cache eviction', async () => {
+      // Use a small dedup cache so eviction is deterministic without large floods.
       client = new MarketFeedClient({
         url: `ws://localhost:${port}`,
         tokenIds: [mockTokenId],
+        dedupCacheSize: 5,
       });
 
       await new Promise<void>((resolve) => {
@@ -340,13 +342,9 @@ describe('WebSocket Message Deduplication - A-010', () => {
       // Record count before flooding
       const countBeforeFlood = snapshotCount;
 
-      // Fill cache with many different messages to trigger LRU eviction.
-      // Cache size is 10000. We send 10001 unique messages so that the
-      // original snapshot's message ID is evicted from the dedup cache.
-      // NOTE: Not all messages may be processed due to WebSocket
-      // backpressure in test environments - that's OK, we only need
-      // enough to evict the original snapshot's ID from the LRU cache.
-      const manySnapshots = Array.from({ length: 10001 }, (_, i) =>
+      // Fill cache with dedupCacheSize+1 unique messages to trigger LRU eviction.
+      // With a cache size of 5, sending 6 unique messages evicts the first entry.
+      const manySnapshots = Array.from({ length: 6 }, (_, i) =>
         createMockOrderbookSnapshot({ timestamp: 2000 + i })
       );
 
@@ -354,8 +352,8 @@ describe('WebSocket Message Deduplication - A-010', () => {
         manySnapshots.forEach(s => ws.send(JSON.stringify(s)));
       });
 
-      // Wait for messages to process (some may be dropped by backpressure)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Wait for messages to process
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const countAfterFlood = snapshotCount;
       // Verify at least some of the flood messages were processed
