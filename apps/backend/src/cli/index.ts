@@ -431,7 +431,7 @@ export async function backtestCommand(options: Record<string, unknown>): Promise
     if (options.config) {
       try {
         strategyConfig = JSON.parse(options.config as string);
-      } catch (error) {
+      } catch {
         console.error('Error: Invalid JSON for --config parameter');
         process.exit(1);
       }

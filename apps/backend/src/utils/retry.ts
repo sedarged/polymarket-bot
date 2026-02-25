@@ -43,18 +43,37 @@ export enum ErrorType {
  * Returns error type for logging and conditional retry logic.
  */
 export function classifyError(error: Error): ErrorType {
+  // AUDIT FIX: Check HTTP status code first (more reliable than string matching).
+  // Axios errors have response.status; fetch errors may have a status property.
+  const statusCode = (error as any)?.response?.status ?? (error as any)?.status;
+  if (typeof statusCode === 'number') {
+    if (statusCode === 429) return ErrorType.RATE_LIMIT;
+    if (statusCode >= 400 && statusCode < 500) return ErrorType.PERMANENT;
+    if (statusCode >= 500) return ErrorType.TRANSIENT;
+  }
+
+  // Check error code (Node.js system errors)
+  const code = (error as any)?.code;
+  if (typeof code === 'string') {
+    if (code === 'ETIMEDOUT' || code === 'ESOCKETTIMEDOUT') return ErrorType.TIMEOUT;
+    if (code === 'ECONNREFUSED' || code === 'ECONNRESET' || code === 'ENOTFOUND' || code === 'EPIPE') {
+      return ErrorType.NETWORK;
+    }
+  }
+
+  // Fall back to message-based classification
   const message = error.message.toLowerCase();
-  
+
   // Rate limiting errors
   if (message.includes('rate limit') || message.includes('429') || message.includes('too many requests')) {
     return ErrorType.RATE_LIMIT;
   }
-  
+
   // Timeout errors
   if (message.includes('timeout') || message.includes('timed out') || message.includes('etimedout')) {
     return ErrorType.TIMEOUT;
   }
-  
+
   // Network errors
   if (
     message.includes('econnrefused') ||
@@ -64,12 +83,12 @@ export function classifyError(error: Error): ErrorType {
   ) {
     return ErrorType.NETWORK;
   }
-  
+
   // Permanent errors (4xx except 429)
   if (message.includes('400') || message.includes('401') || message.includes('403') || message.includes('404')) {
     return ErrorType.PERMANENT;
   }
-  
+
   // Default to transient for 5xx and unknown errors
   return ErrorType.TRANSIENT;
 }

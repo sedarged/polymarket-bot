@@ -52,6 +52,11 @@ export interface MarketFeedOptions {
    * Addresses Sourcery review: Expose autoInvalidate for clarity.
    */
   cacheAutoInvalidate?: boolean;
+  /**
+   * Override deduplication cache size. Default: 10000.
+   * Useful in tests to trigger LRU eviction with a small flood of messages.
+   */
+  dedupCacheSize?: number;
 }
 
 export class MarketFeedClient extends EventEmitter {
@@ -65,11 +70,12 @@ export class MarketFeedClient extends EventEmitter {
   private resyncPromises: Map<string, Promise<void>> = new Map();
   // Message deduplication (A-010): Track processed message IDs using LRU-style Set
   private processedMessageIds: Set<string> = new Set();
-  private readonly MESSAGE_ID_CACHE_SIZE = 10000;
+  private readonly MESSAGE_ID_CACHE_SIZE: number;
 
   constructor(options: MarketFeedOptions) {
     super();
     this.tokenIds = options.tokenIds;
+    this.MESSAGE_ID_CACHE_SIZE = options.dedupCacheSize ?? 10000;
     // Use single source of truth for default TTL (Sourcery review comment)
     this.cache = new OrderbookCache({
       ttl: options.cacheTtl, // Let OrderbookCache apply DEFAULT_CACHE_TTL_MS if undefined

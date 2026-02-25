@@ -205,7 +205,7 @@ export class StrategyValidator {
       results.push({
         check: 'config',
         passed: true,
-        severity: 'error',
+        severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
         message: 'Configuration is valid',
       });
     }
@@ -271,7 +271,7 @@ export class StrategyValidator {
       results.push({
         check: 'interface',
         passed: true,
-        severity: 'error',
+        severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
         message: 'Interface compliance verified',
       });
     }
@@ -290,7 +290,7 @@ export class StrategyValidator {
       results.push({
         check: 'parameters',
         passed: true,
-        severity: 'error',
+        severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
         message: 'No parameter bounds to validate',
       });
       return results;
@@ -340,7 +340,7 @@ export class StrategyValidator {
       results.push({
         check: 'parameters',
         passed: true,
-        severity: 'error',
+        severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
         message: 'All parameters within bounds',
       });
     }
@@ -405,7 +405,7 @@ export class StrategyValidator {
         results.push({
           check: 'behavior.decision',
           passed: true,
-          severity: 'error',
+          severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
           message: 'Decision structure is valid',
         });
       }
@@ -429,7 +429,7 @@ export class StrategyValidator {
         results.push({
           check: 'behavior.confidence',
           passed: true,
-          severity: 'error',
+          severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
           message: 'Confidence is within valid range',
         });
       }
@@ -450,7 +450,7 @@ export class StrategyValidator {
           results.push({
             check: 'behavior.price',
             passed: true,
-            severity: 'error',
+            severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
             message: 'Price is within valid range',
           });
         }
@@ -472,7 +472,7 @@ export class StrategyValidator {
           results.push({
             check: 'behavior.size',
             passed: true,
-            severity: 'error',
+            severity: 'warning', // AUDIT FIX: passing checks use 'warning' severity (informational)
             message: 'Size is valid',
           });
         }

@@ -245,9 +245,10 @@ describe('ExecutionService', () => {
 
       const result = await executionService.executeOrder(request);
 
-      expect(result.status).toBe(ExecutionStatus.FAILED);
+      // AUDIT FIX: Conditional orders now return REJECTED (not FAILED) for cleaner error handling
+      expect(result.status).toBe(ExecutionStatus.REJECTED);
       expect(result.error).toBeDefined();
-      expect(result.error?.message).toContain('Conditional orders require market monitoring');
+      expect(result.error?.message).toContain('Conditional orders are not yet supported');
     });
   });
 

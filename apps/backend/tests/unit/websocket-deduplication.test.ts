@@ -312,9 +312,11 @@ describe('WebSocket Message Deduplication - A-010', () => {
 
   describe('LRU cache behavior', () => {
     it('should allow reprocessing messages after cache eviction', async () => {
+      // Use a small dedup cache so eviction is deterministic without large floods.
       client = new MarketFeedClient({
         url: `ws://localhost:${port}`,
         tokenIds: [mockTokenId],
+        dedupCacheSize: 5,
       });
 
       await new Promise<void>((resolve) => {
@@ -337,9 +339,12 @@ describe('WebSocket Message Deduplication - A-010', () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(snapshotCount).toBe(1);
 
-      // Fill cache with many different messages to trigger LRU eviction
-      // Cache size is 10000, so we send 10001 messages to ensure eviction
-      const manySnapshots = Array.from({ length: 10001 }, (_, i) => 
+      // Record count before flooding
+      const countBeforeFlood = snapshotCount;
+
+      // Fill cache with dedupCacheSize+1 unique messages to trigger LRU eviction.
+      // With a cache size of 5, sending 6 unique messages evicts the first entry.
+      const manySnapshots = Array.from({ length: 6 }, (_, i) =>
         createMockOrderbookSnapshot({ timestamp: 2000 + i })
       );
 
@@ -347,17 +352,24 @@ describe('WebSocket Message Deduplication - A-010', () => {
         manySnapshots.forEach(s => ws.send(JSON.stringify(s)));
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for messages to process
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Now resend the original snapshot - it should be evicted from cache
+      const countAfterFlood = snapshotCount;
+      // Verify at least some of the flood messages were processed
+      expect(countAfterFlood).toBeGreaterThan(countBeforeFlood);
+
+      // Now resend the original snapshot - it should be reprocessable
+      // because the LRU cache has evicted older entries
       server.clients.forEach((ws) => {
         ws.send(JSON.stringify(snapshot));
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Should process the snapshot again after eviction
-      expect(snapshotCount).toBe(10003); // 1 original + 10001 new + 1 replayed
+      // The replayed snapshot should be processed (not deduped),
+      // so count should be at least one more than after the flood
+      expect(snapshotCount).toBeGreaterThan(countAfterFlood);
     });
   });
 

@@ -201,6 +201,13 @@ export class ExecutionTimeoutError extends Error {
 export class ExecutionService {
   private liquidityValidator: LiquidityValidator | null;
   private marketFeedService: typeof marketFeedService | null;
+  // Execution statistics tracking (replaces placeholder)
+  private stats = {
+    totalExecutions: 0,
+    successfulExecutions: 0,
+    failedExecutions: 0,
+    totalExecutionTimeMs: 0,
+  };
 
   constructor(
     private tradingClient: TradingClient,
@@ -286,6 +293,15 @@ export class ExecutionService {
 
       result.retryAttempts = retryAttempts;
 
+      // Track execution statistics
+      this.stats.totalExecutions++;
+      this.stats.totalExecutionTimeMs += result.executionTimeMs;
+      if (result.status === ExecutionStatus.SUCCESS || result.status === ExecutionStatus.PARTIAL) {
+        this.stats.successfulExecutions++;
+      } else {
+        this.stats.failedExecutions++;
+      }
+
       logger.info('Order execution completed', {
         category: 'ORDER_FLOW',
         executionId: request.context.executionId,
@@ -298,6 +314,11 @@ export class ExecutionService {
       return result;
     } catch (error) {
       const executionTimeMs = Date.now() - startTime;
+
+      // Track failed execution statistics
+      this.stats.totalExecutions++;
+      this.stats.failedExecutions++;
+      this.stats.totalExecutionTimeMs += executionTimeMs;
 
       logger.error('Order execution failed', {
         category: 'ORDER_FLOW',
@@ -423,14 +444,29 @@ export class ExecutionService {
       params
     );
 
-    // Get best available price from order book
-    // For market orders, we use a limit order at a price that ensures immediate execution
-    // BUY: Use a high price (e.g., best ask + slippage tolerance)
-    // SELL: Use a low price (e.g., best bid - slippage tolerance)
-    
-    // For now, use a simple implementation that places an order at a price likely to fill
-    // In production, this should query the order book and calculate optimal price
-    const price = params.side === 'BUY' ? '0.99' : '0.01'; // Conservative prices for immediate fill
+    // TRADING SAFETY: Calculate aggressive price from orderbook for immediate execution.
+    // BUY: use best ask * (1 + slippageTolerance), cap at 0.99.
+    // SELL: use best bid * (1 - slippageTolerance), floor at 0.01.
+    let price: string;
+    const orderbook = this.marketFeedService?.getOrderbook(params.tokenId);
+    const rawSlippage = params.slippageTolerance ?? 0.02;
+    const slippage = Number.isFinite(rawSlippage) && rawSlippage >= 0 ? rawSlippage : 0.02;
+
+    if (params.side === 'BUY') {
+      const bestAskStr = orderbook?.asks?.[0]?.price;
+      const parsedAsk = bestAskStr !== undefined ? parseFloat(bestAskStr) : 0.99;
+      const askPrice = Number.isFinite(parsedAsk) ? parsedAsk : 0.99;
+      const computedPrice = askPrice * (1 + slippage);
+      const boundedPrice = Math.min(computedPrice, 0.99);
+      price = String(Number.isFinite(boundedPrice) ? boundedPrice : 0.99);
+    } else {
+      const bestBidStr = orderbook?.bids?.[0]?.price;
+      const parsedBid = bestBidStr !== undefined ? parseFloat(bestBidStr) : 0.01;
+      const bidPrice = Number.isFinite(parsedBid) ? parsedBid : 0.01;
+      const computedPrice = bidPrice * (1 - slippage);
+      const boundedPrice = Math.max(computedPrice, 0.01);
+      price = String(Number.isFinite(boundedPrice) ? boundedPrice : 0.01);
+    }
 
     logger.info('Executing market order', {
       category: 'ORDER_FLOW',
@@ -517,14 +553,11 @@ export class ExecutionService {
    */
   private async executeConditionalOrder(
     request: OrderExecutionRequest,
-    _startTime: number
+    startTime: number
   ): Promise<OrderExecutionResult> {
     const params = request.params as ConditionalOrderParams;
 
-    // Note: Liquidity should be checked when the trigger fires, not at setup time.
-    // Once conditional orders are implemented, add liquidity check in the trigger handler.
-
-    logger.info('Setting up conditional order', {
+    logger.warn('Conditional order requested but not supported', {
       category: 'ORDER_FLOW',
       executionId: request.context.executionId,
       tokenId: params.tokenId,
@@ -535,14 +568,18 @@ export class ExecutionService {
       triggerCondition: params.triggerCondition,
     });
 
-    // Conditional orders require monitoring the market price and triggering when conditions are met
-    // This is a placeholder implementation - in production, this would:
-    // 1. Monitor market price via WebSocket
-    // 2. Trigger order placement when condition is met
-    // 3. Maintain order state in persistent storage
-    
-    // For now, throw an error indicating this needs full implementation
-    throw new Error('Conditional orders require market monitoring - not yet fully implemented');
+    const executionTimeMs = Date.now() - startTime;
+
+    // AUDIT FIX: Return a proper REJECTED result instead of throwing, so callers handle it gracefully.
+    // Conditional orders require market price monitoring via WebSocket + persistent state management.
+    // This feature is intentionally not yet implemented (requires product decision on trigger architecture).
+    return {
+      status: ExecutionStatus.REJECTED,
+      executionId: request.context.executionId,
+      error: new Error('Conditional orders are not yet supported. They require market price monitoring and persistent trigger state.'),
+      executionTimeMs,
+      retryAttempts: 0,
+    };
   }
 
   /**
@@ -619,13 +656,13 @@ export class ExecutionService {
     failedExecutions: number;
     averageExecutionTimeMs: number;
   } {
-    // This would track statistics in production
-    // For now, return placeholder values
     return {
-      totalExecutions: 0,
-      successfulExecutions: 0,
-      failedExecutions: 0,
-      averageExecutionTimeMs: 0,
+      totalExecutions: this.stats.totalExecutions,
+      successfulExecutions: this.stats.successfulExecutions,
+      failedExecutions: this.stats.failedExecutions,
+      averageExecutionTimeMs: this.stats.totalExecutions > 0
+        ? this.stats.totalExecutionTimeMs / this.stats.totalExecutions
+        : 0,
     };
   }
 }

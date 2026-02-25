@@ -237,8 +237,10 @@ export class SyncManager {
   }): Promise<Discrepancy[]> {
     const discrepancies: Discrepancy[] = [];
 
-    // Note: In a real implementation, we would fetch local state from TradingClient
-    // For now, we compare against empty local state as a placeholder
+    // AUDIT FIX: Log that local state is not yet integrated with TradingClient.
+    // This comparison uses empty local state, meaning all remote state is flagged as discrepancies.
+    // When TradingClient exposes getOpenOrders/getPositions/getBalances, wire them here.
+    // Until then, the sync cycle serves as a remote state audit log.
     const localOrders: Order[] = [];
     const localFills: Fill[] = [];
     const localPositions: Position[] = [];
