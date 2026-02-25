@@ -137,6 +137,14 @@ export class PromotionWorkflow {
     performance: StrategyPerformance,
     daysSinceStart: number
   ): PromotionRecord {
+    // Validate inputs
+    if (!strategyId || typeof strategyId !== 'string' || strategyId.trim().length === 0) {
+      throw new Error('PromotionWorkflow: strategyId must be a non-empty string');
+    }
+    if (!Number.isFinite(daysSinceStart) || daysSinceStart < 0) {
+      throw new Error(`PromotionWorkflow: daysSinceStart must be a non-negative number, got ${daysSinceStart}`);
+    }
+
     const existing = this.getPromotion(strategyId);
     
     // Check metrics gating - this is our single source of truth for threshold checks
@@ -254,6 +262,17 @@ export class PromotionWorkflow {
     reviewedBy: string,
     reviewNotes?: string
   ): PromotionRecord {
+    // Validate inputs
+    if (!reviewedBy || typeof reviewedBy !== 'string' || reviewedBy.trim().length === 0) {
+      throw new Error('PromotionWorkflow: reviewedBy must be a non-empty string');
+    }
+    if (reviewNotes !== undefined && typeof reviewNotes !== 'string') {
+      throw new Error('PromotionWorkflow: reviewNotes must be a string when provided');
+    }
+    if (typeof reviewNotes === 'string' && reviewNotes.length > 2000) {
+      throw new Error('PromotionWorkflow: reviewNotes must not exceed 2000 characters');
+    }
+
     const existing = this.getPromotion(strategyId);
     
     if (!existing) {
@@ -300,6 +319,17 @@ export class PromotionWorkflow {
     reviewedBy: string,
     reviewNotes: string
   ): PromotionRecord {
+    // Validate inputs
+    if (!reviewedBy || typeof reviewedBy !== 'string' || reviewedBy.trim().length === 0) {
+      throw new Error('PromotionWorkflow: reviewedBy must be a non-empty string');
+    }
+    if (!reviewNotes || typeof reviewNotes !== 'string' || reviewNotes.trim().length === 0) {
+      throw new Error('PromotionWorkflow: reviewNotes are required for rejection');
+    }
+    if (reviewNotes.length > 2000) {
+      throw new Error('PromotionWorkflow: reviewNotes must not exceed 2000 characters');
+    }
+
     const existing = this.getPromotion(strategyId);
     
     if (!existing) {

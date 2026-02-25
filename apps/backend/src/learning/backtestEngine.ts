@@ -35,7 +35,14 @@ export interface BacktestEngineConfig {
   path?: string;
   readonly?: boolean;
   eventStore: EventStore;
+  /** Maximum number of concurrent running backtests (default: 3) */
+  maxConcurrentBacktests?: number;
+  /** Maximum date range in days for a single backtest (default: 365) */
+  maxDateRangeDays?: number;
 }
+
+/** Maximum markets allowed in a single backtest */
+const MAX_MARKETS_PER_BACKTEST = 50;
 
 export interface BacktestMetrics {
   pnl: number;
@@ -49,10 +56,25 @@ export interface BacktestMetrics {
 export class BacktestEngine {
   private db: Database.Database;
   private eventStore: EventStore;
+  private readonly maxConcurrentBacktests: number;
+  private readonly maxDateRangeDays: number;
+  private activeBacktests: number = 0;
 
   constructor(config: BacktestEngineConfig) {
     const dbPath = config.path || path.join(process.cwd(), 'data', 'backtests.db');
     
+    // Validate config
+    const maxConcurrentBacktests = config.maxConcurrentBacktests ?? 3;
+    const maxDateRangeDays = config.maxDateRangeDays ?? 365;
+    if (!Number.isInteger(maxConcurrentBacktests) || maxConcurrentBacktests < 1) {
+      throw new Error(`BacktestEngine: maxConcurrentBacktests must be a positive integer, got ${maxConcurrentBacktests}`);
+    }
+    if (!Number.isInteger(maxDateRangeDays) || maxDateRangeDays < 1) {
+      throw new Error(`BacktestEngine: maxDateRangeDays must be a positive integer, got ${maxDateRangeDays}`);
+    }
+    this.maxConcurrentBacktests = maxConcurrentBacktests;
+    this.maxDateRangeDays = maxDateRangeDays;
+
     // Ensure parent directory exists
     const dir = path.dirname(dbPath);
     if (!fs.existsSync(dir)) {
@@ -62,7 +84,11 @@ export class BacktestEngine {
     
     this.db = new Database(dbPath, { readonly: config.readonly ?? false });
     this.eventStore = config.eventStore;
-    logger.info('Backtest engine initialized', { path: dbPath });
+    logger.info('Backtest engine initialized', {
+      path: dbPath,
+      maxConcurrentBacktests: this.maxConcurrentBacktests,
+      maxDateRangeDays: this.maxDateRangeDays,
+    });
 
     if (!config.readonly) {
       this.initializeSchema();
@@ -114,6 +140,16 @@ export class BacktestEngine {
    * Returns backtest ID for tracking
    */
   async runBacktest(config: Omit<BacktestConfig, 'backtestId'>): Promise<string> {
+    // Validate config
+    this.validateBacktestConfig(config);
+
+    // Enforce concurrency limit
+    if (this.activeBacktests >= this.maxConcurrentBacktests) {
+      throw new Error(
+        `BacktestEngine: maximum concurrent backtests (${this.maxConcurrentBacktests}) reached. Try again later.`
+      );
+    }
+
     const backtestId = uuidv4();
     const fullConfig: BacktestConfig = {
       ...config,
@@ -143,6 +179,7 @@ export class BacktestEngine {
       endDate: config.endDate,
     });
 
+    this.activeBacktests++;
     try {
       // Execute backtest
       const result = await this.executeBacktest(fullConfig);
@@ -186,6 +223,72 @@ export class BacktestEngine {
       });
 
       throw error;
+    } finally {
+      this.activeBacktests--;
+    }
+  }
+
+  /**
+   * Validate backtest configuration inputs
+   */
+  private validateBacktestConfig(config: Omit<BacktestConfig, 'backtestId'>): void {
+    if (!config.strategyId || typeof config.strategyId !== 'string' || config.strategyId.trim().length === 0) {
+      throw new Error('BacktestEngine: strategyId must be a non-empty string');
+    }
+    if (!config.startDate || !config.endDate) {
+      throw new Error('BacktestEngine: startDate and endDate are required');
+    }
+    const start = new Date(config.startDate);
+    const end = new Date(config.endDate);
+    if (isNaN(start.getTime())) {
+      throw new Error(`BacktestEngine: invalid startDate "${config.startDate}"`);
+    }
+    if (isNaN(end.getTime())) {
+      throw new Error(`BacktestEngine: invalid endDate "${config.endDate}"`);
+    }
+    if (end <= start) {
+      throw new Error('BacktestEngine: endDate must be after startDate');
+    }
+    const rangeDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    if (rangeDays > this.maxDateRangeDays) {
+      throw new Error(
+        `BacktestEngine: date range of ${Math.ceil(rangeDays)} days exceeds maximum of ${this.maxDateRangeDays} days`
+      );
+    }
+    if (!Array.isArray(config.markets) || config.markets.length === 0) {
+      throw new Error('BacktestEngine: markets must be a non-empty array');
+    }
+    if (config.markets.length > MAX_MARKETS_PER_BACKTEST) {
+      throw new Error(
+        `BacktestEngine: number of markets (${config.markets.length}) exceeds maximum of ${MAX_MARKETS_PER_BACKTEST}`
+      );
+    }
+    // Validate each market ID entry
+    for (let i = 0; i < config.markets.length; i++) {
+      const marketId = config.markets[i];
+      if (typeof marketId !== 'string') {
+        throw new Error(
+          `BacktestEngine: market id at index ${i} must be a non-empty string, got ${typeof marketId}`
+        );
+      }
+      const trimmed = marketId.trim();
+      if (trimmed.length === 0) {
+        throw new Error(`BacktestEngine: market id at index ${i} must be a non-empty string`);
+      }
+      if (trimmed.length > 256) {
+        throw new Error(
+          `BacktestEngine: market id at index ${i} exceeds maximum length of 256 characters`
+        );
+      }
+    }
+    if (!Number.isFinite(config.initialBalance) || config.initialBalance <= 0) {
+      throw new Error(`BacktestEngine: initialBalance must be a positive number, got ${config.initialBalance}`);
+    }
+    if (!Number.isFinite(config.slippage) || config.slippage < 0 || config.slippage >= 1) {
+      throw new Error(`BacktestEngine: slippage must be between 0 and 1, got ${config.slippage}`);
+    }
+    if (!Number.isFinite(config.feeRate) || config.feeRate < 0 || config.feeRate >= 1) {
+      throw new Error(`BacktestEngine: feeRate must be between 0 and 1, got ${config.feeRate}`);
     }
   }
 

@@ -1,5 +1,6 @@
 import http from "http";
 import { logger } from "../utils/logger";
+import { config } from "../config";
 import {
   EventStore,
   SignalCatalog,
@@ -56,6 +57,7 @@ function initializeLearningSystem(): void {
     const localEventStore = new EventStore({
       path: process.env.EVENT_STORE_PATH || "./data/events.db",
       readonly: false,
+      maxEvents: config.eventStoreMaxEvents,
     });
 
     const localSignalCatalog = new SignalCatalog({
@@ -67,6 +69,8 @@ function initializeLearningSystem(): void {
       path: process.env.BACKTEST_ENGINE_PATH || "./data/backtests.db",
       eventStore: localEventStore,
       readonly: false,
+      maxConcurrentBacktests: config.backtestMaxConcurrent,
+      maxDateRangeDays: config.backtestMaxDateRangeDays,
     });
 
     const localBanditAllocator = new BanditAllocator({
