@@ -517,7 +517,7 @@ export class ExecutionService {
    */
   private async executeConditionalOrder(
     request: OrderExecutionRequest,
-    startTime: number
+    _startTime: number
   ): Promise<OrderExecutionResult> {
     const params = request.params as ConditionalOrderParams;
 

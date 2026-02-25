@@ -1220,7 +1220,7 @@ export class TradingClient {
    * await tradingClient.cancelMarketOrders('token123');
    * ```
    */
-  async cancelMarketOrders(tokenId?: string, assetId?: string): Promise<void> {
+  async cancelMarketOrders(tokenId?: string, assetId?: string): Promise<number> {
     assertLiveTradingEnabled();
 
     if (!this.client) {
@@ -1282,6 +1282,8 @@ export class TradingClient {
         durationMs: duration,
         note: !tokenId ? 'Local state not updated - assetId cancellation relies on reconciliation' : undefined,
       });
+
+      return targetOrders.length;
     } catch (error) {
       const duration = Date.now() - startTime;
       logger.error('Market order cancellation failed', {
