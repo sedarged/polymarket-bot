@@ -1,4 +1,5 @@
 import http from 'http';
+import crypto from 'crypto';
 import { getHealthStatus, getReadinessStatus } from './health';
 import { logger } from '../utils/logger';
 import { config } from '../config';
@@ -120,6 +121,28 @@ const respondJson = (res: http.ServerResponse, statusCode: number, payload: unkn
 };
 
 /**
+ * Extract token from Authorization header
+ * Supports both "Bearer <token>" (case-insensitive) and raw token header values.
+ */
+const extractAdminTokenFromHeader = (
+  authHeader: string | string[] | undefined,
+): string | null => {
+  if (!authHeader) {
+    return null;
+  }
+
+  const headerValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+  const trimmedHeader = headerValue.trim();
+  if (!trimmedHeader) {
+    return null;
+  }
+
+  const bearerMatch = /^bearer\s+(.+)$/i.exec(trimmedHeader);
+  const token = bearerMatch ? bearerMatch[1].trim() : trimmedHeader;
+  return token || null;
+};
+
+/**
  * Validate admin token from Authorization header
  */
 const validateAdminToken = (req: http.IncomingMessage): boolean => {
@@ -136,22 +159,28 @@ const validateAdminToken = (req: http.IncomingMessage): boolean => {
     return false;
   }
 
-  const authHeader = req.headers['authorization'];
-  if (!authHeader) {
+  const token = extractAdminTokenFromHeader(req.headers['authorization']);
+  if (!token) {
     return false;
   }
 
-  // Support both "Bearer <token>" and plain token
-  const token = authHeader.startsWith('Bearer ') 
-    ? authHeader.substring(7) 
-    : authHeader;
-
-  // Only compare against valid tokens to prevent empty string matches
-  const validTokens = [];
+  // Only compare against valid tokens to prevent empty string matches.
+  const validTokens: string[] = [];
   if (hasAdminToken) validTokens.push(adminToken);
   if (hasAdminTokenNext) validTokens.push(adminTokenNext);
-  
-  return token.length > 0 && validTokens.includes(token);
+
+  // SECURITY FIX: constant-time comparison by hashing inputs to fixed-length buffers first.
+  const tokenDigest = crypto.createHash('sha256').update(token, 'utf8').digest();
+
+  // Use non-short-circuit evaluation to avoid leaking which token matched in dual-token rotation windows.
+  let isValid = false;
+  for (const candidate of validTokens) {
+    const candidateDigest = crypto.createHash('sha256').update(candidate, 'utf8').digest();
+    const matched = crypto.timingSafeEqual(candidateDigest, tokenDigest);
+    isValid = isValid || matched;
+  }
+
+  return isValid;
 };
 
 /**
@@ -263,6 +292,18 @@ const parseRequestBody = (req: http.IncomingMessage): Promise<Record<string, any
     req.on('error', onError);
   });
 };
+
+
+/**
+ * Normalizes shutdown handler arguments from process signals/events into numeric exit codes.
+ * `process.on('SIGTERM', handler)` passes the signal string into the handler.
+ */
+export function normalizeShutdownExitCode(
+  value: number | NodeJS.Signals | undefined,
+  fallback: number,
+): number {
+  return typeof value === 'number' ? value : fallback;
+}
 
 export function createServer(): http.Server {
   // Initialize rate limiter if not already initialized (Audit Finding A-008)
@@ -1099,7 +1140,7 @@ export async function startServer(): Promise<http.Server> {
 
   // Graceful shutdown handler
   // Addresses Audit Finding A-017: properly await all cleanup operations
-  const shutdown = async (exitCode?: number) => {
+  const shutdown = async (exitCodeOrSignal?: number | NodeJS.Signals) => {
     logger.info('Shutting down server...');
     
     // Create shutdown timeout to prevent hanging (10 seconds)
@@ -1181,13 +1222,13 @@ export async function startServer(): Promise<http.Server> {
 
       // Clear shutdown timeout and exit cleanly
       clearTimeout(shutdownTimeout);
-      process.exit(exitCode ?? 0);
+      process.exit(normalizeShutdownExitCode(exitCodeOrSignal, 0));
     } catch (error) {
       logger.error('Error during shutdown', {
         error: error instanceof Error ? error.message : String(error),
       });
       clearTimeout(shutdownTimeout);
-      process.exit(exitCode ?? 1);
+      process.exit(normalizeShutdownExitCode(exitCodeOrSignal, 1));
     }
   };
 

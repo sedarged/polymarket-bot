@@ -125,6 +125,19 @@ function formatCurrency(num, decimals = 2) {
   return num >= 0 ? `$${formatted}` : `-$${Math.abs(formatted)}`;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function safeSlice(value, start, end) {
+  return String(value ?? '').slice(start, end);
+}
+
 function showError(message) {
   addAlert('danger', message);
 }
@@ -376,13 +389,13 @@ async function updateMarkets() {
         <tbody>
           ${data.map(m => `
             <tr>
-              <td>${m.tokenId.slice(0, 10)}...</td>
-              <td class="buy">${m.summary.bestBid || '-'}</td>
-              <td class="sell">${m.summary.bestAsk || '-'}</td>
-              <td>${m.summary.mid || '-'}</td>
-              <td>${m.summary.spread || '-'}</td>
+              <td>${escapeHtml(safeSlice(m.tokenId, 0, 10))}...</td>
+              <td class="buy">${escapeHtml(m.summary.bestBid ?? '-')}</td>
+              <td class="sell">${escapeHtml(m.summary.bestAsk ?? '-')}</td>
+              <td>${escapeHtml(m.summary.mid ?? '-')}</td>
+              <td>${escapeHtml(m.summary.spread ?? '-')}</td>
               <td style="color: var(--text-secondary); font-size: 12px;">
-                ${formatTimestamp(m.timestamp)}
+                ${escapeHtml(formatTimestamp(m.timestamp))}
               </td>
             </tr>
           `).join('')}
@@ -419,7 +432,7 @@ async function updateMetrics() {
         </div>
         <div>
           <div class="card-label">Status</div>
-          <div style="font-size: 20px; font-weight: 600;">${health.status || 'unknown'}</div>
+          <div style="font-size: 20px; font-weight: 600;">${escapeHtml(health.status || 'unknown')}</div>
         </div>
         <div>
           <div class="card-label">Live Trading</div>
@@ -562,7 +575,7 @@ function updatePositionsTable(positions) {
           const pnlClass = pnl >= 0 ? 'buy' : 'sell';
           return `
             <tr>
-              <td>${p.tokenId.slice(0, 10)}...</td>
+              <td>${escapeHtml(safeSlice(p.tokenId, 0, 10))}...</td>
               <td>${formatNumber(p.size)}</td>
               <td>${formatNumber(p.averagePrice, 4)}</td>
               <td>${p.marketValue ? formatCurrency(p.marketValue) : '-'}</td>
@@ -599,13 +612,13 @@ function updateOrdersTable(orders) {
       <tbody>
         ${orders.map(o => `
           <tr>
-            <td>${o.orderId.slice(0, 8)}...</td>
-            <td>${o.tokenId.slice(0, 10)}...</td>
-            <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${o.side}</td>
+            <td>${escapeHtml(safeSlice(o.orderId, 0, 8))}...</td>
+            <td>${escapeHtml(safeSlice(o.tokenId, 0, 10))}...</td>
+            <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(o.side)}</td>
             <td>${formatNumber(o.price, 4)}</td>
             <td>${formatNumber(o.size)}</td>
             <td style="color: var(--text-secondary); font-size: 12px;">
-              ${formatTimestamp(o.createdAt)}
+              ${escapeHtml(formatTimestamp(o.createdAt))}
             </td>
           </tr>
         `).join('')}
@@ -641,14 +654,14 @@ function updateFillsTable(fills) {
       <tbody>
         ${recentFills.map(f => `
           <tr>
-            <td>${f.orderId.slice(0, 8)}...</td>
-            <td>${f.tokenId.slice(0, 10)}...</td>
-            <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${f.side}</td>
+            <td>${escapeHtml(safeSlice(f.orderId, 0, 8))}...</td>
+            <td>${escapeHtml(safeSlice(f.tokenId, 0, 10))}...</td>
+            <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(f.side)}</td>
             <td>${formatNumber(f.price, 4)}</td>
             <td>${formatNumber(f.size)}</td>
             <td>${f.fee ? formatNumber(f.fee, 4) : '-'}</td>
             <td style="color: var(--text-secondary); font-size: 12px;">
-              ${formatTimestamp(f.timestamp)}
+              ${escapeHtml(formatTimestamp(f.timestamp))}
             </td>
           </tr>
         `).join('')}
@@ -669,9 +682,9 @@ function renderEventFeed() {
   
   const html = state.events.map(event => `
     <div class="event-item">
-      <span class="event-timestamp">${new Date(event.timestamp).toLocaleTimeString()}</span>
-      <span class="event-type">${event.type}</span>
-      <span class="event-message">${event.message}</span>
+      <span class="event-timestamp">${escapeHtml(new Date(event.timestamp).toLocaleTimeString())}</span>
+      <span class="event-type">${escapeHtml(event.type)}</span>
+      <span class="event-message">${escapeHtml(event.message)}</span>
     </div>
   `).join('');
   
@@ -692,8 +705,8 @@ function renderLogs() {
   }
   
   const html = filteredLogs.map(log => `
-    <div class="log-entry ${log.level}">
-      [${new Date(log.timestamp).toLocaleTimeString()}] [${log.level.toUpperCase()}] ${log.message}
+    <div class="log-entry ${escapeHtml(log.level)}">
+      [${escapeHtml(new Date(log.timestamp).toLocaleTimeString())}] [${escapeHtml(log.level.toUpperCase())}] ${escapeHtml(log.message)}
     </div>
   `).join('');
   
@@ -711,8 +724,8 @@ function renderAlerts() {
   const html = state.alerts.map(alert => `
     <div class="alert alert-${alert.type}" style="margin-bottom: 12px;">
       <span>${alert.type === 'danger' ? '❌' : alert.type === 'warning' ? '⚠️' : alert.type === 'success' ? '✅' : 'ℹ️'}</span>
-      <span style="flex: 1;">${alert.message}</span>
-      <span style="color: var(--text-secondary); font-size: 11px;">${formatTimestamp(alert.timestamp)}</span>
+      <span style="flex: 1;">${escapeHtml(alert.message)}</span>
+      <span style="color: var(--text-secondary); font-size: 11px;">${escapeHtml(formatTimestamp(alert.timestamp))}</span>
     </div>
   `).join('');
   
@@ -729,11 +742,11 @@ function renderConfigChangeLog() {
   
   const html = state.configChanges.map(change => `
     <div style="margin-bottom: 8px; padding: 8px; border-bottom: 1px solid var(--border-color);">
-      <div style="font-size: 12px; color: var(--text-secondary);">${formatTimestamp(change.timestamp)}</div>
+      <div style="font-size: 12px; color: var(--text-secondary);">${escapeHtml(formatTimestamp(change.timestamp))}</div>
       <div style="font-size: 13px;">
-        <strong>${change.section}.</strong>${change.field}: 
-        <span style="color: var(--color-danger);">${change.oldValue}</span> → 
-        <span style="color: var(--color-success);">${change.newValue}</span>
+        <strong>${escapeHtml(change.section)}.</strong>${escapeHtml(change.field)}: 
+        <span style="color: var(--color-danger);">${escapeHtml(change.oldValue)}</span> → 
+        <span style="color: var(--color-success);">${escapeHtml(change.newValue)}</span>
       </div>
     </div>
   `).join('');
