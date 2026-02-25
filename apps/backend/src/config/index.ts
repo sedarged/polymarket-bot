@@ -156,8 +156,10 @@ const envSchema = z.object({
   ),
   PAPER_TRADING_FEE_RATE: numberFromEnv(0.002, z.number().nonnegative().max(1)),
   // Partial Fill Configuration
+  // TRADING SAFETY: Default 0.3 (30% of orders partially fill) for realistic paper trading.
+  // A value of 0.0 makes paper trading unrealistically optimistic.
   PAPER_TRADING_PARTIAL_FILL_RATE: numberFromEnv(
-    0.0,
+    0.3,
     z.number().nonnegative().max(1),
   ),
   PAPER_TRADING_MIN_FILL_RATIO: numberFromEnv(

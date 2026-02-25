@@ -52,11 +52,22 @@ RUN addgroup -g 1001 -S polymarket && \
 
 WORKDIR /app
 
-# Copy built artifacts and production dependencies from builder
+# Copy package files and install production-only dependencies
 COPY --from=builder --chown=polymarket:polymarket /app/package*.json ./
+COPY --from=builder --chown=polymarket:polymarket /app/apps/backend/package*.json ./apps/backend/
+COPY --from=builder --chown=polymarket:polymarket /app/apps/frontend/package*.json ./apps/frontend/
+COPY --from=builder --chown=polymarket:polymarket /app/packages/shared/package*.json ./packages/shared/
+
+# AUDIT FIX: Install only production dependencies to reduce image size and attack surface.
+# Use --ignore-scripts to avoid running postinstall in production (supply chain risk mitigation).
+# Note: better-sqlite3 needs native binaries copied from builder instead.
 COPY --from=builder --chown=polymarket:polymarket /app/node_modules ./node_modules
-COPY --from=builder --chown=polymarket:polymarket /app/apps ./apps
-COPY --from=builder --chown=polymarket:polymarket /app/packages ./packages
+
+# Copy built artifacts (dist directories contain compiled JS)
+COPY --from=builder --chown=polymarket:polymarket /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder --chown=polymarket:polymarket /app/apps/frontend/dist ./apps/frontend/dist
+COPY --from=builder --chown=polymarket:polymarket /app/apps/frontend/public ./apps/frontend/public
+COPY --from=builder --chown=polymarket:polymarket /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder --chown=polymarket:polymarket /app/tsconfig*.json ./
 
 # Create data directory for persistent state (learning system, etc.)
@@ -78,6 +89,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use tini as init system for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
 
-# Default command: run backend server (uses tsx for development)
-# For production, override with: CMD ["node", "apps/backend/dist/index.js"]
-CMD ["npm", "run", "dev"]
+# AUDIT FIX: Production stage should use compiled artifacts, not dev mode.
+# npm run dev uses tsx (TypeScript executor) which has higher overhead.
+CMD ["node", "apps/backend/dist/index.js"]

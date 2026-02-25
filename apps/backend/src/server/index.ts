@@ -244,7 +244,7 @@ const parseRequestBody = (req: http.IncomingMessage): Promise<Record<string, any
       try {
         const parsed = JSON.parse(body);
         resolve(parsed);
-      } catch (error) {
+      } catch {
         reject(new Error('Invalid JSON in request body'));
       }
     };

@@ -277,9 +277,9 @@ describe('ExecutionService - Liquidity Integration', () => {
         },
       });
 
-      // Conditional orders throw an error (not fully implemented)
-      expect(result.status).toBe(ExecutionStatus.FAILED);
-      expect(result.error?.message).toContain('Conditional orders require market monitoring');
+      // AUDIT FIX: Conditional orders now return REJECTED (not FAILED) for cleaner error handling
+      expect(result.status).toBe(ExecutionStatus.REJECTED);
+      expect(result.error?.message).toContain('Conditional orders are not yet supported');
     });
   });
 

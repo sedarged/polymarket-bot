@@ -237,7 +237,7 @@ export class WebSocketClient extends EventEmitter {
       this.shouldReconnect = false;
       this.updateStateMetrics(WebSocketState.DISCONNECTED);
       this.emit("maxReconnectsReached", { feedType: this.feedType, attempts: this.reconnectAttempts });
-      // Fire-and-forget critical alert
+      // Fire-and-forget critical alert (log failures instead of silently swallowing)
       import("../utils/alerting").then(({ getAlertingService }) => {
         const alerting = getAlertingService();
         if (alerting) {
@@ -248,9 +248,21 @@ export class WebSocketClient extends EventEmitter {
             context: { feedType: this.feedType, attempts: this.reconnectAttempts },
             timestamp: new Date().toISOString(),
             dedupeKey: `ws-max-reconnects-${this.feedType}`,
-          }).catch(() => {});
+          }).catch((alertErr: unknown) => {
+            // AUDIT FIX: Log alert failures instead of silently swallowing
+            logger.error("Failed to send critical alert for max reconnects", {
+              feedType: this.feedType,
+              error: alertErr instanceof Error ? alertErr.message : String(alertErr),
+            });
+          });
         }
-      }).catch(() => {});
+      }).catch((importErr: unknown) => {
+        // AUDIT FIX: Log import failures instead of silently swallowing
+        logger.error("Failed to import alerting module for critical alert", {
+          feedType: this.feedType,
+          error: importErr instanceof Error ? importErr.message : String(importErr),
+        });
+      });
       return;
     }
 
@@ -386,8 +398,8 @@ export class WebSocketClient extends EventEmitter {
         if (this.ws) {
           try {
             this.ws.terminate();
-          } catch (error) {
-            // Ignore terminate errors
+          } catch {
+            // Ignore terminate errors during forced cleanup
           }
           this.ws = null;
         }

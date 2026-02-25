@@ -262,21 +262,48 @@
   </div>
 
   <script>
-    // NOTE: Hardcoded for local development. For production, use environment-based config.
-    const API_URL = 'http://localhost:3000';
+    // SECURITY FIX: Use same-origin by default; fall back to localhost only for local dev.
+    const API_URL = window.location.origin !== 'null' ? window.location.origin : 'http://localhost:3000';
     let refreshInterval;
 
-    async function fetchData(endpoint) {
-      const response = await fetch(`${API_URL}${endpoint}`);
+    // SECURITY FIX: Store admin token for authenticated endpoints.
+    // Token stored in sessionStorage (cleared on tab close).
+    let adminToken = sessionStorage.getItem('adminToken') || '';
+
+    function setAdminToken(token) {
+      adminToken = token;
+      sessionStorage.setItem('adminToken', token);
+    }
+
+    async function fetchData(endpoint, requiresAuth) {
+      const headers = {};
+      if (requiresAuth && adminToken) {
+        headers['Authorization'] = 'Bearer ' + adminToken;
+      }
+      const response = await fetch(API_URL + endpoint, { headers });
+      if (response.status === 401) {
+        throw new Error('Unauthorized: set admin token via header prompt');
+      }
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${endpoint}`);
+        throw new Error('Failed to fetch ' + endpoint + ': ' + response.status);
       }
       return response.json();
     }
 
+    // SECURITY FIX: Escape HTML entities to prevent XSS via API-sourced data in innerHTML
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function formatAddress(address) {
       if (!address) return '-';
-      return `${address.slice(0, 6)}...${address.slice(-4)}`;
+      return escapeHtml(address.slice(0, 6) + '...' + address.slice(-4));
     }
 
     function formatTimestamp(timestamp) {
@@ -295,7 +322,7 @@
 
     async function updateStatus() {
       try {
-        const status = await fetchData('/status');
+        const status = await fetchData('/status', true);
         
         const badge = document.getElementById('statusBadge');
         if (status.liveTrading) {
@@ -319,7 +346,7 @@
 
     async function updateState() {
       try {
-        const state = await fetchData('/state');
+        const state = await fetchData('/state', true);
 
         // Update summary cards
         const openOrders = state.orders.filter(o => o.status === 'OPEN').length;
@@ -368,11 +395,11 @@
             <tbody>
               ${data.map(m => `
                 <tr>
-                  <td>${m.tokenId.slice(0, 10)}...</td>
-                  <td class="buy">${m.summary.bestBid || '-'}</td>
-                  <td class="sell">${m.summary.bestAsk || '-'}</td>
-                  <td>${m.summary.mid || '-'}</td>
-                  <td>${m.summary.spread || '-'}</td>
+                  <td>${escapeHtml(m.tokenId.slice(0, 10))}...</td>
+                  <td class="buy">${escapeHtml(m.summary.bestBid || '-')}</td>
+                  <td class="sell">${escapeHtml(m.summary.bestAsk || '-')}</td>
+                  <td>${escapeHtml(m.summary.mid || '-')}</td>
+                  <td>${escapeHtml(m.summary.spread || '-')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -407,11 +434,11 @@
           <tbody>
             ${positions.map(p => `
               <tr>
-                <td>${p.tokenId.slice(0, 10)}...</td>
-                <td>${Number(p.size).toFixed(2)}</td>
-                <td>${Number(p.averagePrice).toFixed(4)}</td>
-                <td>${p.marketValue ? Number(p.marketValue).toFixed(2) : '-'}</td>
-                <td>${p.unrealizedPnl ? Number(p.unrealizedPnl).toFixed(2) : '-'}</td>
+                <td>${escapeHtml(p.tokenId.slice(0, 10))}...</td>
+                <td>${escapeHtml(Number(p.size).toFixed(2))}</td>
+                <td>${escapeHtml(Number(p.averagePrice).toFixed(4))}</td>
+                <td>${p.marketValue ? escapeHtml(Number(p.marketValue).toFixed(2)) : '-'}</td>
+                <td>${p.unrealizedPnl ? escapeHtml(Number(p.unrealizedPnl).toFixed(2)) : '-'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -443,12 +470,12 @@
           <tbody>
             ${orders.map(o => `
               <tr>
-                <td>${o.orderId.slice(0, 8)}...</td>
-                <td>${o.tokenId.slice(0, 10)}...</td>
-                <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${o.side}</td>
-                <td>${Number(o.price).toFixed(4)}</td>
-                <td>${Number(o.size).toFixed(2)}</td>
-                <td>${formatTimestamp(o.createdAt)}</td>
+                <td>${escapeHtml(o.orderId.slice(0, 8))}...</td>
+                <td>${escapeHtml(o.tokenId.slice(0, 10))}...</td>
+                <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(o.side)}</td>
+                <td>${escapeHtml(Number(o.price).toFixed(4))}</td>
+                <td>${escapeHtml(Number(o.size).toFixed(2))}</td>
+                <td>${escapeHtml(formatTimestamp(o.createdAt))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -483,13 +510,13 @@
           <tbody>
             ${recentFills.map(f => `
               <tr>
-                <td>${f.orderId.slice(0, 8)}...</td>
-                <td>${f.tokenId.slice(0, 10)}...</td>
-                <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${f.side}</td>
-                <td>${Number(f.price).toFixed(4)}</td>
-                <td>${Number(f.size).toFixed(2)}</td>
-                <td>${f.fee ? Number(f.fee).toFixed(4) : '-'}</td>
-                <td>${formatTimestamp(f.timestamp)}</td>
+                <td>${escapeHtml(f.orderId.slice(0, 8))}...</td>
+                <td>${escapeHtml(f.tokenId.slice(0, 10))}...</td>
+                <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(f.side)}</td>
+                <td>${escapeHtml(Number(f.price).toFixed(4))}</td>
+                <td>${escapeHtml(Number(f.size).toFixed(2))}</td>
+                <td>${f.fee ? escapeHtml(Number(f.fee).toFixed(4)) : '-'}</td>
+                <td>${escapeHtml(formatTimestamp(f.timestamp))}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -505,10 +532,20 @@
       }
 
       try {
-        const response = await fetch(`${API_URL}/kill-switch`, {
+        // SECURITY FIX: Include admin token for authenticated kill-switch endpoint
+        const headers = {};
+        if (adminToken) {
+          headers['Authorization'] = 'Bearer ' + adminToken;
+        }
+        const response = await fetch(API_URL + '/kill', {
           method: 'POST',
+          headers: headers,
         });
 
+        if (response.status === 401) {
+          alert('Unauthorized: please set a valid admin token');
+          return;
+        }
         if (!response.ok) {
           throw new Error('Failed to activate kill switch');
         }
@@ -517,6 +554,14 @@
         await updateState();
       } catch (error) {
         alert('Failed to activate kill switch: ' + error.message);
+      }
+    }
+
+    function promptAdminToken() {
+      const token = prompt('Enter admin token for authenticated access:');
+      if (token) {
+        setAdminToken(token);
+        refresh();
       }
     }
 

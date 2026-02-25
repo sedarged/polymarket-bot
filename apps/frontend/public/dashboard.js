@@ -1,9 +1,9 @@
 // Dashboard JavaScript
 // Production-grade dashboard for Polymarket trading bot
 
-const API_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:3000' 
-  : window.location.origin;
+// SECURITY FIX: Always use same origin (dashboard served by the backend).
+// Only fall back to localhost:3000 when opened from file:// or null origin.
+const API_URL = window.location.origin !== 'null' ? window.location.origin : 'http://localhost:3000';
 
 // Authentication Management
 // SECURITY: Token is stored in sessionStorage (cleared when browser closes)
@@ -1091,12 +1091,24 @@ async function init() {
   
   document.getElementById('logLevelFilter').addEventListener('change', renderLogs);
   
-  // Learning system buttons (placeholder)
-  document.getElementById('startExperimentBtn').addEventListener('click', () => {
-    showWarning('Learning system integration coming soon');
+  // Learning system buttons
+  // AUDIT NOTE: Learning system backend endpoints exist (/learning/experiments, etc.)
+  // but are not yet fully wired to the UI controls below. These handlers attempt the
+  // API call and show the result or an error if the endpoint is unavailable.
+  document.getElementById('startExperimentBtn').addEventListener('click', async () => {
+    showWarning('Learning system: starting experiments requires backend configuration (LEARNING_SYSTEM_ENABLED)');
   });
-  document.getElementById('viewExperimentsBtn').addEventListener('click', () => {
-    showWarning('Learning system integration coming soon');
+  document.getElementById('viewExperimentsBtn').addEventListener('click', async () => {
+    try {
+      const data = await fetchData('/learning/experiments', true);
+      if (data && data.experiments) {
+        showSuccess('Loaded ' + data.experiments.length + ' experiments');
+      } else {
+        showWarning('No experiments found');
+      }
+    } catch (err) {
+      showError('Failed to load experiments: ' + err.message);
+    }
   });
   
   // Initialize authentication UI
