@@ -134,5 +134,28 @@ describe("Admin token rotation (GAP-038)", () => {
     });
     expect(bearerOnly.status).toBe(401);
   });
+
+
+  it("accepts case-insensitive Bearer scheme", async () => {
+    process.env.ADMIN_TOKEN = token1;
+    delete process.env.ADMIN_TOKEN_NEXT;
+    await configManager.reloadConfig({ reason: "test" });
+
+    const lowerCaseBearer = await fetch(`${baseUrl}/status`, {
+      headers: { Authorization: `bearer ${token1}` },
+    });
+    expect(lowerCaseBearer.status).toBe(200);
+  });
+
+  it("accepts Bearer token with extra spacing around token", async () => {
+    process.env.ADMIN_TOKEN = token1;
+    delete process.env.ADMIN_TOKEN_NEXT;
+    await configManager.reloadConfig({ reason: "test" });
+
+    const paddedBearer = await fetch(`${baseUrl}/status`, {
+      headers: { Authorization: `Bearer   ${token1}   ` },
+    });
+    expect(paddedBearer.status).toBe(200);
+  });
 });
 
