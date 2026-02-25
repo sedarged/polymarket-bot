@@ -50,6 +50,11 @@ jobs:
         working-directory: apps/backend
         continue-on-error: true
 
+      - name: Run mutation tests
+        run: npm run mutation-test
+        working-directory: apps/backend
+        continue-on-error: true  # Non-blocking: report results without failing CI
+
   security-check:
     name: Security Audit
     runs-on: ubuntu-latest

@@ -18,6 +18,7 @@
     "test": "npm run --workspace @polymarket/backend test",
     "test:watch": "npm run --workspace @polymarket/backend test:watch",
     "test:coverage": "npm run --workspace @polymarket/backend test:coverage",
+    "mutation-test": "npm run --workspace @polymarket/backend mutation-test",
     "lint": "eslint --ext .ts,.tsx apps/backend/src apps/backend/tests packages/shared/src scripts docs/examples"
   },
   "keywords": [

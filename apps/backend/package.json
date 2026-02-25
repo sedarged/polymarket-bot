@@ -31,6 +31,7 @@
     "test:chaos": "vitest run --config vitest.chaos.config.ts --reporter=verbose",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "mutation-test": "stryker run",
     "bench": "vitest bench",
     "bench:verbose": "vitest bench --reporter=verbose"
   },
@@ -55,6 +56,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^9.5.1",
+    "@stryker-mutator/typescript-checker": "^9.5.1",
+    "@stryker-mutator/vitest-runner": "^9.5.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.3.0",
