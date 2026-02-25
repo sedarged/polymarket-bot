@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0](https://github.com/sedarged/polymarket-bot/compare/v3.11.0...v3.12.0) (2026-02-25)
+
+
+### Features
+
+* add production safeguards to learning system (GAP-044) ([037f440](https://github.com/sedarged/polymarket-bot/commit/037f440fe1447495f74865b8fb78b65c470b9f5d))
+
+
+### Bug Fixes
+
+* address code-review feedback on learning system safeguards (GAP-044) ([3bc948b](https://github.com/sedarged/polymarket-bot/commit/3bc948b1b92eb02ed8cd6fbce9f775aecaa06f9e))
+
 ## [3.11.0](https://github.com/sedarged/polymarket-bot/compare/v3.10.0...v3.11.0) (2026-02-25)
 
 
