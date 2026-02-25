@@ -539,8 +539,8 @@ export function createServer(): http.Server {
         // Perform risk checks for each order (GAP-019)
         if (riskManager) {
           // Get current state for risk checks
-          const currentOrders = tradingClient.getOrders();
-          const currentPositions = tradingClient.getPositions();
+          const currentOrders = tradingClient.getState().orders;
+          const currentPositions = tradingClient.getState().positions;
           
           for (let i = 0; i < orders.length; i++) {
             const order = orders[i];

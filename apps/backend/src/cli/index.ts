@@ -463,7 +463,7 @@ export async function backtestCommand(options: Record<string, unknown>): Promise
       initialBalance,
       slippage,
       feeRate,
-      seed: seed ?? strategyConfig?.seed,
+      seed: seed ?? (strategyConfig?.seed as number | undefined),
     });
 
     // Get results

@@ -70,7 +70,7 @@ const perStrategyConfigSchema = z.array(
     strategyId: z.string().min(1, "Strategy ID cannot be empty"),
     type: z.string().min(1, "Strategy type cannot be empty"),
     enabled: z.boolean(),
-    params: z.record(z.unknown()),
+    params: z.record(z.string(), z.unknown()),
   }),
 );
 
