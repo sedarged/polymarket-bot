@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0](https://github.com/sedarged/polymarket-bot/compare/v3.10.0...v3.11.0) (2026-02-25)
+
+
+### Features
+
+* add mutation testing with Stryker (GAP-036) ([d01ee86](https://github.com/sedarged/polymarket-bot/commit/d01ee86ccb2c93c8fe51489b8a7c7e92fb9f0a5c)), closes [#36](https://github.com/sedarged/polymarket-bot/issues/36)
+* add Stryker mutation testing integration and fix TypeScript build errors (GAP-036) ([88a657f](https://github.com/sedarged/polymarket-bot/commit/88a657fda5e796a2793654fa523a9e3c96c38b63))
+
+
+### Bug Fixes
+
+* resolve pre-existing TypeScript build errors ([b9b4818](https://github.com/sedarged/polymarket-bot/commit/b9b481802aa67c00cd3720f3eade05eabce1af3e))
+
 ## [3.10.0](https://github.com/sedarged/polymarket-bot/compare/v3.9.3...v3.10.0) (2026-02-25)
 
 
