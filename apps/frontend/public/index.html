@@ -269,20 +269,40 @@
     // SECURITY FIX: Store admin token for authenticated endpoints.
     // Token stored in sessionStorage (cleared on tab close).
     let adminToken = sessionStorage.getItem('adminToken') || '';
+    let hasPromptedForAdminToken = false;
 
     function setAdminToken(token) {
       adminToken = token;
       sessionStorage.setItem('adminToken', token);
     }
 
+    function promptAdminToken() {
+      // Avoid repeatedly prompting the user in quick succession.
+      if (hasPromptedForAdminToken) {
+        return;
+      }
+      hasPromptedForAdminToken = true;
+      const token = window.prompt('Enter admin token for authenticated endpoints:');
+      if (token) {
+        setAdminToken(token);
+      }
+    }
+
     async function fetchData(endpoint, requiresAuth) {
       const headers = {};
+      // If this endpoint requires auth and we don't yet have a token, prompt once.
+      if (requiresAuth && !adminToken) {
+        promptAdminToken();
+      }
       if (requiresAuth && adminToken) {
         headers['Authorization'] = 'Bearer ' + adminToken;
       }
       const response = await fetch(API_URL + endpoint, { headers });
-      if (response.status === 401) {
-        throw new Error('Unauthorized: set admin token via header prompt');
+      if (response.status === 401 && requiresAuth) {
+        // Token missing or invalid: prompt user to set/update admin token.
+        hasPromptedForAdminToken = false;
+        promptAdminToken();
+        throw new Error('Unauthorized: admin token required for ' + endpoint);
       }
       if (!response.ok) {
         throw new Error('Failed to fetch ' + endpoint + ': ' + response.status);
