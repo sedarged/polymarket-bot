@@ -71,7 +71,7 @@ This document provides an overview of environment variables used by the Polymark
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
 | `MARKETS_CONFIG_PATH` | (empty) | No | Optional path to config/markets.json (e.g. `config/markets.json`). If set, tokenIds and per-market limits loaded from file. Copy from config/markets.json.example. |
-| `STRATEGY_CONFIG_PATH` | (empty) | No | Optional path to config/strategy.json (Research §6.1). Copy from config/strategy.json.example. Env exists; loader not yet wired. |
+| `STRATEGY_CONFIG_PATH` | (empty) | No | Optional path to config/strategy.json (Research §6.1). Copy from config/strategy.json.example. Loaded at startup via `ConfigManager`; hot-reload supported. |
 
 ---
 
@@ -96,18 +96,18 @@ This document provides an overview of environment variables used by the Polymark
 | `ENCRYPTED_PRIVATE_KEY` | - | Conditional | Encrypted private key (Method 2). |
 | `AWS_SECRET_NAME` | - | Conditional | AWS Secrets Manager secret name. Secret value can be a direct private-key string or JSON containing `privateKey` / `PRIVATE_KEY` / `private_key`. |
 | `AWS_REGION` | `us-east-1` | No | AWS region (used by the AWS SDK client). Defaults to `us-east-1` if not specified. |
-| `AWS_ACCESS_KEY_ID` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
-| `AWS_SECRET_ACCESS_KEY` | - | Conditional | **(Not in schema)** Would be read from AWS SDK default credential chain. |
+| `AWS_ACCESS_KEY_ID` | - | Conditional | Not in app schema by design — read automatically by the AWS SDK default credential chain (env → `~/.aws/credentials` → IAM role). |
+| `AWS_SECRET_ACCESS_KEY` | - | Conditional | Not in app schema by design — read automatically by the AWS SDK default credential chain. |
 | `VAULT_ADDR` | - | Conditional | Vault server address (e.g. `https://vault.example.com`). |
 | `VAULT_TOKEN` | - | Conditional | Vault authentication token. |
 | `VAULT_PATH` | - | Conditional | Vault secret path (KV v1 or KV v2 path). The code supports both KV v1 (`data.privateKey`) and KV v2 (`data.data.privateKey`). |
 | `AZURE_KEY_VAULT_NAME` | - | Conditional | Azure Key Vault name (e.g. `my-keyvault`) or full URL (e.g. `https://my-keyvault.vault.azure.net`). |
 | `AZURE_SECRET_NAME` | - | Conditional | Azure Key Vault secret name. |
-| `AZURE_CLIENT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
-| `AZURE_CLIENT_SECRET` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
-| `AZURE_TENANT_ID` | - | Conditional | **(Not in schema)** Would be for Azure service principal authentication. |
+| `AZURE_CLIENT_ID` | - | Conditional | Not in app schema by design — read automatically by Azure `DefaultAzureCredential` from environment. |
+| `AZURE_CLIENT_SECRET` | - | Conditional | Not in app schema by design — read automatically by Azure `DefaultAzureCredential` from environment. |
+| `AZURE_TENANT_ID` | - | Conditional | Not in app schema by design — read automatically by Azure `DefaultAzureCredential` from environment. |
 
-**Note:** Cloud backends use the platform’s default credential chain (AWS SDK / Azure `DefaultAzureCredential`). Prefer IAM roles / managed identities over long-lived keys where possible.
+**Note:** All three cloud backends (AWS, Vault, Azure) are **fully implemented** in `apps/backend/src/secrets/index.ts`. AWS and Azure credential variables are intentionally absent from the app schema because those SDKs manage their own credential chains — no wrapper in the Zod schema is needed or desired. Prefer IAM roles / managed identities over long-lived keys where possible.
 
 ---
 
@@ -281,9 +281,9 @@ This document provides an overview of environment variables used by the Polymark
 | Alerting | 4 | Telegram notifications |
 | Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
 | Data Pipeline / Ingestion | 8 | Real-time market ingestion to EventStore (GAP-021) |
-| Metrics | 2 | Planned - not yet wired into config |
-| WebSocket | 2 | Planned - WS_RECONNECT_DELAY, WS_HEARTBEAT_INTERVAL (WS_MAX_RECONNECT_ATTEMPTS in §8) |
-| **TOTAL** | **65** | **~58 functional, ~7 not-yet-wired (documented but not in config schema)** |
+| Metrics | 2 | Always enabled — METRICS_ENABLED/METRICS_ENDPOINT vars not needed in schema |
+| WebSocket | 2 | WS_RECONNECT_DELAY and WS_HEARTBEAT_INTERVAL hardcoded; not yet in schema (GAP-005) |
+| **TOTAL** | **65** | **~58 functional, ~4 genuinely not-yet-wired (learning feature flags + WS timing), ~3 not-in-schema by design (AWS/Azure credential chains)** |
 
 ---
 
