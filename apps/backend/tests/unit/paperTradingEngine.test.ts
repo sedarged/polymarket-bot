@@ -580,8 +580,10 @@ describe('PaperTradingEngine', () => {
       let fullFills = 0;
       let partialFills = 0;
       
-      // Run multiple fills to test probabilistic behavior
-      for (let i = 0; i < 20; i++) {
+      // Run multiple fills to test probabilistic behavior.
+      // With partialFillRate=0.5 and liquidityRatio=0.5 the formula yields ~75% partial-fill
+      // probability, so 50 iterations keeps P(zero full fills) < 1e-6.
+      for (let i = 0; i < 50; i++) {
         engine.reset(10000);
         const order = engine.createOrder('0xtoken123', 'BUY', '0.55', '50');
         engine.tryFillOrder(order.orderId, mockOrderbook);
