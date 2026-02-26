@@ -286,8 +286,23 @@ const envSchema = z.object({
   STRATEGY_CONFIG_PATH: optionalStringFromEnv(z.string().optional()),
   // WebSocket max reconnect attempts before giving up (Research §9.3). Default 10.
   WS_MAX_RECONNECT_ATTEMPTS: numberFromEnv(10, z.number().int().positive().max(100)),
+  // WebSocket reconnect delay in ms (base delay before backoff). Default 1000ms (GAP-005).
+  WS_RECONNECT_DELAY: numberFromEnv(1000, z.number().int().positive().max(30000)),
+  // WebSocket heartbeat interval in ms. Default 30000ms (GAP-005).
+  WS_HEARTBEAT_INTERVAL_MS: numberFromEnv(30000, z.number().int().positive().max(120000)),
   // Heartbeat URL (e.g. healthchecks.io ping URL). GET every 1 min (Research §9.7, §10.6). If missed 5 min, external alert.
   HEARTBEAT_URL: optionalStringFromEnv(z.string().url().optional()),
+  // ========================================
+  // Learning System Configuration (GAP-003)
+  // ========================================
+  // Whether the learning/bandit system is enabled (default: true)
+  LEARNING_SYSTEM_ENABLED: booleanFromEnv.default(true),
+  // Multi-armed bandit allocation algorithm
+  BANDIT_ALGORITHM: z.enum(['epsilon-greedy', 'ucb1', 'thompson-sampling']).default('epsilon-greedy'),
+  // Exploration factor for epsilon-greedy / UCB1 algorithms (0.0–1.0)
+  BANDIT_EXPLORATION_FACTOR: numberFromEnv(0.1, z.number().min(0).max(1)),
+  // Minimum number of trades before a strategy is considered for allocation
+  BANDIT_MIN_TRADE_COUNT: numberFromEnv(10, z.number().int().positive()),
   // ========================================
   // Database Backup Configuration (Gap PA-006, Issue #406)
   // ========================================
@@ -500,7 +515,14 @@ const configSchema = envSchema
     markets,
     strategy,
     wsMaxReconnectAttempts: env.WS_MAX_RECONNECT_ATTEMPTS,
+    wsReconnectDelay: env.WS_RECONNECT_DELAY,
+    wsHeartbeatIntervalMs: env.WS_HEARTBEAT_INTERVAL_MS,
     heartbeatUrl: env.HEARTBEAT_URL,
+    // Learning system (GAP-003)
+    learningSystemEnabled: env.LEARNING_SYSTEM_ENABLED,
+    banditAlgorithm: env.BANDIT_ALGORITHM,
+    banditExplorationFactor: env.BANDIT_EXPLORATION_FACTOR,
+    banditMinTradeCount: env.BANDIT_MIN_TRADE_COUNT,
     logLevel: env.LOG_LEVEL,
     retryAttempts: env.RETRY_ATTEMPTS,
     retryDelay: env.RETRY_DELAY,

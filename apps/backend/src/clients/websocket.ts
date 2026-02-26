@@ -18,6 +18,8 @@ export interface WebSocketClientOptions {
   reconnectJitter?: number;
   /** Max reconnect attempts before giving up (Research §9.3). Default 10. After this, "maxReconnectsReached" is emitted and alert sent. */
   maxReconnectAttempts?: number;
+  /** Heartbeat ping interval in milliseconds. Default 30000 (30s). Configurable via WS_HEARTBEAT_INTERVAL_MS (GAP-005). */
+  heartbeatIntervalMs?: number;
 }
 
 export enum WebSocketState {
@@ -47,7 +49,7 @@ export class WebSocketClient extends EventEmitter {
   // DI-002: Heartbeat/ping-pong to detect silent connection loss
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private heartbeatTimeout: NodeJS.Timeout | null = null;
-  private readonly HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+  private readonly HEARTBEAT_INTERVAL_MS: number; // configurable via WS_HEARTBEAT_INTERVAL_MS (GAP-005)
   private readonly HEARTBEAT_TIMEOUT_MS = 5000; // 5 seconds
 
   constructor(options: WebSocketClientOptions) {
@@ -59,6 +61,7 @@ export class WebSocketClient extends EventEmitter {
     this.reconnectBackoffMultiplier = options.reconnectBackoffMultiplier ?? 2;
     this.reconnectJitter = options.reconnectJitter ?? 0.1;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 10; // Research §9.3
+    this.HEARTBEAT_INTERVAL_MS = options.heartbeatIntervalMs ?? 30000; // GAP-005
     this.currentReconnectDelay = this.reconnectDelay;
   }
 

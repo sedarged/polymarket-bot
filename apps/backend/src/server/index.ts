@@ -18,6 +18,7 @@ import { initializeAlerting } from '../utils/alerting';
 import { MeanReversionStrategy } from '../trading/strategies/MeanReversionStrategy';
 import { registerStrategies, StrategyFactory } from '../trading/strategies';
 import type { MarketContext, IStrategy } from '../trading/strategies/types';
+import { LiquidityValidator } from '../trading/liquidityValidator';
 import {
   handleGetExperiments,
   handleGetStrategies,
@@ -41,6 +42,7 @@ let paperEngine: PaperTradingEngine | null = null;
 let riskManager: RiskManager | null = null;
 let paperStrategy: IStrategy | null = null;
 let paperStrategyType: string = 'mean-reversion';
+let liquidityValidator: LiquidityValidator | null = null;
 
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
@@ -460,6 +462,22 @@ export function createServer(): http.Server {
       return;
     }
 
+    // Market feed reconnect — triggered by dashboard "Reconnect" button
+    if (method === 'POST' && url === '/api/reconnect') {
+      if (!requireAdminAuth(req, res, 'Reconnect')) return;
+      try {
+        logger.info('Manual market feed reconnect requested');
+        await marketFeedService.stop();
+        marketFeedService.start();
+        respondJson(res, 200, { message: 'Market feed reconnection initiated', connected: marketFeedService.isConnected() }, req);
+        logger.info('Market feed reconnect initiated');
+      } catch (err) {
+        logger.error('Market feed reconnect failed', { error: err instanceof Error ? err.message : String(err) });
+        respondJson(res, 500, { error: err instanceof Error ? err.message : 'Reconnect failed' }, req);
+      }
+      return;
+    }
+
     // Data pipeline status (GAP-021) - requires authentication
     if (method === 'GET' && url === '/api/ingestion/status') {
       if (!requireAdminAuth(req, res, 'Ingestion Status')) return;
@@ -493,6 +511,7 @@ export function createServer(): http.Server {
         tradingClientInitialized: tradingClient.isInitialized(),
         walletAddress: tradingClient.getAddress(),
         marketFeedConnected: marketFeedService.isConnected(),
+        paperStrategyType: !isLiveTradingEnabled() ? paperStrategyType : null,
         circuitBreakers: circuitBreakerMetrics ? [circuitBreakerMetrics] : [],
         timestamp: Date.now(),
       };
@@ -1101,6 +1120,10 @@ export async function startServer(): Promise<http.Server> {
     // Register all built-in strategies so the factory knows about them
     registerStrategies();
 
+    // Initialize pre-trade liquidity validator (GAP-014 for paper trading path)
+    liquidityValidator = new LiquidityValidator();
+    logger.info('Liquidity validator initialized for paper trading');
+
     // Initialize the strategy used for automated paper trading.
     paperStrategyType = 'mean-reversion';
     paperStrategy = new MeanReversionStrategy();
@@ -1197,7 +1220,27 @@ export async function startServer(): Promise<http.Server> {
         return;
       }
 
-      // 4. Place the paper order and immediately attempt a fill against real prices
+      // 4. Pre-trade liquidity validation (GAP-014 — paper trading path)
+      if (liquidityValidator) {
+        const liquidityCheck = liquidityValidator.checkLiquidity(
+          tokenId,
+          decision.side,
+          String(decision.size),
+          ob,
+          ob.timestamp,
+        );
+        if (!liquidityCheck.allowed) {
+          logger.debug('Paper order blocked by liquidity validator', {
+            tokenId,
+            reason: liquidityCheck.reason,
+            available: liquidityCheck.availableLiquidity,
+            required: liquidityCheck.requiredLiquidity,
+          });
+          return;
+        }
+      }
+
+      // 5. Place the paper order and immediately attempt a fill against real prices
       try {
         const order = paperEngine.createOrder(
           tokenId,

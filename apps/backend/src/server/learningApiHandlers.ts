@@ -38,6 +38,12 @@ let promotionWorkflow: PromotionWorkflow | null = null;
  * Initializes all components atomically to avoid partial initialization state
  */
 function initializeLearningSystem(): void {
+  // Feature flag check: do not initialize if LEARNING_SYSTEM_ENABLED=false (GAP-003)
+  if (!config.learningSystemEnabled) {
+    logger.info("Learning system disabled via LEARNING_SYSTEM_ENABLED=false");
+    return;
+  }
+
   // Check if already fully initialized
   if (
     eventStore &&
@@ -74,10 +80,10 @@ function initializeLearningSystem(): void {
     });
 
     const localBanditAllocator = new BanditAllocator({
-      algorithm: "epsilon-greedy",
+      algorithm: config.banditAlgorithm, // GAP-003: from BANDIT_ALGORITHM env var
       totalCapital: 1000, // Paper trading capital
-      explorationFactor: 0.1,
-      minTradeCount: 10,
+      explorationFactor: config.banditExplorationFactor, // GAP-003: from BANDIT_EXPLORATION_FACTOR
+      minTradeCount: config.banditMinTradeCount, // GAP-003: from BANDIT_MIN_TRADE_COUNT
     });
 
     const localMetricsGating = new MetricsGating({

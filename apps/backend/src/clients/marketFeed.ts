@@ -41,6 +41,8 @@ export interface MarketFeedOptions {
   reconnectDelay?: number;
   maxReconnectDelay?: number;
   maxReconnectAttempts?: number; // Research §9.3
+  /** Heartbeat interval in ms (GAP-005). Passed through to WebSocketClient. Default 30000ms. */
+  heartbeatIntervalMs?: number;
   /**
    * Cache TTL in milliseconds. Addresses A-015.
    * Uses OrderbookCache default (5000ms) if not specified.
@@ -89,6 +91,7 @@ export class MarketFeedClient extends EventEmitter {
       reconnectDelay: options.reconnectDelay,
       maxReconnectDelay: options.maxReconnectDelay,
       maxReconnectAttempts: options.maxReconnectAttempts,
+      heartbeatIntervalMs: options.heartbeatIntervalMs,
     });
 
     this.setupEventHandlers();
