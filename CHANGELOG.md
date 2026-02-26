@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.2](https://github.com/sedarged/polymarket-bot/compare/v3.12.1...v3.12.2) (2026-02-26)
+
+
+### Bug Fixes
+
+* increase iterations in flaky probabilistic partial-fill test ([f5f2823](https://github.com/sedarged/polymarket-bot/commit/f5f28236d810676b39b2d6dcc23c2bdbad1076d6))
+* increase iterations in flaky probabilistic partial-fill test ([c4b5a6e](https://github.com/sedarged/polymarket-bot/commit/c4b5a6ea7d9d7d772bae40eb0136d2d2dc70f460))
+
 ## [3.12.1](https://github.com/sedarged/polymarket-bot/compare/v3.12.0...v3.12.1) (2026-02-25)
 
 
