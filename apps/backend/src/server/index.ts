@@ -13,8 +13,11 @@ import { PaperTradingEngine } from '../trading/paperTradingEngine';
 import { RiskManager } from '../trading/riskManager';
 import { getMetrics, getContentType } from '../utils/metrics';
 import { RateLimiter } from '../utils/rateLimiter';
-import type { Order } from '@polymarket/shared';
+import type { Order, Orderbook } from '@polymarket/shared';
 import { initializeAlerting } from '../utils/alerting';
+import { MeanReversionStrategy } from '../trading/strategies/MeanReversionStrategy';
+import { registerStrategies } from '../trading/strategies';
+import type { MarketContext, IStrategy } from '../trading/strategies/types';
 import {
   handleGetExperiments,
   handleGetStrategies,
@@ -36,6 +39,7 @@ import {
 // Singleton instances for paper trading
 let paperEngine: PaperTradingEngine | null = null;
 let riskManager: RiskManager | null = null;
+let paperStrategy: IStrategy | null = null;
 
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
@@ -1023,6 +1027,155 @@ export async function startServer(): Promise<http.Server> {
     logger.warn('WARNING: Kill switch state restoration failed - kill switch state UNKNOWN (default is kill switch ACTIVE due to fail-closed behavior). Manually verify state before proceeding.');
   }
   
+  // ============================================================================
+  // Paper Trading Loop
+  // Connects real Polymarket market data to the paper trading engine.
+  //
+  // Flow on every orderbook update:
+  //   marketFeedService (WebSocket) → strategy.evaluate() → paperEngine.createOrder()
+  //                                                        → paperEngine.tryFillOrder()
+  //
+  // Also retries filling any existing open orders against the new orderbook.
+  // ============================================================================
+  if (!isLiveTradingEnabled() && paperEngine) {
+    // Register all built-in strategies so the factory knows about them
+    registerStrategies();
+
+    // Initialize the strategy used for automated paper trading.
+    // Change this to ArbitrageStrategy or MarketMakingStrategy as desired.
+    paperStrategy = new MeanReversionStrategy();
+    await paperStrategy.initialize({
+      strategyId: 'paper-mean-reversion',
+      type: 'mean-reversion',
+      enabled: true,
+      params: {
+        lookbackPeriod: 20,
+        minSpread: 0.01,
+        maxPositionSize: 50,
+        entryThreshold: 2.0,
+        exitThreshold: 0.5,
+        cooldownPeriod: 60000,
+      },
+    });
+    logger.info('Paper trading strategy initialised', { strategy: paperStrategy.name });
+
+    // Helper: convert a real Polymarket orderbook to the MarketContext shape strategies expect
+    const buildContext = (tokenId: string, ob: Orderbook): MarketContext => {
+      const bestBid = parseFloat(ob.bids[0]?.price ?? '0');
+      const bestAsk = parseFloat(ob.asks[0]?.price ?? '1');
+      return {
+        marketId: ob.market,
+        tokenId,
+        bestBid,
+        bestAsk,
+        mid: (bestBid + bestAsk) / 2,
+        spread: bestAsk - bestBid,
+        liquidity: {
+          bidSize: parseFloat(ob.bids[0]?.size ?? '0'),
+          askSize: parseFloat(ob.asks[0]?.size ?? '0'),
+        },
+        timestamp: new Date().toISOString(),
+        orderBook: {
+          bids: ob.bids.map(b => ({ price: parseFloat(b.price), size: parseFloat(b.size) })),
+          asks: ob.asks.map(a => ({ price: parseFloat(a.price), size: parseFloat(a.size) })),
+        },
+      };
+    };
+
+    // Main handler: called on every real-time orderbook update from Polymarket
+    const onOrderbookUpdate = async (tokenId: string, ob: Orderbook): Promise<void> => {
+      if (!paperEngine || !paperStrategy || !riskManager) return;
+      if (riskManager.isKilled()) return;
+
+      // 1. Try to fill any existing open orders against the updated orderbook
+      const openOrders = paperEngine.getOrders().filter(
+        o => (o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED') && o.tokenId === tokenId,
+      );
+      for (const o of openOrders) {
+        paperEngine.tryFillOrder(o.orderId, ob);
+      }
+
+      // 2. Ask the strategy whether to trade
+      const context = buildContext(tokenId, ob);
+      const position = paperEngine.getPositions().find(p => p.tokenId === tokenId);
+      const stratPosition = position
+        ? {
+            tokenId: position.tokenId,
+            size: parseFloat(position.size),
+            avgPrice: parseFloat(position.averagePrice),
+            unrealizedPnl: parseFloat(position.unrealizedPnl ?? '0'),
+            realizedPnl: 0,
+          }
+        : undefined;
+
+      let decision;
+      try {
+        decision = await paperStrategy.evaluate(context, stratPosition);
+      } catch (err) {
+        logger.warn('Strategy evaluation error', {
+          tokenId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
+
+      if (decision.action === 'hold' || decision.action === 'cancel') return;
+      if (!decision.price || !decision.size || !decision.side) return;
+
+      // 3. Risk check before placing
+      const currentOrders = paperEngine.getOrders();
+      const currentPositions = paperEngine.getPositions();
+      const riskCheck = riskManager.checkOrder(
+        tokenId,
+        decision.side,
+        String(decision.size),
+        currentOrders,
+        currentPositions,
+      );
+      if (!riskCheck.allowed) {
+        logger.debug('Paper order blocked by risk manager', { tokenId, reason: riskCheck.reason });
+        return;
+      }
+
+      // 4. Place the paper order and immediately attempt a fill against real prices
+      try {
+        const order = paperEngine.createOrder(
+          tokenId,
+          decision.side,
+          String(decision.price),
+          String(decision.size),
+        );
+        paperEngine.tryFillOrder(order.orderId, ob);
+      } catch (err) {
+        logger.warn('Paper order creation failed', {
+          tokenId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    };
+
+    // Wire the real-time events — both initial snapshots and incremental updates
+    marketFeedService.on('snapshot', (tokenId: string, ob: Orderbook) => {
+      onOrderbookUpdate(tokenId, ob).catch((err: unknown) => {
+        logger.error('Paper trading loop error on snapshot', {
+          tokenId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    });
+
+    marketFeedService.on('update', (tokenId: string, ob: Orderbook) => {
+      onOrderbookUpdate(tokenId, ob).catch((err: unknown) => {
+        logger.error('Paper trading loop error on update', {
+          tokenId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    });
+
+    logger.info('Paper trading loop wired to market feed');
+  }
+
   // Initialize trading client if live trading is enabled
   if (isLiveTradingEnabled()) {
     tradingClient.initialize()
