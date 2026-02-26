@@ -262,13 +262,10 @@
   </div>
 
   <script>
-    // SECURITY FIX: Use same-origin by default; fall back to localhost only for local dev.
+    // Use same-origin when served by the backend; fall back to localhost for local dev.
     const API_URL = window.location.origin !== 'null' ? window.location.origin : 'http://localhost:3000';
-    // NOTE: Hardcoded for local development. For production, use environment-based config.
-    const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin;
     let refreshInterval;
 
-    // SECURITY FIX: Store admin token for authenticated endpoints.
     // Token stored in sessionStorage (cleared on tab close).
     let adminToken = sessionStorage.getItem('adminToken') || '';
     let hasPromptedForAdminToken = false;
@@ -279,20 +276,17 @@
     }
 
     function promptAdminToken() {
-      // Avoid repeatedly prompting the user in quick succession.
-      if (hasPromptedForAdminToken) {
-        return;
-      }
+      if (hasPromptedForAdminToken) return;
       hasPromptedForAdminToken = true;
       const token = window.prompt('Enter admin token for authenticated endpoints:');
       if (token) {
         setAdminToken(token);
+        hasPromptedForAdminToken = false;
       }
     }
 
     async function fetchData(endpoint, requiresAuth) {
       const headers = {};
-      // If this endpoint requires auth and we don't yet have a token, prompt once.
       if (requiresAuth && !adminToken) {
         promptAdminToken();
       }
@@ -301,7 +295,6 @@
       }
       const response = await fetch(API_URL + endpoint, { headers });
       if (response.status === 401 && requiresAuth) {
-        // Token missing or invalid: prompt user to set/update admin token.
         hasPromptedForAdminToken = false;
         promptAdminToken();
         throw new Error('Unauthorized: admin token required for ' + endpoint);
@@ -312,29 +305,8 @@
       return response.json();
     }
 
-    // SECURITY FIX: Escape HTML entities to prevent XSS via API-sourced data in innerHTML
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function formatAddress(address) {
-      if (!address) return '-';
-      return escapeHtml(address.slice(0, 6) + '...' + address.slice(-4));
-    }
-
-    function formatTimestamp(timestamp) {
-      return new Date(timestamp).toLocaleString();
-    }
-
-
     function escapeHtml(value) {
-      return String(value)
+      return String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
@@ -344,6 +316,15 @@
 
     function safeSlice(value, start, end) {
       return String(value ?? '').slice(start, end);
+    }
+
+    function formatAddress(address) {
+      if (!address) return '-';
+      return escapeHtml(address.slice(0, 6) + '...' + address.slice(-4));
+    }
+
+    function formatTimestamp(timestamp) {
+      return new Date(timestamp).toLocaleString();
     }
 
     function showError(message) {
@@ -431,11 +412,6 @@
             <tbody>
               ${data.map(m => `
                 <tr>
-                  <td>${escapeHtml(m.tokenId.slice(0, 10))}...</td>
-                  <td class="buy">${escapeHtml(m.summary.bestBid || '-')}</td>
-                  <td class="sell">${escapeHtml(m.summary.bestAsk || '-')}</td>
-                  <td>${escapeHtml(m.summary.mid || '-')}</td>
-                  <td>${escapeHtml(m.summary.spread || '-')}</td>
                   <td>${escapeHtml(safeSlice(m.tokenId, 0, 10))}...</td>
                   <td class="buy">${escapeHtml(m.summary.bestBid ?? '-')}</td>
                   <td class="sell">${escapeHtml(m.summary.bestAsk ?? '-')}</td>
@@ -475,16 +451,11 @@
           <tbody>
             ${positions.map(p => `
               <tr>
-                <td>${escapeHtml(p.tokenId.slice(0, 10))}...</td>
+                <td>${escapeHtml(safeSlice(p.tokenId, 0, 10))}...</td>
                 <td>${escapeHtml(Number(p.size).toFixed(2))}</td>
                 <td>${escapeHtml(Number(p.averagePrice).toFixed(4))}</td>
                 <td>${p.marketValue ? escapeHtml(Number(p.marketValue).toFixed(2)) : '-'}</td>
                 <td>${p.unrealizedPnl ? escapeHtml(Number(p.unrealizedPnl).toFixed(2)) : '-'}</td>
-                <td>${escapeHtml(safeSlice(p.tokenId, 0, 10))}...</td>
-                <td>${Number(p.size).toFixed(2)}</td>
-                <td>${Number(p.averagePrice).toFixed(4)}</td>
-                <td>${p.marketValue ? Number(p.marketValue).toFixed(2) : '-'}</td>
-                <td>${p.unrealizedPnl ? Number(p.unrealizedPnl).toFixed(2) : '-'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -516,16 +487,11 @@
           <tbody>
             ${orders.map(o => `
               <tr>
-                <td>${escapeHtml(o.orderId.slice(0, 8))}...</td>
-                <td>${escapeHtml(o.tokenId.slice(0, 10))}...</td>
-                <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(o.side)}</td>
-                <td>${escapeHtml(Number(o.price).toFixed(4))}</td>
-                <td>${escapeHtml(Number(o.size).toFixed(2))}</td>
                 <td>${escapeHtml(safeSlice(o.orderId, 0, 8))}...</td>
                 <td>${escapeHtml(safeSlice(o.tokenId, 0, 10))}...</td>
                 <td class="${o.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(o.side)}</td>
-                <td>${Number(o.price).toFixed(4)}</td>
-                <td>${Number(o.size).toFixed(2)}</td>
+                <td>${escapeHtml(Number(o.price).toFixed(4))}</td>
+                <td>${escapeHtml(Number(o.size).toFixed(2))}</td>
                 <td>${escapeHtml(formatTimestamp(o.createdAt))}</td>
               </tr>
             `).join('')}
@@ -561,18 +527,12 @@
           <tbody>
             ${recentFills.map(f => `
               <tr>
-                <td>${escapeHtml(f.orderId.slice(0, 8))}...</td>
-                <td>${escapeHtml(f.tokenId.slice(0, 10))}...</td>
+                <td>${escapeHtml(safeSlice(f.orderId, 0, 8))}...</td>
+                <td>${escapeHtml(safeSlice(f.tokenId, 0, 10))}...</td>
                 <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(f.side)}</td>
                 <td>${escapeHtml(Number(f.price).toFixed(4))}</td>
                 <td>${escapeHtml(Number(f.size).toFixed(2))}</td>
                 <td>${f.fee ? escapeHtml(Number(f.fee).toFixed(4)) : '-'}</td>
-                <td>${escapeHtml(safeSlice(f.orderId, 0, 8))}...</td>
-                <td>${escapeHtml(safeSlice(f.tokenId, 0, 10))}...</td>
-                <td class="${f.side === 'BUY' ? 'buy' : 'sell'}">${escapeHtml(f.side)}</td>
-                <td>${Number(f.price).toFixed(4)}</td>
-                <td>${Number(f.size).toFixed(2)}</td>
-                <td>${f.fee ? Number(f.fee).toFixed(4) : '-'}</td>
                 <td>${escapeHtml(formatTimestamp(f.timestamp))}</td>
               </tr>
             `).join('')}
@@ -611,14 +571,6 @@
         await updateState();
       } catch (error) {
         alert('Failed to activate kill switch: ' + error.message);
-      }
-    }
-
-    function promptAdminToken() {
-      const token = prompt('Enter admin token for authenticated access:');
-      if (token) {
-        setAdminToken(token);
-        refresh();
       }
     }
 

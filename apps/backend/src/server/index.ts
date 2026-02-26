@@ -16,7 +16,7 @@ import { RateLimiter } from '../utils/rateLimiter';
 import type { Order, Orderbook } from '@polymarket/shared';
 import { initializeAlerting } from '../utils/alerting';
 import { MeanReversionStrategy } from '../trading/strategies/MeanReversionStrategy';
-import { registerStrategies } from '../trading/strategies';
+import { registerStrategies, StrategyFactory } from '../trading/strategies';
 import type { MarketContext, IStrategy } from '../trading/strategies/types';
 import {
   handleGetExperiments,
@@ -40,6 +40,7 @@ import {
 let paperEngine: PaperTradingEngine | null = null;
 let riskManager: RiskManager | null = null;
 let paperStrategy: IStrategy | null = null;
+let paperStrategyType: string = 'mean-reversion';
 
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
@@ -825,6 +826,65 @@ export function createServer(): http.Server {
       return;
     }
 
+    // Paper trading strategy picker endpoints (paper mode only, admin auth required)
+    if (url === '/api/paper/strategy' && method === 'GET') {
+      if (!requireAdminAuth(req, res, 'Paper Strategy')) return;
+      respondJson(res, 200, {
+        type: paperStrategyType,
+        available: StrategyFactory.getRegisteredTypes(),
+        isPaperMode: !isLiveTradingEnabled(),
+      }, req);
+      return;
+    }
+
+    if (url === '/api/paper/strategy' && method === 'POST') {
+      if (!requireAdminAuth(req, res, 'Paper Strategy Switch')) return;
+      if (isLiveTradingEnabled()) {
+        respondJson(res, 400, { error: 'Strategy switching is only available in paper trading mode' }, req);
+        return;
+      }
+      try {
+        const body = await new Promise<string>((resolve, reject) => {
+          let data = '';
+          req.on('data', (chunk: Buffer) => { data += chunk; });
+          req.on('end', () => resolve(data));
+          req.on('error', reject);
+        });
+        const { type } = JSON.parse(body) as { type: string };
+        if (!type || typeof type !== 'string') {
+          respondJson(res, 400, { error: 'Missing required field: type' }, req);
+          return;
+        }
+        if (!StrategyFactory.isRegistered(type)) {
+          respondJson(res, 400, {
+            error: `Unknown strategy type: ${type}. Available: ${StrategyFactory.getRegisteredTypes().join(', ')}`,
+          }, req);
+          return;
+        }
+        // Clean up old strategy
+        if (paperStrategy?.cleanup) {
+          await paperStrategy.cleanup();
+        }
+        // Create and initialise the new strategy using the factory's default config
+        const registration = StrategyFactory.getRegistration(type)!;
+        const newStrategy = registration.factory();
+        await newStrategy.initialize({
+          ...(registration.defaultConfig as { strategyId: string; type: string; enabled: boolean; params: Record<string, unknown> }),
+          strategyId: `paper-${type}-${Date.now()}`,
+          type,
+          enabled: true,
+        });
+        paperStrategy = newStrategy;
+        paperStrategyType = type;
+        logger.info('Paper trading strategy switched', { type });
+        respondJson(res, 200, { type, message: `Strategy switched to ${type}` }, req);
+      } catch (err) {
+        logger.error('Failed to switch paper strategy', { error: err instanceof Error ? err.message : String(err) });
+        respondJson(res, 500, { error: err instanceof Error ? err.message : 'Failed to switch strategy' }, req);
+      }
+      return;
+    }
+
     // Configuration Management API endpoints (GAP-003, admin auth required)
     // Helper function to parse URL and extract pathname without query params
     const getPathname = (url: string): string => {
@@ -1042,7 +1102,7 @@ export async function startServer(): Promise<http.Server> {
     registerStrategies();
 
     // Initialize the strategy used for automated paper trading.
-    // Change this to ArbitrageStrategy or MarketMakingStrategy as desired.
+    paperStrategyType = 'mean-reversion';
     paperStrategy = new MeanReversionStrategy();
     await paperStrategy.initialize({
       strategyId: 'paper-mean-reversion',
