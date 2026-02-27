@@ -18,7 +18,10 @@ import { initializeAlerting } from '../utils/alerting';
 import { MeanReversionStrategy } from '../trading/strategies/MeanReversionStrategy';
 import { registerStrategies, StrategyFactory } from '../trading/strategies';
 import type { MarketContext, IStrategy } from '../trading/strategies/types';
+import { StrategyOrchestrator } from '../trading/strategies/StrategyOrchestrator';
 import { LiquidityValidator } from '../trading/liquidityValidator';
+import { BanditAllocator } from '../learning/banditAllocator';
+import type { StrategyPerformance } from '../learning/types';
 import {
   handleGetExperiments,
   handleGetStrategies,
@@ -43,6 +46,15 @@ let riskManager: RiskManager | null = null;
 let paperStrategy: IStrategy | null = null;
 let paperStrategyType: string = 'mean-reversion';
 let liquidityValidator: LiquidityValidator | null = null;
+// GAP-013: StrategyOrchestrator manages all active strategies in parallel
+let strategyOrchestrator: StrategyOrchestrator | null = null;
+// GAP-044: BanditAllocator — ML-driven capital allocation across strategies
+let banditAllocator: BanditAllocator | null = null;
+// Per-strategy performance tracker for bandit allocation
+const strategyPerfTracker = new Map<string, { tradeCount: number; pnl: number; wins: number; errors: number }>();
+let allocationCache = new Map<string, number>(); // strategyId → capital fraction (0..1)
+let allocationCounter = 0;
+const REALLOCATION_INTERVAL = 50; // Re-run bandit allocator every 50 trades
 
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
@@ -880,23 +892,32 @@ export function createServer(): http.Server {
           }, req);
           return;
         }
-        // Clean up old strategy
-        if (paperStrategy?.cleanup) {
-          await paperStrategy.cleanup();
-        }
         // Create and initialise the new strategy using the factory's default config
+        const strategyId = `paper-${type}-${Date.now()}`;
         const registration = StrategyFactory.getRegistration(type)!;
         const newStrategy = registration.factory();
         await newStrategy.initialize({
           ...(registration.defaultConfig as { strategyId: string; type: string; enabled: boolean; params: Record<string, unknown> }),
-          strategyId: `paper-${type}-${Date.now()}`,
+          strategyId,
           type,
           enabled: true,
         });
+
+        // GAP-013: Remove old strategy from orchestrator and add the new one
+        if (strategyOrchestrator && paperStrategy) {
+          const oldConfig = paperStrategy.getConfig();
+          await strategyOrchestrator.removeStrategy(oldConfig.strategyId);
+        } else if (paperStrategy?.cleanup) {
+          await paperStrategy.cleanup();
+        }
+        if (strategyOrchestrator) {
+          await strategyOrchestrator.addStrategy(newStrategy);
+        }
+
         paperStrategy = newStrategy;
         paperStrategyType = type;
-        logger.info('Paper trading strategy switched', { type });
-        respondJson(res, 200, { type, message: `Strategy switched to ${type}` }, req);
+        logger.info('Paper trading strategy switched', { type, strategyId });
+        respondJson(res, 200, { type, strategyId, message: `Strategy switched to ${type}` }, req);
       } catch (err) {
         logger.error('Failed to switch paper strategy', { error: err instanceof Error ? err.message : String(err) });
         respondJson(res, 500, { error: err instanceof Error ? err.message : 'Failed to switch strategy' }, req);
@@ -1124,7 +1145,22 @@ export async function startServer(): Promise<http.Server> {
     liquidityValidator = new LiquidityValidator();
     logger.info('Liquidity validator initialized for paper trading');
 
-    // Initialize the strategy used for automated paper trading.
+    // GAP-013: Initialize StrategyOrchestrator for multi-strategy support
+    strategyOrchestrator = new StrategyOrchestrator({
+      maxStrategies: 10,
+      enableConflictDetection: true,
+      conflictResolution: 'highest-confidence',
+    });
+
+    // GAP-044: Initialize BanditAllocator for ML-driven capital allocation
+    banditAllocator = new BanditAllocator({
+      algorithm: config.banditAlgorithm,
+      totalCapital: 1000,
+      explorationFactor: config.banditExplorationFactor,
+      minTradeCount: config.banditMinTradeCount,
+    });
+
+    // Initialize the default strategy used for automated paper trading.
     paperStrategyType = 'mean-reversion';
     paperStrategy = new MeanReversionStrategy();
     await paperStrategy.initialize({
@@ -1140,7 +1176,9 @@ export async function startServer(): Promise<http.Server> {
         cooldownPeriod: 60000,
       },
     });
-    logger.info('Paper trading strategy initialised', { strategy: paperStrategy.name });
+    // Add default strategy to the orchestrator (GAP-013)
+    await strategyOrchestrator.addStrategy(paperStrategy);
+    logger.info('Paper trading strategy initialised and added to orchestrator', { strategy: paperStrategy.name });
 
     // Helper: convert a real Polymarket orderbook to the MarketContext shape strategies expect
     const buildContext = (tokenId: string, ob: Orderbook): MarketContext => {
@@ -1165,9 +1203,49 @@ export async function startServer(): Promise<http.Server> {
       };
     };
 
+    // Helper: build a positions map keyed by tokenId for the orchestrator
+    const buildPositionsMap = () => {
+      const positionsMap = new Map<string, { tokenId: string; size: number; avgPrice: number; unrealizedPnl: number; realizedPnl: number }>();
+      for (const pos of paperEngine!.getPositions()) {
+        positionsMap.set(pos.tokenId, {
+          tokenId: pos.tokenId,
+          size: parseFloat(pos.size),
+          avgPrice: parseFloat(pos.averagePrice),
+          unrealizedPnl: parseFloat(pos.unrealizedPnl ?? '0'),
+          realizedPnl: 0,
+        });
+      }
+      return positionsMap;
+    };
+
+    // Helper: refresh bandit allocation if enough trades have accumulated (GAP-044)
+    const maybeReallocate = () => {
+      if (!banditAllocator || strategyPerfTracker.size === 0) return;
+      if (++allocationCounter % REALLOCATION_INTERVAL !== 0) return;
+
+      const performances: StrategyPerformance[] = Array.from(strategyPerfTracker.entries()).map(
+        ([strategyId, perf]) => ({
+          strategyId,
+          pnl: perf.pnl,
+          sharpe: perf.pnl > 0 ? Math.min(perf.pnl / 10, 2.0) : Math.max(perf.pnl / 10, -2.0),
+          maxDrawdown: 0.1, // simplified — full drawdown tracking would require price history
+          winRate: perf.tradeCount > 0 ? perf.wins / perf.tradeCount : 0,
+          errorRate: perf.tradeCount > 0 ? perf.errors / perf.tradeCount : 0,
+          tradeCount: perf.tradeCount,
+          lastUpdated: new Date().toISOString(),
+        }),
+      );
+
+      const allocations = banditAllocator.allocate(performances);
+      allocationCache = new Map(allocations.map(a => [a.strategyId, a.allocation]));
+      logger.debug('Bandit allocation updated', {
+        allocations: allocations.map(a => ({ strategyId: a.strategyId, fraction: a.allocation, capital: a.capitalAmount })),
+      });
+    };
+
     // Main handler: called on every real-time orderbook update from Polymarket
     const onOrderbookUpdate = async (tokenId: string, ob: Orderbook): Promise<void> => {
-      if (!paperEngine || !paperStrategy || !riskManager) return;
+      if (!paperEngine || !riskManager) return;
       if (riskManager.isKilled()) return;
 
       // 1. Try to fill any existing open orders against the updated orderbook
@@ -1178,32 +1256,60 @@ export async function startServer(): Promise<http.Server> {
         paperEngine.tryFillOrder(o.orderId, ob);
       }
 
-      // 2. Ask the strategy whether to trade
+      // 2. Ask strategies whether to trade — use StrategyOrchestrator (GAP-013)
       const context = buildContext(tokenId, ob);
-      const position = paperEngine.getPositions().find(p => p.tokenId === tokenId);
-      const stratPosition = position
-        ? {
-            tokenId: position.tokenId,
-            size: parseFloat(position.size),
-            avgPrice: parseFloat(position.averagePrice),
-            unrealizedPnl: parseFloat(position.unrealizedPnl ?? '0'),
-            realizedPnl: 0,
-          }
-        : undefined;
-
+      let winningStrategyId: string | undefined;
       let decision;
-      try {
-        decision = await paperStrategy.evaluate(context, stratPosition);
-      } catch (err) {
-        logger.warn('Strategy evaluation error', {
-          tokenId,
-          error: err instanceof Error ? err.message : String(err),
-        });
+
+      if (strategyOrchestrator && strategyOrchestrator.getStrategyCount() > 0) {
+        // GAP-013: Parallel evaluation across all registered strategies
+        let evalResults;
+        try {
+          evalResults = await strategyOrchestrator.evaluateAll(context, buildPositionsMap());
+        } catch (err) {
+          logger.warn('Orchestrator evaluation error', {
+            tokenId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return;
+        }
+        // Pick the highest-confidence non-hold result
+        const actionable = evalResults
+          .filter(r => !r.error && r.decision.action !== 'hold' && r.decision.action !== 'cancel')
+          .sort((a, b) => (b.decision.confidence ?? 0) - (a.decision.confidence ?? 0));
+        if (actionable.length === 0) return;
+        decision = actionable[0].decision;
+        winningStrategyId = actionable[0].strategyId;
+      } else if (paperStrategy) {
+        // Fallback: single strategy (backward-compat path)
+        const position = paperEngine.getPositions().find(p => p.tokenId === tokenId);
+        const stratPosition = position
+          ? { tokenId: position.tokenId, size: parseFloat(position.size), avgPrice: parseFloat(position.averagePrice), unrealizedPnl: parseFloat(position.unrealizedPnl ?? '0'), realizedPnl: 0 }
+          : undefined;
+        try {
+          decision = await paperStrategy.evaluate(context, stratPosition);
+        } catch (err) {
+          logger.warn('Strategy evaluation error', { tokenId, error: err instanceof Error ? err.message : String(err) });
+          return;
+        }
+        winningStrategyId = paperStrategyType;
+      } else {
         return;
       }
 
       if (decision.action === 'hold' || decision.action === 'cancel') return;
       if (!decision.price || !decision.size || !decision.side) return;
+
+      // GAP-044: Scale order size by BanditAllocator's capital fraction for this strategy
+      let orderSize = decision.size;
+      if (winningStrategyId && allocationCache.has(winningStrategyId)) {
+        const fraction = allocationCache.get(winningStrategyId)!;
+        orderSize = decision.size * fraction;
+        if (orderSize < 0.01) {
+          logger.debug('Order skipped: bandit allocation too small', { winningStrategyId, fraction });
+          return;
+        }
+      }
 
       // 3. Risk check before placing
       const currentOrders = paperEngine.getOrders();
@@ -1211,12 +1317,18 @@ export async function startServer(): Promise<http.Server> {
       const riskCheck = riskManager.checkOrder(
         tokenId,
         decision.side,
-        String(decision.size),
+        String(orderSize),
         currentOrders,
         currentPositions,
       );
       if (!riskCheck.allowed) {
         logger.debug('Paper order blocked by risk manager', { tokenId, reason: riskCheck.reason });
+        // Record error for this strategy in the performance tracker (GAP-044)
+        if (winningStrategyId) {
+          const perf = strategyPerfTracker.get(winningStrategyId) ?? { tradeCount: 0, pnl: 0, wins: 0, errors: 0 };
+          perf.errors++;
+          strategyPerfTracker.set(winningStrategyId, perf);
+        }
         return;
       }
 
@@ -1225,7 +1337,7 @@ export async function startServer(): Promise<http.Server> {
         const liquidityCheck = liquidityValidator.checkLiquidity(
           tokenId,
           decision.side,
-          String(decision.size),
+          String(orderSize),
           ob,
           ob.timestamp,
         );
@@ -1246,9 +1358,28 @@ export async function startServer(): Promise<http.Server> {
           tokenId,
           decision.side,
           String(decision.price),
-          String(decision.size),
+          String(orderSize),
         );
-        paperEngine.tryFillOrder(order.orderId, ob);
+        const filled = paperEngine.tryFillOrder(order.orderId, ob);
+
+        // GAP-044: Record trade outcome in the performance tracker
+        if (winningStrategyId) {
+          const perf = strategyPerfTracker.get(winningStrategyId) ?? { tradeCount: 0, pnl: 0, wins: 0, errors: 0 };
+          perf.tradeCount++;
+          if (filled) {
+            perf.wins++;
+            // Approximate PnL contribution (positive for buys below mid, sells above mid)
+            const mid = (parseFloat(ob.bids[0]?.price ?? '0') + parseFloat(ob.asks[0]?.price ?? '1')) / 2;
+            const pnlContrib = decision.side === 'BUY'
+              ? (mid - decision.price) * orderSize
+              : (decision.price - mid) * orderSize;
+            perf.pnl += pnlContrib;
+          }
+          strategyPerfTracker.set(winningStrategyId, perf);
+        }
+
+        // Periodically re-run bandit allocator (GAP-044)
+        maybeReallocate();
       } catch (err) {
         logger.warn('Paper order creation failed', {
           tokenId,

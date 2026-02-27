@@ -326,9 +326,21 @@ describe('Chaos: Audit Trail Integrity', () => {
     persistence.close();
   });
 
-  it.skip('should maintain audit trail during failures - requires logAuditEvent implementation', async () => {
-    // This test requires logAuditEvent() which doesn't exist yet
-    // Keeping as skip until API is implemented
+  it('should maintain audit trail during failures', async () => {
+    // logAuditEvent() must not throw and must persist the event
+    persistence.logAuditEvent('ORDER_PLACED', { orderId: 'order-1', tokenId: '0xtest123' });
+    persistence.logAuditEvent('RISK_CHECK_PASSED', { orderId: 'order-1' });
+    persistence.logAuditEvent('ORDER_FILLED', { orderId: 'order-1', fillSize: '100' });
+
+    const events = persistence.getAuditLog();
+    expect(events.length).toBe(3);
+    expect(events[0].eventType).toBe('ORDER_FILLED'); // DESC order
+    expect(events[0].data).toMatchObject({ orderId: 'order-1' });
+
+    // Filtered query
+    const placed = persistence.getAuditLog({ eventType: 'ORDER_PLACED' });
+    expect(placed.length).toBe(1);
+    expect(placed[0].data).toMatchObject({ tokenId: '0xtest123' });
   });
 
   it('should verify audit trail completeness', async () => {
@@ -360,18 +372,87 @@ describe('Chaos: Backup and Restore', () => {
     persistence.close();
   });
 
-  it.skip('should create backup of current state - requires createBackup implementation', () => {
-    // This test requires createBackup() which doesn't exist yet
-    // Keeping as skip until API is implemented
+  it('should create backup of current state', () => {
+    // Use a temp file-based DB to allow backup
+    const dbPath = '/tmp/chaos-backup-src-' + Date.now() + '.sqlite';
+    const backupPath = '/tmp/chaos-backup-dest-' + Date.now() + '.sqlite';
+    const p = new PersistenceService(dbPath);
+    const fs = require('fs');
+    try {
+      // Populate some state
+      p.savePosition({ tokenId: '0xtest123', size: '100', averagePrice: '0.50' });
+      p.logAuditEvent('TEST_EVENT', { foo: 'bar' });
+
+      // Create backup
+      const result = p.createBackup(backupPath);
+      expect(result).toBe(backupPath);
+      expect(fs.existsSync(backupPath)).toBe(true);
+
+      // Backup file should be a valid SQLite file (header starts with 'SQLite format')
+      const header = fs.readFileSync(backupPath).slice(0, 16).toString('ascii');
+      expect(header).toMatch(/SQLite/);
+    } finally {
+      p.close();
+      try { fs.unlinkSync(dbPath); } catch { /* ignore */ }
+      try { fs.unlinkSync(backupPath); } catch { /* ignore */ }
+    }
   });
 
-  it.skip('should restore from backup - requires restoreFromBackup implementation', () => {
-    // This test requires restoreFromBackup() which doesn't exist yet
-    // Keeping as skip until API is implemented
+  it('should restore from backup', () => {
+    const srcPath = '/tmp/chaos-restore-src-' + Date.now() + '.sqlite';
+    const destPath = '/tmp/chaos-restore-dest-' + Date.now() + '.sqlite';
+    const fs = require('fs');
+    const src = new PersistenceService(srcPath);
+    let dest: PersistenceService | null = null;
+    try {
+      // Populate source DB
+      src.savePosition({ tokenId: '0xtest456', size: '200', averagePrice: '0.75' });
+      src.logAuditEvent('BACKUP_TEST', { msg: 'hello' });
+      const backupFile = '/tmp/chaos-restore-backup-' + Date.now() + '.sqlite';
+      src.createBackup(backupFile);
+      src.close();
+
+      // Create a separate dest DB (empty)
+      dest = new PersistenceService(destPath);
+      expect(dest.getPositions()).toHaveLength(0);
+
+      // Restore from backup
+      dest.restoreFromBackup(backupFile);
+
+      // Verify state was restored
+      const positions = dest.getPositions();
+      expect(positions).toHaveLength(1);
+      expect(positions[0].tokenId).toBe('0xtest456');
+
+      const auditEvents = dest.getAuditLog();
+      expect(auditEvents.length).toBeGreaterThan(0);
+      expect(auditEvents.some(e => e.eventType === 'BACKUP_TEST')).toBe(true);
+
+      try { fs.unlinkSync(backupFile); } catch { /* ignore */ }
+    } finally {
+      if (dest) dest.close();
+      try { fs.unlinkSync(srcPath); } catch { /* ignore */ }
+      try { fs.unlinkSync(destPath); } catch { /* ignore */ }
+    }
   });
 
-  it.skip('should handle corrupted backup data - requires restoreFromBackup implementation', () => {
-    // This test requires restoreFromBackup() which doesn't exist yet
-    // Keeping as skip until API is implemented
+  it('should handle corrupted backup data gracefully', () => {
+    const corruptedPath = '/tmp/chaos-corrupted-' + Date.now() + '.sqlite';
+    const fs = require('fs');
+    try {
+      // Write garbage data as a "backup" file
+      fs.writeFileSync(corruptedPath, 'THIS IS NOT A VALID SQLITE DATABASE FILE!!!');
+
+      // restoreFromBackup should throw on invalid SQLite data
+      let threw = false;
+      try {
+        persistence.restoreFromBackup(corruptedPath);
+      } catch {
+        threw = true;
+      }
+      expect(threw).toBe(true);
+    } finally {
+      try { fs.unlinkSync(corruptedPath); } catch { /* ignore */ }
+    }
   });
 });

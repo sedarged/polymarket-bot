@@ -128,6 +128,21 @@ export function initializeDatabase(config: DatabaseConfig = {}): Database.Databa
     )
   `);
 
+  // Create audit_log table for general system audit events (GAP-032)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      timestamp INTEGER NOT NULL,
+      data TEXT
+    )
+  `);
+
+  // Create index on audit_log event_type for filtered queries
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_audit_log_event_type ON audit_log(event_type)
+  `);
+
   logger.info('Audit trail database initialized successfully');
 
   return db;

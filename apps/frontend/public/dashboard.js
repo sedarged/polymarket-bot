@@ -884,13 +884,28 @@ async function handleReconnect() {
   showWarning('Reconnecting to market feed...');
   addEvent('RECONNECT', 'Manual reconnection requested');
   addLog('info', 'Reconnection requested via dashboard');
-  
-  // In a real implementation, this would call a reconnect endpoint
-  // For now, just refresh the data
-  setTimeout(async () => {
-    await refresh();
-    showSuccess('Reconnected successfully');
-  }, 1000);
+
+  try {
+    const response = await fetch(`${API_URL}/api/reconnect`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      addLog('info', `Reconnect initiated: ${data.message ?? 'success'}`);
+      setTimeout(async () => {
+        await refresh();
+        showSuccess('Reconnected successfully');
+      }, 1500);
+    } else {
+      const err = await response.json().catch(() => ({}));
+      showError(`Reconnect failed: ${err.error ?? response.statusText}`);
+      addLog('error', `Reconnect failed: ${err.error ?? response.statusText}`);
+    }
+  } catch (err) {
+    showError(`Reconnect error: ${err instanceof Error ? err.message : String(err)}`);
+    addLog('error', `Reconnect error: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 async function saveRiskConfig() {

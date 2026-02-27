@@ -1,3 +1,6 @@
+import path from 'path';
+import fs from 'fs';
+import Database from 'better-sqlite3';
 import { Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
@@ -138,6 +141,139 @@ export class PersistenceService extends AuditTrail {
    */
   close(): void {
     super.close();
+  }
+
+  /**
+   * Log a general audit event to the audit_log table (GAP-032).
+   * Unlike recordOrderEvent (which is order-scoped), this accepts any key/value data.
+   */
+  logAuditEvent(eventType: string, data?: Record<string, unknown>): void {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO audit_log (event_type, timestamp, data)
+        VALUES (?, ?, ?)
+      `);
+      stmt.run(eventType, Date.now(), data ? JSON.stringify(data) : null);
+      logger.debug('Audit event logged', { eventType });
+    } catch (error) {
+      logger.error('Failed to log audit event', {
+        eventType,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw — audit logging failures must never interrupt trading flow
+    }
+  }
+
+  /**
+   * Get audit log entries, optionally filtered by event type (GAP-032).
+   */
+  getAuditLog(filters?: {
+    eventType?: string;
+    startTime?: number;
+    endTime?: number;
+    limit?: number;
+  }): Array<{ id: number; eventType: string; timestamp: number; data: Record<string, unknown> | null }> {
+    try {
+      let query = 'SELECT id, event_type, timestamp, data FROM audit_log WHERE 1=1';
+      const params: (string | number)[] = [];
+      if (filters?.eventType) {
+        query += ' AND event_type = ?';
+        params.push(filters.eventType);
+      }
+      if (filters?.startTime) {
+        query += ' AND timestamp >= ?';
+        params.push(filters.startTime);
+      }
+      if (filters?.endTime) {
+        query += ' AND timestamp <= ?';
+        params.push(filters.endTime);
+      }
+      query += ' ORDER BY timestamp DESC';
+      if (filters?.limit) {
+        query += ' LIMIT ?';
+        params.push(filters.limit);
+      }
+      const stmt = this.db.prepare(query);
+      const rows = stmt.all(...params) as Array<{ id: number; event_type: string; timestamp: number; data: string | null }>;
+      return rows.map(r => ({
+        id: r.id,
+        eventType: r.event_type,
+        timestamp: r.timestamp,
+        data: r.data ? JSON.parse(r.data) : null,
+      }));
+    } catch (error) {
+      logger.error('Failed to query audit log', { error: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  }
+
+  /**
+   * Create a full backup of the current database to destPath (GAP-032).
+   * Uses better-sqlite3's online backup API — safe while the DB is in use.
+   * Returns the resolved destination path.
+   */
+  createBackup(destPath: string): string {
+    const resolved = path.resolve(destPath);
+    // Ensure parent directory exists
+    const dir = path.dirname(resolved);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    try {
+      // better-sqlite3 backup() is fully online — no lock required
+      this.db.backup(resolved);
+      logger.info('Database backup created', { destPath: resolved });
+      return resolved;
+    } catch (error) {
+      logger.error('Failed to create database backup', {
+        destPath: resolved,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Restore all tables from a backup database file (GAP-032).
+   * Clears current state and replaces it with the backup contents atomically.
+   * WARNING: This is destructive — all current state will be replaced.
+   */
+  restoreFromBackup(srcPath: string): void {
+    const resolved = path.resolve(srcPath);
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`Backup file not found: ${resolved}`);
+    }
+    try {
+      // Use ATTACH + INSERT SELECT inside a transaction for atomicity
+      this.db.exec(`ATTACH DATABASE '${resolved}' AS backup_db`);
+      const restore = this.db.transaction(() => {
+        // Delete in foreign-key-safe order
+        this.db.exec('DELETE FROM audit_log');
+        this.db.exec('DELETE FROM order_events');
+        this.db.exec('DELETE FROM fills');
+        this.db.exec('DELETE FROM orders');
+        this.db.exec('DELETE FROM positions');
+        this.db.exec('DELETE FROM balances');
+        // Copy from backup
+        this.db.exec('INSERT OR IGNORE INTO orders SELECT * FROM backup_db.orders');
+        this.db.exec('INSERT OR IGNORE INTO fills SELECT * FROM backup_db.fills');
+        this.db.exec('INSERT OR IGNORE INTO order_events SELECT * FROM backup_db.order_events');
+        this.db.exec('INSERT OR IGNORE INTO positions SELECT * FROM backup_db.positions');
+        this.db.exec('INSERT OR IGNORE INTO balances SELECT * FROM backup_db.balances');
+        this.db.exec('INSERT OR IGNORE INTO audit_log SELECT * FROM backup_db.audit_log');
+      });
+      restore();
+      this.db.exec('DETACH DATABASE backup_db');
+      logger.info('Database restored from backup', { srcPath: resolved });
+    } catch (error) {
+      // Attempt to detach even on failure
+      try { this.db.exec('DETACH DATABASE backup_db'); } catch { /* ignore */ }
+      logger.error('Failed to restore from backup', {
+        srcPath: resolved,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   /**

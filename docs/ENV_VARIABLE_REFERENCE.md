@@ -202,21 +202,21 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 19. Learning System (7 variables functional, 4 planned)
+## 19. Learning System (11 variables — all implemented, GAP-003 resolved)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `LEARNING_SYSTEM_ENABLED` | `false` | No | **(Planned)** Enable/disable learning system. Not yet wired into config. |
+| `LEARNING_SYSTEM_ENABLED` | `true` | No | Enable/disable learning system initialization. Set `false` to skip entirely. ✅ **Wired** |
 | `EVENT_STORE_PATH` | `./data/events.db` | No | Event store database path |
 | `SIGNAL_CATALOG_PATH` | `./data/signals.db` | No | Signal catalog database path |
 | `BACKTEST_ENGINE_PATH` | `./data/backtests.db` | No | Backtest engine database path |
 | `PROMOTION_WORKFLOW_PATH` | `./data/promotions.db` | No | Promotion workflow database path |
-| `EVENT_STORE_MAX_EVENTS` | `0` (unlimited) | No | **(GAP-044)** Max events retained in EventStore; 0 = unlimited. Oldest events pruned when limit reached. |
-| `BACKTEST_MAX_CONCURRENT` | `3` | No | **(GAP-044)** Max concurrent backtests. Requests over limit are rejected immediately. |
-| `BACKTEST_MAX_DATE_RANGE_DAYS` | `365` | No | **(GAP-044)** Max date range in days for a single backtest run. |
-| `BANDIT_ALGORITHM` | `epsilon-greedy` | No | **(Planned)** Bandit algorithm type. Not yet wired into config. |
-| `BANDIT_EXPLORATION_FACTOR` | `0.1` | No | **(Planned)** Exploration factor (0-1). Not yet wired into config. |
-| `BANDIT_MIN_TRADE_COUNT` | `10` | No | **(Planned)** Minimum trades before allocation. Not yet wired into config. |
+| `EVENT_STORE_MAX_EVENTS` | `0` (unlimited) | No | Max events retained in EventStore; 0 = unlimited. Oldest events pruned when limit reached. |
+| `BACKTEST_MAX_CONCURRENT` | `3` | No | Max concurrent backtests. Requests over limit are rejected immediately. |
+| `BACKTEST_MAX_DATE_RANGE_DAYS` | `365` | No | Max date range in days for a single backtest run. |
+| `BANDIT_ALGORITHM` | `epsilon-greedy` | No | Bandit algorithm: `epsilon-greedy`, `ucb1`, `thompson-sampling`. ✅ **Wired** |
+| `BANDIT_EXPLORATION_FACTOR` | `0.1` | No | Exploration factor (0.0–1.0). Higher = more exploration. ✅ **Wired** |
+| `BANDIT_MIN_TRADE_COUNT` | `10` | No | Minimum trades before a strategy is eligible for bandit allocation. ✅ **Wired** |
 
 ---
 
@@ -246,14 +246,14 @@ This document provides an overview of environment variables used by the Polymark
 
 ---
 
-## 22. WebSocket Configuration (2 planned)
+## 22. WebSocket Configuration (2 variables — all implemented, GAP-005 resolved)
 
 | Variable | Default | Required | Description |
 |----------|---------|----------|-------------|
-| `WS_RECONNECT_DELAY` | `1000` | No | **(Planned)** Initial reconnection delay in ms. Not yet wired into config. |
-| `WS_HEARTBEAT_INTERVAL` | `30000` | No | **(Planned)** Heartbeat interval in ms. Not yet wired into config. |
+| `WS_RECONNECT_DELAY` | `1000` | No | Initial reconnection delay in ms. Passed to `WebSocketClient` via `MarketFeedClient`. ✅ **Wired** |
+| `WS_HEARTBEAT_INTERVAL_MS` | `30000` | No | Heartbeat ping/pong interval in ms. Replaces hardcoded constant in `WebSocketClient`. ✅ **Wired** |
 
-**Note:** `WS_MAX_RECONNECT_ATTEMPTS` is implemented and documented in [§8. Heartbeat & WebSocket Limits](#8-heartbeat--websocket-limits-2-variables). The variables above are reserved for future configurability.
+**Note:** `WS_MAX_RECONNECT_ATTEMPTS` is documented in [§8. Heartbeat & WebSocket Limits](#8-heartbeat--websocket-limits-2-variables). All three WS tuning variables are now wired into the config schema.
 
 ---
 
