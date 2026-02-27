@@ -1362,6 +1362,34 @@ export async function startServer(): Promise<http.Server> {
         );
         const filled = paperEngine.tryFillOrder(order.orderId, ob);
 
+        // Arbitrage two-leg execution: if the strategy signals needsNoLeg, simulate
+        // buying/selling the complementary NO token using inverted YES prices.
+        // NO ask = 1 - YES bid, NO bid = 1 - YES ask (complementary token identity).
+        if (decision.metadata?.needsNoLeg === true && typeof decision.metadata.noPrice === 'number') {
+          const noTokenId = `${tokenId}:no`;
+          const noPrice = decision.metadata.noPrice as number;
+          const noSide = decision.side; // same side (both BUY for buy-both, both SELL for sell-both)
+          // Construct a synthetic NO orderbook from inverted YES prices
+          const noOb = {
+            market: ob.market,
+            asset_id: noTokenId,
+            timestamp: ob.timestamp,
+            // NO bids = 1 - YES asks; NO asks = 1 - YES bids
+            bids: ob.asks.map(a => ({ price: String((1 - parseFloat(a.price)).toFixed(4)), size: a.size })),
+            asks: ob.bids.map(b => ({ price: String((1 - parseFloat(b.price)).toFixed(4)), size: b.size })),
+          };
+          try {
+            const noOrder = paperEngine.createOrder(noTokenId, noSide, String(noPrice), String(orderSize));
+            paperEngine.tryFillOrder(noOrder.orderId, noOb);
+            logger.debug('Arbitrage NO-leg executed', { tokenId, noTokenId, noPrice, noSide, orderSize });
+          } catch (noLegErr) {
+            logger.warn('Arbitrage NO-leg failed', {
+              noTokenId,
+              error: noLegErr instanceof Error ? noLegErr.message : String(noLegErr),
+            });
+          }
+        }
+
         // GAP-044: Record trade outcome in the performance tracker
         if (winningStrategyId) {
           const perf = strategyPerfTracker.get(winningStrategyId) ?? { tradeCount: 0, pnl: 0, wins: 0, errors: 0 };
