@@ -62,6 +62,12 @@ export class WebSocketClient extends EventEmitter {
     this.reconnectJitter = options.reconnectJitter ?? 0.1;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 10; // Research §9.3
     this.HEARTBEAT_INTERVAL_MS = options.heartbeatIntervalMs ?? 30000; // GAP-005
+    if (this.HEARTBEAT_INTERVAL_MS <= this.HEARTBEAT_TIMEOUT_MS) {
+      logger.warn('WebSocket heartbeat interval should exceed timeout to avoid false disconnections', {
+        intervalMs: this.HEARTBEAT_INTERVAL_MS,
+        timeoutMs: this.HEARTBEAT_TIMEOUT_MS,
+      });
+    }
     this.currentReconnectDelay = this.reconnectDelay;
   }
 

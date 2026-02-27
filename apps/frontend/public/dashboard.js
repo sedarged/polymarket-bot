@@ -880,6 +880,15 @@ function handleAuthButtonClick() {
   }
 }
 
+function getAuthHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = Auth.getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function handleReconnect() {
   showWarning('Reconnecting to market feed...');
   addEvent('RECONNECT', 'Manual reconnection requested');

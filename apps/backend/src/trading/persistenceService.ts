@@ -1,6 +1,5 @@
 import path from 'path';
 import fs from 'fs';
-import Database from 'better-sqlite3';
 import { Position } from '@polymarket/shared';
 import { logger } from '../utils/logger';
 import { AuditTrail } from './auditTrail';
@@ -266,8 +265,14 @@ export class PersistenceService extends AuditTrail {
       this.db.exec('DETACH DATABASE backup_db');
       logger.info('Database restored from backup', { srcPath: resolved });
     } catch (error) {
-      // Attempt to detach even on failure
-      try { this.db.exec('DETACH DATABASE backup_db'); } catch { /* ignore */ }
+      // Attempt to detach even on failure; log if detach itself fails
+      try {
+        this.db.exec('DETACH DATABASE backup_db');
+      } catch (detachErr) {
+        logger.warn('Failed to detach backup database during error recovery', {
+          error: detachErr instanceof Error ? detachErr.message : String(detachErr),
+        });
+      }
       logger.error('Failed to restore from backup', {
         srcPath: resolved,
         error: error instanceof Error ? error.message : String(error),

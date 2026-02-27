@@ -1292,7 +1292,7 @@ export async function startServer(): Promise<http.Server> {
           logger.warn('Strategy evaluation error', { tokenId, error: err instanceof Error ? err.message : String(err) });
           return;
         }
-        winningStrategyId = paperStrategyType;
+        winningStrategyId = paperStrategy.getConfig().strategyId;
       } else {
         return;
       }
