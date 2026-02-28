@@ -961,7 +961,7 @@ async function loadCurrentStrategy() {
     }
   } catch (err) {
     // Not fatal — only available in paper mode
-    addLog('debug', `Could not load strategy from backend: ${err.message}`);
+    addLog('debug', `Could not load strategy from backend: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -991,9 +991,10 @@ async function saveStrategyConfig() {
       addEvent('CONFIG', `Strategy switched to ${strategyType}`);
       addLog('info', `Active strategy changed to: ${strategyType}`);
     } catch (err) {
-      errorEl.textContent = `Failed to switch strategy: ${err.message}`;
+      const message = err instanceof Error ? err.message : String(err);
+      errorEl.textContent = `Failed to switch strategy: ${message}`;
       errorEl.classList.remove('hidden');
-      addLog('error', `Strategy switch failed: ${err.message}`);
+      addLog('error', `Strategy switch failed: ${message}`);
       saveBtn.disabled = false;
       saveBtn.textContent = '💾 Save';
       return;

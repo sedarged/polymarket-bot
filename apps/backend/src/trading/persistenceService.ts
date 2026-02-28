@@ -187,7 +187,7 @@ export class PersistenceService extends AuditTrail {
         query += ' AND timestamp <= ?';
         params.push(filters.endTime);
       }
-      query += ' ORDER BY timestamp DESC';
+      query += ' ORDER BY timestamp DESC, id DESC';
       if (filters?.limit) {
         query += ' LIMIT ?';
         params.push(filters.limit);
@@ -211,7 +211,7 @@ export class PersistenceService extends AuditTrail {
    * Uses better-sqlite3's online backup API — safe while the DB is in use.
    * Returns the resolved destination path.
    */
-  createBackup(destPath: string): string {
+  async createBackup(destPath: string): Promise<string> {
     const resolved = path.resolve(destPath);
     // Ensure parent directory exists
     const dir = path.dirname(resolved);
@@ -219,8 +219,8 @@ export class PersistenceService extends AuditTrail {
       fs.mkdirSync(dir, { recursive: true });
     }
     try {
-      // better-sqlite3 backup() is fully online — no lock required
-      this.db.backup(resolved);
+      // better-sqlite3 backup() returns a Promise — await it so callers see a complete file
+      await this.db.backup(resolved);
       logger.info('Database backup created', { destPath: resolved });
       return resolved;
     } catch (error) {
@@ -242,37 +242,44 @@ export class PersistenceService extends AuditTrail {
     if (!fs.existsSync(resolved)) {
       throw new Error(`Backup file not found: ${resolved}`);
     }
+    // Validate path to prevent SQL injection via special characters (null bytes, etc.)
+    if (resolved.includes('\0')) {
+      throw new Error('Invalid backup path: path must not contain null bytes');
+    }
+    const escapedResolved = resolved.replace(/'/g, "''");
     try {
       // Use ATTACH + INSERT SELECT inside a transaction for atomicity
-      this.db.exec(`ATTACH DATABASE '${resolved}' AS backup_db`);
-      const restore = this.db.transaction(() => {
-        // Delete in foreign-key-safe order
-        this.db.exec('DELETE FROM audit_log');
-        this.db.exec('DELETE FROM order_events');
-        this.db.exec('DELETE FROM fills');
-        this.db.exec('DELETE FROM orders');
-        this.db.exec('DELETE FROM positions');
-        this.db.exec('DELETE FROM balances');
-        // Copy from backup
-        this.db.exec('INSERT OR IGNORE INTO orders SELECT * FROM backup_db.orders');
-        this.db.exec('INSERT OR IGNORE INTO fills SELECT * FROM backup_db.fills');
-        this.db.exec('INSERT OR IGNORE INTO order_events SELECT * FROM backup_db.order_events');
-        this.db.exec('INSERT OR IGNORE INTO positions SELECT * FROM backup_db.positions');
-        this.db.exec('INSERT OR IGNORE INTO balances SELECT * FROM backup_db.balances');
-        this.db.exec('INSERT OR IGNORE INTO audit_log SELECT * FROM backup_db.audit_log');
-      });
-      restore();
-      this.db.exec('DETACH DATABASE backup_db');
-      logger.info('Database restored from backup', { srcPath: resolved });
-    } catch (error) {
-      // Attempt to detach even on failure; log if detach itself fails
+      this.db.exec(`ATTACH DATABASE '${escapedResolved}' AS backup_db`);
       try {
-        this.db.exec('DETACH DATABASE backup_db');
-      } catch (detachErr) {
-        logger.warn('Failed to detach backup database during error recovery', {
-          error: detachErr instanceof Error ? detachErr.message : String(detachErr),
+        const restore = this.db.transaction(() => {
+          // Delete in foreign-key-safe order
+          this.db.exec('DELETE FROM audit_log');
+          this.db.exec('DELETE FROM order_events');
+          this.db.exec('DELETE FROM fills');
+          this.db.exec('DELETE FROM orders');
+          this.db.exec('DELETE FROM positions');
+          this.db.exec('DELETE FROM balances');
+          // Copy from backup
+          this.db.exec('INSERT OR IGNORE INTO orders SELECT * FROM backup_db.orders');
+          this.db.exec('INSERT OR IGNORE INTO fills SELECT * FROM backup_db.fills');
+          this.db.exec('INSERT OR IGNORE INTO order_events SELECT * FROM backup_db.order_events');
+          this.db.exec('INSERT OR IGNORE INTO positions SELECT * FROM backup_db.positions');
+          this.db.exec('INSERT OR IGNORE INTO balances SELECT * FROM backup_db.balances');
+          this.db.exec('INSERT OR IGNORE INTO audit_log SELECT * FROM backup_db.audit_log');
         });
+        restore();
+        logger.info('Database restored from backup', { srcPath: resolved });
+      } finally {
+        // Always attempt to detach the backup database, even on failure
+        try {
+          this.db.exec('DETACH DATABASE backup_db');
+        } catch (detachErr) {
+          logger.warn('Failed to detach backup database during cleanup', {
+            error: detachErr instanceof Error ? detachErr.message : String(detachErr),
+          });
+        }
       }
+    } catch (error) {
       logger.error('Failed to restore from backup', {
         srcPath: resolved,
         error: error instanceof Error ? error.message : String(error),

@@ -56,6 +56,15 @@ let allocationCache = new Map<string, number>(); // strategyId → capital fract
 let allocationCounter = 0;
 const REALLOCATION_INTERVAL = 50; // Re-run bandit allocator every 50 trades
 
+/**
+ * Remove a strategy's entries from the perf tracker and allocation cache.
+ * Call this whenever a strategy is removed or replaced to prevent unbounded map growth.
+ */
+function cleanupStrategyTracking(strategyId: string): void {
+  strategyPerfTracker.delete(strategyId);
+  allocationCache.delete(strategyId);
+}
+
 // Rate limiter instance (Audit Finding A-008)
 let rateLimiter: RateLimiter | null = null;
 
@@ -881,7 +890,14 @@ export function createServer(): http.Server {
           req.on('end', () => resolve(data));
           req.on('error', reject);
         });
-        const { type } = JSON.parse(body) as { type: string };
+        let parsedBody: { type?: unknown };
+        try {
+          parsedBody = JSON.parse(body) as { type?: unknown };
+        } catch {
+          respondJson(res, 400, { error: 'Invalid JSON body' }, req);
+          return;
+        }
+        const { type } = parsedBody;
         if (!type || typeof type !== 'string') {
           respondJson(res, 400, { error: 'Missing required field: type' }, req);
           return;
@@ -906,8 +922,11 @@ export function createServer(): http.Server {
         // GAP-013: Remove old strategy from orchestrator and add the new one
         if (strategyOrchestrator && paperStrategy) {
           const oldConfig = paperStrategy.getConfig();
+          cleanupStrategyTracking(oldConfig.strategyId);
           await strategyOrchestrator.removeStrategy(oldConfig.strategyId);
         } else if (paperStrategy?.cleanup) {
+          const oldConfig = paperStrategy.getConfig();
+          cleanupStrategyTracking(oldConfig.strategyId);
           await paperStrategy.cleanup();
         }
         if (strategyOrchestrator) {
@@ -1152,13 +1171,19 @@ export async function startServer(): Promise<http.Server> {
       conflictResolution: 'highest-confidence',
     });
 
-    // GAP-044: Initialize BanditAllocator for ML-driven capital allocation
-    banditAllocator = new BanditAllocator({
-      algorithm: config.banditAlgorithm,
-      totalCapital: 1000,
-      explorationFactor: config.banditExplorationFactor,
-      minTradeCount: config.banditMinTradeCount,
-    });
+    // GAP-044: Initialize BanditAllocator for ML-driven capital allocation (only when learning is enabled)
+    if (config.learningSystemEnabled) {
+      banditAllocator = new BanditAllocator({
+        algorithm: config.banditAlgorithm,
+        totalCapital: 1000,
+        explorationFactor: config.banditExplorationFactor,
+        minTradeCount: config.banditMinTradeCount,
+      });
+      logger.info('Bandit allocator initialized for paper trading');
+    } else {
+      banditAllocator = null;
+      logger.info('Bandit allocator disabled by LEARNING_SYSTEM_ENABLED flag; using non-learning allocation for paper trading');
+    }
 
     // Initialize the default strategy used for automated paper trading.
     paperStrategyType = 'mean-reversion';

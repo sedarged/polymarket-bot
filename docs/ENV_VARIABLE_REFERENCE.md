@@ -279,11 +279,11 @@ This document provides an overview of environment variables used by the Polymark
 | Reconciliation | 1 | State verification |
 | Rate Limiting | 3 | DoS protection |
 | Alerting | 4 | Telegram notifications |
-| Learning System | 8 | 4 functional (database paths), 4 planned (feature flags) |
+| Learning System | 11 | All implemented (GAP-003 resolved) |
 | Data Pipeline / Ingestion | 8 | Real-time market ingestion to EventStore (GAP-021) |
 | Metrics | 2 | Always enabled — METRICS_ENABLED/METRICS_ENDPOINT vars not needed in schema |
-| WebSocket | 2 | WS_RECONNECT_DELAY and WS_HEARTBEAT_INTERVAL hardcoded; not yet in schema (GAP-005) |
-| **TOTAL** | **65** | **~58 functional, ~4 genuinely not-yet-wired (learning feature flags + WS timing), ~3 not-in-schema by design (AWS/Azure credential chains)** |
+| WebSocket | 2 | WS_RECONNECT_DELAY and WS_HEARTBEAT_INTERVAL_MS fully wired (GAP-005 resolved) |
+| **TOTAL** | **65** | **~65 functional, ~0 genuinely not-yet-wired, ~3 not-in-schema by design (AWS/Azure credential chains)** |
 
 ---
 
