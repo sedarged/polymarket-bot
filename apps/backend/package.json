@@ -36,7 +36,7 @@
     "bench:verbose": "vitest bench --reporter=verbose"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.998.0",
+    "@aws-sdk/client-secrets-manager": "^3.999.0",
     "@azure/identity": "^4.13.0",
     "@azure/keyvault-secrets": "^4.10.0",
     "@ethersproject/wallet": "^5.8.0",
@@ -61,7 +61,7 @@
     "@stryker-mutator/vitest-runner": "^9.5.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.3.1",
+    "@types/node": "^25.3.2",
     "@vitest/coverage-v8": "^4.0.18",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
