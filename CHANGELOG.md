@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0](https://github.com/sedarged/polymarket-bot/compare/v3.12.2...v3.13.0) (2026-02-28)
+
+
+### Features
+
+* fix and harden all three trading strategies for Polymarket ([68a3ffc](https://github.com/sedarged/polymarket-bot/commit/68a3ffc761d11b130a8d27ef015a3113abecd976))
+* implement all remaining medium/high-priority gaps ([e55b9ed](https://github.com/sedarged/polymarket-bot/commit/e55b9edf8c3e456ceff53e8a9de77ce4b4ab7d86))
+* wire market feed to paper trading engine ([498da7c](https://github.com/sedarged/polymarket-bot/commit/498da7ce7be835bb86465aca971d7e9e888cc93f))
+* wire remaining config gaps, add reconnect endpoint, fix paper trading bugs ([2c79a76](https://github.com/sedarged/polymarket-bot/commit/2c79a7652e4a1ab91615b42540f51a1304e3cd86))
+
+
+### Bug Fixes
+
+* address all PR review feedback - security, robustness, and test quality improvements ([0f2effc](https://github.com/sedarged/polymarket-bot/commit/0f2effc595a8fec39c5f9651e9c60acb7e6f1153))
+* address all PR review feedback - security, robustness, and UX improvements ([c416c2e](https://github.com/sedarged/polymarket-bot/commit/c416c2ec2e338e5115e99f55c9edcfdc92a7b70a))
+* address PR review feedback ([cefe0cd](https://github.com/sedarged/polymarket-bot/commit/cefe0cddc7bae5b3d8756bcf561ae043d2103487))
+* address PR review feedback - security, robustness, and test quality improvements ([a6895f9](https://github.com/sedarged/polymarket-bot/commit/a6895f93ef3d1a0149107a633256a3d62a7c37f9))
+* dashboard Reconnect button now calls POST /api/reconnect with auth ([e55b9ed](https://github.com/sedarged/polymarket-bot/commit/e55b9edf8c3e456ceff53e8a9de77ce4b4ab7d86))
+
 ## [3.12.2](https://github.com/sedarged/polymarket-bot/compare/v3.12.1...v3.12.2) (2026-02-26)
 
 
