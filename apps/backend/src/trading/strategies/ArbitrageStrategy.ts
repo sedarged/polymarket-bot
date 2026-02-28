@@ -1,21 +1,29 @@
 /**
  * Arbitrage Strategy
- * 
+ *
  * Core Polymarket strategy that exploits price discrepancies where YES + NO ≠ $1.00.
  * This is the most reliable and profitable strategy for prediction markets.
- * 
+ *
  * Key Concepts:
  * - On Polymarket, YES and NO shares must sum to exactly $1.00 at settlement
  * - If YES + NO < $1.00 (minus fees), buy both sides for guaranteed profit
  * - If YES + NO > $1.00 (plus fees), sell both sides (requires existing positions)
- * 
+ *
+ * Two-leg execution:
+ * - This strategy returns a decision for the YES leg and sets needsNoLeg=true
+ *   in the decision metadata along with noPrice so the execution layer can
+ *   place the complementary NO-token order on the same tick.
+ * - The implied NO prices are derived from the YES orderbook:
+ *     noAsk = 1 - yesBid   (cost to buy NO = complement of YES bid)
+ *     noBid = 1 - yesAsk   (revenue to sell NO = complement of YES ask)
+ *
  * Parameters:
  * - minProfitBps: Minimum profit in basis points after fees (default: 50 = 0.5%)
  * - feeRate: Trading fee rate (default: 0.02 = 2%)
  * - maxOrderSize: Maximum size per arbitrage leg (default: 100)
  * - minLiquidity: Minimum liquidity required on both sides (default: 50)
  * - priceUpdateWindow: Time window for stale price detection (default: 5000ms)
- * 
+ *
  * **This is a production-ready strategy for Polymarket.**
  */
 
@@ -233,23 +241,23 @@ export class ArbitrageStrategy extends BaseStrategy {
     // Calculate order size based on available liquidity and max size
     const size = Math.floor(opportunity.maxSize);
 
-    // For buy-both arbitrage, we need to buy YES tokens
-    // (NO tokens will be bought in a separate order or synthetic position)
+    // YES leg of the arbitrage. The execution layer reads needsNoLeg=true and
+    // noPrice from metadata to immediately place the complementary NO leg.
     return {
       action: 'buy',
       side: 'BUY',
       price: opportunity.yesPrice,
       size,
-      confidence: 0.95, // High confidence - this is arbitrage
-      rationale: `Arbitrage opportunity: Buy YES at ${opportunity.yesPrice.toFixed(4)} + NO at ${opportunity.noPrice.toFixed(4)} = ${(opportunity.yesPrice + opportunity.noPrice).toFixed(4)} < $1.00. Expected profit: ${(opportunity.profitBps / 100).toFixed(2)}% (${opportunity.profitBps} bps)`,
+      confidence: 0.95, // High confidence — risk-free if both legs fill
+      rationale: `Arbitrage: Buy YES at ${opportunity.yesPrice.toFixed(4)} + NO at ${opportunity.noPrice.toFixed(4)} = ${(opportunity.yesPrice + opportunity.noPrice).toFixed(4)} < $1.00. Profit: ${(opportunity.profitBps / 100).toFixed(2)}% (${opportunity.profitBps} bps)`,
       metadata: {
         strategyType: 'buy-both-arbitrage',
         yesPrice: opportunity.yesPrice,
-        noPrice: opportunity.noPrice,
+        noPrice: opportunity.noPrice,          // used by server for NO-leg execution
         totalCost: opportunity.yesPrice + opportunity.noPrice,
         profitBps: opportunity.profitBps,
         expectedProfit: opportunity.profitPerUnit * size,
-        needsNoLeg: true, // Signal that we need to also buy NO tokens
+        needsNoLeg: true, // server must also place a BUY order for the NO token
       },
     };
   }
@@ -279,21 +287,22 @@ export class ArbitrageStrategy extends BaseStrategy {
 
     const size = Math.min(currentSize, Math.floor(opportunity.maxSize));
 
+    // YES leg of the sell-both arbitrage.
     return {
       action: 'sell',
       side: 'SELL',
       price: opportunity.yesPrice,
       size,
-      confidence: 0.95, // High confidence - this is arbitrage
-      rationale: `Arbitrage opportunity: Sell YES at ${opportunity.yesPrice.toFixed(4)} + NO at ${opportunity.noPrice.toFixed(4)} = ${(opportunity.yesPrice + opportunity.noPrice).toFixed(4)} > $1.00. Expected profit: ${(opportunity.profitBps / 100).toFixed(2)}% (${opportunity.profitBps} bps)`,
+      confidence: 0.95,
+      rationale: `Arbitrage: Sell YES at ${opportunity.yesPrice.toFixed(4)} + NO at ${opportunity.noPrice.toFixed(4)} = ${(opportunity.yesPrice + opportunity.noPrice).toFixed(4)} > $1.00. Profit: ${(opportunity.profitBps / 100).toFixed(2)}% (${opportunity.profitBps} bps)`,
       metadata: {
         strategyType: 'sell-both-arbitrage',
         yesPrice: opportunity.yesPrice,
-        noPrice: opportunity.noPrice,
+        noPrice: opportunity.noPrice,          // used by server for NO-leg execution
         totalRevenue: opportunity.yesPrice + opportunity.noPrice,
         profitBps: opportunity.profitBps,
         expectedProfit: opportunity.profitPerUnit * size,
-        needsNoLeg: true, // Signal that we need to also sell NO tokens
+        needsNoLeg: true, // server must also place a SELL order for the NO token
       },
     };
   }

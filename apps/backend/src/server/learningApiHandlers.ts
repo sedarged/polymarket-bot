@@ -25,6 +25,24 @@ import {
  * Paper trading only - no live trading integration.
  */
 
+/** Safely parse JSON metrics, returning empty object on failure */
+function parseMetrics(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== "string") return (raw as Record<string, unknown>) ?? {};
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    logger.warn("Failed to parse promotion metrics JSON", { raw });
+    return {};
+  }
+}
+
+/** Safely parse a date string, returning 0 on invalid input */
+function safeDateMs(dateStr: unknown): number {
+  if (!dateStr) return 0;
+  const ms = new Date(String(dateStr)).getTime();
+  return isNaN(ms) ? 0 : ms;
+}
+
 // Singleton instances (initialized on demand)
 let eventStore: EventStore | null = null;
 let signalCatalog: SignalCatalog | null = null;
@@ -38,6 +56,12 @@ let promotionWorkflow: PromotionWorkflow | null = null;
  * Initializes all components atomically to avoid partial initialization state
  */
 function initializeLearningSystem(): void {
+  // Feature flag check: do not initialize if LEARNING_SYSTEM_ENABLED=false (GAP-003)
+  if (!config.learningSystemEnabled) {
+    logger.info("Learning system disabled via LEARNING_SYSTEM_ENABLED=false");
+    return;
+  }
+
   // Check if already fully initialized
   if (
     eventStore &&
@@ -74,10 +98,10 @@ function initializeLearningSystem(): void {
     });
 
     const localBanditAllocator = new BanditAllocator({
-      algorithm: "epsilon-greedy",
+      algorithm: config.banditAlgorithm, // GAP-003: from BANDIT_ALGORITHM env var
       totalCapital: 1000, // Paper trading capital
-      explorationFactor: 0.1,
-      minTradeCount: 10,
+      explorationFactor: config.banditExplorationFactor, // GAP-003: from BANDIT_EXPLORATION_FACTOR
+      minTradeCount: config.banditMinTradeCount, // GAP-003: from BANDIT_MIN_TRADE_COUNT
     });
 
     const localMetricsGating = new MetricsGating({
@@ -216,10 +240,7 @@ export async function handleGetStrategies(
 
     // Format strategy data
     const strategies = allPromotions.map((promotion) => {
-      const metrics =
-        typeof promotion.metrics === "string"
-          ? JSON.parse(promotion.metrics)
-          : promotion.metrics;
+      const metrics = parseMetrics(promotion.metrics);
 
       return {
         strategyId: promotion.strategyId,
@@ -296,40 +317,31 @@ export async function handleGetBestStrategy(
 
     // Find best strategy by Sharpe ratio
     const bestPromotion = allPromotions.reduce((best, current) => {
-      const bestMetrics =
-        typeof best.metrics === "string"
-          ? JSON.parse(best.metrics)
-          : best.metrics;
-      const currentMetrics =
-        typeof current.metrics === "string"
-          ? JSON.parse(current.metrics)
-          : current.metrics;
-      const bestSharpe = bestMetrics.sharpe || -Infinity;
-      const currentSharpe = currentMetrics.sharpe || -Infinity;
+      const bestMetrics = parseMetrics(best.metrics);
+      const currentMetrics = parseMetrics(current.metrics);
+      const bestSharpe = (bestMetrics.sharpe as number) || -Infinity;
+      const currentSharpe = (currentMetrics.sharpe as number) || -Infinity;
       return currentSharpe > bestSharpe ? current : best;
     });
 
-    const metrics =
-      typeof bestPromotion.metrics === "string"
-        ? JSON.parse(bestPromotion.metrics)
-        : bestPromotion.metrics;
+    const metrics = parseMetrics(bestPromotion.metrics);
 
     // Check if best strategy meets promotion criteria using metrics gating
     const performance = {
       strategyId: bestPromotion.strategyId,
-      pnl: metrics.pnl || 0,
-      sharpe: metrics.sharpe || 0,
-      maxDrawdown: metrics.maxDrawdown || 0,
-      winRate: metrics.winRate || 0,
-      tradeCount: metrics.tradeCount || 0,
-      errorRate: metrics.errorRate || 0,
-      lastUpdated: metrics.lastUpdated || new Date().toISOString(),
+      pnl: Number(metrics.pnl) || 0,
+      sharpe: Number(metrics.sharpe) || 0,
+      maxDrawdown: Number(metrics.maxDrawdown) || 0,
+      winRate: Number(metrics.winRate) || 0,
+      tradeCount: Number(metrics.tradeCount) || 0,
+      errorRate: Number(metrics.errorRate) || 0,
+      lastUpdated: (metrics.lastUpdated as string) || new Date().toISOString(),
     };
 
-    const daysSinceStart = Math.floor(
-      (Date.now() - new Date(bestPromotion.createdAt).getTime()) /
-        (1000 * 60 * 60 * 24),
-    );
+    const startMs = safeDateMs(bestPromotion.createdAt);
+    const daysSinceStart = startMs > 0
+      ? Math.floor((Date.now() - startMs) / (1000 * 60 * 60 * 24))
+      : 0;
     const gatingResult = metricsGating.check(performance, daysSinceStart);
 
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -382,7 +394,7 @@ export async function handleGetLearningStatus(
       eventStore: {
         initialized: eventStore !== null,
         status: eventStore ? "connected" : "not-connected",
-        eventsCount: 0, // Would need to query event store for actual count
+        eventsCount: eventStore ? eventStore.getEventCount() : 0,
       },
       signalCatalog: {
         initialized: signalCatalog !== null,

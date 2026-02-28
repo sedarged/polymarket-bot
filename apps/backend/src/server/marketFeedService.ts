@@ -32,6 +32,8 @@ class MarketFeedService extends EventEmitter {
       url: config.wsMarketUrl,
       tokenIds: config.tokenIds,
       maxReconnectAttempts: config.wsMaxReconnectAttempts,
+      reconnectDelay: config.wsReconnectDelay,
+      heartbeatIntervalMs: config.wsHeartbeatIntervalMs,
     });
 
     this.setupEventHandlers();

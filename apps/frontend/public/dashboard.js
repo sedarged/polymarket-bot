@@ -92,7 +92,7 @@ const state = {
       maxDrawdown: '20'
     },
     strategy: {
-      type: 'market-maker',
+      type: 'mean-reversion',
       orderSize: '100',
       refreshInterval: '5'
     },
@@ -880,17 +880,41 @@ function handleAuthButtonClick() {
   }
 }
 
+function getAuthHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = Auth.getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function handleReconnect() {
   showWarning('Reconnecting to market feed...');
   addEvent('RECONNECT', 'Manual reconnection requested');
   addLog('info', 'Reconnection requested via dashboard');
-  
-  // In a real implementation, this would call a reconnect endpoint
-  // For now, just refresh the data
-  setTimeout(async () => {
-    await refresh();
-    showSuccess('Reconnected successfully');
-  }, 1000);
+
+  try {
+    const response = await fetch(`${API_URL}/api/reconnect`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      addLog('info', `Reconnect initiated: ${data.message ?? 'success'}`);
+      setTimeout(async () => {
+        await refresh();
+        showSuccess('Reconnected successfully');
+      }, 1500);
+    } else {
+      const err = await response.json().catch(() => ({}));
+      showError(`Reconnect failed: ${err.error ?? response.statusText}`);
+      addLog('error', `Reconnect failed: ${err.error ?? response.statusText}`);
+    }
+  } catch (err) {
+    showError(`Reconnect error: ${err instanceof Error ? err.message : String(err)}`);
+    addLog('error', `Reconnect error: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 async function saveRiskConfig() {
@@ -927,25 +951,58 @@ async function saveRiskConfig() {
   addLog('info', `Risk config updated: maxExposure=${maxExposure}, maxOpenOrders=${maxOpenOrders}, maxDrawdown=${maxDrawdown}%`);
 }
 
+async function loadCurrentStrategy() {
+  try {
+    const data = await fetchData('/api/paper/strategy', true);
+    if (data && data.type) {
+      document.getElementById('strategyType').value = data.type;
+      state.currentConfig.strategy.type = data.type;
+      addLog('info', `Loaded active strategy from backend: ${data.type}`);
+    }
+  } catch (err) {
+    // Not fatal — only available in paper mode
+    addLog('debug', `Could not load strategy from backend: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
 async function saveStrategyConfig() {
   const strategyType = document.getElementById('strategyType').value;
   const orderSize = document.getElementById('orderSize').value;
   const refreshInterval = document.getElementById('refreshInterval').value;
   const errorEl = document.getElementById('strategyConfigError');
-  
+  const saveBtn = document.getElementById('saveStrategyConfigBtn');
+
   if (orderSize <= 0 || refreshInterval <= 0) {
     errorEl.textContent = 'Invalid values. Please check your inputs.';
     errorEl.classList.remove('hidden');
     return;
   }
-  
+
   errorEl.classList.add('hidden');
-  
-  // Track changes with actual previous values from state
+
+  // If the strategy type changed, push the change to the backend
   if (strategyType !== state.currentConfig.strategy.type) {
-    addConfigChange('Strategy', 'type', state.currentConfig.strategy.type, strategyType);
-    state.currentConfig.strategy.type = strategyType;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ Switching…';
+    try {
+      await postData('/api/paper/strategy', { type: strategyType });
+      addConfigChange('Strategy', 'type', state.currentConfig.strategy.type, strategyType);
+      state.currentConfig.strategy.type = strategyType;
+      addEvent('CONFIG', `Strategy switched to ${strategyType}`);
+      addLog('info', `Active strategy changed to: ${strategyType}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errorEl.textContent = `Failed to switch strategy: ${message}`;
+      errorEl.classList.remove('hidden');
+      addLog('error', `Strategy switch failed: ${message}`);
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Save';
+      return;
+    }
+    saveBtn.disabled = false;
+    saveBtn.textContent = '💾 Save';
   }
+
   if (orderSize !== state.currentConfig.strategy.orderSize) {
     addConfigChange('Strategy', 'orderSize', state.currentConfig.strategy.orderSize, orderSize);
     state.currentConfig.strategy.orderSize = orderSize;
@@ -954,10 +1011,9 @@ async function saveStrategyConfig() {
     addConfigChange('Strategy', 'refreshInterval', state.currentConfig.strategy.refreshInterval, refreshInterval);
     state.currentConfig.strategy.refreshInterval = refreshInterval;
   }
-  
+
   showSuccess('Strategy configuration saved');
-  addEvent('CONFIG', 'Strategy configuration updated');
-  addLog('info', `Strategy config updated: type=${strategyType}, orderSize=${orderSize}, interval=${refreshInterval}s`);
+  addLog('info', `Strategy config: type=${strategyType}, orderSize=${orderSize}, interval=${refreshInterval}s`);
 }
 
 async function saveReconnectConfig() {
@@ -1138,8 +1194,13 @@ async function init() {
   // Initial load
   addLog('info', 'Dashboard initialized');
   addEvent('INIT', 'Dashboard loaded');
-  
+
   await refresh();
+
+  // Load active strategy into the strategy picker (paper mode only)
+  if (Auth.isAuthenticated()) {
+    await loadCurrentStrategy();
+  }
   
   // Set up auto-refresh
   state.refreshIntervalId = setInterval(refresh, 5000);
