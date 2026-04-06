@@ -52,6 +52,8 @@ export class SyncManager {
   private detector: DiscrepancyDetector;
   private recovery: RecoveryProcedures;
   private syncTimer: NodeJS.Timeout | null = null;
+  private consecutiveSyncFailures = 0;
+  private static readonly MAX_CONSECUTIVE_FAILURES = 5;
   private snapshots: StateSnapshot[] = [];
   private stats: SyncStats;
   private isRunning: boolean = false;
@@ -86,11 +88,28 @@ export class SyncManager {
       logger.error('Initial sync failed', { error: error.message });
     });
 
-    // Schedule periodic syncs
+    // Schedule periodic syncs with consecutive failure tracking
     this.syncTimer = setInterval(() => {
-      this.sync().catch(error => {
-        logger.error('Periodic sync failed', { error: error.message });
-      });
+      this.sync()
+        .then(result => {
+          if (result.success) {
+            this.consecutiveSyncFailures = 0;
+          } else {
+            this.consecutiveSyncFailures++;
+          }
+        })
+        .catch(error => {
+          this.consecutiveSyncFailures++;
+          logger.error('Periodic sync failed', {
+            error: error.message,
+            consecutiveFailures: this.consecutiveSyncFailures,
+          });
+          if (this.consecutiveSyncFailures >= SyncManager.MAX_CONSECUTIVE_FAILURES) {
+            logger.error('CRITICAL: Multiple consecutive sync failures detected', {
+              consecutiveFailures: this.consecutiveSyncFailures,
+            });
+          }
+        });
     }, this.config.syncIntervalMs);
   }
 
@@ -183,11 +202,11 @@ export class SyncManager {
         durationMs,
       });
       this.stats.failedSyncs++;
+
+      // FIX: Calculate average duration before incrementing totalSyncs to avoid race condition
+      const prevTotalDuration = this.stats.averageSyncDurationMs * this.stats.totalSyncs;
       this.stats.totalSyncs++;
-      
-      // Update average duration to include failed syncs for accurate metrics
-      const totalDuration = this.stats.averageSyncDurationMs * (this.stats.totalSyncs - 1) + durationMs;
-      this.stats.averageSyncDurationMs = totalDuration / this.stats.totalSyncs;
+      this.stats.averageSyncDurationMs = (prevTotalDuration + durationMs) / this.stats.totalSyncs;
     }
 
     this.stats.lastSyncTime = Date.now();
@@ -356,14 +375,16 @@ export class SyncManager {
    * Update sync statistics
    */
   private updateStats(result: SyncResult, durationMs: number): void {
+    // Calculate average duration before incrementing totalSyncs for correct math
+    const prevTotalDuration = this.stats.averageSyncDurationMs * this.stats.totalSyncs;
     this.stats.totalSyncs++;
-    
+
     if (result.success) {
       this.stats.successfulSyncs++;
     }
 
     this.stats.totalDiscrepancies += result.discrepancies.length;
-    
+
     // Update discrepancies by type
     for (const discrepancy of result.discrepancies) {
       const count = this.stats.discrepanciesByType[discrepancy.type] || 0;
@@ -375,8 +396,7 @@ export class SyncManager {
     this.stats.successfulRecoveryActions += result.recoveryActions.filter(a => a.success).length;
 
     // Update average duration (running average)
-    const totalDuration = this.stats.averageSyncDurationMs * (this.stats.totalSyncs - 1) + durationMs;
-    this.stats.averageSyncDurationMs = totalDuration / this.stats.totalSyncs;
+    this.stats.averageSyncDurationMs = (prevTotalDuration + durationMs) / this.stats.totalSyncs;
   }
 
   /**
