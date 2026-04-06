@@ -46,6 +46,20 @@ export class RiskManager {
   private markets: Map<string, MarketConfigEntry>;
 
   constructor(config?: Partial<RiskManagerConfig>) {
+    // Validate config values before applying
+    if (config?.maxDrawdown !== undefined && (config.maxDrawdown < 0 || config.maxDrawdown > 1)) {
+      throw new Error(`Invalid maxDrawdown: ${config.maxDrawdown}. Must be between 0 and 1.`);
+    }
+    if (config?.errorRateThreshold !== undefined && (config.errorRateThreshold < 0 || config.errorRateThreshold > 1)) {
+      throw new Error(`Invalid errorRateThreshold: ${config.errorRateThreshold}. Must be between 0 and 1.`);
+    }
+    if (config?.maxOpenOrders !== undefined && config.maxOpenOrders <= 0) {
+      throw new Error(`Invalid maxOpenOrders: ${config.maxOpenOrders}. Must be > 0.`);
+    }
+    if (config?.maxExposurePerMarket !== undefined && config.maxExposurePerMarket <= 0) {
+      throw new Error(`Invalid maxExposurePerMarket: ${config.maxExposurePerMarket}. Must be > 0.`);
+    }
+
     this.config = {
       maxExposurePerMarket: config?.maxExposurePerMarket ?? 1000,
       maxOpenOrders: config?.maxOpenOrders ?? 50,

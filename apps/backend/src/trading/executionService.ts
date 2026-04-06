@@ -247,6 +247,31 @@ export class ExecutionService {
     });
 
     try {
+      // Validate order parameters
+      const { params } = request;
+      const numericSize = typeof params.size === 'string' ? parseFloat(params.size) : params.size;
+      if (!Number.isFinite(numericSize) || numericSize <= 0) {
+        return {
+          executionId: request.context.executionId,
+          status: ExecutionStatus.REJECTED,
+          error: new Error(`Invalid order size: ${params.size}. Must be a positive number.`),
+        };
+      }
+      if (!params.tokenId || params.tokenId.trim().length === 0) {
+        return {
+          executionId: request.context.executionId,
+          status: ExecutionStatus.REJECTED,
+          error: new Error('Token ID cannot be empty'),
+        };
+      }
+      if (params.side !== 'BUY' && params.side !== 'SELL') {
+        return {
+          executionId: request.context.executionId,
+          status: ExecutionStatus.REJECTED,
+          error: new Error(`Invalid order side: ${params.side}. Must be BUY or SELL.`),
+        };
+      }
+
       // Check deadline
       if (request.context.deadline && Date.now() > request.context.deadline) {
         throw new ExecutionTimeoutError(
@@ -447,21 +472,53 @@ export class ExecutionService {
     // TRADING SAFETY: Calculate aggressive price from orderbook for immediate execution.
     // BUY: use best ask * (1 + slippageTolerance), cap at 0.99.
     // SELL: use best bid * (1 - slippageTolerance), floor at 0.01.
+    // FIX: Require fresh orderbook data instead of falling back to extreme prices.
     let price: string;
     const orderbook = this.marketFeedService?.getOrderbook(params.tokenId);
     const rawSlippage = params.slippageTolerance ?? 0.02;
-    const slippage = Number.isFinite(rawSlippage) && rawSlippage >= 0 ? rawSlippage : 0.02;
+    const MAX_SLIPPAGE = 0.50; // Cap slippage at 50% to prevent catastrophic fills
+    const slippage = Number.isFinite(rawSlippage) && rawSlippage >= 0
+      ? Math.min(rawSlippage, MAX_SLIPPAGE)
+      : 0.02;
+
+    // Validate orderbook freshness - reject if no data or stale (>5s)
+    const orderbookAge = orderbook?.timestamp ? Date.now() - orderbook.timestamp : Infinity;
+    const hasValidOrderbook = orderbook && orderbookAge < 5000;
 
     if (params.side === 'BUY') {
-      const bestAskStr = orderbook?.asks?.[0]?.price;
-      const parsedAsk = bestAskStr !== undefined ? parseFloat(bestAskStr) : 0.99;
+      const bestAskStr = hasValidOrderbook ? orderbook?.asks?.[0]?.price : undefined;
+      if (bestAskStr === undefined) {
+        logger.warn('Market BUY order rejected: no fresh orderbook data', {
+          category: 'ORDER_FLOW',
+          tokenId: params.tokenId,
+          orderbookAge: orderbookAge === Infinity ? 'none' : `${orderbookAge}ms`,
+        });
+        return {
+          executionId: request.context.executionId,
+          status: ExecutionStatus.REJECTED,
+          error: new Error(`Market BUY order requires fresh orderbook data for token ${params.tokenId}`),
+        };
+      }
+      const parsedAsk = parseFloat(bestAskStr);
       const askPrice = Number.isFinite(parsedAsk) ? parsedAsk : 0.99;
       const computedPrice = askPrice * (1 + slippage);
       const boundedPrice = Math.min(computedPrice, 0.99);
       price = String(Number.isFinite(boundedPrice) ? boundedPrice : 0.99);
     } else {
-      const bestBidStr = orderbook?.bids?.[0]?.price;
-      const parsedBid = bestBidStr !== undefined ? parseFloat(bestBidStr) : 0.01;
+      const bestBidStr = hasValidOrderbook ? orderbook?.bids?.[0]?.price : undefined;
+      if (bestBidStr === undefined) {
+        logger.warn('Market SELL order rejected: no fresh orderbook data', {
+          category: 'ORDER_FLOW',
+          tokenId: params.tokenId,
+          orderbookAge: orderbookAge === Infinity ? 'none' : `${orderbookAge}ms`,
+        });
+        return {
+          executionId: request.context.executionId,
+          status: ExecutionStatus.REJECTED,
+          error: new Error(`Market SELL order requires fresh orderbook data for token ${params.tokenId}`),
+        };
+      }
+      const parsedBid = parseFloat(bestBidStr);
       const bidPrice = Number.isFinite(parsedBid) ? parsedBid : 0.01;
       const computedPrice = bidPrice * (1 - slippage);
       const boundedPrice = Math.max(computedPrice, 0.01);
